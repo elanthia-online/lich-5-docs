@@ -135,11 +135,12 @@ class AnthropicProvider(LLMProvider):
                 # Create message with proper format for Claude
                 messages = [{"role": "user", "content": prompt}]
 
-                # Create the request
+                # Create the request.
+                # NOTE: no "temperature" - current anthropic SDKs removed it
+                # from Messages.create() and passing it raises TypeError.
                 kwargs = {
                     "model": self.config.model,
                     "max_tokens": self.config.max_tokens,
-                    "temperature": self.config.temperature,
                     "messages": messages
                 }
 
