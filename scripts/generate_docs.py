@@ -1,0 +1,1694 @@
+#!/usr/bin/env python3
+"""
+Lich5 Documentation Generator
+Main script for generating YARD-compatible documentation for Lich5 Ruby code
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+import argparse
+import json
+import logging
+import re
+import time
+import hashlib
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+
+from providers import get_provider, ProviderFactory, get_parallel_workers
+from yard_coverage import find_uncovered_anchors, has_doc_block
+
+# Import config (optional - falls back to defaults if not available)
+try:
+    from config import ConfigManager, get_config
+    HAS_CONFIG = True
+except ImportError:
+    HAS_CONFIG = False
+    ConfigManager = None
+    get_config = None
+
+# Import validation (optional - falls back to skipping validation)
+try:
+    from validation import YARDValidator, ValidationResult
+    HAS_VALIDATION = True
+except ImportError:
+    HAS_VALIDATION = False
+    YARDValidator = None
+    ValidationResult = None
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+class Lich5DocumentationGenerator:
+    """Main documentation generator for Lich5 Ruby code"""
+
+    def __init__(self, provider_name: Optional[str] = None, output_dir: Optional[str] = None,
+                 incremental: bool = True, force_rebuild: bool = False, parallel_workers: int = None,
+                 output_structure: str = 'flat', source_root: Optional[Path] = None,
+                 force_regenerate: bool = False):
+        """
+        Initialize the documentation generator
+
+        Args:
+            provider_name: LLM provider to use (defaults to env var or 'openai')
+            output_dir: Output directory for documentation (defaults to 'output/latest')
+            incremental: Enable incremental processing (skip already documented files)
+            force_rebuild: Force reprocessing of all files even if already documented
+            parallel_workers: Number of parallel workers (None = auto-detect based on provider)
+            output_structure: 'flat' (all files in one dir) or 'mirror' (preserve source structure)
+            source_root: Root directory of source files (required for mirror structure)
+            force_regenerate: DESTRUCTIVE - strip ALL existing YARD docs and regenerate
+                              from scratch. Default (False) preserves existing docs and
+                              only fills gaps found by the coverage checker.
+        """
+        self.provider_name = provider_name or os.environ.get('LLM_PROVIDER', 'openai')
+        self.incremental = incremental and not force_rebuild
+        self.force_rebuild = force_rebuild
+        self.force_regenerate = force_regenerate
+        self.output_structure = output_structure
+        self.source_root = source_root
+
+        # Thread safety - use RLock (reentrant) to allow nested acquisitions
+        self.manifest_lock = threading.RLock()
+        self.file_lock = threading.RLock()
+
+        # Get parallel workers from config or use provided value
+        if parallel_workers is None:
+            self.parallel_workers = get_parallel_workers(self.provider_name)
+        else:
+            self.parallel_workers = parallel_workers
+
+        # Set up output directory
+        if output_dir:
+            self.output_dir = Path(output_dir)
+        else:
+            # Use 'latest' directory for incremental processing
+            self.output_dir = Path('output') / 'latest'
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize provider
+        logger.info(f"Initializing {self.provider_name} provider")
+        self.provider = get_provider(self.provider_name)
+
+        # Track documentation
+        self.documentation = {}
+        self.failed_files = []
+
+        # Load existing manifest for incremental processing
+        self.manifest_file = self.output_dir / 'manifest.json'
+        self.manifest = self.load_manifest()
+
+        logger.info(f"Documentation generator initialized")
+        logger.info(f"Provider: {self.provider_name}")
+        logger.info(f"Output directory: {self.output_dir}")
+        logger.info(f"Incremental mode: {self.incremental}")
+        if self.incremental and self.manifest.get('processed_files'):
+            logger.info(f"Found {len(self.manifest['processed_files'])} already processed files")
+
+    def get_output_file_path(self, file_path: Path) -> Path:
+        """
+        Get the output file path based on output structure setting
+
+        Args:
+            file_path: Source file path
+
+        Returns:
+            Path to output file (either flat or mirrored structure)
+        """
+        if self.output_structure == 'mirror' and self.source_root:
+            # Mirror directory structure
+            try:
+                # Ensure both paths are resolved to absolute paths for comparison
+                file_path_resolved = file_path.resolve()
+                source_root_resolved = self.source_root.resolve()
+
+                # Get relative path from source root
+                relative_path = file_path_resolved.relative_to(source_root_resolved)
+                # Build mirrored path in documented directory
+                output_path = self.output_dir / 'documented' / relative_path
+                return output_path
+            except ValueError as e:
+                # File is not under source_root, fall back to flat
+                logger.warning(f"File {file_path} not under source root {self.source_root}, using flat structure")
+                logger.debug(f"  ValueError: {e}")
+                return self.output_dir / 'documented' / file_path.name
+        else:
+            # Flat structure - all files in documented directory
+            return self.output_dir / 'documented' / file_path.name
+
+    def load_manifest(self) -> dict:
+        """Load the manifest file tracking processed files"""
+        if self.manifest_file.exists():
+            try:
+                with open(self.manifest_file, 'r') as f:
+                    manifest = json.load(f)
+                logger.info(f"Loaded manifest with {len(manifest.get('processed_files', []))} processed files")
+                return manifest
+            except Exception as e:
+                logger.warning(f"Failed to load manifest: {e}")
+                return {'processed_files': {}, 'failed_files': [], 'timestamp': datetime.now().isoformat()}
+        return {'processed_files': {}, 'failed_files': [], 'timestamp': datetime.now().isoformat()}
+
+    def save_manifest(self):
+        """Save the manifest file (thread-safe)"""
+        with self.manifest_lock:
+            try:
+                with open(self.manifest_file, 'w') as f:
+                    json.dump(self.manifest, f, indent=2, default=str)
+            except Exception as e:
+                logger.error(f"Failed to save manifest: {e}")
+
+    def compute_code_hash(self, content: str) -> str:
+        """
+        Compute hash of Ruby code excluding YARD comments
+        This allows us to detect actual code changes vs documentation changes
+        """
+        lines = content.split('\n')
+        code_lines = []
+        in_yard_comment = False
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Skip YARD comment blocks
+            if stripped.startswith('#') and any(tag in stripped for tag in ['@param', '@return', '@example', '@note', '@see', '@yield']):
+                continue
+            # Skip regular comment lines that look like documentation
+            elif stripped.startswith('#') and len(stripped) > 1 and stripped[1] == ' ':
+                # But keep shebang and encoding comments
+                if stripped.startswith('#!') or 'coding:' in stripped or 'encoding:' in stripped:
+                    code_lines.append(line)
+            else:
+                # Include actual code lines
+                code_lines.append(line)
+
+        # Compute hash of the actual code
+        code_content = '\n'.join(code_lines)
+        return hashlib.sha256(code_content.encode('utf-8')).hexdigest()[:16]
+
+    def is_file_processed(self, file_path: Path) -> bool:
+        """Check if a file has already been processed and hasn't changed"""
+        if not self.incremental:
+            return False
+
+        relative_path = str(file_path)
+        if relative_path in self.manifest.get('processed_files', {}):
+            logger.info(f"  File found in manifest: {file_path.name} (key: {relative_path})")
+            # Check if output file actually exists in committed documented/ directory
+            # Use same logic as get_output_file_path but check repo root documented/
+            if self.output_structure == 'mirror' and self.source_root:
+                try:
+                    file_path_resolved = file_path.resolve()
+                    source_root_resolved = self.source_root.resolve()
+                    relative_path_from_source = file_path_resolved.relative_to(source_root_resolved)
+                    # Check in repo root documented/ directory (committed files)
+                    output_file = Path('documented') / relative_path_from_source
+                    logger.debug(f"  Checking: {output_file} (exists: {output_file.exists()})")
+                except ValueError as e:
+                    output_file = Path('documented') / file_path.name
+                    logger.debug(f"  ValueError in path resolution: {e}, using flat: {output_file}")
+            else:
+                output_file = Path('documented') / file_path.name
+                logger.debug(f"  Using flat structure: {output_file}")
+
+            if not output_file.exists():
+                logger.info(f"  Output file missing, reprocessing: {file_path.name}")
+                logger.debug(f"    Looked for: {output_file.absolute()}")
+                return False
+
+            # Check if source file has changed by comparing hashes
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    current_content = f.read()
+                current_hash = self.compute_code_hash(current_content)
+
+                stored_info = self.manifest['processed_files'][relative_path]
+                stored_hash = stored_info.get('content_hash')
+
+                # Log hash comparison for debugging
+                logger.info(f"  Hash check for {file_path.name}:")
+                logger.info(f"    Manifest key: {relative_path}")
+                logger.info(f"    Stored hash:  {stored_hash}")
+                logger.info(f"    Current hash: {current_hash}")
+                logger.info(f"    Match: {current_hash == stored_hash}")
+
+                if current_hash != stored_hash:
+                    logger.info(f"  Source file changed, reprocessing: {file_path.name}")
+                    return False
+                else:
+                    logger.info(f"  Skipping (unchanged): {file_path.name}")
+                    return True
+
+            except Exception as e:
+                logger.warning(f"  Error checking file hash, reprocessing: {e}")
+                return False
+        else:
+            logger.info(f"  File NOT in manifest: {file_path.name} (key: {relative_path})")
+
+        return False
+
+    def mark_file_processed(self, file_path: Path, success: bool = True, content: str = None,
+                            validation_status: str = None):
+        """Mark a file as processed in the manifest with content hash (thread-safe)
+
+        Args:
+            file_path: Path to the file
+            success: Whether processing was successful
+            content: Optional content for hash computation
+            validation_status: Validation result ('passed', 'warnings', 'failed', 'skipped')
+        """
+        with self.manifest_lock:
+            relative_path = str(file_path)
+            if success:
+                if 'processed_files' not in self.manifest:
+                    self.manifest['processed_files'] = {}
+
+                # Compute hash of the source file (without comments)
+                content_hash = None
+                if content:
+                    content_hash = self.compute_code_hash(content)
+                else:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content_hash = self.compute_code_hash(f.read())
+                    except Exception as e:
+                        logger.warning(f"Could not compute hash for {file_path}: {e}")
+
+                entry = {
+                    'timestamp': datetime.now().isoformat(),
+                    'provider': self.provider_name,
+                    'content_hash': content_hash,
+                    'file_name': file_path.name
+                }
+
+                # Add validation status if provided
+                if validation_status:
+                    entry['validation_status'] = validation_status
+
+                self.manifest['processed_files'][relative_path] = entry
+
+                # A later success clears any earlier failure record - without
+                # this, failed_files grows forever and stops meaning anything
+                failed = self.manifest.get('failed_files')
+                if failed and relative_path in failed:
+                    failed.remove(relative_path)
+            else:
+                if 'failed_files' not in self.manifest:
+                    self.manifest['failed_files'] = []
+                if relative_path not in self.manifest['failed_files']:
+                    self.manifest['failed_files'].append(relative_path)
+
+            # Save manifest after each file (in case of interruption)
+            self.save_manifest()
+
+    def strip_yard_comments(self, content: str) -> str:
+        """
+        Remove existing YARD documentation while preserving inline code comments
+
+        This prevents duplicate documentation when regenerating docs for files
+        that already have partial YARD coverage.
+
+        Strips:
+        - Lines with YARD tags (@param, @return, @example, etc.)
+        - Description comment lines that are part of YARD doc blocks
+
+        Preserves:
+        - Inline comments within code (e.g., "# Calculate total")
+        - Special directives (e.g., # encoding:, # rubocop:, # :nodoc:)
+        - Shebang lines (#!/usr/bin/env ruby)
+
+        Args:
+            content: Original Ruby source code
+
+        Returns:
+            Content with YARD documentation removed
+        """
+        lines = content.split('\n')
+        result = []
+        i = 0
+
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            # Keep shebang, encoding, and other special directives
+            # (frozen_string_literal is a Ruby magic comment - removing it
+            # changes string mutability semantics)
+            if (stripped.startswith('#!') or 'encoding:' in stripped or 'coding:' in stripped
+                    or stripped.startswith('# frozen_string_literal')
+                    or stripped.startswith('# typed:')):
+                result.append(line)
+                i += 1
+                continue
+
+            # Keep rubocop directives and :nodoc:
+            if '# rubocop:' in line or '# :nodoc:' in line or '# @!visibility' in line:
+                result.append(line)
+                i += 1
+                continue
+
+            # Check if this is a YARD tag line
+            is_yard_tag = stripped.startswith('#') and any(
+                tag in stripped for tag in [
+                    '@param', '@return', '@example', '@raise', '@yield',
+                    '@note', '@see', '@api', '@deprecated', '@since',
+                    '@version', '@attr', '@attr_reader', '@attr_writer'
+                ]
+            )
+
+            if is_yard_tag:
+                # Skip this line and any continuation lines (part of the YARD block)
+                i += 1
+                # Also skip following YARD tag lines and example code
+                while i < len(lines):
+                    next_stripped = lines[i].strip()
+                    # Continue skipping if it's:
+                    # - A YARD tag line
+                    # - Part of an @example block (indented code after @example)
+                    # - A comment line that's part of the doc block
+                    if next_stripped.startswith('#'):
+                        # Check if it's another YARD tag or example code
+                        has_tag = any(tag in next_stripped for tag in [
+                            '@param', '@return', '@example', '@raise', '@yield',
+                            '@note', '@see', '@api', '@deprecated', '@since',
+                            '@version', '@attr', '@attr_reader', '@attr_writer'
+                        ])
+                        if has_tag or next_stripped.startswith('#   '):  # Example code (indented)
+                            i += 1
+                            continue
+                    break
+                continue
+
+            # Check if this is a description comment line above a definition
+            # (part of a YARD doc block without explicit tags)
+            if stripped.startswith('#') and not stripped.startswith('##'):
+                # Look ahead to see if this is followed by a definition
+                j = i + 1
+                is_yard_description = False
+
+                # Skip blank comment lines and other description lines
+                while j < len(lines):
+                    next_line = lines[j].strip()
+
+                    # If we hit a blank line, keep looking
+                    if not next_line:
+                        j += 1
+                        continue
+
+                    # If we hit a YARD tag, this is part of a YARD block
+                    if next_line.startswith('#') and any(tag in next_line for tag in [
+                        '@param', '@return', '@example', '@raise', '@yield', '@note'
+                    ]):
+                        is_yard_description = True
+                        break
+
+                    # If we hit another comment, it might be more description
+                    if next_line.startswith('#'):
+                        j += 1
+                        if j - i > 10:  # Don't look too far ahead
+                            break
+                        continue
+
+                    # If we hit a definition (class, module, def, attr_*), this is YARD
+                    if any(next_line.startswith(kw) for kw in [
+                        'class ', 'module ', 'def ', 'attr_reader', 'attr_writer', 'attr_accessor'
+                    ]):
+                        is_yard_description = True
+
+                    # Stop looking
+                    break
+
+                if is_yard_description:
+                    # Skip this description line
+                    i += 1
+                    continue
+
+            # Keep this line (it's code or an inline comment)
+            result.append(line)
+            i += 1
+
+        return '\n'.join(result)
+
+    def create_documentation_prompt(self, file_name: str, content: str,
+                                    uncovered: Optional[List[Dict[str, Any]]] = None) -> tuple[str, str]:
+        """
+        Create prompts for documentation generation
+
+        Args:
+            file_name: Name of the file being documented
+            content: Ruby source code. In gap-fill mode (uncovered is not None)
+                     this is the ORIGINAL content including existing docs; in
+                     force-regenerate mode it has YARD comments stripped.
+            uncovered: List of anchor dicts (from yard_coverage) that lack docs.
+                       When provided, the AI is restricted to ONLY these targets.
+
+        Returns:
+            (system_prompt, user_prompt) tuple
+        """
+        system_prompt = """You are a senior Ruby engineer writing the official API reference for Lich 5,
+a Ruby scripting engine for the text-based games GemStone IV and DragonRealms.
+Script authors read this reference to decide how to call this code from their
+own .lic scripts - the comment you write is the contract they rely on.
+You write precise, concrete YARD documentation and return it as valid JSON.
+You never guess parameter names and never describe behavior the code does not show."""
+
+        # Gap-fill mode: build an explicit allowlist of targets
+        targets_block = ""
+        if uncovered is not None:
+            target_lines = '\n'.join(
+                f"   - line {a['line']}: {a['signature']}" for a in uncovered
+            )
+            targets_block = f"""
+**DOCUMENT ONLY THESE TARGETS - EVERYTHING ELSE IS OFF-LIMITS:**
+{target_lines}
+
+This file already contains YARD documentation for other code. STRICT RULES:
+- Return entries ONLY for targets in the list above
+- Do NOT modify, rewrite, duplicate, or return entries for already-documented code
+- If a listed target needs no documentation (trivial delegation, namespace-only
+  module, etc.), simply omit it from your response
+"""
+
+        # Add line numbers to help AI identify exact lines
+        numbered_lines = []
+        for i, line in enumerate(content.split('\n'), start=1):
+            numbered_lines.append(f"{i:4d}: {line}")
+        numbered_content = '\n'.join(numbered_lines)
+
+        user_prompt = f"""Analyze this Ruby file from the Lich5 project: **{file_name}**
+
+```ruby
+{numbered_content}
+```
+
+The line numbers are shown at the start of each line (e.g., "  15: def method_name").
+Generate YARD documentation following the lich-5 style guide below.
+{targets_block}
+**1. WHAT TO DOCUMENT**
+- Public classes, modules, methods, and non-trivial constants
+- Add `@api private` to methods that are public but internal (not called from .lic scripts)
+- Skip already-documented code (existing YARD tags present)
+- If there is nothing to document, return an empty array: []
+
+**2. WHAT TO SKIP (no documentation needed)**
+- Trivial one-line delegation methods
+- `attr_reader` / `attr_accessor` / `attr_writer` declarations
+- Aliases where the target method is already documented
+- Constants with self-evident names and values (e.g., `MAX_RETRIES = 3`)
+- Private methods (below a `private` keyword, or marked `# :nodoc:` /
+  `# @!visibility private`) unless they warrant `@api private` as public-but-internal
+
+**3. HOW TO WRITE - THE QUALITY BAR**
+- Document the contract: what it does, what it returns, side effects, and when it
+  raises - never the line-by-line implementation
+- First line is one concise summary sentence in third-person indicative:
+  "Returns the trained rank of a feat." NOT "This method will return..."
+- Be concrete. Pull real facts from the code: default values, sentinel returns
+  ("or 0 if the feat is unknown"), caching, whether arguments are mutated.
+  Generic filler ("Handles the data", "Performs processing") is worse than no
+  comment at all.
+- Use the domain vocabulary this codebase lives in: the game server, the XML feed,
+  items, containers, spells, rooms, characters - not abstract CS-speak
+- When the code alone doesn't reveal a purpose, write the minimal accurate truth
+  (a namespace wrapper gets "Namespace for X." on one line) - never invent
+  behavior you cannot see in the code
+- Match the voice of any existing comments in the file
+- `@example` is strongly encouraged for consumer-facing methods: one realistic
+  call with a realistic result
+- For Regexp/pattern constants: describe what they match and show an `@example`
+  of a matching string; `@see` paired constants and the methods that use them
+
+**4. TAG RULES**
+Tag order, always: @param, @return, @example, @note, @raise, @see, @since, @deprecated, @api
+- Types are REQUIRED on every @param and @return: [String], [Integer], [Boolean],
+  [Array<String>], [Hash], [String, nil]; use [void] when there is no meaningful
+  return value. Game-specific: [String] for item/container nouns, [Regexp] for
+  patterns, [OpenStruct] for settings
+- @param names MUST exactly match the def signature, with & and * stripped:
+  WRONG: @param block [Proc] ...     WRONG: @param &block [Proc] ...
+  RIGHT: omit @param for &block entirely - use @yield/@yieldparam or describe it
+  in the summary
+  WRONG: @param *messages [Array]    RIGHT: @param messages [Array]
+- Method references: `.method_name` for class/module methods (def self.x),
+  `#method_name` for instance methods - in @see and {{...}} inline links
+- Never use @author, @version, @todo, or @abstract
+- @example format: optional title on the tag line, code on the NEXT line(s)
+  indented with "#   ":
+  WRONG: @example DRCI.get_item?(\\"sword\\")
+  RIGHT: @example Get from default storage\\n#   DRCI.get_item?(\\"sword\\")
+
+**5. OUTPUT FORMAT**
+Return JSON only - a bare array, or an object with a single "comments" key
+holding that array. Each entry:
+- "line_number": 1-indexed line the comment goes BEFORE (use the numbered listing)
+- "anchor": short snippet copied from that exact line ("def initialize", "class GameObj")
+- "indent": number of spaces before the anchor line
+- "comment": the full comment block, lines joined with \\n, every line starting with #
+
+Example of house style - match this level of specificity:
+```json
+[
+  {{
+    "line_number": 42,
+    "anchor": "def self.[](name)",
+    "indent": 6,
+    "comment": "# Looks up the trained rank of a feat by name.\\n#\\n# @param name [String] the feat name, e.g. \\"covert_art_escape_artist\\"\\n# @return [Integer] the trained rank, or 0 if the feat is not known\\n# @example\\n#   Feat[\\"covert_art_escape_artist\\"] #=> 1"
+  }},
+  {{
+    "line_number": 15,
+    "anchor": "class PipeIO",
+    "indent": 4,
+    "comment": "# Duplex IO adapter that lets stdin/stdout stand in for a front-end\\n# client socket in --pipe mode. Reads come from input, writes go to output.\\n#\\n# @see SynchronizedSocket"
+  }}
+]
+```
+
+**6. JSON VALIDITY - verify before returning**
+- Inside "comment", escape double quotes as \\" and backslashes as \\\\
+  (example code: Feat[\\"name\\"] not Feat["name"]); line breaks are \\n
+- Every @param name matches the def signature exactly, no & or * symbols
+- Tag order matches section 4; every @param/@return carries a [Type]
+- Anchors are concise and copied verbatim from the listed line
+- Return ONLY the JSON, no prose before or after
+"""
+
+        return system_prompt, user_prompt
+
+    def process_file(self, file_path: Path) -> Optional[str]:
+        """
+        Process a single Ruby file and generate documentation using JSON-based approach
+
+        Args:
+            file_path: Path to Ruby file
+
+        Returns:
+            Generated documentation or None if failed
+        """
+        logger.info(f"Processing: {file_path.name}")
+
+        try:
+            # Read original file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_content = f.read()
+
+            # Get file stats
+            lines = len(original_content.split('\n'))
+            logger.info(f"  Lines: {lines}, Characters: {len(original_content)}")
+
+            if self.force_regenerate:
+                # DESTRUCTIVE opt-in path: strip existing YARD comments and
+                # regenerate all documentation from scratch
+                base_content = self.strip_yard_comments(original_content)
+                stripped_lines = len(base_content.split('\n'))
+                removed_lines = lines - stripped_lines
+                if removed_lines > 0:
+                    logger.info(f"  Stripped {removed_lines} lines of existing YARD documentation (--force-regenerate)")
+                uncovered = None
+                allowed_lines = None
+            else:
+                # DEFAULT non-destructive path: existing docs are never touched.
+                # Only anchors the coverage checker reports as undocumented are
+                # sent to the AI; a fully-documented file costs zero API calls.
+                base_content = original_content
+                uncovered = find_uncovered_anchors(original_content)
+                if not uncovered:
+                    logger.info(f"  Already fully documented - no AI call needed")
+                    self.documentation[file_path.name] = {
+                        'original': original_content,
+                        'documented': original_content,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    return original_content
+                logger.info(f"  {len(uncovered)} undocumented anchor(s) - requesting docs for those only")
+                # 0-indexed line numbers where insertion is permitted
+                allowed_lines = {a['line'] - 1 for a in uncovered}
+
+            # Create prompts for JSON-based documentation
+            system_prompt, user_prompt = self.create_documentation_prompt(
+                file_path.name,
+                base_content,
+                uncovered
+            )
+
+            # Generate JSON with comments and anchors
+            logger.info(f"  Requesting documentation from {self.provider_name}...")
+            result = self.provider.generate(user_prompt, system_prompt)
+
+            # Parse JSON response
+            comments = self.extract_comments_json(result)
+
+            if comments is None:
+                # JSON parsing completely failed - save response for debugging
+                logger.error(f"  No comments extracted from response")
+                logger.error(f"  AI response length: {len(result)} characters")
+                if len(result) < 1000:
+                    logger.error(f"  Full AI response: {result}")
+                else:
+                    logger.error(f"  AI response (first 500): {result[:500]}")
+                    logger.error(f"  AI response (last 500): {result[-500:]}")
+
+                # Save failed response for manual inspection
+                failed_response_file = self.output_dir / f"{file_path.stem}_failed_response.txt"
+                with open(failed_response_file, 'w', encoding='utf-8') as f:
+                    f.write(f"Failed to parse JSON for: {file_path.name}\n")
+                    f.write(f"AI Response Length: {len(result)} characters\n")
+                    f.write("="*80 + "\n")
+                    f.write(result)
+                logger.info(f"  Saved failed response to: {failed_response_file.name}")
+
+                self.failed_files.append(file_path.name)
+                return None
+
+            if len(comments) == 0:
+                # Empty array is valid - nothing the AI judged worth documenting
+                logger.info(f"  No documentation needed")
+                documented_code = base_content
+            else:
+                logger.info(f"  Extracted {len(comments)} documentation entries")
+                # In gap-fill mode allowed_lines restricts insertion to the
+                # uncovered anchors; existing doc blocks are never touched
+                documented_code = self.insert_comments(base_content, comments,
+                                                       allowed_lines=allowed_lines)
+
+            # Store documentation
+            self.documentation[file_path.name] = {
+                'original': original_content,
+                'documented': documented_code,
+                'timestamp': datetime.now().isoformat()
+            }
+
+            logger.info(f"  ✅ Successfully documented {file_path.name}")
+            return documented_code
+
+        except Exception as e:
+            logger.error(f"  ❌ Failed to process {file_path.name}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            self.failed_files.append(file_path.name)
+            return None
+
+    def sanitize_json_escapes(self, json_text: str) -> str:
+        r"""
+        Sanitize invalid escape sequences in JSON string
+
+        Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+        Common invalid escapes from AI: \d, \s, \w, \x, etc. (regex patterns)
+
+        Args:
+            json_text: Raw JSON string that may contain invalid escapes
+
+        Returns:
+            Sanitized JSON string with invalid escapes fixed
+        """
+        # Simpler approach: find all escape sequences and validate them
+        result = []
+        i = 0
+        while i < len(json_text):
+            if json_text[i] == '\\' and i + 1 < len(json_text):
+                next_char = json_text[i + 1]
+
+                # Check if it's a valid escape
+                if next_char in '"\\/bfnrt':
+                    # Valid single-char escape
+                    result.append('\\')
+                    result.append(next_char)
+                    i += 2
+                elif next_char == 'u' and i + 5 < len(json_text):
+                    # Check for \uXXXX (must be 4 hex digits)
+                    hex_part = json_text[i+2:i+6]
+                    if len(hex_part) == 4 and all(c in '0123456789ABCDEFabcdef' for c in hex_part):
+                        # Valid \uXXXX
+                        result.append('\\u')
+                        result.append(hex_part)
+                        i += 6
+                    else:
+                        # Invalid \u sequence - double-escape it
+                        result.append('\\\\u')
+                        i += 2
+                else:
+                    # Invalid escape - double-escape the backslash
+                    result.append('\\\\')
+                    result.append(next_char)
+                    i += 2
+            else:
+                # Not an escape sequence
+                result.append(json_text[i])
+                i += 1
+
+        return ''.join(result)
+
+    def clean_json_concatenation(self, json_text: str) -> str:
+        """
+        Clean up invalid JSON string concatenation patterns
+
+        LLMs sometimes generate JSON with JavaScript/Python-style string concatenation:
+        "text1"
+            + "text2"
+            + "text3"
+
+        This is NOT valid JSON. Convert to single concatenated string.
+
+        Args:
+            json_text: Raw JSON that may contain string concatenation
+
+        Returns:
+            Cleaned JSON with concatenations resolved
+        """
+        # Pattern: "string1" + "string2" (with optional whitespace/newlines)
+        # Match: "..." followed by optional whitespace, +, optional whitespace, "..."
+        # This handles both inline and multi-line concatenations:
+        #   "line1\n" + "line2\n"  (inline)
+        #   "line1\n"
+        #       + "line2\n"        (multi-line)
+        #       + "line3\n"
+
+        def concat_strings(match):
+            """Callback to concatenate matched string segments"""
+            # Extract all string contents from the match (between quotes)
+            # This regex finds content between quotes, handling escaped quotes
+            strings = []
+            # Match all "..." segments, including escaped characters
+            for s in re.finditer(r'"((?:[^"\\]|\\.)*)"', match.group(0)):
+                strings.append(s.group(1))
+
+            # Concatenate all segments into a single JSON string
+            # The content is already escaped (e.g., \n for newlines)
+            return '"' + ''.join(strings) + '"'
+
+        # Pattern explanation:
+        # "(?:[^"\\]|\\.)*"  - Match a JSON string (with escaped chars)
+        # (?:\s*\+\s*"(?:[^"\\]|\\.)*")+  - Match one or more: whitespace, +, whitespace, string
+        # The \s* allows for optional newlines and indentation
+        pattern = r'"(?:[^"\\]|\\.)*"(?:\s*\+\s*"(?:[^"\\]|\\.)*")+'
+
+        cleaned = re.sub(pattern, concat_strings, json_text)
+        return cleaned
+
+    def extract_comments_json(self, response: str) -> List[Dict[str, Any]]:
+        """
+        Extract JSON array of comments from LLM response
+
+        Tries direct JSON parsing first (for structured outputs), then falls back
+        to regex-based extraction strategies.
+
+        Returns:
+            List of comment entries with anchor, indent, and comment fields
+        """
+        # Strategy 0: Try direct JSON parse first (for structured output responses)
+        # This handles both wrapped {"comments": [...]} and direct [...] formats
+        try:
+            data = json.loads(response.strip())
+            # Handle wrapped format from structured outputs
+            if isinstance(data, dict) and "comments" in data:
+                logger.debug("Direct JSON parse succeeded (wrapped format)")
+                return data["comments"]
+            # Handle direct array format
+            if isinstance(data, list):
+                logger.debug("Direct JSON parse succeeded (array format)")
+                return data
+        except json.JSONDecodeError:
+            pass  # Fall through to extraction strategies
+
+        extraction_attempts = []
+
+        # Strategy 1: Try to find JSON code blocks first
+        json_blocks = re.findall(r'```json\s*(.*?)```', response, re.DOTALL)
+        if json_blocks:
+            extraction_attempts.append(('json code block', json_blocks[0].strip()))
+
+        # Strategy 2: Try to find JSON array directly (greedy match)
+        json_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
+        if json_match:
+            extraction_attempts.append(('greedy array match', json_match.group(0)))
+
+        # Strategy 3: Try to find JSON array (non-greedy)
+        json_match_ng = re.search(r'\[\s*\{.*?\}\s*\]', response, re.DOTALL)
+        if json_match_ng and json_match_ng.group(0) not in [a[1] for a in extraction_attempts]:
+            extraction_attempts.append(('non-greedy array match', json_match_ng.group(0)))
+
+        # Strategy 4: Last resort - assume entire response is JSON
+        if response.strip():
+            extraction_attempts.append(('raw response', response.strip()))
+
+        # Try each extraction strategy
+        for strategy_name, json_text in extraction_attempts:
+            try:
+                # Step 1: Clean up string concatenation (LLMs sometimes use + operators)
+                cleaned = self.clean_json_concatenation(json_text)
+
+                # Step 2: Sanitize invalid escape sequences
+                sanitized = self.sanitize_json_escapes(cleaned)
+
+                comments = json.loads(sanitized)
+
+                if not isinstance(comments, list):
+                    logger.debug(f"Strategy '{strategy_name}' found non-list JSON, skipping")
+                    continue
+
+                # Empty arrays are valid - file may have nothing to document
+                logger.debug(f"Strategy '{strategy_name}' successfully extracted {len(comments)} comment entries")
+                return comments
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Strategy '{strategy_name}' failed to parse JSON: {e}")
+                logger.error(f"  Error at position {e.pos}: {sanitized[max(0, e.pos-50):e.pos+50]}")
+                continue
+            except Exception as e:
+                logger.debug(f"Strategy '{strategy_name}' failed with error: {e}")
+                continue
+
+        # All strategies failed
+        logger.error(f"Failed to parse JSON response with all {len(extraction_attempts)} strategies")
+        logger.error(f"Response preview (first 500 chars): {response[:500]}")
+        logger.error(f"Response preview (last 500 chars): {response[-500:]}")
+        return None
+
+    def soft_match_anchor(self, anchor: str, line: str) -> bool:
+        """
+        Soft match anchor against line using Ruby-specific pattern matching
+
+        Args:
+            anchor: The anchor string (e.g., "def initialize", "class GameObj")
+            line: The line of code to match against
+
+        Returns:
+            True if anchor matches line using Ruby syntax patterns
+        """
+        anchor_stripped = anchor.strip()
+        line_stripped = line.strip()
+
+        # Pattern 1: Class/Module definitions
+        # Anchor: "class GameObj" or "module Lich"
+        if anchor_stripped.startswith(('class ', 'module ')):
+            keyword, name = anchor_stripped.split(None, 1)
+            # Remove any params and inheritance (e.g. "MyClass < Parent")
+            name = name.split('(')[0].split('<')[0].strip()
+            return bool(re.search(rf'^\s*{keyword}\s+{re.escape(name)}\b', line))
+
+        # Pattern 2: Method definitions (instance or class methods)
+        # Anchor: "def method_name" or "def self.method" or "def ClassName.method"
+        if anchor_stripped.startswith('def '):
+            method_sig = anchor_stripped[4:].split('(')[0].strip()
+
+            # Extract the base method name (last part after any dots)
+            if '.' in method_sig:
+                method_name = method_sig.split('.')[-1]
+            else:
+                method_name = method_sig
+
+            # Flexible matching: anchor "def method" should match:
+            # - def method
+            # - def self.method
+            # - def ClassName.method
+            # And anchor "def self.method" should also match all of those
+
+            # Pattern matches: def <optional-qualifier>.<method_name>[?!=]? or []
+            # Where qualifier can be "self", a class name, or nothing
+            # Ruby allows ? ! = at end of method names, and [] for array access
+            if method_name == '[]':
+                # Special case: array access operator
+                pattern = rf'\bdef\s+(?:(?:self|\w+)\.)?\[\]'
+            else:
+                # Regular method, might have ?, !, or = suffix
+                pattern = rf'\bdef\s+(?:(?:self|\w+)\.)?{re.escape(method_name)}[?!=]?'
+
+            if re.search(pattern, line):
+                return True
+
+            # Fallback: exact match of full signature
+            if f'def {method_sig}' in line:
+                return True
+
+            return False
+
+        # Pattern 3: Attribute readers/writers/accessors
+        # Anchor: "attr_reader :mana" or "attr_accessor"
+        if anchor_stripped.startswith('attr_'):
+            # Extract the attribute type and symbol
+            parts = anchor_stripped.split()
+            attr_type = parts[0]  # attr_reader, attr_accessor, etc.
+            if len(parts) > 1:
+                symbol = parts[1].lstrip(':').rstrip(',')
+                return bool(re.search(rf'{attr_type}\s+:{re.escape(symbol)}\b', line))
+            else:
+                return attr_type in line
+
+        # Pattern 4: Constants (all caps with =)
+        # Anchor: "CONSTANT_NAME" or "CONSTANT_NAME ="
+        if anchor_stripped.replace('_', '').replace('=', '').strip().isupper():
+            const_name = anchor_stripped.split('=')[0].strip()
+            return bool(re.search(rf'\b{re.escape(const_name)}\s*=', line))
+
+        # Pattern 5: Class variables (@@var) or instance variables (@var)
+        # Anchor: "@@variable" or "@variable"
+        if anchor_stripped.startswith(('@@', '@')):
+            var_name = anchor_stripped.split()[0].split('=')[0].strip()
+            return bool(re.search(rf'{re.escape(var_name)}\s*(=|\|\|=)', line))
+
+        # Fallback: Token-based matching (original approach)
+        # Remove params and clean up
+        anchor_clean = anchor_stripped.split('(')[0].strip()
+        tokens = anchor_clean.split()
+
+        if not tokens:
+            return False
+
+        # Check if all key tokens appear in the line
+        return all(token in line for token in tokens)
+
+    def find_insertion_line(self, lines: List[str], line_number: int, anchor: str,
+                           inserted_at_lines: set) -> Optional[int]:
+        """
+        Find the correct line to insert comment using progressive matching
+
+        Strategy:
+        1. Try exact match at expected line number
+        2. Try soft match at expected line number
+        3. Search entire file (nearby lines first, then rest of file)
+           Methods/classes are unique, so safe to search whole file
+
+        Args:
+            lines: Source code lines
+            line_number: Expected line number (1-indexed from AI)
+            anchor: Anchor string for validation
+            inserted_at_lines: Set of already-used line indices
+
+        Returns:
+            0-indexed line number to insert before, or None if not found
+        """
+        # Convert to 0-indexed
+        expected_idx = line_number - 1
+
+        # Bounds check
+        if expected_idx < 0 or expected_idx >= len(lines):
+            logger.warning(f"Line number {line_number} out of bounds (file has {len(lines)} lines)")
+            return None
+
+        # Skip if already inserted at this line
+        if expected_idx in inserted_at_lines:
+            logger.debug(f"Line {line_number} already has a comment, skipping")
+            return None
+
+        # Strategy 1: Exact match at expected line
+        if anchor in lines[expected_idx]:
+            logger.debug(f"Exact match at line {line_number}")
+            return expected_idx
+
+        # Strategy 2: Soft match at expected line
+        if self.soft_match_anchor(anchor, lines[expected_idx]):
+            logger.debug(f"Soft match at line {line_number} for anchor: {anchor[:30]}")
+            return expected_idx
+
+        # Strategy 3: Search entire file (methods/classes are unique in a file)
+        # Start with nearby lines first, then expand outward
+        search_order = []
+
+        # Get line_offset from config
+        line_offset = 5  # default
+        if HAS_CONFIG:
+            try:
+                config = get_config()
+                line_offset = config.anchor_matching.line_offset
+            except Exception:
+                pass
+
+        # First check nearby lines (±line_offset)
+        for offset in range(-line_offset, line_offset + 1):
+            if offset == 0:
+                continue
+            idx = expected_idx + offset
+            if 0 <= idx < len(lines):
+                search_order.append(idx)
+
+        # Then check rest of file
+        for idx in range(len(lines)):
+            if idx != expected_idx and idx not in search_order:
+                search_order.append(idx)
+
+        # Search in priority order
+        for idx in search_order:
+            if idx not in inserted_at_lines:
+                if self.soft_match_anchor(anchor, lines[idx]):
+                    offset = idx - expected_idx
+                    if abs(offset) <= line_offset:
+                        logger.info(f"Found anchor at line {idx + 1} (expected {line_number}, offset {offset:+d})")
+                    else:
+                        logger.warning(f"Found anchor at line {idx + 1} (expected {line_number}, offset {offset:+d})")
+                    return idx
+
+        # Not found anywhere in file
+        logger.warning(f"Could not find anchor: {anchor[:50]} (expected line {line_number})")
+        return None
+
+    def insert_comments(self, original_content: str, comments: List[Dict[str, Any]],
+                        allowed_lines: Optional[set] = None) -> str:
+        """
+        Insert YARD comments into original Ruby code using line numbers + anchor validation
+
+        Args:
+            original_content: Original Ruby source code
+            comments: List of comment entries with line_number, anchor, indent, and comment fields
+            allowed_lines: Optional set of 0-indexed line numbers where insertion is
+                           permitted (gap-fill mode). Entries resolving anywhere else
+                           are dropped - this is the safeguard that stops the AI from
+                           touching or duplicating existing documentation.
+
+        Returns:
+            Ruby code with comments inserted
+        """
+        if not comments:
+            logger.warning("No comments to insert")
+            return original_content
+
+        lines = original_content.split('\n')
+
+        # Track which lines we've already added comments to (by index)
+        inserted_at_lines = set()
+
+        # Track which anchors we've already documented to prevent duplicates
+        documented_anchors = set()
+
+        # Sort comments by line number (descending) to insert from bottom to top
+        # This prevents line numbers from shifting as we insert
+        sorted_comments = sorted(comments, key=lambda x: x.get('line_number', 0), reverse=True)
+
+        # Process each comment entry
+        for entry in sorted_comments:
+            try:
+                line_number = entry.get('line_number')
+                anchor = entry.get('anchor', '').strip()
+                indent = entry.get('indent', 0)
+                comment_text = entry.get('comment', '').strip()
+
+                if not line_number or not anchor or not comment_text:
+                    logger.warning(f"Skipping invalid entry: missing required fields")
+                    continue
+
+                # Skip if we've already documented this exact anchor
+                # Normalize anchor for comparison (strip whitespace, case-insensitive)
+                anchor_normalized = anchor.lower().strip()
+                if anchor_normalized in documented_anchors:
+                    logger.debug(f"Skipping duplicate anchor: {anchor[:40]}")
+                    continue
+
+                # Find the correct insertion line using progressive matching
+                insert_idx = self.find_insertion_line(lines, line_number, anchor, inserted_at_lines)
+
+                if insert_idx is None:
+                    continue
+
+                # Gap-fill safeguards: only insert at approved anchor lines, and
+                # never insert above code that already has a doc block
+                if allowed_lines is not None:
+                    if insert_idx not in allowed_lines:
+                        logger.info(f"  Dropping entry outside approved targets: {anchor[:40]} (line {insert_idx + 1})")
+                        continue
+                    if has_doc_block(lines, insert_idx):
+                        logger.info(f"  Dropping entry - target already documented: {anchor[:40]}")
+                        continue
+
+                # Calculate indent from the actual anchor line (more reliable than AI's indent value)
+                anchor_line = lines[insert_idx]
+                actual_indent = len(anchor_line) - len(anchor_line.lstrip())
+                indent_str = ' ' * actual_indent
+                comment_lines = []
+
+                for comment_line in comment_text.split('\n'):
+                    # Add proper indentation to each comment line
+                    if comment_line.strip():
+                        comment_lines.append(f"{indent_str}{comment_line}")
+                    else:
+                        comment_lines.append('')
+
+                # Insert the comment block before the anchor line
+                for offset, comment_line in enumerate(comment_lines):
+                    lines.insert(insert_idx + offset, comment_line)
+
+                # Mark this line as having comments
+                inserted_at_lines.add(insert_idx)
+
+                # Mark this anchor as documented to prevent duplicates
+                documented_anchors.add(anchor_normalized)
+
+                logger.debug(f"Inserted comment at line {insert_idx + 1} for anchor: {anchor[:30]}")
+
+            except Exception as e:
+                logger.error(f"Error inserting comment: {e}")
+                continue
+
+        return '\n'.join(lines)
+
+    def _validate_documented_code(self, content: str, filename: str) -> tuple:
+        """
+        Validate documented code using YARD.
+
+        Args:
+            content: The documented Ruby code
+            filename: Original filename for error messages
+
+        Returns:
+            Tuple of (validation_status, validation_result)
+            validation_status: 'passed', 'warnings', 'failed', or 'skipped'
+        """
+        if not HAS_VALIDATION:
+            return 'skipped', None
+
+        try:
+            validator = YARDValidator()
+            result = validator.validate_content(content, filename)
+
+            if result.has_errors:
+                return 'failed', result
+            elif result.has_warnings:
+                return 'warnings', result
+            else:
+                return 'passed', result
+        except Exception as e:
+            logger.warning(f"Validation error for {filename}: {e}")
+            return 'skipped', None
+
+    def _get_retry_on_failure(self) -> bool:
+        """Check if retry on validation failure is enabled."""
+        if HAS_CONFIG:
+            try:
+                config = get_config()
+                return config.validation.retry_on_failure
+            except Exception:
+                pass
+        return True  # Default to enabled
+
+    def preflight_check(self) -> bool:
+        """
+        Verify the provider can actually complete a request before starting a
+        batch. Catches dead API keys, exhausted credit balances, and retired
+        model IDs up front instead of failing every file one at a time.
+
+        Returns:
+            True if the provider responded, False otherwise
+        """
+        if self.provider_name == 'mock':
+            return True
+
+        logger.info("Running provider preflight check...")
+        try:
+            result = self.provider.generate(
+                "Reply with the single word: OK",
+                "You are a connectivity health check. Reply with exactly: OK"
+            )
+            if result and result.strip():
+                logger.info("Preflight check passed")
+                return True
+            logger.error("Preflight check failed: provider returned an empty response")
+            return False
+        except Exception as e:
+            logger.error(f"Preflight check failed: {e}")
+            logger.error("Aborting batch - no files will be attempted. "
+                         "Check API key, credit balance, and model availability.")
+            return False
+
+    def _empty_stats(self, total: int = 0) -> Dict[str, Any]:
+        """Return a fully-populated zero-work stats dict."""
+        return {
+            'processed': 0, 'attempted': 0, 'succeeded': 0, 'failed': 0,
+            'total': total, 'elapsed_time': 0,
+            'provider': self.provider_name, 'failed_files': []
+        }
+
+    def _process_single_file(self, file_path: Path, index: int, total: int) -> bool:
+        """Process a single file (used for parallel processing)"""
+        try:
+            logger.info(f"[{index}/{total}] Processing: {file_path.name}")
+
+            result = self.process_file(file_path)
+            if result:
+                # Validate before saving
+                validation_status, validation_result = self._validate_documented_code(
+                    result, file_path.name
+                )
+
+                # If validation failed and retry is enabled, try once more
+                if validation_status == 'failed' and self._get_retry_on_failure():
+                    logger.warning(f"  Validation failed for {file_path.name}, retrying...")
+                    if validation_result:
+                        for error in validation_result.errors[:3]:  # Show first 3 errors
+                            logger.warning(f"    Error: {error.message}")
+
+                    # Regenerate documentation
+                    result = self.process_file(file_path)
+                    if result:
+                        validation_status, validation_result = self._validate_documented_code(
+                            result, file_path.name
+                        )
+                        if validation_status == 'failed':
+                            logger.warning(f"  Validation still failed after retry for {file_path.name}")
+
+                # Log validation result
+                if validation_status == 'passed':
+                    logger.info(f"  Validation: passed")
+                elif validation_status == 'warnings':
+                    logger.info(f"  Validation: passed with {len(validation_result.warnings)} warnings")
+                elif validation_status == 'failed':
+                    logger.warning(f"  Validation: failed with {len(validation_result.errors)} errors (saving anyway)")
+                # 'skipped' - no log needed
+
+                # Save documented file
+                output_file = self.get_output_file_path(file_path)
+                output_file.parent.mkdir(exist_ok=True, parents=True)
+
+                with self.file_lock:
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(result)
+
+                # Mark file as successfully processed with validation status
+                self.mark_file_processed(file_path, success=True, validation_status=validation_status)
+                return True
+            else:
+                # Mark file as failed
+                self.mark_file_processed(file_path, success=False)
+                return False
+        except Exception as e:
+            logger.error(f"Error processing {file_path.name}: {e}")
+            self.mark_file_processed(file_path, success=False)
+            return False
+
+    def _process_files_parallel(self, files: List[Path]) -> int:
+        """Process multiple files in parallel"""
+        processed_count = 0
+        total_files = len(files)
+
+        logger.info(f"Starting parallel processing with {self.parallel_workers} workers...")
+
+        with ThreadPoolExecutor(max_workers=self.parallel_workers) as executor:
+            # Submit all tasks
+            future_to_file = {
+                executor.submit(self._process_single_file, file, i, total_files): file
+                for i, file in enumerate(files, 1)
+            }
+
+            # Process completed futures
+            for future in as_completed(future_to_file):
+                file_path = future_to_file[future]
+                try:
+                    if future.result():
+                        processed_count += 1
+                        logger.info(f"✓ Completed: {file_path.name}")
+                    else:
+                        logger.warning(f"✗ Failed: {file_path.name}")
+                except Exception as e:
+                    logger.error(f"Exception processing {file_path.name}: {e}")
+
+        return processed_count
+
+    def process_directory(self, directory: Path, pattern: str = "*.rb") -> Dict[str, Any]:
+        """
+        Process all Ruby files in a directory
+
+        Args:
+            directory: Directory containing Ruby files
+            pattern: File pattern to match (default: *.rb)
+
+        Returns:
+            Processing statistics
+        """
+        logger.info(f"Processing directory: {directory}")
+
+        # Find all Ruby files recursively
+        all_ruby_files = list(directory.rglob(pattern))
+
+        # Get exclusion patterns from config
+        exclusion_patterns = ['/critranks/', '/creatures/']  # defaults
+        if HAS_CONFIG:
+            try:
+                config = get_config()
+                exclusion_patterns = config.processing.exclusions
+            except Exception as e:
+                logger.debug(f"Could not load exclusions from config: {e}")
+
+        # Exclude directories based on config patterns
+        ruby_files = []
+        for f in all_ruby_files:
+            path_str = str(f).replace('\\', '/')
+            if not any(pattern in path_str for pattern in exclusion_patterns):
+                ruby_files.append(f)
+
+        excluded_count = len(all_ruby_files) - len(ruby_files)
+        if excluded_count > 0:
+            logger.info(f"Excluded {excluded_count} files matching patterns: {exclusion_patterns}")
+
+        logger.info(f"Found {len(ruby_files)} Ruby files to process")
+
+        if not ruby_files:
+            logger.warning("No Ruby files found!")
+            return self._empty_stats(0)
+
+        # Check feasibility for Gemini
+        if self.provider_name == 'gemini' and hasattr(self.provider, 'estimate_job_feasibility'):
+            feasibility = self.provider.estimate_job_feasibility(len(ruby_files), avg_chunks_per_file=2)
+            logger.info(f"Feasibility check: {feasibility['recommendation']}")
+
+            if not feasibility['can_complete_today']:
+                logger.warning("Job may exceed daily quota. Consider processing in batches.")
+                if sys.stdin.isatty():
+                    response = input("Continue anyway? (y/n): ")
+                    if response.lower() != 'y':
+                        return self._empty_stats(len(ruby_files))
+                else:
+                    # CI / non-interactive: never block on stdin
+                    logger.warning("Non-interactive session - continuing despite quota warning")
+
+        # Process files (parallel or sequential based on settings)
+        start_time = time.time()
+        skipped = 0
+
+        # Filter out already processed files
+        files_to_process = []
+        for file_path in ruby_files:
+            if self.is_file_processed(file_path):
+                skipped += 1
+                logger.info(f"Skipping (already processed): {file_path.name}")
+            else:
+                files_to_process.append(file_path)
+
+        logger.info(f"\nFiles to process: {len(files_to_process)}")
+        logger.info(f"Already processed: {skipped}")
+        logger.info(f"Parallel workers: {self.parallel_workers}")
+
+        # Preflight: verify the provider actually works BEFORE burning a run.
+        # A dead API key / exhausted account otherwise fails every file while
+        # the workflow still looks green (this happened on 2026-08-17).
+        if files_to_process and not self.preflight_check():
+            stats = self._empty_stats(len(ruby_files))
+            stats['error'] = 'preflight_failed'
+            return stats
+
+        attempted = len(files_to_process)
+        succeeded = 0
+
+        if files_to_process:
+            if self.parallel_workers > 1 and len(files_to_process) > 1:
+                # Parallel processing
+                succeeded = self._process_files_parallel(files_to_process)
+            else:
+                # Sequential processing
+                for i, file_path in enumerate(files_to_process, 1):
+                    logger.info(f"\n[{i}/{len(files_to_process)}] Processing: {file_path.name}")
+
+                    result = self.process_file(file_path)
+                    if result:
+                        succeeded += 1
+
+                        # Save documented file
+                        output_file = self.get_output_file_path(file_path)
+                        output_file.parent.mkdir(exist_ok=True, parents=True)
+
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            f.write(result)
+
+                        # Mark file as successfully processed
+                        self.mark_file_processed(file_path, success=True)
+                    else:
+                        # Mark file as failed
+                        self.mark_file_processed(file_path, success=False)
+
+        # Calculate statistics
+        elapsed_time = time.time() - start_time
+        stats = {
+            'processed': skipped + succeeded,
+            'attempted': attempted,
+            'succeeded': succeeded,
+            'failed': attempted - succeeded,
+            'total': len(ruby_files),
+            'elapsed_time': round(elapsed_time, 2),
+            'provider': self.provider_name,
+            'failed_files': self.failed_files
+        }
+
+        # Save metadata
+        metadata_file = self.output_dir / 'metadata.json'
+        with open(metadata_file, 'w') as f:
+            json.dump({
+                'stats': stats,
+                'documentation': {k: {'timestamp': v['timestamp']} for k, v in self.documentation.items()},
+                'provider_stats': self.provider.get_stats()
+            }, f, indent=2)
+
+        return stats
+
+    def generate_yard_docs(self):
+        """Generate YARD documentation files from the documented code"""
+        logger.info("Generating YARD documentation...")
+
+        yard_dir = self.output_dir / 'yard'
+        yard_dir.mkdir(exist_ok=True)
+
+        for file_name, doc_data in self.documentation.items():
+            documented_code = doc_data['documented']
+
+            # Extract only YARD comments
+            yard_comments = []
+            for line in documented_code.split('\n'):
+                if line.strip().startswith('#'):
+                    yard_comments.append(line)
+
+            if yard_comments:
+                output_file = yard_dir / f"{file_name}.yard"
+                with open(output_file, 'w') as f:
+                    f.write('\n'.join(yard_comments))
+
+                logger.info(f"  Generated YARD: {output_file.name}")
+
+        logger.info(f"YARD documentation saved to: {yard_dir}")
+
+    def print_summary(self, stats: Dict[str, Any]):
+        """Print a summary of the documentation generation"""
+        print("\n" + "="*60)
+        print("DOCUMENTATION GENERATION COMPLETE")
+        print("="*60)
+        print(f"Provider: {stats['provider']}")
+        print(f"Processed: {stats['processed']}/{stats['total']} files")
+        print(f"Failed: {stats['failed']} files")
+        print(f"Time: {stats['elapsed_time']} seconds")
+        print(f"Output: {self.output_dir}")
+
+        if stats['failed_files']:
+            print(f"\nFailed files:")
+            for file in stats['failed_files']:
+                print(f"  - {file}")
+
+        # Show provider stats
+        provider_stats = self.provider.get_stats()
+        print(f"\nProvider statistics:")
+        print(f"  Requests: {provider_stats['requests']}")
+        if 'daily_requests' in provider_stats:
+            print(f"  Daily requests: {provider_stats['daily_requests']}")
+        if 'estimated_cost' in provider_stats:
+            print(f"  Estimated cost: {provider_stats['estimated_cost']}")
+
+        print("="*60)
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate YARD documentation for Lich5')
+    parser.add_argument(
+        'input',
+        nargs='?',
+        help='Input directory containing Ruby files (not needed with --file)'
+    )
+    parser.add_argument(
+        '--file',
+        help='Process a single Ruby file (alternative to input directory)'
+    )
+    parser.add_argument(
+        '--provider',
+        choices=['gemini', 'openai', 'mock', 'anthropic'],
+        help='LLM provider to use (defaults to env var or openai)'
+    )
+    parser.add_argument(
+        '--output',
+        help='Output directory (defaults to output/latest)'
+    )
+    parser.add_argument(
+        '--output-structure',
+        choices=['flat', 'mirror'],
+        default='flat',
+        help='Output structure: flat (all files in one dir) or mirror (preserve source structure)'
+    )
+    parser.add_argument(
+        '--pattern',
+        default='*.rb',
+        help='File pattern to match (default: *.rb)'
+    )
+    parser.add_argument(
+        '--yard',
+        action='store_true',
+        help='Also generate YARD comment files'
+    )
+    parser.add_argument(
+        '--force-rebuild',
+        action='store_true',
+        help='Force reprocessing of all files (disable incremental mode)'
+    )
+    parser.add_argument(
+        '--config',
+        help='Path to config.yaml file (default: config.yaml in repo root)'
+    )
+    parser.add_argument(
+        '--no-incremental',
+        action='store_true',
+        help='Disable incremental processing (same as --force-rebuild)'
+    )
+    parser.add_argument(
+        '--force-regenerate',
+        action='store_true',
+        help='DESTRUCTIVE: strip all existing YARD docs and regenerate from scratch. '
+             'Default behavior preserves existing docs and only fills gaps.'
+    )
+    parser.add_argument(
+        '--fail-threshold',
+        type=float,
+        default=0.25,
+        help='Exit non-zero if more than this fraction of attempted files fail '
+             '(default: 0.25). Any run where every attempted file fails always '
+             'exits non-zero.'
+    )
+
+    args = parser.parse_args()
+
+    # Load config if specified or available
+    if HAS_CONFIG:
+        if args.config:
+            ConfigManager.load(args.config)
+            logger.info(f"Loaded configuration from {args.config}")
+        else:
+            try:
+                ConfigManager.load()
+                logger.debug("Loaded configuration from default location")
+            except Exception as e:
+                logger.debug(f"Could not load config: {e}")
+
+    # Validate that either input or --file is provided
+    if not args.input and not args.file:
+        parser.error("Either input directory or --file must be specified")
+
+    # Validate environment
+    provider = args.provider or os.environ.get('LLM_PROVIDER', 'openai')
+    validation = ProviderFactory.validate_environment(provider)
+
+    if not validation['valid']:
+        logger.error(f"Environment validation failed!")
+        if validation['missing']:
+            logger.error(f"Missing environment variables: {', '.join(validation['missing'])}")
+            logger.info(f"Please set the required environment variables or check .env.example")
+        sys.exit(1)
+
+    # Show warnings
+    for warning in validation.get('warnings', []):
+        logger.warning(warning)
+
+    # Determine input path and source root
+    if args.file:
+        # Single file mode
+        file_path = Path(args.file).resolve()
+        if not file_path.exists():
+            logger.error(f"File not found: {args.file}")
+            sys.exit(1)
+
+        # Source root is the parent directory for single file mode
+        source_root = file_path.parent
+        input_path = file_path
+    else:
+        # Directory mode
+        input_path = Path(args.input)
+        if not input_path.exists():
+            logger.error(f"Input path does not exist: {input_path}")
+            sys.exit(1)
+
+        # Source root is the input directory
+        source_root = input_path.resolve()
+
+    # Create generator
+    force_rebuild = args.force_rebuild or args.no_incremental
+    generator = Lich5DocumentationGenerator(
+        provider_name=args.provider,
+        output_dir=args.output,
+        force_rebuild=force_rebuild,
+        output_structure=args.output_structure,
+        source_root=source_root,
+        force_regenerate=args.force_regenerate
+    )
+
+    # Process input
+    if args.file:
+        # Single file mode
+        result = generator.process_file(input_path)
+        if result:
+            output_file = generator.get_output_file_path(input_path)
+            output_file.parent.mkdir(exist_ok=True, parents=True)
+
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(result)
+
+            logger.info(f"Documentation saved to: {output_file}")
+
+            # Mark file as processed
+            generator.mark_file_processed(input_path, success=True)
+
+            print(f"✅ Successfully documented: {input_path.name}")
+            print(f"📄 Output: {output_file}")
+        else:
+            print(f"❌ Failed to generate documentation for {input_path.name}")
+            sys.exit(1)
+
+    elif input_path.is_dir():
+        # Directory mode
+        stats = generator.process_directory(input_path, args.pattern)
+
+        # Generate YARD if requested
+        if args.yard:
+            generator.generate_yard_docs()
+
+        # Print summary
+        generator.print_summary(stats)
+
+        # Hard-fail semantics: a run where generation is systemically broken
+        # must fail the process (and therefore the CI job) instead of
+        # committing nothing and reporting success.
+        if stats.get('error') == 'preflight_failed':
+            logger.error("Provider preflight failed - aborted before attempting any files")
+            sys.exit(2)
+
+        attempted = stats.get('attempted', 0)
+        failed = stats.get('failed', 0)
+        if attempted > 0:
+            if stats.get('succeeded', 0) == 0:
+                logger.error(f"All {attempted} attempted file(s) failed - refusing to report success")
+                sys.exit(1)
+            failure_rate = failed / attempted
+            if failure_rate > args.fail_threshold:
+                logger.error(f"Failure rate {failure_rate:.0%} exceeds threshold "
+                             f"{args.fail_threshold:.0%} ({failed}/{attempted} failed)")
+                sys.exit(1)
+
+        # Partial failure below threshold: succeed, retry the rest next run
+        if failed > 0:
+            logger.warning(f"{failed} file(s) failed but will be retried on next run")
+            logger.info(f"{stats['processed']} file(s) successfully documented and saved")
+
+    else:
+        logger.error(f"Input path is not a file or directory: {input_path}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

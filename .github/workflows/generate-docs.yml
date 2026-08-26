@@ -1,0 +1,256 @@
+name: Generate Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'Single file path (e.g., lib/gemstone/psms/feat.rb) - leave empty for batch'
+        required: false
+        type: string
+      provider:
+        description: 'LLM Provider'
+        required: true
+        default: 'openai'
+        type: choice
+        options:
+          - openai
+          - anthropic
+          - gemini
+          - mock
+      source_repo:
+        description: 'Source repository (owner/repo)'
+        required: false
+        type: string
+        default: 'elanthia-online/lich-5'
+      source_branch:
+        description: 'Branch to document'
+        required: false
+        type: string
+        default: 'main'
+      full_rebuild:
+        description: 'Full rebuild: reprocess all files, ignoring the manifest (still non-destructive - existing docs are preserved)'
+        required: false
+        type: boolean
+        default: false
+      force_regenerate:
+        description: 'DESTRUCTIVE: strip ALL existing YARD docs (including hand-written upstream docs) and regenerate from scratch'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    name: ${{ inputs.file_path && 'Generate Single File' || 'Generate Batch' }}
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Clone source repository
+        run: |
+          git clone https://github.com/${{ inputs.source_repo }}.git lich-source
+          cd lich-source
+          git checkout ${{ inputs.source_branch }}
+          echo "✅ Cloned ${{ inputs.source_repo }} (branch: ${{ inputs.source_branch }})"
+
+      - name: Validate file exists (single file mode)
+        if: inputs.file_path != ''
+        run: |
+          if [ ! -f "lich-source/${{ inputs.file_path }}" ]; then
+            echo "❌ File not found: lich-source/${{ inputs.file_path }}"
+            exit 1
+          fi
+          echo "✅ File found: lich-source/${{ inputs.file_path }}"
+
+      - name: Validate environment
+        env:
+          LLM_PROVIDER: ${{ inputs.provider }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python -c "
+          import os
+          import sys
+          sys.path.insert(0, 'src')
+          from providers import ProviderFactory
+
+          validation = ProviderFactory.validate_environment()
+          print(f'Provider: {validation[\"provider\"]}')
+          print(f'Valid: {validation[\"valid\"]}')
+
+          if not validation['valid']:
+              print(f'Missing: {validation[\"missing\"]}')
+              sys.exit(1)
+
+          for warning in validation.get('warnings', []):
+              print(f'Warning: {warning}')
+          "
+
+      - name: Generate documentation
+        env:
+          LLM_PROVIDER: ${{ inputs.provider }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Provider: ${{ inputs.provider }}"
+          echo "Output structure: mirror"
+
+          EXTRA_FLAGS=""
+          if [ "${{ inputs.force_regenerate }}" == "true" ]; then
+            echo "!!! DESTRUCTIVE MODE: existing YARD docs will be stripped and regenerated"
+            EXTRA_FLAGS="--force-regenerate"
+          fi
+
+          if [ -n "${{ inputs.file_path }}" ]; then
+            # Single file mode
+            echo "Mode: Single file"
+            echo "File: ${{ inputs.file_path }}"
+            python scripts/generate_docs.py \
+              --file "lich-source/${{ inputs.file_path }}" \
+              --provider ${{ inputs.provider }} \
+              --output-structure mirror \
+              $EXTRA_FLAGS
+          else
+            # Batch mode. The script exits non-zero when the provider preflight
+            # fails or the failure rate exceeds the threshold, which fails this
+            # job and prevents the commit steps below from running.
+            if [ "${{ inputs.full_rebuild }}" == "true" ]; then
+              echo "Mode: Full rebuild (all files)"
+              python scripts/generate_docs.py lich-source/lib \
+                --provider ${{ inputs.provider }} \
+                --output-structure mirror \
+                --force-rebuild \
+                --output output/latest \
+                $EXTRA_FLAGS
+            else
+              echo "Mode: Incremental (skip unchanged)"
+              python scripts/generate_docs.py lich-source/lib \
+                --provider ${{ inputs.provider }} \
+                --output-structure mirror \
+                --output output/latest \
+                $EXTRA_FLAGS
+            fi
+          fi
+
+      - name: Copy documented files to repo root
+        run: |
+          if [ -d "output/latest/documented" ]; then
+            echo "Copying documented files to documented/"
+            mkdir -p documented
+            cp -r output/latest/documented/* documented/ 2>/dev/null || true
+          fi
+
+          echo "Documented files:"
+          find documented/ -name "*.rb" | head -20 || echo "No files found"
+
+      - name: Prune stale documentation
+        if: inputs.file_path == ''
+        run: |
+          python scripts/prune_docs.py \
+            --source lich-source/lib \
+            --documented documented \
+            --manifest output/latest/manifest.json
+
+      - name: Clean up cloned repository
+        run: rm -rf lich-source
+
+      # Human verification gate: changes go up as a PULL REQUEST, never a
+      # direct push to main. Merging the PR triggers build-html.yml which
+      # builds and deploys the site.
+      - name: Open pull request for human review
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: |
+            documented/**
+            output/latest/manifest.json
+          branch: docs/manual-generate
+          delete-branch: true
+          commit-message: |
+            Generate documentation from ${{ inputs.source_repo }} (${{ inputs.file_path || 'batch' }})
+
+            Provider: ${{ inputs.provider }}
+            Type: ${{ inputs.file_path && 'Single file' || (inputs.full_rebuild && 'Full rebuild' || 'Incremental') }}
+          title: "Generate documentation (${{ inputs.file_path || 'batch' }})"
+          body: |
+            Manually-triggered documentation generation - **human review required before merge**.
+
+            | | |
+            |---|---|
+            | Mode | ${{ inputs.file_path && format('Single file `{0}`', inputs.file_path) || (inputs.full_rebuild && 'Batch - full rebuild' || 'Batch - incremental') }} |
+            | Destructive regenerate | `${{ inputs.force_regenerate }}` |
+            | Source | `${{ inputs.source_repo }}` @ `${{ inputs.source_branch }}` |
+            | Provider | `${{ inputs.provider }}` |
+            | Workflow run | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+            ### What to review
+            - Comment blocks only: code lines must match upstream exactly. In default
+              (non-destructive) mode the pipeline only *adds* YARD comments above
+              undocumented code - any modified/deleted code line is a bug, do not merge.
+            - If `force_regenerate` was true, ALL doc comments were rewritten - review
+              accordingly.
+
+            Merging triggers the HTML build and deploy automatically.
+
+            🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-${{ github.run_number }}
+          path: |
+            output/
+            documented/
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Documentation Generation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "${{ inputs.file_path }}" ]; then
+            echo "**Mode:** Single file" >> $GITHUB_STEP_SUMMARY
+            echo "**File:** \`${{ inputs.file_path }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Mode:** Batch (${{ inputs.full_rebuild && 'full rebuild' || 'incremental' }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "**Provider:** ${{ inputs.provider }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** ${{ inputs.source_repo }} @ ${{ inputs.source_branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "${{ steps.pr.outputs.pull-request-url }}" ]; then
+            echo "**Status:** 🔍 PR opened for human review" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Review & merge:** ${{ steps.pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Merging deploys automatically (build-html.yml runs on push to main)." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ job.status }}" == "success" ]; then
+            echo "**Status:** ℹ️ No changes (already up to date)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ❌ Generation failed - no PR opened" >> $GITHUB_STEP_SUMMARY
+          fi

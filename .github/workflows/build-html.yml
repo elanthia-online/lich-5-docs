@@ -1,0 +1,218 @@
+name: Build HTML & Deploy
+
+# Builds the static site from documented/ and deploys to GitHub Pages.
+#
+# Runs automatically when documentation changes land on main (i.e. when a
+# human merges a docs PR opened by update-docs.yml or generate-docs.yml),
+# and can also be dispatched manually.
+#
+# The docs/ commit this workflow makes does not re-trigger it (the push
+# trigger is filtered to source paths, not docs/).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'documented/**'
+      - '.yardopts'
+      - 'guides/**'
+      - 'docs-readme.md'
+      - 'yard-assets/**'
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'Documentation title'
+        required: false
+        type: string
+        default: 'Lich 5 Documentation'
+      clean:
+        description: 'Clean output directory before building'
+        required: false
+        type: boolean
+        default: true
+      deploy:
+        description: 'Deploy to GitHub Pages after build'
+        required: false
+        type: boolean
+        default: true
+
+# Permissions for both committing and deploying to Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # On push events (post-merge auto-deploy) inputs are empty - fall back to defaults
+  DOC_TITLE: ${{ inputs.title || 'Lich 5 Documentation' }}
+  DO_CLEAN: ${{ github.event_name == 'push' && 'true' || inputs.clean }}
+  DO_DEPLOY: ${{ github.event_name == 'push' && 'true' || inputs.deploy }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build HTML & Deploy to Pages
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+
+      - name: Install YARD
+        run: gem install yard
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check for documented files
+        id: check-files
+        run: |
+          if [ -d "documented" ]; then
+            file_count=$(find documented -name "*.rb" | wc -l)
+            echo "file_count=$file_count" >> $GITHUB_OUTPUT
+            echo "Found $file_count documented Ruby files"
+          else
+            echo "file_count=0" >> $GITHUB_OUTPUT
+            echo "documented/ directory not found"
+          fi
+
+      - name: Build HTML documentation
+        if: steps.check-files.outputs.file_count > 0
+        run: |
+          args=""
+          if [ "$DO_CLEAN" == "true" ]; then
+            args="$args --clean"
+          fi
+
+          python scripts/build_html.py \
+            --input ./documented \
+            --output ./docs \
+            --title "$DOC_TITLE" \
+            --verify $args
+
+      - name: Verify docs output
+        if: steps.check-files.outputs.file_count > 0
+        id: verify-docs
+        run: |
+          if [ -d "docs" ] && [ -f "docs/index.html" ]; then
+            html_count=$(find docs -name "*.html" | wc -l)
+            echo "html_count=$html_count" >> $GITHUB_OUTPUT
+            echo "has_docs=true" >> $GITHUB_OUTPUT
+            echo "Generated $html_count HTML files"
+          else
+            echo "has_docs=false" >> $GITHUB_OUTPUT
+            echo "docs/index.html not found"
+          fi
+
+      - name: Check for changes
+        if: steps.verify-docs.outputs.has_docs == 'true'
+        id: check-changes
+        run: |
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in docs/"
+          fi
+
+      - name: Commit HTML documentation
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git commit -m "$(cat <<'EOF'
+          Build HTML documentation
+
+          Generated ${{ steps.verify-docs.outputs.html_count }} HTML files from documented Ruby files.
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+          Co-Authored-By: Claude <noreply@anthropic.com>
+          EOF
+          )"
+
+          git push
+          echo "HTML documentation committed"
+
+      # Deploy to GitHub Pages
+      - name: Setup Pages
+        if: env.DO_DEPLOY == 'true' && steps.verify-docs.outputs.has_docs == 'true'
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: env.DO_DEPLOY == 'true' && steps.verify-docs.outputs.has_docs == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs'
+
+      - name: Deploy to GitHub Pages
+        if: env.DO_DEPLOY == 'true' && steps.verify-docs.outputs.has_docs == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Upload build artifacts
+        if: always() && steps.verify-docs.outputs.has_docs == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-documentation
+          path: docs/
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### HTML Documentation Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Ruby files:** ${{ steps.check-files.outputs.file_count }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.verify-docs.outputs.has_docs }}" == "true" ]; then
+            echo "**HTML files:** ${{ steps.verify-docs.outputs.html_count }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ steps.check-changes.outputs.has_changes }}" == "true" ]; then
+              echo "**Build:** ✅ Committed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Build:** ℹ️ No changes (already up to date)" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if [ "$DO_DEPLOY" == "true" ]; then
+              if [ -n "${{ steps.deployment.outputs.page_url }}" ]; then
+                echo "**Deploy:** ✅ Published" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "📖 **URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "**Deploy:** ⚠️ Skipped or failed" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "**Deploy:** ⏭️ Skipped (disabled)" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "${{ steps.check-files.outputs.file_count }}" == "0" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** ⚠️ No documented files found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** ❌ Build failed" >> $GITHUB_STEP_SUMMARY
+          fi

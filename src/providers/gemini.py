@@ -1,0 +1,263 @@
+"""
+Google Gemini Provider Implementation
+Optimized for free tier usage with Gemini 2.0 Flash
+"""
+
+import os
+import logging
+import time
+from typing import Optional
+from .base import LLMProvider, ProviderConfig
+
+# Import config for structured output settings
+try:
+    from config import get_config, get_provider_config
+    HAS_CONFIG = True
+except ImportError:
+    HAS_CONFIG = False
+
+logger = logging.getLogger(__name__)
+
+# Lazy import to avoid dependency issues when not using Gemini
+genai = None
+
+
+def _get_structured_output_enabled() -> bool:
+    """Check if structured output is enabled for Gemini."""
+    if HAS_CONFIG:
+        try:
+            cfg = get_provider_config('gemini')
+            return cfg.structured_output
+        except Exception:
+            pass
+    return True  # Default to enabled
+
+
+def _get_json_schema() -> dict:
+    """Get the JSON schema for structured output."""
+    if HAS_CONFIG:
+        try:
+            config = get_config()
+            return config.json_schema.get('schema', {})
+        except Exception:
+            pass
+    # Default schema
+    return {
+        "type": "object",
+        "properties": {
+            "comments": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "line_number": {"type": "integer"},
+                        "anchor": {"type": "string"},
+                        "indent": {"type": "integer"},
+                        "comment": {"type": "string"},
+                    },
+                    "required": ["line_number", "anchor", "indent", "comment"],
+                },
+            },
+        },
+        "required": ["comments"],
+    }
+
+
+class GeminiProvider(LLMProvider):
+    """Google Gemini provider with free tier optimization"""
+
+    def __init__(self, config: Optional[ProviderConfig] = None):
+        # Default configuration for Gemini 2.0 Flash free tier
+        # Note: Using gemini-2.0-flash-exp (experimental version)
+        # Will update to stable "gemini-2.0-flash" when available
+        if config is None:
+            config = ProviderConfig(
+                name="gemini",
+                model="gemini-2.0-flash-exp",  # Current 2.0 Flash model
+                max_tokens=8192,  # 2.0 Flash supports larger outputs
+                temperature=0.0,
+                # ACTUAL free tier limits (much lower than documented!)
+                # Being conservative to avoid 429 errors
+                requests_per_minute=8,   # Setting to 8/min to be safe (actual limit ~10)
+                requests_per_day=150,    # Setting to 150/day to be safe (actual limit ~200)
+                # No costs for free tier
+                cost_per_1m_input=0,
+                cost_per_1m_output=0
+            )
+
+        super().__init__(config)
+
+        # Lazy import Gemini
+        global genai
+        if genai is None:
+            try:
+                import google.generativeai as genai
+            except ImportError:
+                raise ImportError(
+                    "google-generativeai package not installed. "
+                    "Install with: pip install google-generativeai"
+                )
+
+        # Initialize Gemini
+        api_key = config.api_key or os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment or config")
+
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(config.model)
+
+        # Set safety settings to be less restrictive for code
+        self.safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_ONLY_HIGH"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_ONLY_HIGH"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_ONLY_HIGH"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_ONLY_HIGH"
+            }
+        ]
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Generate documentation using Gemini
+
+        Args:
+            prompt: The user prompt
+            system_prompt: Optional system prompt (combined with user prompt for Gemini)
+
+        Returns:
+            Generated documentation text
+        """
+        # Check quotas before making request
+        if self.daily_request_count >= self.config.requests_per_day:
+            remaining_quota = self.config.requests_per_day - self.daily_request_count
+            logger.warning(f"⚠️  Approaching daily limit! {remaining_quota} requests remaining")
+            if remaining_quota <= 0:
+                raise Exception(
+                    f"Daily quota exhausted ({self.config.requests_per_day} requests). "
+                    f"Wait until tomorrow or switch to another provider."
+                )
+
+        # Enforce rate limiting
+        self._enforce_rate_limit()
+
+        # Combine system and user prompts (Gemini doesn't have separate system prompts)
+        if system_prompt:
+            full_prompt = f"{system_prompt}\n\n{prompt}"
+        else:
+            full_prompt = prompt
+
+        # Retry logic with exponential backoff for 429 errors
+        max_retries = 5
+        base_delay = 30  # Start with 30 seconds (more conservative)
+
+        for attempt in range(max_retries):
+            try:
+                # Check if structured output is enabled
+                use_structured = _get_structured_output_enabled()
+
+                if use_structured:
+                    logger.info(f"Sending request to Gemini ({self.daily_request_count}/{self.config.requests_per_day} daily) with JSON mode")
+
+                    # Generate response with JSON mode
+                    response = self.model.generate_content(
+                        full_prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=self.config.max_tokens,
+                            temperature=self.config.temperature,
+                            response_mime_type="application/json",
+                        ),
+                        safety_settings=self.safety_settings
+                    )
+                else:
+                    logger.info(f"Sending request to Gemini ({self.daily_request_count}/{self.config.requests_per_day} daily)")
+
+                    # Generate response without JSON mode
+                    response = self.model.generate_content(
+                        full_prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=self.config.max_tokens,
+                            temperature=self.config.temperature,
+                        ),
+                        safety_settings=self.safety_settings
+                    )
+
+                # Extract text
+                result_text = response.text
+
+                # Track usage (no cost for free tier)
+                self._track_cost(full_prompt, result_text)
+
+                # Log remaining quota
+                remaining = self.config.requests_per_day - self.daily_request_count
+                if remaining < 100:
+                    logger.warning(f"⚠️  Low quota warning: {remaining} requests remaining today")
+
+                return result_text
+
+            except Exception as e:
+                error_str = str(e)
+                logger.error(f"Gemini API error: {error_str}")
+
+                # Check for rate limit errors (429)
+                if "429" in error_str or "resource exhausted" in error_str.lower():
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: 30s, 60s, 120s, 240s, 480s
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"Rate limited (429). Retrying in {delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error(f"Max retries ({max_retries}) reached. Still getting rate limited.")
+                        raise Exception(
+                            f"Gemini rate limit exceeded after {max_retries} retries. "
+                            f"This may indicate you've hit a burst limit or daily quota. "
+                            f"Try: 1) Wait a few minutes, 2) Use mock provider for testing, "
+                            f"3) Check your API quotas at https://makersuite.google.com/app/apikey"
+                        )
+
+                # Check for quota errors
+                if "quota" in error_str.lower():
+                    raise Exception(
+                        f"Gemini quota exceeded. Daily limit: {self.config.requests_per_day}. "
+                        f"Consider waiting or switching to OpenAI if you have credits."
+                    )
+                raise
+
+    def estimate_job_feasibility(self, num_files: int, avg_chunks_per_file: int = 1) -> dict:
+        """
+        Estimate if a documentation job will fit within quotas
+
+        Args:
+            num_files: Number of files to process
+            avg_chunks_per_file: Average chunks per file (for large files)
+
+        Returns:
+            Dictionary with feasibility analysis
+        """
+        total_requests = num_files * avg_chunks_per_file
+        requests_remaining = self.config.requests_per_day - self.daily_request_count
+
+        can_complete = total_requests <= requests_remaining
+        time_estimate = total_requests * (60 / self.config.requests_per_minute) / 60  # in minutes
+
+        return {
+            "total_requests_needed": total_requests,
+            "requests_remaining_today": requests_remaining,
+            "can_complete_today": can_complete,
+            "estimated_time_minutes": round(time_estimate, 1),
+            "recommendation": (
+                "✅ Job can be completed within free tier limits" if can_complete
+                else f"❌ Job requires {total_requests} requests but only {requests_remaining} remaining today. "
+                     f"Consider splitting the job or waiting until tomorrow."
+            )
+        }

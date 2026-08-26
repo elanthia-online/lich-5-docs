@@ -1,0 +1,168 @@
+name: Update Documentation (Opens PR)
+
+# The everyday workflow: pull lich-5, diff against the manifest, send ONLY
+# undocumented changes to the AI (changes that already carry YARD docs cost
+# nothing), prune docs for deleted sources - then open a PULL REQUEST with the
+# diffs for human review. Nothing reaches main or the published site without a
+# human merging that PR.
+#
+# After the PR is merged, build-html.yml triggers automatically on the push to
+# main and builds + deploys the site.
+#
+# Fails fast and loudly: a dead API key / exhausted balance is caught by a
+# preflight check before any file is attempted, and a failure rate above the
+# threshold fails the job - no PR is opened on top of a broken generation run.
+#
+# Repo setting required once: Settings -> Actions -> General ->
+# "Allow GitHub Actions to create and approve pull requests"
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'LLM Provider (only used for undocumented changes)'
+        required: true
+        default: 'openai'
+        type: choice
+        options:
+          - openai
+          - anthropic
+          - gemini
+          - mock
+      source_repo:
+        description: 'Source repository (owner/repo)'
+        required: false
+        type: string
+        default: 'elanthia-online/lich-5'
+      source_branch:
+        description: 'Branch to document'
+        required: false
+        type: string
+        default: 'main'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    name: Sync, Generate & Open PR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Clone source repository
+        id: clone
+        run: |
+          git clone --depth 1 --branch ${{ inputs.source_branch }} \
+            https://github.com/${{ inputs.source_repo }}.git lich-source
+          SHA=$(git -C lich-source rev-parse --short HEAD)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Cloned ${{ inputs.source_repo }} @ ${{ inputs.source_branch }}: $SHA"
+
+      - name: Generate documentation for changed/undocumented code
+        env:
+          LLM_PROVIDER: ${{ inputs.provider }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Incremental: unchanged files are skipped via the manifest hash;
+          # changed/new files are re-synced from upstream, and the AI is asked
+          # to document ONLY anchors the coverage checker reports as bare.
+          # Exits non-zero on preflight failure or excessive failure rate,
+          # which stops this pipeline before any PR is opened.
+          python scripts/generate_docs.py lich-source/lib \
+            --provider ${{ inputs.provider }} \
+            --output-structure mirror \
+            --output output/latest
+
+      - name: Copy documented files to repo root
+        run: |
+          if [ -d "output/latest/documented" ]; then
+            mkdir -p documented
+            cp -r output/latest/documented/* documented/ 2>/dev/null || true
+          fi
+
+      - name: Prune stale documentation
+        run: |
+          python scripts/prune_docs.py \
+            --source lich-source/lib \
+            --documented documented \
+            --manifest output/latest/manifest.json
+
+      - name: Clean up cloned repository
+        run: rm -rf lich-source
+
+      - name: Open pull request for human review
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: |
+            documented/**
+            output/latest/manifest.json
+          branch: docs/auto-update
+          delete-branch: true
+          commit-message: |
+            Update documentation from ${{ inputs.source_repo }}@${{ steps.clone.outputs.sha }}
+
+            Provider: ${{ inputs.provider }}
+          title: 'Update documentation from ${{ inputs.source_repo }} (${{ steps.clone.outputs.sha }})'
+          body: |
+            Automated documentation update - **human review required before merge**.
+
+            | | |
+            |---|---|
+            | Source | `${{ inputs.source_repo }}` @ `${{ inputs.source_branch }}` (`${{ steps.clone.outputs.sha }}`) |
+            | Provider | `${{ inputs.provider }}` |
+            | Workflow run | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+            ### What to review
+            - **New/changed comment blocks only.** All code lines should match upstream
+              exactly; the pipeline only ever *adds* YARD comment blocks above
+              undocumented code. Any diff that modifies or deletes a code line, or
+              rewrites an existing comment, is a bug - do not merge, report it.
+            - **AI-written comments** - check they describe the code accurately and
+              don't invent behavior.
+            - **Deletions** are pruned files whose upstream source was removed.
+            - `output/latest/manifest.json` changes are bookkeeping (hashes/timestamps).
+
+            Merging this PR triggers the HTML build and deploy to GitHub Pages
+            automatically.
+
+            🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Documentation Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Provider:** ${{ inputs.provider }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** ${{ inputs.source_repo }} @ ${{ inputs.source_branch }} (${{ steps.clone.outputs.sha }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.pr.outputs.pull-request-url }}" ]; then
+            echo "🔍 **Review & merge:** ${{ steps.pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Deploy happens automatically after merge." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ job.status }}" == "success" ]; then
+            echo "ℹ️ **No changes** - documentation is already up to date." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Pipeline failed** - no PR was opened. Check the generate step log (preflight/API errors fail the run first)." >> $GITHUB_STEP_SUMMARY
+          fi
