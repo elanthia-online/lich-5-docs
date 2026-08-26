@@ -1,19 +1,52 @@
 require 'fiddle'
+require 'open3'
 require 'rbconfig'
+require_relative 'gtk_compaction'
 
-# Main module for the Lich5 project.
-#
-# @see MemoryReleaser
+# Namespace for Lich 5, a Ruby scripting engine for text-based games GemStone IV and DragonRealms.
 module Lich
+  # Namespace for utility modules providing memory management, compaction, and other engine-level services.
   module Util
     # Memory management module that provides automatic and manual memory release functionality
-    # Memory management module that provides automatic and manual memory release functionality.
+    # for Ruby applications. Supports Linux, macOS, and Windows platforms.
+    #
+    # This module uses a singleton pattern to manage a background thread that periodically
+    # releases memory back to the operating system after running Ruby's garbage collector.
+    #
+    # Settings are persisted per-character using InstanceSettings and include:
+    # - auto_start: automatically start the memory releaser on module load
+    # - interval: time in seconds between memory releases
+    # - verbose: enable detailed logging
+    #
+    # @example Enable auto-start
+    #   MemoryReleaser.auto_start!
+    #
+    # @example Basic usage
+    #   MemoryReleaser.start
+    #   # ... application runs ...
+    #   MemoryReleaser.stop
+    #
+    # @example With custom interval and verbose logging
+    #   MemoryReleaser.start(interval: 600, verbose: true)
+    #
+    # @example Change settings
+    #   MemoryReleaser.interval!(1200)  # Change to 20 minutes
+    #   MemoryReleaser.verbose!(true)   # Enable verbose logging
+    #
+    # @example Manual memory release
+    #   MemoryReleaser.release
+    #
+    # @example Check status
+    #   status = MemoryReleaser.status
+    #   puts "Running: #{status[:running]}"
+    #   puts "Auto-start: #{status[:auto_start]}"
+    #   puts "Platform: #{status[:platform]}"
+    #
+    # @example Run benchmark
+    #   MemoryReleaser.benchmark
+    #
     module MemoryReleaser
       # Default settings for memory releaser
-      # Default settings for memory releaser.
-      #
-      # @example
-      #   MemoryReleaser::DEFAULT_SETTINGS[:auto_start] # => true
       DEFAULT_SETTINGS = {
         auto_start: true, # Disabled by default, user must enable
         interval: 900, # default of 15 minutes
@@ -103,25 +136,36 @@ module Lich
         end
       end
 
-      # Manages the memory releaser settings and operations.
-      #
-      # @see MemoryReleaser
+      # Core manager class that handles memory release operations and background thread management
       class Manager
+        # @return [Boolean] whether the memory releaser is enabled
         attr_accessor :enabled
 
+        # @return [Integer] interval in seconds between automatic memory releases
         attr_accessor :interval
 
+        # @return [Boolean] whether to output verbose logging
         attr_accessor :verbose
 
+        # @return [Hash] current settings
         attr_reader :settings
 
-        # Initializes a new Manager instance.
-        # @return [Manager]
+        # Initialize a new Manager instance
+        #
+        # Loads settings from persistent storage if available, otherwise uses defaults.
+        #
+        # @return [Manager] a new manager instance
         def initialize
           load_settings
           @enabled = true
         end
 
+        # Load settings from persistent storage
+        #
+        # Settings are stored per-character using InstanceSettings.
+        # If no stored settings exist, defaults are used.
+        #
+        # @return [Hash] the loaded settings
         def load_settings
           # Load from InstanceSettings with per-character scope
           stored_settings = Lich::Common::InstanceSettings['memoryreleaser'] || {}
@@ -141,6 +185,11 @@ module Lich
           @settings
         end
 
+        # Save current settings to persistent storage
+        #
+        # Settings are stored per-character using InstanceSettings character scope.
+        #
+        # @return [Hash] the saved settings
         def save_settings
           # Save current settings back to InstanceSettings with per-character scope
           Lich::Common::InstanceSettings['memoryreleaser'] = @settings
@@ -149,18 +198,43 @@ module Lich
           @settings
         end
 
+        # Enable auto-start and start the memory releaser
+        #
+        # This method enables the auto_start setting, saves it, and immediately
+        # starts the memory releaser with the current interval and verbose settings.
+        #
+        # @return [Thread, nil] the background thread, or nil if failed to start
+        #
+        # @example
+        #   MemoryReleaser.auto_start!
         def auto_start!
           @settings[:auto_start] = true
           save_settings
           start
         end
 
+        # Disable auto-start and stop the memory releaser
+        #
+        # This method disables the auto_start setting, saves it, and immediately
+        # stops the memory releaser if it's running.
+        #
+        # @return [void]
+        #
+        # @example
+        #   MemoryReleaser.auto_disable!
         def auto_disable!
           @settings[:auto_start] = false
           save_settings
           stop if running?
         end
 
+        # Update the interval setting
+        #
+        # @param seconds [Integer] the new interval in seconds
+        # @return [Integer] the new interval value
+        #
+        # @example
+        #   MemoryReleaser.interval!(600) # Set to 10 minutes
         def interval!(seconds)
           seconds = [seconds, 60].max # Minimum 60 seconds
           @settings[:interval] = seconds
@@ -176,6 +250,13 @@ module Lich
           seconds
         end
 
+        # Update the verbose setting
+        #
+        # @param enabled [Boolean] whether to enable verbose logging
+        # @return [Boolean] the new verbose value
+        #
+        # @example
+        #   MemoryReleaser.verbose!(true)
         def verbose!(enabled)
           @settings[:verbose] = enabled
           @verbose = enabled
@@ -185,7 +266,16 @@ module Lich
 
         # Perform a complete memory release cycle
         #
-        # Perform a complete memory release cycle.
+        # Prunes stale entries from the GameObj shared identity index using the
+        # current interval as the TTL - any index entry not seen within the last
+        # +@interval+ seconds (and not held in an active registry) is evicted
+        # before the GC and OS-level release steps run. This ensures the index
+        # stays lean and the subsequent GC pass has the most to reclaim.
+        #
+        # Runs Ruby's garbage collector with full mark and immediate sweep,
+        # attempts to compact the heap if available, and then releases memory
+        # back to the operating system using platform-specific methods.
+        #
         # @return [void]
         def release
           before = print_memory_stats if @verbose
@@ -197,11 +287,25 @@ module Lich
           log "Memory release completed"
         end
 
-        # Starts the memory releaser worker thread.
+        # Start the background memory release thread
         #
-        # @param interval [Integer, nil] optional interval in seconds
-        # @param verbose [Boolean, nil] optional verbose output setting
-        # @return [void]
+        # Stops any existing thread before starting a new one. The thread will
+        # sleep for the specified interval between memory release cycles.
+        #
+        # This method uses a persistent launcher thread pattern to ensure threads
+        # survive script termination in environments like Lich where script-spawned
+        # threads are killed when the script exits. The launcher thread is created
+        # at module load time and persists at the main engine level.
+        #
+        # @param interval [Integer, nil] time in seconds between memory releases (default: uses saved setting)
+        # @param verbose [Boolean, nil] whether to enable verbose logging (default: uses saved setting)
+        # @return [Thread, nil] the background thread, or nil if failed to start
+        #
+        # @example Start with saved settings
+        #   MemoryReleaser.start
+        #
+        # @example Start with custom interval and verbose output
+        #   MemoryReleaser.start(interval: 600, verbose: true)
         def start(interval: nil, verbose: nil)
           stop if running?
 
@@ -237,7 +341,12 @@ module Lich
           MemoryReleaser.worker_thread
         end
 
-        # Stops the memory releaser worker thread.
+        # Stop the background memory release thread
+        #
+        # Sends a stop command to the launcher thread which will kill the worker
+        # thread. This is a graceful shutdown that respects the launcher thread
+        # architecture.
+        #
         # @return [void]
         def stop
           @enabled = false
@@ -250,15 +359,30 @@ module Lich
           log "Memory releaser stopped"
         end
 
-        # Checks if the memory releaser worker is currently running.
-        # @return [Boolean]
+        # Check if the background thread is currently running
+        #
+        # @return [Boolean] true if the background thread is alive, false otherwise
         def running?
           worker = MemoryReleaser.worker_thread
           worker&.alive? || false
         end
 
-        # Returns the current status of the memory releaser.
-        # @return [Hash] status information including running, enabled, auto_start, interval, verbose, and platform.
+        # Get the current status of the memory releaser
+        #
+        # @return [Hash] status information
+        # @option return [Boolean] :running whether the background thread is running
+        # @option return [Boolean] :enabled whether the memory releaser is enabled
+        # @option return [Boolean] :auto_start whether auto-start is enabled
+        # @option return [Integer] :interval the current interval in seconds
+        # @option return [Boolean] :verbose whether verbose logging is enabled
+        # @option return [String] :platform the current platform/OS
+        #
+        # @example
+        #   status = MemoryReleaser.status
+        #   puts "Running: #{status[:running]}"
+        #   puts "Auto-start: #{status[:auto_start]}"
+        #   puts "Interval: #{status[:interval]} seconds"
+        #   puts "Platform: #{status[:platform]}"
         def status
           {
             running: running?,
@@ -270,8 +394,21 @@ module Lich
           }
         end
 
-        # Runs a benchmark to measure memory usage before and after release.
+        # Run a memory release benchmark showing before/after statistics
+        #
+        # This method displays detailed memory statistics before and after a
+        # memory release operation, including the changes in heap slots, pages,
+        # malloc usage, and process RSS.
+        #
         # @return [void]
+        #
+        # @example
+        #   MemoryReleaser.benchmark
+        #   # => ============================================================
+        #   # => Memory Usage Before Release:
+        #   # => ============================================================
+        #   # =>   Ruby Heap Live Slots:           123456
+        #   # =>   ...
         def benchmark
           respond "=" * 60
           respond "Memory Usage Before Release:"
@@ -294,15 +431,40 @@ module Lich
 
         private
 
+        # Log a message if verbose mode is enabled
+        #
+        # @param message [String] the message to log
+        # @return [void]
+        # @api private
         def log(message)
           respond "[MemoryReleaser] #{message}" if @verbose
         end
 
+        # Run Ruby's garbage collector
+        #
+        # Performs a full mark and immediate sweep, and attempts to compact
+        # the heap if the Ruby version supports it. Compaction is routed
+        # through Lich::Util::GtkCompaction, which keeps it safe to use
+        # alongside gtk3 -- see that module for why a plain GC.compact call
+        # isn't safe once gtk3 is loaded.
+        #
+        # @return [void]
+        # @api private
         def run_gc
           GC.start(full_mark: true, immediate_sweep: true)
-          GC.compact if GC.respond_to?(:compact)
+          Lich::Util::GtkCompaction.safe_compact!
         end
 
+        # Release memory back to the operating system
+        #
+        # Uses platform-specific methods to release memory:
+        # - Linux: malloc_trim
+        # - macOS: malloc_zone_pressure_relief
+        # - Windows: EmptyWorkingSet or _heapmin
+        #
+        # @return [void]
+        # @raise [StandardError] if memory release fails (caught and logged)
+        # @api private
         def release_to_os
           case RbConfig::CONFIG['host_os']
           when /linux/
@@ -316,6 +478,13 @@ module Lich
           respond "Memory release to OS failed: #{e.message}"
         end
 
+        # Release memory on Linux using malloc_trim
+        #
+        # Calls the glibc malloc_trim function to release free memory from the
+        # top of the heap back to the operating system.
+        #
+        # @return [void]
+        # @api private
         def malloc_trim_linux
           libc = Fiddle.dlopen(nil)
           malloc_trim = Fiddle::Function.new(
@@ -327,6 +496,13 @@ module Lich
           log "malloc_trim completed"
         end
 
+        # Release memory on macOS using malloc_zone_pressure_relief
+        #
+        # Calls the macOS malloc_zone_pressure_relief function to release
+        # memory pressure from the default malloc zone.
+        #
+        # @return [void]
+        # @api private
         def malloc_zone_pressure_relief_macos
           libc = Fiddle.dlopen('/usr/lib/libSystem.B.dylib')
           func = Fiddle::Function.new(
@@ -338,6 +514,13 @@ module Lich
           log "malloc_zone_pressure_relief completed"
         end
 
+        # Release memory on Windows using EmptyWorkingSet or _heapmin
+        #
+        # Attempts to use Windows EmptyWorkingSet API first, which removes as many
+        # pages as possible from the working set. Falls back to _heapmin if that fails.
+        #
+        # @return [Boolean, nil] true if successful, nil if all methods fail
+        # @api private
         def heapmin_windows
           # Try EmptyWorkingSet first (from your original code)
           begin
@@ -389,6 +572,18 @@ module Lich
           nil
         end
 
+        # Print current memory statistics
+        #
+        # Displays Ruby heap information and process memory usage.
+        #
+        # @return [Hash] memory statistics
+        # @option return [Integer] :heap_live_slots number of live object slots
+        # @option return [Integer] :heap_free_slots number of free object slots
+        # @option return [Integer] :heap_total_slots total object slots
+        # @option return [Integer] :heap_allocated_pages number of allocated heap pages
+        # @option return [Integer] :malloc_increase_bytes bytes allocated via malloc
+        # @option return [Float, nil] :rss_mb process RSS in megabytes
+        # @api private
         def print_memory_stats
           stat = GC.stat
 
@@ -411,6 +606,12 @@ module Lich
           stats
         end
 
+        # Print the difference between two memory statistics snapshots
+        #
+        # @param before [Hash] memory statistics before release
+        # @param after [Hash] memory statistics after release
+        # @return [void]
+        # @api private
         def print_memory_diff(before, after)
           diff_slots = after[:heap_total_slots] - before[:heap_total_slots]
           diff_pages = after[:heap_allocated_pages] - before[:heap_allocated_pages]
@@ -423,11 +624,22 @@ module Lich
           respond "  Process RSS (MB):        #{sprintf('%+.2f', diff_rss).rjust(12)}" if diff_rss
         end
 
+        # Format a difference value with sign
+        #
+        # @param value [Integer] the difference value
+        # @return [String] formatted string with sign
+        # @api private
         def format_diff(value)
           formatted = value.to_s.rjust(12)
           value < 0 ? formatted : "+#{formatted}"
         end
 
+        # Get current process memory usage in megabytes
+        #
+        # Uses platform-specific methods to retrieve the process's resident set size (RSS).
+        #
+        # @return [Float, nil] memory usage in MB, or nil if unable to determine
+        # @api private
         def get_process_memory
           case RbConfig::CONFIG['host_os']
           when /linux/
@@ -441,31 +653,51 @@ module Lich
           nil
         end
 
+        # Get process memory on Windows with multiple fallback methods
+        #
+        # Tries three methods in order:
+        # 1. GetProcessMemoryInfo (PSAPI) - fastest, no console window
+        # 2. WMI via WIN32OLE - slower, no console window
+        # 3. PowerShell with hidden window - slowest, hidden console
+        #
+        # @return [Float, nil] memory usage in MB, or nil if all methods fail
+        # @api private
         def get_process_memory_windows
           # Method 1: Try GetProcessMemoryInfo via PSAPI (most reliable, no console)
           begin
-            return get_memory_via_psapi
-          rescue => e
+            memory = get_memory_via_psapi
+            return memory unless memory.nil?
+          rescue StandardError, LoadError => e
             log "GetProcessMemoryInfo failed: #{e.message}" if @verbose
           end
 
           # Method 2: Try WMI via WIN32OLE (no console, but slower)
           begin
-            return get_memory_via_wmi
-          rescue => e
+            memory = get_memory_via_wmi
+            return memory unless memory.nil?
+          rescue StandardError, LoadError => e
             log "WMI failed: #{e.message}" if @verbose
           end
 
           # Method 3: PowerShell with hidden window (last resort)
           begin
-            return get_memory_via_powershell
-          rescue => e
+            memory = get_memory_via_powershell
+            return memory unless memory.nil?
+          rescue StandardError, LoadError => e
             log "PowerShell failed: #{e.message}" if @verbose
           end
 
           nil
         end
 
+        # Get process memory via Windows PSAPI
+        #
+        # Uses GetProcessMemoryInfo from psapi.dll to directly query the
+        # PROCESS_MEMORY_COUNTERS structure. This is the fastest method
+        # and doesn't spawn any console windows.
+        #
+        # @return [Float, nil] memory usage in MB, or nil on failure
+        # @api private
         def get_memory_via_psapi
           # Use Windows PSAPI directly via Fiddle (no console window)
           k32 = Fiddle.dlopen('kernel32')
@@ -509,6 +741,13 @@ module Lich
           nil
         end
 
+        # Get process memory via WMI (Windows Management Instrumentation)
+        #
+        # Uses WIN32OLE to query WMI for the process's working set size.
+        # Slower than PSAPI but doesn't require Fiddle's low-level memory operations.
+        #
+        # @return [Float, nil] memory usage in MB, or nil on failure
+        # @api private
         def get_memory_via_wmi
           # Use WMI - no console window but requires win32ole
           require 'win32ole'
@@ -523,15 +762,30 @@ module Lich
           nil
         end
 
+        # Get process memory via PowerShell
+        #
+        # Uses PowerShell with a hidden window to query process memory.
+        # This is the slowest method but most compatible as a last resort.
+        #
+        # @return [Float, nil] memory usage in MB, or nil on failure
+        # @api private
         def get_memory_via_powershell
           # Use PowerShell with hidden window as last resort
           script = "(Get-Process -Id #{Process.pid}).WorkingSet64"
 
-          # Use PowerShell with WindowStyle Hidden to prevent console window
-          output = `powershell.exe -WindowStyle Hidden -NoProfile -Command "#{script}" 2>NUL`
+          # Use argv form so Ruby launches PowerShell directly instead of
+          # inserting a visible cmd.exe process around the hidden fallback.
+          output, _error, status = Open3.capture3(
+            'powershell.exe',
+            '-WindowStyle', 'Hidden',
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command', script
+          )
 
-          if output && !output.empty?
-            return output.strip.to_f / (1024.0 * 1024.0)
+          value = output.strip
+          if status.success? && value.match?(/\A\d+\z/)
+            return value.to_f / (1024.0 * 1024.0)
           end
 
           nil
@@ -542,10 +796,21 @@ module Lich
       @instance = nil
 
       class << self
+        # @api private Internal plumbing for Manager -> launcher communication.
+        #   No compatibility guarantee. Do not call from external scripts.
+        # @return [Queue] the command queue for communicating with the launcher thread
         attr_reader :command_queue
 
+        # @api private Internal plumbing for Manager -> launcher communication.
+        #   No compatibility guarantee. Do not call from external scripts.
+        # @return [Thread, nil] the current worker thread
         attr_reader :worker_thread
 
+        # Get or create the singleton Manager instance
+        #
+        # If auto_start is enabled in settings, automatically starts the memory releaser.
+        #
+        # @return [Manager] the singleton manager instance
         def instance
           @mutex ||= Mutex.new
           @mutex.synchronize {
@@ -562,46 +827,96 @@ module Lich
           }
         end
 
+        # Start the background memory release thread
+        #
+        # @param interval [Integer, nil] time in seconds between memory releases (default: uses saved setting)
+        # @param verbose [Boolean, nil] whether to enable verbose logging (default: uses saved setting)
+        # @return [Thread, nil] the background thread, or nil if failed to start
+        # @see Manager#start
         def start(interval: nil, verbose: nil)
           instance.start(interval: interval, verbose: verbose)
         end
 
+        # Stop the background memory release thread
+        #
+        # @return [void]
+        # @see Manager#stop
         def stop
           instance.stop
         end
 
+        # Enable auto-start and start the memory releaser
+        #
+        # @return [Thread, nil] the background thread, or nil if failed to start
+        # @see Manager#auto_start!
         def auto_start!
           instance.auto_start!
         end
 
+        # Disable auto-start and stop the memory releaser
+        #
+        # @return [void]
+        # @see Manager#auto_disable!
         def auto_disable!
           instance.auto_disable!
         end
 
+        # Update the interval setting
+        #
+        # @param seconds [Integer] the new interval in seconds
+        # @return [Integer] the new interval value
+        # @see Manager#interval!
         def interval!(seconds)
           instance.interval!(seconds)
         end
 
+        # Update the verbose setting
+        #
+        # @param enabled [Boolean] whether to enable verbose logging
+        # @return [Boolean] the new verbose value
+        # @see Manager#verbose!
         def verbose!(enabled)
           instance.verbose!(enabled)
         end
 
+        # Perform a manual memory release
+        #
+        # @return [void]
+        # @see Manager#release
         def release
           instance.release
         end
 
+        # Check if the background thread is running
+        #
+        # @return [Boolean] true if running, false otherwise
+        # @see Manager#running?
         def running?
           instance.running?
         end
 
+        # Get the current status
+        #
+        # @return [Hash] status information
+        # @see Manager#status
         def status
           instance.status
         end
 
+        # Run a memory release benchmark
+        #
+        # @return [void]
+        # @see Manager#benchmark
         def benchmark
           instance.benchmark
         end
 
+        # Reset the singleton instance
+        #
+        # Stops the current instance if running and clears the singleton.
+        # Useful for testing or when you need to recreate the instance.
+        #
+        # @return [void]
         def reset!
           @instance&.stop
           @instance = nil

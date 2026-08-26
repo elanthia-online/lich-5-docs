@@ -8,38 +8,37 @@
   Supports both :all (auto-sync all .lic) and :explicit (tracked list) modes.
 =end
 
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for utility modules.
   module Util
+    # Namespace for update and sync functionality.
     module Update
-      # Handles the synchronization of script repositories.
+      # Bulk SHA-based synchronizer for script repositories.
       #
-      # This class is responsible for downloading scripts and data files from
-      # configured SCRIPT_REPOS and user-registered custom repositories, while
-      # skipping files that match local SHA1.
+      # Downloads scripts and data files from configured SCRIPT_REPOS and custom repos,
+      # skipping files where local SHA1 matches the remote SHA1. Supports :all (auto-sync
+      # all .lic files except -setup variants) and :explicit (sync only tracked scripts) modes.
       #
-      # @see Lich::Util::Update
+      # @api private
       class ScriptSync
-        # Initializes a new ScriptSync instance.
-        # @param client [Object] the client used to fetch data from repositories
-        # @return [void]
+        # @param client [GitHubClient] GitHub API client instance
         def initialize(client)
           @client = client
         end
 
-        # Synchronizes all configured repositories.
+        # Syncs all registered repositories (built-in + custom) for current game.
         #
-        # This method iterates through all SCRIPT_REPOS and custom repositories,
-        # syncing each one.
         # @return [void]
         def sync_all_repos
           SCRIPT_REPOS.each_key { |repo_key| sync_repo(repo_key) }
           CustomRepos.all.each_key { |repo_key| sync_repo(repo_key) }
         end
 
-        # Synchronizes a specific repository based on the provided key.
+        # Syncs a single repository by key (built-in or custom).
         #
-        # @param repo_key [String] the key of the repository to sync
-        # @param force [Boolean] whether to force sync even if local SHA matches
+        # @param repo_key [String] repository key from SCRIPT_REPOS or custom repo
+        # @param force [Boolean] skip SHA check and download all (default: false)
         # @return [void]
         def sync_repo(repo_key, force: false)
           config = SCRIPT_REPOS[repo_key]
@@ -67,7 +66,7 @@ module Lich
           tree = tree_data['tree']
 
           name = config[:display_name] || repo_key
-          syncable = filter_syncable_scripts(tree, config)
+          syncable = filter_syncable_scripts(tree, config, repo_key)
           StatusReporter.respond_mono("[lich5-update: Syncing #{name} (#{syncable.length} scripts)...]")
 
           # Custom repos write to their per-repo subdir; built-in repos to SCRIPT_DIR
@@ -107,13 +106,13 @@ module Lich
           StatusReporter.render_sync_summary(name, syncable.length, downloaded_scripts, downloaded_other, config[:subdirs]&.keys || [], failed_scripts, failed_other)
         end
 
-        # Synchronizes a subdirectory within a repository.
+        # Syncs a subdirectory (profiles, data) from repository.
         #
-        # @param tree [Array<Hash>] the tree structure of the repository
-        # @param config [Hash] the configuration for the repository
-        # @param subdir_name [String] the name of the subdirectory to sync
-        # @param subconfig [Hash] the configuration for the subdirectory
-        # @return [Array<Array<String>>] an array containing two arrays: downloaded and failed files
+        # @param tree [Array<Hash>] GitHub tree API response
+        # @param config [Hash] repository config from SCRIPT_REPOS
+        # @param _subdir_name [String] subdirectory name (unused)
+        # @param subconfig [Hash] subdirectory config (pattern, dest, glob)
+        # @return [Array<Array<String>>] [downloaded_files, failed_files]
         def sync_subdir(tree, config, _subdir_name, subconfig)
           pattern = subconfig[:pattern]
           dest = subconfig[:dest]
@@ -147,19 +146,20 @@ module Lich
           [downloaded, failed]
         end
 
-        # Filters the scripts that can be synchronized based on the configuration.
+        # Filters tree entries to syncable scripts based on tracking mode.
         #
-        # @param tree [Array<Hash>] the tree structure of the repository
-        # @param config [Hash] the configuration for filtering scripts
-        # @return [Array<Hash>] an array of syncable script entries
-        def filter_syncable_scripts(tree, config)
+        # @param tree [Array<Hash>] GitHub tree API response
+        # @param config [Hash] repository config from SCRIPT_REPOS or custom repo
+        # @param repo_key [String, nil] repository key for tracked script lookup
+        # @return [Array<Hash>] filtered tree entries
+        def filter_syncable_scripts(tree, config, repo_key = nil)
           candidates = tree.select { |e| e['path'] =~ config[:script_pattern] && e['type'] == 'blob' }
 
           case config[:tracking_mode]
           when :all
             candidates.reject { |e| File.basename(e['path']).include?('-setup') }
           when :explicit
-            tracked = TrackedScripts.new.tracked_scripts(config)
+            tracked = TrackedScripts.new.tracked_scripts(config, repo_key: repo_key)
             candidates.select { |e| tracked.include?(File.basename(e['path'])) }
           else
             candidates

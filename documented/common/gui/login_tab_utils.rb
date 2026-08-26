@@ -1,47 +1,54 @@
 # frozen_string_literal: true
 
 require_relative '../authentication/gui'
+require_relative '../front-end'
+require_relative '../frontend_locator'
+require_relative '../saga_launch_policy'
+require_relative '../saga_managed_launcher'
 
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Provides common utilities for the Lich GUI.
-  #
-  # @see Lich::Common::GUI
+  # Namespace for common utilities shared across Lich 5 components.
   module Common
+    # Namespace for GUI-related utilities and components.
     module GUI
-      # Utility methods for managing login tab UI elements.
-      #
-      # @see Lich::Common::GUI
+      # Shared UI utilities for login tabs
+      # Contains common functionality used by both manual and saved login tabs
       module LoginTabUtils
-        # Creates a CSS provider for buttons with specified font size.
-        # @param font_size [Integer] the font size for the button
-        # @return [Gtk::CssProvider] the CSS provider for the button
+        # Creates a button CSS provider for styling buttons
+        #
+        # @param font_size [Integer] Font size for the button
+        # @return [Gtk::CssProvider] CSS provider for button styling
         def self.create_button_css_provider(font_size: 12)
           css = Gtk::CssProvider.new
           css.load_from_data("button {border-radius: 5px; font-size: #{font_size}px;}")
           css
         end
 
-        # Creates a compact CSS provider for buttons with specified font size.
-        # @param font_size [Integer] the font size for the compact button
-        # @return [Gtk::CssProvider] the compact CSS provider for the button
+        # Creates a compact button CSS provider for tighter list layouts
+        #
+        # @param font_size [Integer] Font size for the button
+        # @return [Gtk::CssProvider] CSS provider for compact button styling
         def self.create_compact_button_css_provider(font_size: 11)
           css = Gtk::CssProvider.new
           css.load_from_data("button {border-radius: 3px; font-size: #{font_size}px; padding: 2px 6px; min-height: 0; min-width: 0;}")
           css
         end
 
-        # Creates a CSS provider for toggle buttons.
-        # @return [Gtk::CssProvider] the CSS provider for the toggle button
+        # Creates a toggle button CSS provider for styling toggle buttons
+        #
+        # @return [Gtk::CssProvider] CSS provider for toggle button styling
         def self.create_toggle_button_css_provider
           css = Gtk::CssProvider.new
           css.load_from_data("togglebutton {border-radius: 5px; font-size: 12px;}")
           css
         end
 
-        # Applies the specified theme to UI elements.
-        # @param theme_state [Boolean] indicates if the dark theme is enabled
-        # @param ui_elements [Hash] a hash of UI elements to apply the theme to
-        # @param providers [Hash] a hash of CSS providers for the UI elements
+        # Applies theme settings to UI elements
+        #
+        # @param theme_state [Boolean] Whether dark theme is enabled
+        # @param ui_elements [Hash] Hash of UI elements to apply theme to
+        # @param providers [Hash] Hash of CSS providers
         # @return [void]
         def self.apply_theme_to_ui_elements(theme_state, ui_elements, providers)
           if theme_state
@@ -69,31 +76,119 @@ module Lich
           end
         end
 
-        # Sets up the event handler for the play button.
-        # @param button [Gtk::Button] the play button to set up
-        # @param login_info [Hash] the login information for authentication
-        # @param callback [Proc] the callback to execute on successful authentication
+        # Sets up the play button handler
+        # Configures the click event for the play button to launch the game
+        # Delegates to Authentication::GUI for authentication logic
+        #
+        # @param button [Gtk::Button] The play button
+        # @param login_info [Hash] Login information for the character
+        # @param callback [Proc] Callback to execute when play button is clicked
         # @return [void]
         def self.setup_play_button_handler(button, login_info, callback)
+          if launchable_frontend?(login_info)
+            button.tooltip_text = nil
+          else
+            frontend_name = Frontend.display_name(login_info[:frontend])
+            button.tooltip_text = "#{frontend_name} is not available on this computer"
+          end
+
           button.signal_connect('button-release-event') { |_owner, ev|
             if ev.event_type == Gdk::EventType::BUTTON_RELEASE && ev.button == 1
-              Lich::Common::Authentication::GUI.authenticate_and_launch(
-                button: button,
-                login_info: login_info,
-                on_success: callback
+              unless launchable_frontend?(login_info, refresh: true)
+                Lich.msgbox(
+                  message: "#{Frontend.display_name(login_info[:frontend])} is no longer available.",
+                  icon: :error
+                )
+                next true
+              end
+
+              button.tooltip_text = nil
+
+              if SagaLaunchPolicy.custom_launch_conflict?(
+                frontend: login_info[:frontend],
+                custom_launch: login_info[:custom_launch]
               )
+                Lich.msgbox(
+                  message: SagaLaunchPolicy::CUSTOM_LAUNCH_CONFLICT,
+                  icon: :error
+                )
+                next true
+              elsif saga_managed_login?(login_info)
+                button.sensitive = false
+                result = SagaManagedLauncher.launch(
+                  account: login_info[:user_id],
+                  character: login_info[:char_name],
+                  game_code: login_info[:game_code]
+                )
+                if result[:ok]
+                  callback&.call(
+                    nil,
+                    login_info.merge(managed_launch_completed: true, managed_launch_pid: result[:pid])
+                  )
+                  Lich::Common::Authentication::GUI.schedule_button_reenable(button)
+                else
+                  button.sensitive = true
+                  Lich.msgbox(
+                    message: "Failed to launch Saga: #{result[:error]}",
+                    icon: :error
+                  )
+                end
+              else
+                Lich::Common::Authentication::GUI.authenticate_and_launch(
+                  button: button,
+                  login_info: login_info,
+                  on_success: callback
+                )
+              end
             elsif ev.button == 3
               pp "I would be adding to a team tab"
             end
           }
         end
 
-        # Sets up the event handler for the remove button.
-        # @param button [Gtk::Button] the remove button to set up
-        # @param login_info [Hash] the login information for the character
-        # @param char_box [Gtk::Box] the character box to hide on removal
-        # @param default_icon [Gtk::Image] the default icon for the dialog
-        # @param callback [Proc] the callback to execute on removal
+        # Returns whether a saved entry should use Saga's own authentication
+        # and Via-Lich process launch instead of Lich's game-key handoff.
+        #
+        # Callers reject Saga/Custom Launch conflicts before this predicate.
+        #
+        # @param login_info [Hash]
+        # @return [Boolean]
+        def self.saga_managed_login?(login_info)
+          return false if custom_launch?(login_info[:custom_launch])
+
+          Frontend.canonical_name(login_info[:frontend]) == 'saga'
+        end
+
+        # Checks machine-local frontend availability without constraining saved
+        # entry storage or identity. Explicit Custom Launch entries remain valid.
+        #
+        # @param login_info [Hash]
+        # @param refresh [Boolean]
+        # @return [Boolean]
+        def self.launchable_frontend?(login_info, refresh: false)
+          return true if custom_launch?(login_info[:custom_launch])
+
+          FrontendLocator.launchable?(login_info[:frontend], refresh: refresh)
+        rescue ArgumentError
+          false
+        end
+
+        # Returns whether a value contains a usable Custom Launch command.
+        #
+        # @param value [Object]
+        # @return [Boolean]
+        def self.custom_launch?(value)
+          !value.to_s.strip.empty?
+        end
+
+        # Sets up the remove button handler
+        # Configures the click event for the remove button to delete a saved entry
+        #
+        # @param button [Gtk::Button] The remove button
+        # @param login_info [Hash] Login information for the character
+        # @param char_box [Gtk::Box] The character box containing the button
+        # @param default_icon [Gdk::Pixbuf] Default icon for dialogs
+        # @param callback [Proc] Callback to execute when remove button is clicked
         # @return [void]
         def self.setup_remove_button_handler(button, login_info, char_box, default_icon, callback)
           button.signal_connect('button-release-event') { |_owner, ev|
@@ -124,14 +219,16 @@ module Lich
           }
         end
 
-        # Creates the global settings components for the GUI.
-        # @param parent_container [Gtk::Box] the parent container to hold the settings components
-        # @param theme_state [Boolean] the current state of the theme
-        # @param tab_layout_state [Boolean] the current state of the tab layout
-        # @param autosort_state [Boolean] the current state of the auto sort feature
-        # @param persistent_launcher_state [Boolean] the current state of the persistent launcher
-        # @param callbacks [Hash] a hash of callback functions for state changes
-        # @return [Hash] a hash containing the created settings components
+        # Creates global settings components
+        # Builds UI elements for global application settings
+        #
+        # @param parent_container [Gtk::Container] Container to add settings to
+        # @param theme_state [Boolean] Current theme state
+        # @param tab_layout_state [Boolean] Current tab layout state
+        # @param autosort_state [Boolean] Current autosort state
+        # @param persistent_launcher_state [Boolean] Current persistent launcher mode state
+        # @param callbacks [Hash] Callbacks for settings changes
+        # @return [Hash] Hash containing created UI elements
         def self.create_global_settings_components(parent_container, theme_state, tab_layout_state, autosort_state, persistent_launcher_state, callbacks)
           # Create toggle button styling
           togglebutton_provider = create_toggle_button_css_provider
@@ -233,8 +330,10 @@ module Lich
           }
         end
 
-        # Creates a custom launch entry for user-defined commands.
-        # @return [Gtk::ComboBoxText] the combo box for custom launch commands
+        # Creates a custom launch entry
+        # Builds a combo box for custom launch commands
+        #
+        # @return [Gtk::ComboBoxText] The custom launch entry widget
         def self.create_custom_launch_entry
           custom_launch_entry = Gtk::ComboBoxText.new(entry: true)
           custom_launch_entry.child.set_placeholder_text("(enter custom launch command)")
@@ -246,8 +345,10 @@ module Lich
           custom_launch_entry
         end
 
-        # Creates a custom launch directory entry for user-defined working directories.
-        # @return [Gtk::ComboBoxText] the combo box for custom launch directories
+        # Creates a custom launch directory entry
+        # Builds a combo box for custom launch directories
+        #
+        # @return [Gtk::ComboBoxText] The custom launch directory widget
         def self.create_custom_launch_dir
           custom_launch_dir = Gtk::ComboBoxText.new(entry: true)
           custom_launch_dir.child.set_placeholder_text("(enter working directory for command)")

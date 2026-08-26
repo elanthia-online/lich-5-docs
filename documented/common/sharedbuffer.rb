@@ -1,34 +1,57 @@
+# Carve out class SharedBuffer
+# 2024-06-13
+# has rubocop Lint/HashCompareByIdentity errors that require research - temporarily disabled
 
+require_relative 'throttle'
+
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for common Lich utilities.
   module Common
-    # Represents a thread-safe buffer that allows multiple threads to read and write data.
+    # Thread-safe circular buffer for sharing lines between reader threads.
     #
-    # This class manages a shared buffer with a maximum size and provides methods to read from and write to it.
+    # Each calling thread maintains its own position in the buffer, allowing
+    # independent consumers to read at different speeds. The buffer automatically
+    # discards old entries when it exceeds {#max_size}, and periodically removes
+    # index entries for dead threads to prevent memory leaks.
     #
-    # @see Lich::Common::SharedBuffer#gets
-    # @see Lich::Common::SharedBuffer#update
+    # @see Throttle
     class SharedBuffer
       attr_accessor :max_size
 
-      # Initializes a new SharedBuffer instance.
-      # @param args [Hash] options for initialization
-      # @option args [Integer] :max_size (500) the maximum size of the buffer
-      # @return [SharedBuffer]
+      # Creates a new shared buffer.
+      #
+      # @param args [Hash] optional configuration
+      # @option args [Integer] :max_size (500) maximum number of lines to retain
+      # @return [void]
       def initialize(args = {})
         @buffer = Array.new
         @buffer_offset = 0
         @buffer_index = Hash.new
         @buffer_mutex = Mutex.new
         @max_size = args[:max_size] || 500
+        # Sweeps dead-thread entries from @buffer_index (keyed by
+        # Thread#object_id, previously never pruned) at most once every 60s.
+        @cleanup_throttle = Throttle.new(60.0)
         # return self # rubocop does not like this - Lint/ReturnInVoidContext
       end
 
-      # Retrieves the next line from the buffer, blocking if necessary until a line is available.
-      # @return [String, nil] the next line from the buffer or nil if no line is available
+      # Waits for and returns the next line from the buffer for the calling thread.
+      #
+      # Blocks with {sleep} 0.05s until a line is available. On first call, registers
+      # the thread and initializes its position to the end of the buffer.
+      #
+      # @return [String, nil] the next buffered line, or nil if the buffer is empty
+      # @note If the thread's position has fallen behind (line was deleted due to
+      #   buffer overflow), silently jumps forward to the oldest available line.
+      # @example
+      #   # In a reader thread
+      #   line = buffer.gets  #=> "You say, \"hello\""
       def gets
         thread_id = Thread.current.object_id
         if @buffer_index[thread_id].nil?
           @buffer_mutex.synchronize { @buffer_index[thread_id] = (@buffer_offset + @buffer.length) }
+          maybe_cleanup_threads
         end
         if (@buffer_index[thread_id] - @buffer_offset) >= @buffer.length
           sleep 0.05 while ((@buffer_index[thread_id] - @buffer_offset) >= @buffer.length)
@@ -44,12 +67,23 @@ module Lich
         return line
       end
 
-      # Retrieves the next line from the buffer without blocking.
-      # @return [String, nil] the next line from the buffer or nil if no line is available
+      # Returns the next line from the buffer for the calling thread, or nil if
+      # no line is ready.
+      #
+      # Non-blocking variant of {#gets}: returns immediately. On first call, registers
+      # the thread and initializes its position to the end of the buffer.
+      #
+      # @return [String, nil] the next buffered line, or nil if none is available
+      # @note If the thread's position has fallen behind (line was deleted due to
+      #   buffer overflow), silently jumps forward to the oldest available line.
+      # @example
+      #   # In a reader thread
+      #   line = buffer.gets?  #=> "You say, \"hello\"" or nil
       def gets?
         thread_id = Thread.current.object_id
         if @buffer_index[thread_id].nil?
           @buffer_mutex.synchronize { @buffer_index[thread_id] = (@buffer_offset + @buffer.length) }
+          maybe_cleanup_threads
         end
         if (@buffer_index[thread_id] - @buffer_offset) >= @buffer.length
           return nil
@@ -66,12 +100,23 @@ module Lich
         return line
       end
 
-      # Clears the lines that have been read from the buffer for the current thread.
-      # @return [Array<String>] an array of lines that were cleared from the buffer
+      # Returns all available lines for the calling thread and advances to the end.
+      #
+      # Equivalent to calling {#gets?} repeatedly until nil. On first call, registers
+      # the thread and initializes its position to the end of the buffer.
+      #
+      # @return [Array<String>] all buffered lines not yet read by this thread,
+      #   or an empty array if none are available
+      # @note If the thread's position has fallen behind (line was deleted due to
+      #   buffer overflow), silently jumps forward to the oldest available line.
+      # @example
+      #   # In a reader thread
+      #   lines = buffer.clear  #=> ["You say, \"hello\"", "Person says, \"hi\""]
       def clear
         thread_id = Thread.current.object_id
         if @buffer_index[thread_id].nil?
           @buffer_mutex.synchronize { @buffer_index[thread_id] = (@buffer_offset + @buffer.length) }
+          maybe_cleanup_threads
           return Array.new
         end
         if (@buffer_index[thread_id] - @buffer_offset) >= @buffer.length
@@ -90,17 +135,32 @@ module Lich
       end
 
       # rubocop:disable Lint/HashCompareByIdentity
-      # Resets the buffer index for the current thread to the beginning of the buffer.
+      # Resets the calling thread's position to the beginning of the buffer.
+      #
+      # The next call to {#gets}, {#gets?}, or {#clear} will return the oldest
+      # available line. On first call, registers the thread.
+      #
       # @return [SharedBuffer] self
+      # @example
+      #   # In a reader thread, replay the buffer from the start
+      #   buffer.rewind.gets  #=> oldest line
       def rewind
-        @buffer_index[Thread.current.object_id] = @buffer_offset
+        # Hold the mutex: a first-call rewind adds a new key, which must not
+        # race a concurrent cleanup_threads delete_if.
+        @buffer_mutex.synchronize { @buffer_index[Thread.current.object_id] = @buffer_offset }
         return self
       end
 
       # rubocop:enable Lint/HashCompareByIdentity
-      # Adds a new line to the buffer, ensuring the buffer does not exceed its maximum size.
-      # @param line [String] the line to add to the buffer
+      # Appends a line to the buffer and removes old lines if the buffer exceeds max_size.
+      #
+      # The line is frozen to prevent accidental mutation by readers. Old lines are
+      # removed from the front (FIFO) as needed.
+      #
+      # @param line [String] the line to append; will be duplicated and frozen
       # @return [SharedBuffer] self
+      # @example
+      #   buffer.update("You say, \"hello\"")
       def update(line)
         @buffer_mutex.synchronize {
           fline = line.dup
@@ -114,12 +174,26 @@ module Lich
         return self
       end
 
-      # Cleans up the buffer index for threads that are no longer active.
-      # @return [SharedBuffer] self
+      # Removes @buffer_index entries whose thread is no longer alive.
+      # Snapshots the live thread ids once rather than recomputing them per
+      # entry, and holds the mutex so it cannot race with a concurrent reader
+      # mutating the hash.
       def cleanup_threads
-        @buffer_index.delete_if { |k, _v| not Thread.list.any? { |t| t.object_id == k } }
+        @buffer_mutex.synchronize {
+          live_ids = Thread.list.map(&:object_id)
+          @buffer_index.delete_if { |k, _v| !live_ids.include?(k) }
+        }
         return self
       end
+
+      # Throttled automatic {#cleanup_threads}, invoked from the
+      # thread-registration path so dead-thread entries do not accumulate over a
+      # long session. Must be called outside @buffer_mutex (cleanup_threads
+      # acquires it; Ruby mutexes are not reentrant).
+      def maybe_cleanup_threads
+        @cleanup_throttle.run { cleanup_threads }
+      end
+      private :maybe_cleanup_threads
     end
   end
 end

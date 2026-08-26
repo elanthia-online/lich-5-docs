@@ -1,13 +1,52 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich scripting engine.
+#
+# Lich is a Ruby scripting runtime for text-based games including GemStone IV
+# and DragonRealms. This module contains the core engine and internal APIs.
 module Lich
+  # Namespace for internal APIs not intended for direct use by script authors.
+  #
+  # @api private
   module InternalAPI
+    # Namespace for active-sessions reporting and lifecycle management.
+    #
+    # Coordinates registration and heartbeat updates with the active-sessions
+    # service to track live Lich processes and their connection state across
+    # the GemStone IV and DragonRealms game worlds.
+    #
+    # @api private
     module ActiveSessions
+      # Process-local lifecycle coordinator for active sessions registration.
+      #
+      # This module adapts Lich runtime state into active-sessions payloads. It
+      # intentionally keeps only a small amount of mutable process-local state:
+      # identifying metadata, connection state, detachable listener details,
+      # and a heartbeat thread handle.
+      #
+      # ActiveSessions API contract:
+      #
+      # * A session record being present in the registry means the Lich process
+      #   is still known to the active-sessions service.  Presence is not a
+      #   promise that the game connection is still usable.
+      # * The `connected` field is the authoritative connection signal exposed
+      #   to API consumers.  Shutdown code must set it to `false` when the game
+      #   connection has ended, before slower teardown work such as script
+      #   before_dying hooks, state persistence, socket closeout, and database
+      #   closeout runs.
+      # * Lifecycle `stop` unregisters the process from ActiveSessions.  That
+      #   removal means the process is no longer reporting as an active session;
+      #   it should not be used merely to mean "the game connection dropped."
+      # * For detachable sessions, the public `connected` value is true only
+      #   when both the game connection and detachable listener connection are
+      #   active.  A disconnected game session stays disconnected even if the
+      #   detachable listener was last reported as connected.
       module Lifecycle
-        # The interval in seconds for the heartbeat signal.
+        # Default heartbeat cadence for refreshing the current process entry and
+        # detecting service-owner failover quickly enough for multi-session use.
         #
-        # @example
-        #   HEARTBEAT_INTERVAL_SECONDS # => 5
-        HEARTBEAT_INTERVAL_SECONDS = 5
+        # @return [Integer]
+        HEARTBEAT_INTERVAL_SECONDS = 2
 
         @heartbeat_thread = nil
         @running = false
@@ -15,6 +54,7 @@ module Lich
         @listener_host = nil
         @listener_port = nil
         @listener_connected = false
+        @connected = true
         @session_name = nil
         @role = nil
         @started_at = nil
@@ -23,11 +63,11 @@ module Lich
         @lifecycle_generation = 0
         @feature_enabled = false
 
-        # Resolves the session name based on command line arguments or defaults.
+        # Resolves the reporting session name from runtime context.
         #
-        # @param argv [Array<String>] command line arguments
-        # @param account_character [String, nil] optional account character name
-        # @return [String] the resolved session name
+        # @param argv [Array<String>]
+        # @param account_character [String, nil]
+        # @return [String]
         def self.resolve_session_name(argv:, account_character: nil)
           if (login_idx = argv.index('--login')) && argv[login_idx + 1]
             argv[login_idx + 1].capitalize
@@ -40,11 +80,11 @@ module Lich
           end
         end
 
-        # Determines the role of the session based on command line arguments.
+        # Resolves the logical runtime role for active sessions reporting.
         #
-        # @param argv [Array<String>] command line arguments
-        # @param detachable_client_port [Integer, nil] port for detachable client
-        # @return [String] the resolved role
+        # @param argv [Array<String>]
+        # @param detachable_client_port [Integer, nil]
+        # @return [String]
         def self.resolve_role(argv:, detachable_client_port:)
           return 'headless' if argv.include?('--without-frontend')
           return 'detachable' unless detachable_client_port.nil?
@@ -52,12 +92,12 @@ module Lich
           'session'
         end
 
-        # Starts the session lifecycle with the given parameters.
+        # Starts lifecycle registration and periodic heartbeats.
         #
-        # @param session_name [String] the name of the session
-        # @param role [String] the role of the session
-        # @param heartbeat_interval [Integer] the interval for heartbeat signals (default: HEARTBEAT_INTERVAL_SECONDS)
-        # @return [Boolean] true if the session started successfully, false otherwise
+        # @param session_name [String]
+        # @param role [String]
+        # @param heartbeat_interval [Integer]
+        # @return [Boolean] true when lifecycle tracking started
         def self.start(session_name:, role:, heartbeat_interval: HEARTBEAT_INTERVAL_SECONDS)
           feature_enabled = ActiveSessions.enabled?
           return false unless feature_enabled
@@ -73,6 +113,7 @@ module Lich
             @session_name = session_name
             @role = role
             @started_at = Time.now.to_i
+            @connected = true
             @feature_enabled = feature_enabled
             @running = true
             @started = true
@@ -84,10 +125,12 @@ module Lich
               sleep heartbeat_interval
               break unless running?
 
-              upsert_current_session
+              begin
+                upsert_current_session
+              rescue StandardError => e
+                Lich.log("warning: ActiveSessions heartbeat tick failed (continuing): #{e.class}: #{e.message}\n\t#{e.backtrace&.first(3)&.join("\n\t")}") if Lich.respond_to?(:log)
+              end
             end
-          rescue StandardError => e
-            Lich.log("warning: ActiveSessions heartbeat failed: #{e.class}: #{e.message}") if Lich.respond_to?(:log)
           end
 
           @mutex.synchronize { @heartbeat_thread = thread if @started }
@@ -104,6 +147,7 @@ module Lich
             @listener_host = nil
             @listener_port = nil
             @listener_connected = false
+            @connected = true
             @started_at = nil
             @feature_enabled = false
           end
@@ -112,9 +156,9 @@ module Lich
           false
         end
 
-        # Stops the session lifecycle, cleaning up resources.
+        # Stops lifecycle registration and removes the current process session.
         #
-        # @return [Boolean] true if the session stopped successfully, false otherwise
+        # @return [Boolean] true when a running lifecycle was stopped
         def self.stop
           thread = nil
           lifecycle_active = false
@@ -144,6 +188,7 @@ module Lich
             @listener_host = nil
             @listener_port = nil
             @listener_connected = false
+            @connected = true
             @started_at = nil
             @feature_enabled = false
           end
@@ -153,11 +198,11 @@ module Lich
           false
         end
 
-        # Updates the listener's connection details.
+        # Updates detachable listener metadata for the current session.
         #
-        # @param host [String] the host of the listener
-        # @param port [Integer] the port of the listener
-        # @param connected [Boolean] whether the listener is connected
+        # @param host [String]
+        # @param port [Integer]
+        # @param connected [Boolean]
         # @return [void]
         def self.update_listener(host:, port:, connected:)
           return unless started?
@@ -170,7 +215,10 @@ module Lich
           upsert_current_session
         end
 
-        # Clears the listener's connection details.
+        # Clears detachable listener metadata for the current session.
+        #
+        # This is used when detachable listener infrastructure is torn down and
+        # the public snapshot should stop reporting a listener endpoint.
         #
         # @return [void]
         def self.clear_listener
@@ -184,13 +232,52 @@ module Lich
           upsert_current_session
         end
 
-        # Retrieves the current session payload.
+        # Updates the current process connection state without unregistering
+        # the session from the active-sessions registry.
         #
-        # @return [Hash] the current session payload
+        # This method exists because MahtraDR's shutdown testing demonstrated
+        # that immediate unregister is too blunt an API signal: it hides a
+        # still-running Lich process from ActiveSessions while scripts, saves,
+        # socket closeout, and database closeout may still be executing.  The
+        # narrower contract is to keep the session present while publishing
+        # `connected: false`.
+        #
+        # API contract for callers:
+        #
+        # * `update_connected(false)` means the game/session connection is no
+        #   longer available for normal use, but the Lich process may still be
+        #   performing shutdown work.
+        # * `update_connected(true)` may restore the connection state for a
+        #   started lifecycle without changing identity, uptime, listener
+        #   metadata, or registration ownership.
+        # * The method is a no-op before `start`; it must not create a registry
+        #   record or bootstrap ActiveSessions on its own.
+        # * The method updates the existing registry record through the same
+        #   admitted lifecycle path used by heartbeats and listener updates; it
+        #   must not unregister the session.
+        # * The published `connected` value is combined with detachable listener
+        #   state, so a detachable session reports connected only when both the
+        #   game connection and listener connection are active.
+        #
+        # @param connected [Boolean]
+        # @return [void]
+        def self.update_connected(connected)
+          return unless started?
+
+          @mutex.synchronize { @connected = !!connected }
+          upsert_current_session
+        end
+
+        # Returns the current process session payload.
+        #
+        # @return [Hash] normalized payload suitable for registry upsert
         def self.current_payload
           @mutex.synchronize { build_current_payload }
         end
 
+        # Pushes the current process state into the active sessions service.
+        #
+        # @return [void]
         def self.upsert_current_session
           payload = nil
           generation = nil
@@ -211,47 +298,44 @@ module Lich
         end
         private_class_method :upsert_current_session
 
-        # Checks if the session is currently running.
+        # Returns whether the heartbeat loop should continue running.
         #
-        # @return [Boolean] true if the session is running, false otherwise
-        # @api private
+        # @return [Boolean]
         def self.running?
           @mutex.synchronize { @running }
         end
         private_class_method :running?
 
-        # Checks if the session has been started.
+        # Returns whether lifecycle tracking has started.
         #
-        # @return [Boolean] true if the session has started, false otherwise
-        # @api private
+        # @return [Boolean]
         def self.started?
           @mutex.synchronize { @started }
         end
         private_class_method :started?
 
-        # Checks if the feature is enabled for the session.
+        # Returns whether the current lifecycle was admitted while the feature
+        # flag was enabled. Heartbeat/listener hot paths use this latched state
+        # instead of re-reading the backing feature flag on every update.
         #
-        # @return [Boolean] true if the feature is enabled, false otherwise
-        # @api private
+        # @return [Boolean]
         def self.feature_enabled?
           @mutex.synchronize { @feature_enabled }
         end
         private_class_method :feature_enabled?
 
-        # Checks if the registration is current based on the lifecycle generation.
+        # Returns whether the captured lifecycle generation is still current.
         #
-        # @param generation [Integer] the current lifecycle generation
-        # @return [Boolean] true if the registration is current, false otherwise
-        # @api private
+        # @param generation [Integer]
+        # @return [Boolean]
         def self.registration_current?(generation)
           @mutex.synchronize { @started && @lifecycle_generation == generation }
         end
         private_class_method :registration_current?
 
-        # Builds the current session payload with relevant details.
+        # Builds the normalized current-session payload from lifecycle state.
         #
-        # @return [Hash] the constructed payload
-        # @api private
+        # @return [Hash]
         def self.build_current_payload
           {
             pid: Process.pid,
@@ -260,7 +344,7 @@ module Lich
             frontend: resolve_frontend,
             game_code: resolve_game_code,
             started_at: @started_at,
-            connected: @listener_port.nil? ? true : @listener_connected,
+            connected: @connected && (@listener_port.nil? || @listener_connected),
             listener_host: @listener_host,
             listener_port: @listener_port,
             hidden: false
@@ -268,10 +352,9 @@ module Lich
         end
         private_class_method :build_current_payload
 
-        # Resolves the frontend information if available.
+        # Resolves the current frontend identifier from runtime globals.
         #
-        # @return [String, nil] the frontend information or nil if not available
-        # @api private
+        # @return [String, nil]
         def self.resolve_frontend
           return $frontend if defined?($frontend) && !$frontend.nil? && !$frontend.to_s.empty?
 
@@ -279,10 +362,9 @@ module Lich
         end
         private_class_method :resolve_frontend
 
-        # Resolves the game code if available.
+        # Resolves the current game code from XMLData when available.
         #
-        # @return [String, nil] the game code or nil if not available
-        # @api private
+        # @return [String, nil]
         def self.resolve_game_code
           return XMLData.game if defined?(XMLData) && XMLData.respond_to?(:game) && !XMLData.game.to_s.empty?
 

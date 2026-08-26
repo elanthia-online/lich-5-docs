@@ -4,27 +4,37 @@ require_relative 'session_database_adapter'
 require 'rbconfig'
 
 module Lich
-  # Provides settings and management for session handling.
-  #
-  # @see Lich::Common::FeatureFlags
   module Common
+    # Lightweight session summary facade for reporting consumers.
+    # This module is intentionally reporting-focused and does not enforce process policy.
     module SessionsSettings
       FEATURE_FLAG = :session_summary_store_and_reporting
       HEARTBEAT_INTERVAL_SECONDS = 90
       STALE_THRESHOLD_SECONDS = 360
       IDLE_OVER_30M_SECONDS = 1800
+      # Synchronizes lazy initialization of the session database adapter to prevent
+      # duplicate adapter creation under concurrent access during startup and reporting.
+      #
+      # @see .adapter
       ADAPTER_MUTEX = Mutex.new
 
-      # Checks if the session summary store and reporting feature is enabled.
-      # @return [Boolean] true if the feature is enabled, false otherwise
+      # Indicates whether session summary tracking/reporting is enabled.
+      #
+      # The feature flag infrastructure is introduced in a separate prerequisite
+      # change. Until that dependency is present, this feature remains safely off.
+      #
+      # @return [Boolean]
       def self.enabled?
         return false unless defined?(Lich::Common::FeatureFlags)
 
         Lich::Common::FeatureFlags.enabled?(FEATURE_FLAG)
       end
 
-      # Retrieves the session database adapter, initializing it if necessary.
-      # @return [SessionDatabaseAdapter] the session database adapter instance
+      # Returns the row-oriented session adapter.
+      # Uses synchronized lazy initialization to avoid duplicate adapter creation
+      # under concurrent access during startup/reporting.
+      #
+      # @return [Lich::Common::SessionDatabaseAdapter]
       def self.adapter
         return @adapter if @adapter
 
@@ -33,91 +43,61 @@ module Lich
         end
       end
 
-      # Registers a new session with the given parameters.
-      # @param pid [Integer] the process ID of the session
-      # @param session_name [String] the name of the session
-      # @param role [String] the role of the session
-      # @param state [String] the current state of the session
-      # @param frontend [String, nil] optional frontend identifier
-      # @param game_code [String, nil] optional game code
-      # @param hidden [Boolean] whether the session is hidden
-      # @param metadata_json [String, nil] optional metadata in JSON format
+      # Registers a process as a tracked session row.
+      #
+      # @param pid [Integer]
+      # @param session_name [String]
+      # @param role [String]
+      # @param state [String]
+      # @param frontend [String, nil]
+      # @param game_code [String, nil]
+      # @param hidden [Boolean]
+      # @param metadata_json [String, nil]
       # @return [void]
       def self.register_session(pid:, session_name:, role:, state:, frontend: nil, game_code: nil, hidden: false, metadata_json: nil)
         return unless enabled?
 
-        now = Time.now.to_i
-        sweep_dead_sessions!(now: now)
-        os_presence_state = os_presence(pid: pid, session_name: session_name, now: now)
-        adapter.upsert_session(
-          pid: pid,
-          session_name: session_name,
-          role: role,
-          state: state,
-          frontend: frontend,
-          game_code: game_code,
-          hidden: hidden ? 1 : 0,
-          started_at: now,
-          last_heartbeat_at: now,
-          os_seen_at: os_presence_state[:os_seen_at],
-          os_seen: os_presence_state[:os_seen],
-          os_name: os_presence_state[:os_name],
+        register_session_admitted(
+          pid: pid, session_name: session_name, role: role, state: state,
+          frontend: frontend, game_code: game_code, hidden: hidden,
           metadata_json: metadata_json
         )
       end
 
-      # Updates the heartbeat for an existing session.
-      # @param pid [Integer] the process ID of the session
-      # @param state [String, nil] the current state of the session
-      # @param hidden [Boolean, nil] whether the session is hidden
-      # @param session_name [String, nil] the name of the session
-      # @param role [String, nil] the role of the session
-      # @param frontend [String, nil] optional frontend identifier
-      # @param game_code [String, nil] optional game code
-      # @param last_utilization_at [Integer, nil] optional timestamp of last utilization
+      # Updates heartbeat and runtime fields for a tracked session.
+      #
+      # @param pid [Integer]
+      # @param state [String, nil]
+      # @param hidden [Boolean, nil]
+      # @param session_name [String, nil]
+      # @param role [String, nil]
+      # @param frontend [String, nil]
+      # @param game_code [String, nil]
+      # @param last_utilization_at [Integer, nil]
       # @return [void]
       def self.heartbeat(pid:, state: nil, hidden: nil, session_name: nil, role: nil, frontend: nil, game_code: nil, last_utilization_at: nil)
         return unless enabled?
 
-        now = Time.now.to_i
-        session_name = session_name || adapter.find_session(pid: pid)&.fetch('session_name', nil)
-        os_presence_state = os_presence(pid: pid, session_name: session_name, now: now)
-        adapter.upsert_session(
-          pid: pid,
-          session_name: session_name,
-          role: role,
-          state: state,
-          frontend: frontend,
-          game_code: game_code,
-          hidden: hidden.nil? ? nil : (hidden ? 1 : 0),
-          last_heartbeat_at: now,
-          os_seen_at: os_presence_state[:os_seen_at],
-          os_seen: os_presence_state[:os_seen],
-          os_name: os_presence_state[:os_name],
+        heartbeat_admitted(
+          pid: pid, state: state, hidden: hidden, session_name: session_name,
+          role: role, frontend: frontend, game_code: game_code,
           last_utilization_at: last_utilization_at
         )
       end
 
-      # Unregisters a session by marking it as exited.
-      # @param pid [Integer] the process ID of the session
+      # Marks a tracked session as cleanly exited.
+      #
+      # @param pid [Integer]
       # @return [void]
       def self.unregister_session(pid:)
         return unless enabled?
 
-        now = Time.now.to_i
-        adapter.upsert_session(
-          pid: pid,
-          state: 'exited',
-          os_seen_at: now,
-          os_seen: 0,
-          os_name: 0
-        )
+        unregister_session_admitted(pid: pid)
       end
 
-      # Takes a snapshot of the current active sessions.
-      # @return [Hash] a hash containing session statistics and details
-      # @example Get the current session snapshot
-      #   Lich::Common::SessionsSettings.snapshot
+      # Builds a normalized reporting snapshot from tracked session rows.
+      #
+      # @return [Hash] deterministic schema consumed by reporting callers
       def self.snapshot
         return disabled_snapshot unless enabled?
 
@@ -168,10 +148,11 @@ module Lich
         disabled_snapshot(error: e.message)
       end
 
-      # Formats the last utilization timestamp into seconds ago.
-      # @param last_utilization_at [Integer, nil] the last utilization timestamp
-      # @param now_epoch [Integer] the current epoch time
-      # @return [Integer, nil] seconds ago since last utilization, or nil if not applicable
+      # Converts a utilization timestamp into age-in-seconds.
+      #
+      # @param last_utilization_at [Integer, nil]
+      # @param now_epoch [Integer]
+      # @return [Integer, nil]
       def self.format_last_utilization(last_utilization_at, now_epoch)
         return nil if last_utilization_at.nil?
 
@@ -180,10 +161,11 @@ module Lich
       end
       private_class_method :format_last_utilization
 
-      # Calculates the age of the last heartbeat.
-      # @param last_heartbeat_at [Integer, nil] the last heartbeat timestamp
-      # @param now_epoch [Integer] the current epoch time
-      # @return [Integer, nil] age of the last heartbeat in seconds, or nil if not applicable
+      # Computes heartbeat age in seconds.
+      #
+      # @param last_heartbeat_at [Integer, nil]
+      # @param now_epoch [Integer]
+      # @return [Integer, nil]
       def self.heartbeat_age(last_heartbeat_at, now_epoch)
         return nil if last_heartbeat_at.nil?
 
@@ -192,21 +174,23 @@ module Lich
       end
       private_class_method :heartbeat_age
 
-      # Determines if a session is stale based on the last heartbeat.
-      # @param last_heartbeat_at [Integer, nil] the last heartbeat timestamp
-      # @param now_epoch [Integer] the current epoch time
-      # @return [Boolean] true if the session is stale, false otherwise
+      # Classifies whether a heartbeat timestamp is stale.
+      #
+      # @param last_heartbeat_at [Integer, nil]
+      # @param now_epoch [Integer]
+      # @return [Boolean]
       def self.stale?(last_heartbeat_at, now_epoch)
         age = heartbeat_age(last_heartbeat_at, now_epoch)
         !age.nil? && age > STALE_THRESHOLD_SECONDS
       end
       private_class_method :stale?
 
-      # Checks the OS presence of a session based on its PID and session name.
-      # @param pid [Integer] the process ID of the session
-      # @param session_name [String] the name of the session
-      # @param now [Integer] the current epoch time
-      # @return [Hash] a hash containing OS presence details
+      # Performs non-mutating OS visibility checks used by reporting.
+      #
+      # @param pid [Integer]
+      # @param session_name [String, nil]
+      # @param now [Integer]
+      # @return [Hash] os_seen_at, os_seen, and os_name fields
       def self.os_presence(pid:, session_name:, now: Time.now.to_i)
         seen = process_alive?(pid)
         name_match = if seen
@@ -221,10 +205,10 @@ module Lich
         }
       end
 
-      # Checks if a process is alive based on its PID.
-      # @param pid [Integer] the process ID to check
-      # @return [Boolean] true if the process is alive, false otherwise
-      # @api private
+      # Checks whether pid is currently visible to the OS process table.
+      #
+      # @param pid [Integer]
+      # @return [Boolean]
       def self.process_alive?(pid)
         Process.kill(0, pid.to_i)
         true
@@ -237,11 +221,11 @@ module Lich
       end
       private_class_method :process_alive?
 
-      # Checks if the session name matches the command line of the process.
-      # @param pid [Integer] the process ID to check
-      # @param session_name [String] the name of the session
-      # @return [Integer, nil] 1 if the name matches, 0 if it does not, or nil on error
-      # @api private
+      # Compares expected session name with process command line when available.
+      #
+      # @param pid [Integer]
+      # @param session_name [String, nil]
+      # @return [Integer, nil] 1 match, 0 mismatch, nil unavailable
       def self.name_matches_process?(pid, session_name)
         return nil if session_name.to_s.strip.empty?
 
@@ -255,18 +239,16 @@ module Lich
       private_class_method :name_matches_process?
       private_class_method :os_presence
 
-      # Retrieves the command line of a process based on its PID.
-      # @param pid [Integer] the process ID to check
-      # @return [String, nil] the command line of the process, or nil on error
-      # @api private
+      # Returns OS command line string for a process when supported by platform.
+      #
+      # @param pid [Integer]
+      # @return [String, nil]
       def self.process_command_line(pid)
         case RbConfig::CONFIG['host_os']
         when /linux/, /darwin|mac os/
           `ps -o command= -p #{pid.to_i} 2>/dev/null`.to_s.strip
         when /mswin|mingw|cygwin/
-          script = "(Get-CimInstance Win32_Process -Filter \"ProcessId = #{pid.to_i}\").CommandLine"
-          output = `powershell.exe -WindowStyle Hidden -NoProfile -Command "#{script}" 2>NUL`.to_s.strip
-          output.empty? ? nil : output
+          windows_process_command_line(pid)
         else
           nil
         end
@@ -275,10 +257,33 @@ module Lich
       end
       private_class_method :process_command_line
 
-      # Sweeps and marks dead sessions as exited based on their PID.
-      # @param now [Integer] the current epoch time
+      # Queries WMI in-process so session reporting never opens cmd.exe or
+      # powershell.exe console windows.
+      #
+      # @param pid [Integer]
+      # @return [String, nil]
+      def self.windows_process_command_line(pid)
+        require 'win32ole'
+
+        wmi = WIN32OLE.connect('winmgmts://')
+        rows = wmi.ExecQuery("SELECT CommandLine FROM Win32_Process WHERE ProcessId = #{pid.to_i}")
+        row = rows.each.first
+        return nil unless row
+
+        command_line = row.CommandLine.to_s.strip
+        command_line.empty? ? nil : command_line
+      rescue LoadError
+        nil
+      end
+      private_class_method :windows_process_command_line
+
+      # Opportunistically marks dead non-exited rows as cleanly exited so stale
+      # false-active records do not linger in storage indefinitely.
+      #
+      # This runs outside the report path to keep reporting read-only.
+      #
+      # @param now [Integer]
       # @return [void]
-      # @api private
       def self.sweep_dead_sessions!(now: Time.now.to_i)
         adapter.tracked_live_candidates.each do |row|
           next if process_alive?(row['pid'])
@@ -294,10 +299,11 @@ module Lich
       end
       private_class_method :sweep_dead_sessions!
 
-      # Returns a snapshot indicating that the session feature is disabled.
-      # @param error [String, nil] optional error message
-      # @return [Hash] a hash containing default session statistics
-      # @api private
+      # Returns a deterministic empty payload used when the feature is disabled
+      # or when reporting encounters an adapter/runtime error.
+      #
+      # @param error [String, nil] optional error detail for reporting callers
+      # @return [Hash]
       def self.disabled_snapshot(error: nil)
         {
           source: 'SessionsSettings',
@@ -312,6 +318,107 @@ module Lich
         }.compact
       end
       private_class_method :disabled_snapshot
+
+      # --- Admitted paths -------------------------------------------------
+      # These skip the enabled? gate and are intended for lifecycle-internal
+      # callers that latched the feature flag at startup. Keeping them
+      # private forces external callers through the public gate.
+
+      # Registers a process as a tracked session row, including OS presence checks.
+      #
+      # Skips the enabled? gate; intended for lifecycle-internal callers that latched
+      # the feature flag at startup. Performs dead session cleanup and captures live OS
+      # visibility state at registration time.
+      #
+      # @param pid [Integer] the process ID
+      # @param session_name [String] the session name
+      # @param role [String] the session role
+      # @param state [String] the initial state (e.g., "running", "sleeping")
+      # @param frontend [String, nil] the frontend type
+      # @param game_code [String, nil] the game code
+      # @param hidden [Boolean] whether the session is hidden from listings
+      # @param metadata_json [String, nil] optional JSON metadata
+      # @return [void]
+      # @api private
+      def self.register_session_admitted(pid:, session_name:, role:, state:, frontend: nil, game_code: nil, hidden: false, metadata_json: nil)
+        now = Time.now.to_i
+        sweep_dead_sessions!(now: now)
+        os_presence_state = os_presence(pid: pid, session_name: session_name, now: now)
+        adapter.upsert_session(
+          pid: pid,
+          session_name: session_name,
+          role: role,
+          state: state,
+          frontend: frontend,
+          game_code: game_code,
+          hidden: hidden ? 1 : 0,
+          started_at: now,
+          last_heartbeat_at: now,
+          os_seen_at: os_presence_state[:os_seen_at],
+          os_seen: os_presence_state[:os_seen],
+          os_name: os_presence_state[:os_name],
+          metadata_json: metadata_json
+        )
+      end
+      private_class_method :register_session_admitted
+
+      # Updates heartbeat and optional fields for a tracked session, capturing current OS presence.
+      #
+      # Skips the enabled? gate; intended for lifecycle-internal callers that latched
+      # the feature flag at startup. Retrieves session_name from storage if not provided,
+      # captures current OS visibility state, and updates last_heartbeat_at to now.
+      #
+      # @param pid [Integer] the process ID
+      # @param state [String, nil] the new state, or nil to leave unchanged
+      # @param hidden [Boolean, nil] the hidden flag, or nil to leave unchanged
+      # @param session_name [String, nil] the session name, or nil to retrieve from storage
+      # @param role [String, nil] the new role, or nil to leave unchanged
+      # @param frontend [String, nil] the new frontend type, or nil to leave unchanged
+      # @param game_code [String, nil] the new game code, or nil to leave unchanged
+      # @param last_utilization_at [Integer, nil] optional epoch timestamp of last user activity
+      # @return [void]
+      # @api private
+      def self.heartbeat_admitted(pid:, state: nil, hidden: nil, session_name: nil, role: nil, frontend: nil, game_code: nil, last_utilization_at: nil)
+        now = Time.now.to_i
+        session_name = session_name || adapter.find_session(pid: pid)&.fetch('session_name', nil)
+        os_presence_state = os_presence(pid: pid, session_name: session_name, now: now)
+        adapter.upsert_session(
+          pid: pid,
+          session_name: session_name,
+          role: role,
+          state: state,
+          frontend: frontend,
+          game_code: game_code,
+          hidden: hidden.nil? ? nil : (hidden ? 1 : 0),
+          last_heartbeat_at: now,
+          os_seen_at: os_presence_state[:os_seen_at],
+          os_seen: os_presence_state[:os_seen],
+          os_name: os_presence_state[:os_name],
+          last_utilization_at: last_utilization_at
+        )
+      end
+      private_class_method :heartbeat_admitted
+
+      # Marks a tracked session as cleanly exited, capturing current OS presence state.
+      #
+      # Skips the enabled? gate; intended for lifecycle-internal callers that latched
+      # the feature flag at startup. Sets state to "exited" and records that the process
+      # is no longer visible to the OS.
+      #
+      # @param pid [Integer] the process ID
+      # @return [void]
+      # @api private
+      def self.unregister_session_admitted(pid:)
+        now = Time.now.to_i
+        adapter.upsert_session(
+          pid: pid,
+          state: 'exited',
+          os_seen_at: now,
+          os_seen: 0,
+          os_name: 0
+        )
+      end
+      private_class_method :unregister_session_admitted
     end
   end
 end

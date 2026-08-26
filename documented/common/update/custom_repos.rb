@@ -8,37 +8,41 @@
   under SCRIPT_DIR/custom/.
 =end
 
-# Provides utility functions for the Lich5 project.
-#
-# @see Lich::Util::Update for update-related utilities.
+# Namespace for Lich 5, a Ruby scripting engine for text-based games GemStone IV and DragonRealms.
 module Lich
+  # Namespace for utility functions within Lich.
   module Util
+    # Namespace for script update and repository management.
     module Update
       # Manages user-registered custom (3rd-party) script repositories.
       #
-      # Users can register arbitrary GitHub repos and track individual .lic files
-      # from them. Custom repo scripts are synced into per-repo subdirectories
-      # under SCRIPT_DIR/custom.
+      # Allows users to register arbitrary GitHub repos and track individual .lic files
+      # from them. Custom repo scripts are synced into per-repo subdirectories under
+      # SCRIPT_DIR/custom/.
       class CustomRepos
-        # Converts the owner/repo format into a directory-friendly name.
-        # @param owner_repo [String] the GitHub repository in owner/repo format
-        # @return [String] the formatted directory name
+        # Converts owner/repo to a filesystem-safe directory name.
+        #
+        # @param owner_repo [String] e.g. "MahtraDR/dr-scripts"
+        # @return [String] e.g. "MahtraDR-dr-scripts"
         def self.repo_dir_name(owner_repo)
           owner_repo.gsub('/', '-')
         end
 
-        # Constructs the destination directory path for the custom repository.
-        # @param owner_repo [String] the GitHub repository in owner/repo format
-        # @return [String] the full path to the destination directory
+        # Returns the destination directory for a custom repo's scripts.
+        #
+        # @param owner_repo [String] e.g. "MahtraDR/dr-scripts"
+        # @return [String] absolute path
         def self.dest_dir(owner_repo)
           File.join(SCRIPT_DIR, 'custom', repo_dir_name(owner_repo))
         end
 
-        # Builds the configuration hash for a custom repository.
-        # @param owner_repo [String] the GitHub repository in owner/repo format
-        # @param registration [Hash] the registration details for the repository
-        # @return [Hash] the configuration hash for the custom repository
+        # Builds a SCRIPT_REPOS-compatible config hash for a custom repo.
+        #
+        # @param owner_repo [String] e.g. "MahtraDR/dr-scripts"
+        # @param registration [Hash] stored registration with :branch key
+        # @return [Hash] config hash matching SCRIPT_REPOS entry shape
         def self.build_config(owner_repo, registration)
+          registration = {} unless registration.is_a?(Hash)
           branch = registration[:branch] || registration['branch'] || 'main'
           {
             display_name: "Custom: #{owner_repo}",
@@ -54,25 +58,40 @@ module Lich
           }
         end
 
-        # Retrieves all registered custom repositories.
-        # @return [Hash] a hash of custom repositories, where keys are owner/repo strings
+        # Returns all registered custom repos from UserVars.
+        #
+        # @return [Hash] owner_repo => registration hash
         def self.all
-          UserVars.custom_repos || {}
+          data = UserVars.custom_repos
+          data.is_a?(Hash) ? data : {}
         end
 
-        # Adds a custom repository to the user's registered list.
-        # @param owner_repo [String] the GitHub repository in owner/repo format
-        # @param branch [String, nil] the branch to track (defaults to 'main')
+        # Registers a custom repository.
+        #
+        # @param owner_repo [String] "owner/repo" format
+        # @param branch [String, nil] branch name (default: "main")
         # @return [void]
         def add_custom_repo(owner_repo, branch = nil)
-          unless owner_repo =~ %r{^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$}
+          unless owner_repo =~ %r{\A[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\z}
             StatusReporter.respond_mono("[lich5-update: Invalid format '#{owner_repo}'. Use owner/repo (e.g. MahtraDR/dr-scripts).]")
             return
           end
 
-          UserVars.custom_repos ||= {}
+          if branch && (branch.empty? || branch !~ /\A[A-Za-z0-9._\/-]+\z/)
+            StatusReporter.respond_mono("[lich5-update: Invalid branch name '#{branch}'. Branch names may only contain letters, digits, dots, hyphens, underscores, and slashes.]")
+            return
+          end
+
+          UserVars.custom_repos = {} unless UserVars.custom_repos.is_a?(Hash)
           if UserVars.custom_repos[owner_repo]
             StatusReporter.respond_mono("[lich5-update: '#{owner_repo}' is already registered.]")
+            return
+          end
+
+          new_dir = self.class.repo_dir_name(owner_repo)
+          collider = UserVars.custom_repos.keys.find { |k| self.class.repo_dir_name(k) == new_dir }
+          if collider
+            StatusReporter.respond_mono("[lich5-update: '#{owner_repo}' collides with '#{collider}' (both map to directory '#{new_dir}'). Choose a different repo or remove the existing one first.]")
             return
           end
 
@@ -84,11 +103,12 @@ module Lich
           StatusReporter.respond_mono("[lich5-update: Registered custom repo '#{owner_repo}' (branch: #{branch || 'main'}).]")
         end
 
-        # Removes a custom repository from the user's registered list.
-        # @param owner_repo [String] the GitHub repository in owner/repo format
+        # Unregisters a custom repository.
+        #
+        # @param owner_repo [String] "owner/repo" format
         # @return [void]
         def remove_custom_repo(owner_repo)
-          UserVars.custom_repos ||= {}
+          UserVars.custom_repos = {} unless UserVars.custom_repos.is_a?(Hash)
           unless UserVars.custom_repos.delete(owner_repo)
             StatusReporter.respond_mono("[lich5-update: '#{owner_repo}' is not a registered custom repo.]")
             return
@@ -109,7 +129,8 @@ module Lich
           StatusReporter.respond_mono("[lich5-update: Removed custom repo '#{owner_repo}'.]")
         end
 
-        # Lists all registered custom repositories in a formatted table.
+        # Displays registered custom repos in a table.
+        #
         # @return [void]
         def list_custom_repos
           repos = self.class.all

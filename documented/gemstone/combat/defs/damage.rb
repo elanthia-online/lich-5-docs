@@ -1,17 +1,28 @@
+# frozen_string_literal: true
 
+#
+# Damage Pattern Definitions
+# Various damage patterns from attacks, spells, flares, and environmental effects
+#
 
+# Namespace for the Lich 5 scripting engine.
+#
+# Provides the core API for .lic scripts to interact with GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV-specific functionality.
   module Gemstone
+    # Namespace for combat-related utilities and pattern definitions.
     module Combat
+      # Namespace for pattern and constant definitions used in combat parsing.
       module Definitions
+        # Damage pattern definitions and parsing for GemStone IV combat.
+        #
+        # Provides regular expressions to match and extract damage values from various
+        # attack types including basic weapon damage, spell effects, and environmental
+        # effects like cyclones. The `.parse` method efficiently extracts damage amounts
+        # and optional target information from combat lines.
         module Damage
           # Core damage patterns - most common
-          # Core damage patterns - most common.
-          #
-          # @example
-          #   BASIC_DAMAGE.match("... and hit for 50 points of damage!") # => #<MatchData>
-          # @see SPELL_DAMAGE
-          # @see ENVIRONMENTAL_DAMAGE
           BASIC_DAMAGE = [
             /\.\.\. and hit for (?<damage>\d+) points? of damage!/,
             /\.\.\. (?<damage>\d+) points? of damage!/,
@@ -19,24 +30,12 @@ module Lich
           ].freeze
 
           # Spell damage patterns
-          # Spell damage patterns.
-          #
-          # @example
-          #   SPELL_DAMAGE.match("Consumed by the hallowed flames, target is ravaged for 30 points of damage!") # => #<MatchData>
-          # @see BASIC_DAMAGE
-          # @see ENVIRONMENTAL_DAMAGE
           SPELL_DAMAGE = [
             /Consumed by the hallowed flames, (?<target>.+?) is ravaged for (?<damage>\d+) points? of damage!/,
             /Wisps of black smoke swirl around (?<target>.+?) and it bursts into flame causing (?<damage>\d+) points? of damage!/
           ].freeze
 
           # Environmental/cyclone damage patterns
-          # Environmental/cyclone damage patterns.
-          #
-          # @example
-          #   ENVIRONMENTAL_DAMAGE.match("The whirlwind quickly swirls around target, causing 20 points of damage!") # => #<MatchData>
-          # @see BASIC_DAMAGE
-          # @see SPELL_DAMAGE
           ENVIRONMENTAL_DAMAGE = [
             /The whirlwind quickly swirls around (?<target>.+?), causing (?<damage>\d+) points? of damage!/,
             /The flickering flames quickly swirl around (?<target>.+?), causing (?<damage>\d+) points? of damage!/,
@@ -44,27 +43,19 @@ module Lich
           ].freeze
 
           # All damage patterns combined
-          # All damage patterns combined.
-          #
-          # @see BASIC_DAMAGE
-          # @see SPELL_DAMAGE
-          # @see ENVIRONMENTAL_DAMAGE
           ALL_DAMAGE = (BASIC_DAMAGE + SPELL_DAMAGE + ENVIRONMENTAL_DAMAGE).freeze
 
           # Compiled regex for fast detection
-          # Compiled regex for fast detection of damage patterns.
-          #
-          # @see ALL_DAMAGE
           DAMAGE_DETECTOR = Regexp.union(ALL_DAMAGE).freeze
 
-          # Parses a line of text to extract damage information.
-          #
-          # @param line [String] the line of text to parse
-          # @return [Hash, nil] a hash containing damage and optionally target, or nil if no match
-          # @example
-          #   parse("... and hit for 50 points of damage!") # => { damage: 50 }
-          # @note This method uses the combined damage patterns from ALL_DAMAGE.
+          # Parse damage from line
           def self.parse(line)
+            # Fast rejection: every damage pattern contains "point(s) of damage".
+            # The substring check skips the regex scan on the ~95% of lines that
+            # can't match; the union detector then rejects near-misses cheaply.
+            return nil unless line.include?('point')
+            return nil unless DAMAGE_DETECTOR.match?(line)
+
             ALL_DAMAGE.each do |pattern|
               if (match = pattern.match(line))
                 result = { damage: match[:damage].to_i }

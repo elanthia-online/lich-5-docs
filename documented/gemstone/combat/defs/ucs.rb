@@ -1,70 +1,69 @@
+# frozen_string_literal: true
 
+#
+# UCS (Unarmed Combat System) tracking definitions
+# Patterns for position tiers, tierup vulnerabilities, and smite status
+#
 
+# Namespace for the Lich 5 scripting engine for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV gameplay mechanics and systems.
   module Gemstone
+    # Namespace for combat-related definitions and utilities.
     module Combat
+      # Namespace for pattern definitions and parsing utilities used in combat tracking.
       module Definitions
+        # Definitions and parser for the Unarmed Combat System (UCS).
+        #
+        # Provides patterns to match UCS combat events in game output and a parser to
+        # extract structured data: position tier changes, tierup vulnerabilities, and
+        # smite status updates (application and removal). Used to track combat mechanics
+        # in real-time.
+        #
+        # @example Parse a position update
+        #   result = UCS.parse("You have good positioning against a kobold.<a exist=\"1234\">") 
+        #   result #=> { type: :position, target_id: 1234, value: "good" }
+        #
+        # @example Parse a tierup vulnerability
+        #   result = UCS.parse("Strike leaves foe vulnerable to a followup jab attack!")
+        #   result #=> { type: :tierup, value: "jab" }
+        #
+        # @see .parse
+        # @see .relevant?
         module UCS
           # Pattern for position updates - use .+ not .*
           # Example: "You have good positioning against a kobold."
-          # Pattern for position updates.
-          #
-          # Matches strings indicating the positioning against a target.
-          #
-          # @example
-          #   "You have good positioning against a kobold."
-          # @see TIERUP_PATTERN
-          # @see SMITE_APPLIED_PATTERN
           POSITION_PATTERN = /^You have (decent|good|excellent) positioning against.+<a exist="([0-9]+)"/i.freeze
 
           # Pattern for tierup vulnerability
           # Example: "Strike leaves foe vulnerable to a followup jab attack!"
-          # Pattern for tierup vulnerability.
-          #
-          # Matches strings indicating a foe is vulnerable to a followup attack.
-          #
-          # @example
-          #   "Strike leaves foe vulnerable to a followup jab attack!"
           TIERUP_PATTERN = /Strike leaves foe vulnerable to a followup (jab|grapple|punch|kick) attack!/i.freeze
 
           # Pattern for smite applied (crimson mist)
           # Use .+ not .*
-          # Pattern for smite applied (crimson mist).
-          #
-          # Matches strings indicating a target is surrounded by a crimson mist.
-          #
-          # @example
-          #   "A crimson mist suddenly surrounds the target."
           SMITE_APPLIED_PATTERN = /^ *A crimson mist suddenly surrounds .+<a exist="([0-9]+)"/i.freeze
 
           # Pattern for smite held in corporeal plane
-          # Pattern for smite held in corporeal plane.
-          #
-          # Matches strings indicating a target's crimson mist is held in the corporeal plane.
-          #
-          # @example
-          #   "The crimson mist surrounding the target is held in the corporeal plane."
           SMITE_HELD_PATTERN = /The crimson mist surrounding .+<a exist="([0-9]+)".+held in the corporeal plane/i.freeze
 
           # Pattern for smite removed
-          # Pattern for smite removed.
-          #
-          # Matches strings indicating a target's crimson mist returns to an ethereal state.
-          #
-          # @example
-          #   "The crimson mist surrounding the target returns to an ethereal state."
           SMITE_REMOVED_PATTERN = /^ *The crimson mist surrounding .+<a exist="([0-9]+)".+returns to an ethereal state/i.freeze
 
+          # Literal substrings required by the patterns below - used as a cheap
+          # gate so non-UCS lines skip all five regexes.
+          RELEVANT_SUBSTRINGS = ['positioning against', 'vulnerable to a followup', 'crimson mist'].freeze
+
           class << self
-            # Parses a line of text to extract combat-related information.
-            #
-            # @param line [String] the line of text to parse.
-            # @return [Hash, nil] a hash containing parsed information or nil if no match is found.
-            # @example
-            #   parse("You have good positioning against a kobold.")
-            #   # => { type: :position, target_id: 123, value: "good" }
-            # @api private
+            # Quick check whether a line could contain a UCS event
+            def relevant?(line)
+              RELEVANT_SUBSTRINGS.any? { |s| line.include?(s) }
+            end
+
+            # Parse UCS-related events from a line
+            # Returns: { type: :position|:tierup|:smite_on|:smite_off, target_id: id, value: ... }
             def parse(line)
+              return nil unless relevant?(line)
+
               # Position update
               if (match = POSITION_PATTERN.match(line))
                 position = match[1]

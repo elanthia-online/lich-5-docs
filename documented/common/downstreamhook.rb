@@ -1,33 +1,68 @@
+# Carve out from lich.rbw
+# class DownstreamHook 2024-06-13
 
+require_relative 'hook_registry'
+require_relative 'script_death'
+
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for common Lich engine utilities and hooks.
   module Common
-    # Handles downstream hooks for processing server strings.
+    # Registry of hooks that process server strings as they arrive from the game.
     #
-    # This class allows adding, running, removing, and listing hooks that can modify
-    # server strings as they are processed.
+    # DownstreamHook instances intercept and transform strings received from the game server
+    # before they are delivered to scripts and the UI. Hooks are executed in registration order
+    # and may modify, filter, or pass through the server string unchanged. Script-scoped hooks
+    # are automatically removed when their owning script dies; persistent hooks remain.
+    #
+    # @api private
     class DownstreamHook
+      extend HookRegistry
+
       @@downstream_hooks ||= Hash.new
       @@downstream_hook_sources ||= Hash.new
+      @@downstream_hook_owners ||= Hash.new
+      @@downstream_hook_persist ||= Hash.new
 
-      # Adds a new downstream hook.
-      #
-      # @param name [String] the name of the hook
-      # @param action [Proc] the action to be executed as a hook
-      # @return [Boolean] true if the hook was added successfully, false otherwise
-      def DownstreamHook.add(name, action)
-        unless action.is_a?(Proc)
-          echo "DownstreamHook: not a Proc (#{action})"
-          return false
-        end
-        @@downstream_hook_sources[name] = (Script.current.name || "Unknown")
-        @@downstream_hooks[name] = action
+      # Per-class storage for the shared HookRegistry methods.
+      def self._hooks
+        @@downstream_hooks
       end
 
-      # Executes all registered downstream hooks on the given server string.
+      # Returns the per-class storage mapping hook IDs to their source files.
       #
-      # @param server_string [String] the server string to process
-      # @return [String, nil] the modified server string or nil if the input was nil
-      # @raise [StandardError] if an error occurs during hook execution
+      # @return [Hash] a hash keyed by hook ID
+      # @api private
+      def self._hook_sources
+        @@downstream_hook_sources
+      end
+
+      # Returns the per-class storage mapping hook IDs to their owning script object IDs.
+      #
+      # @return [Hash] a hash keyed by hook ID
+      # @api private
+      def self._hook_owners
+        @@downstream_hook_owners
+      end
+
+      # Returns the per-class storage mapping hook IDs to their persistence flags.
+      #
+      # @return [Hash] a hash keyed by hook ID, with boolean values indicating whether each hook persists across script death
+      # @api private
+      def self._hook_persist
+        @@downstream_hook_persist
+      end
+
+      # Processes a server string through all registered downstream hooks in order.
+      #
+      # Each hook is called with a duplicate of the string and may return a modified string,
+      # nil, or raise an exception. If a hook raises an exception, it is removed from the registry,
+      # the error is logged to the console, and execution continues with the next hook.
+      # If any hook returns nil, processing stops immediately and nil is returned.
+      #
+      # @param server_string [String, nil] the string received from the game server
+      # @return [String, nil] the processed string after all hooks have run, or nil if any hook returned nil
+      # @api private
       def DownstreamHook.run(server_string)
         for key in @@downstream_hooks.keys
           return nil if server_string.nil?
@@ -42,38 +77,10 @@ module Lich
         return server_string
       end
 
-      # Removes a downstream hook by name.
-      #
-      # @param name [String] the name of the hook to remove
-      # @return [void]
-      def DownstreamHook.remove(name)
-        @@downstream_hook_sources.delete(name)
-        @@downstream_hooks.delete(name)
-      end
-
-      # Lists all registered downstream hooks.
-      #
-      # @return [Array<String>] an array of hook names
-      def DownstreamHook.list
-        @@downstream_hooks.keys.dup
-      end
-
-      # Provides a table of sources for each downstream hook.
-      #
-      # @return [String] a formatted string representation of the hook sources
-      def DownstreamHook.sources
-        info_table = Terminal::Table.new :headings => ['Hook', 'Source'],
-                                         :rows     => @@downstream_hook_sources.to_a,
-                                         :style    => { :all_separators => true }
-        Lich::Messaging.mono(info_table.to_s)
-      end
-
-      # Retrieves the hash of downstream hook sources.
-      #
-      # @return [Hash] a hash mapping hook names to their sources
-      def DownstreamHook.hook_sources
-        @@downstream_hook_sources
-      end
+      # Apply this registry's per-script-death policy (remove script-scoped
+      # hooks, keep persistent ones, warn on undeclared) so the kill path does
+      # not need to know about DownstreamHook by name.
+      ScriptDeath.on_death { |script| cleanup_on_death(script.object_id) }
     end
   end
 end

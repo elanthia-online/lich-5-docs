@@ -8,22 +8,42 @@
 require_relative '../creature'
 require_relative '../critranks'
 
-# Namespace for the Lich project.
+# Namespace for the Lich 5 scripting engine.
 #
-# @see Lich::Gemstone
-# @see Lich::Gemstone::Combat
+# Lich 5 is a Ruby scripting engine for the text-based games GemStone IV and
+# DragonRealms. This namespace wraps all engine code and provides isolation from
+# user scripts.
 module Lich
+  # Namespace for GemStone IV-specific scripting features.
+  #
+  # @see Lich
   module Gemstone
+    # Namespace for combat event parsing and tracking.
+    #
+    # Handles parsing of game output lines for combat events (attacks, damage,
+    # critical hits, status effects, and UCS events) and persists the extracted
+    # data to creature instances.
     module Combat
+      # Parses combat events from game output and applies them to tracked creatures.
+      #
+      # Implements a state machine that transitions through attack, damage, and
+      # critical hit states to extract structured combat data from raw game text.
+      # Events are accumulated per target and persisted once an attack completes
+      # or a target switch occurs.
+      #
+      # The processor:
+      # - Recognizes attack declarations and transitions to damage-seeking state
+      # - Accumulates all damage lines for an attack
+      # - Looks ahead 2-3 lines for critical hits associated with each damage
+      # - Detects target switches in multi-target attacks and saves events accordingly
+      # - Tracks status effects and UCS events on all lines regardless of state
+      # - Applies all extracted data (damage, wounds, statuses) to creature instances
+      #
+      # @api private
       module Processor
         module_function
 
-        # Processes a chunk of combat data.
-        #
-        # @param chunk [String] the raw combat data to process
-        # @return [void]
-        # @example Process a combat chunk
-        #   process("<combat_data>")
+        # Process a chunk of game lines for combat events
         def process(chunk)
           events = parse_events(chunk)
           return if events.empty?
@@ -33,10 +53,16 @@ module Lich
           respond "[Combat] Processed #{events.size} events" if Tracker.debug?
         end
 
-        # Parses lines of combat data into events.
-        #
-        # @param lines [Array<String>] the lines of combat data to parse
-        # @return [Array<Hash>] an array of parsed events
+        # An event is worth persisting only if it has a target to apply data to
+        # and any data to apply. Single predicate so every save site agrees
+        # (previously three sites used three different criteria).
+        def event_worth_saving?(event)
+          return false unless event && event[:target][:id]
+
+          !event[:damages].empty? || !event[:crits].empty? || !event[:statuses].empty?
+        end
+
+        # State machine parser
         def parse_events(lines)
           events = []
           current_event = nil
@@ -46,12 +72,13 @@ module Lich
           lines.each_with_index do |line, index|
             next if line.strip.empty?
 
+            # Extract creature target once per line; reused by the status
+            # handler and the target-switch logic below
+            line_target = Parser.extract_target_from_line(line)
+
             # Always check for status effects on every line (even outside combat)
             if Tracker.settings[:track_statuses]
               if (status_result = Parser.parse_status(line))
-                # Always try to extract target ID from XML first
-                line_target = Parser.extract_target_from_line(line)
-
                 if line_target && line_target[:id]
                   # Use ID-based lookup - this is most reliable
                   if status_result.is_a?(Hash)
@@ -76,16 +103,12 @@ module Lich
               end
             end
 
-            # Extract target from current line (for multi-target attacks like volley)
-            line_target = Parser.extract_target_from_line(line)
-
-            # If we found a new target and we're in combat, handle target switching
+            # Handle target switching (for multi-target attacks like volley)
             if line_target && parse_state != :seeking_attack
               # Check if this is a real target switch (different creature)
               if current_target && current_target[:id] != line_target[:id]
                 # Save previous event if it has data
-                if current_event && current_event[:target][:id] &&
-                   (!current_event[:damages].empty? || !current_event[:crits].empty? || !current_event[:statuses].empty?)
+                if event_worth_saving?(current_event)
                   events << current_event
                   respond "[Combat] Saved event for #{current_event[:target][:name]}: #{current_event[:damages].size} damages, #{current_event[:crits].size} crits, #{current_event[:statuses].size} statuses" if Tracker.debug?
                 end
@@ -110,29 +133,32 @@ module Lich
               # If current_target[:id] == line_target[:id], do nothing (same target)
             end
 
-            case parse_state
-            when :seeking_attack
-              # Only check for attacks when we're looking for them
-              if (attack = Parser.parse_attack(line))
-                # Save previous event if exists
-                events << current_event if current_event && current_event[:target][:id]
+            # Attack check is needed in both states (a new attack while seeking
+            # damage closes the previous event), so run it once per line. This
+            # replaces the old `redo`, which re-ran the status/UCS handlers
+            # above on the same line and double-applied their effects.
+            attack = Parser.parse_attack(line)
 
-                current_event = {
-                  name: attack[:name],
-                  target: attack[:target] || {},
-                  damages: [],
-                  crits: [],
-                  statuses: []
-                }
-
-                respond "[Combat] Found attack: #{attack[:name]}" if Tracker.debug?
-                parse_state = :seeking_damage
+            if attack
+              # Save previous event before starting a new one
+              if event_worth_saving?(current_event)
+                events << current_event
+                respond "[Combat] Completed event for #{current_event[:target][:name]}: #{current_event[:damages].size} damages, #{current_event[:crits].size} crits" if Tracker.debug?
               end
 
-            when :seeking_damage
-              # Once in damage phase, check EVERY line for damage and status
+              current_event = {
+                name: attack[:name],
+                target: attack[:target] || {},
+                damages: [],
+                crits: [],
+                statuses: []
+              }
+              current_target = current_event[:target][:id] ? current_event[:target] : nil
 
-              # Always check for damage (accumulate all damage lines)
+              respond "[Combat] Found attack: #{attack[:name]}" if Tracker.debug?
+              parse_state = :seeking_damage
+            elsif parse_state == :seeking_damage
+              # Accumulate all damage lines for the current attack
               if (damage = Parser.parse_damage(line))
                 current_event[:damages] << damage
                 respond "[Combat] Found damage: #{damage}" if Tracker.debug?
@@ -166,33 +192,16 @@ module Lich
                   end
                 end
               end
-
-              # Note: Status effects are now checked globally on every line above
-
-              # Check for new attack (means we're done with previous)
-              if Parser.parse_attack(line)
-                # Save current event before starting new attack
-                if current_event && current_event[:target][:id] &&
-                   (!current_event[:damages].empty? || !current_event[:crits].empty?)
-                  events << current_event
-                  respond "[Combat] Completed event for #{current_event[:target][:name]}: #{current_event[:damages].size} damages, #{current_event[:crits].size} crits" if Tracker.debug?
-                end
-                parse_state = :seeking_attack
-                redo # Process this line as new attack
-              end
             end
           end
 
           # Don't forget the last event
-          events << current_event if current_event && current_event[:target][:id]
+          events << current_event if event_worth_saving?(current_event)
 
           events
         end
 
-        # Persists a combat event to the creature's state.
-        #
-        # @param event [Hash] the event data to persist
-        # @return [void]
+        # Apply combat event to creature instance (same as before)
         def persist_event(event)
           target = event[:target]
           return unless target[:id]
@@ -246,11 +255,7 @@ module Lich
           respond "  Total damage applied: #{total_damage}" if total_damage > 0 && Tracker.debug?
         end
 
-        # Applies UCS (Universal Combat System) updates to a target creature.
-        #
-        # @param ucs_result [Hash] the UCS event data
-        # @param current_target [Hash, nil] the current target creature, if any
-        # @return [void]
+        # Apply UCS event to a creature
         def apply_ucs_to_target(ucs_result, current_target = nil)
           target_id = ucs_result[:target_id]
 
@@ -283,13 +288,7 @@ module Lich
           respond "[Combat] Error applying UCS: #{e.message}" if Tracker.debug?
         end
 
-        # Applies a status effect to a target creature.
-        #
-        # @param status [String] the status to apply
-        # @param target_name_or_id [String] the target's name or ID
-        # @param target_id [String, nil] the target's ID, if known
-        # @param action [Symbol] the action to perform (:add or :remove)
-        # @return [void]
+        # Apply status effect directly to a creature (outside combat events)
         def apply_status_to_target(status, target_name_or_id, target_id = nil, action = :add)
           # Handle both name lookup and direct ID
           if target_id
@@ -315,10 +314,7 @@ module Lich
           end
         end
 
-        # Maps a critical hit location to the corresponding body part format.
-        #
-        # @param location [String] the location of the critical hit
-        # @return [String, nil] the mapped body part or nil if not found
+        # Map CritRanks location strings to creature body part constants
         def map_critranks_to_body_part(location)
           return nil unless location
 

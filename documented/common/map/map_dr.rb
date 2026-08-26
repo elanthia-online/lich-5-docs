@@ -2,13 +2,12 @@
 
 require_relative 'map_base'
 
+# Namespace for the Lich 5 scripting engine and game integrations.
 module Lich
+  # Shared functionality and constants across Lich scripting environments.
   module Common
-    # Represents a map in the Lich game.
-    #
-    # This class handles the management of rooms and their connections.
-    #
-    # @see Lich::Common::Room
+    # DragonRealms-specific Map implementation
+    # Inherits shared functionality from MapBase
     class Map
       include Enumerable
       include MapBase
@@ -16,7 +15,6 @@ module Lich
       @@loaded                   = false
       @@load_mutex               = Mutex.new
       @@list                   ||= []
-      @@tags                   ||= []
       @@current_room_mutex       = Mutex.new
       @@current_room_id        ||= -1
       @@current_room_count     ||= -1
@@ -30,30 +28,35 @@ module Lich
 
       attr_reader :id
       attr_accessor :title, :description, :paths, :location, :climate, :terrain,
-                    :wayto, :timeto, :image, :image_coords, :tags, :check_location,
+                    :wayto, :timeto, :image, :image_coords, :check_location,
                     :unique_loot, :uid, :room_objects,
                     :genie_id, :genie_zone, :genie_pos
 
-      # Initializes a new Map instance.
-      # @param id [Integer] unique identifier for the map
-      # @param title [Array<String>] titles of the map
-      # @param description [Array<String>] descriptions of the map
-      # @param paths [Array<String>] paths leading from the map
-      # @param uid [Array<Integer>] unique identifiers for the map
-      # @param location [String, nil] optional location of the map
-      # @param climate [String, nil] optional climate description
-      # @param terrain [String, nil] optional terrain description
-      # @param wayto [Hash] connections to other maps
-      # @param timeto [Hash] time taken to travel to other maps
-      # @param image [String, nil] optional image associated with the map
-      # @param image_coords [Array<Integer>, nil] optional coordinates for the image
-      # @param tags [Array<String>] optional tags associated with the map
-      # @param check_location [String, nil] optional check location
-      # @param unique_loot [String, nil] optional unique loot
-      # @param _room_objects [nil] reserved for future use
-      # @param genie_id [String, nil] optional genie identifier
-      # @param genie_zone [String, nil] optional genie zone
-      # @param genie_pos [String, nil] optional genie position
+      # @return [TagList] mutation-aware list of this room's tags
+      attr_reader :tags
+
+      # Creates and registers a new room in the game map.
+      #
+      # @param id [Integer] unique stable room identifier in the map
+      # @param title [Array<String>] room titles across server-to-client updates
+      # @param description [Array<String>] room descriptions across updates
+      # @param paths [Array<String>] room exit lists across updates
+      # @param uid [Array<Integer>] server-provided unique identifiers for disambiguation, defaults to []
+      # @param location [String] geographic location metadata, defaults to nil
+      # @param climate [String] climatic zone, defaults to nil
+      # @param terrain [String] terrain type, defaults to nil
+      # @param wayto [Hash] navigation metadata for pathfinding, defaults to {}
+      # @param timeto [Hash] traversal time metadata, defaults to {}
+      # @param image [String] map image identifier, defaults to nil
+      # @param image_coords [String] coordinates on the map image, defaults to nil
+      # @param tags [Array<String>] script-readable tags for room properties, defaults to []
+      # @param check_location [Boolean, nil] whether to verify location text matches, defaults to nil
+      # @param unique_loot [String, nil] unique item spawned in this room, defaults to nil
+      # @param genie_id [String, nil] genie reference node identifier, defaults to nil
+      # @param genie_zone [String, nil] genie reference zone identifier, defaults to nil
+      # @param genie_pos [String, nil] genie reference position data, defaults to nil
+      # @note If @@loaded is true, this resets the tag index cache after registering the room.
+      # @api private
       def initialize(id, title, description, paths, uid = [], location = nil,
                      climate = nil, terrain = nil, wayto = {}, timeto = {},
                      image = nil, image_coords = nil, tags = [], check_location = nil,
@@ -71,126 +74,160 @@ module Lich
         @timeto = timeto
         @image = image
         @image_coords = image_coords
-        @tags = tags
+        @tags = TagList.new(tags, self.class)
         @check_location = check_location
         @unique_loot = unique_loot
         @genie_id = genie_id
         @genie_zone = genie_zone
         @genie_pos = genie_pos
         @@list[@id] = self
+        # Skipped during a bulk load: @@loaded is false throughout, load_json
+        # clears the cache when it finishes, and any tag query while unloaded
+        # goes through #list, which loads first. Saves one mutex per room.
+        self.class.reset_tag_index if @@loaded
       end
 
-      # Returns a string representation of the map.
+      # Generates a human-readable representation of the room.
       #
-      # @return [String] formatted string containing map details
+      # @return [String] the room in format "#<id> (<uid>):\n<title>\n<description>\n<paths>", using the latest values from history arrays
       def to_s
         "##{@id} (#{@uid[-1]}):\n#{@title[-1]}\n#{@description[-1]}\n#{@paths[-1]}"
       end
 
-      # Returns additional fields for JSON representation.
+      # Returns extra genie-reference fields for JSON serialization.
       #
-      # @return [Hash] hash containing genie_id, genie_zone, and genie_pos
+      # @return [Hash] genie-related metadata: genie_id, genie_zone, genie_pos
+      # @api private
       def json_extra_fields
         { genie_id: @genie_id, genie_zone: @genie_zone, genie_pos: @genie_pos }
       end
 
+      # Class method accessors
       class << self
-        # Checks if the map has been loaded.
+        # Accessors for the room-navigation state, matching GemStone, so the
+        # shared MapBase implementations can reach it without touching class
+        # variables directly.
+        def current_room_id
+          @@current_room_id
+        end
+
+        # Sets the current room ID class variable.
         #
-        # @return [Boolean] true if the map is loaded, false otherwise
+        # @param id [Integer] the room ID to set
+        # @return [Integer] the ID
+        # @api private
+        def current_room_id=(id)
+          @@current_room_id = id
+        end
+
+        # Returns the ID of the room the character was in before the current room.
+        #
+        # @return [Integer] the previous room ID, or -1 if none has been recorded
+        def previous_room_id
+          @@previous_room_id
+        end
+
+        # Sets the previous room ID class variable.
+        #
+        # @param id [Integer] the room ID to set
+        # @return [Integer] the ID
+        # @api private
+        def previous_room_id=(id)
+          @@previous_room_id = id
+        end
+
+        # Whether the map data has been loaded from persistent storage.
+        #
+        # @return [Boolean] true if .load has completed, false otherwise
         def loaded?
           @@loaded
         end
 
-        # Retrieves the list of maps.
+        # Returns the list of all rooms in the map, loading from storage if needed.
         #
-        # @return [Array<Map>] array of loaded maps
+        # @return [Array<Map>] all registered rooms, indexed by room ID
+        # @note Triggers .load if not yet loaded; blocks on the load mutex
         def list
           self.load unless @@loaded
           @@list
         end
 
-        def list=(value)
-          @@list = value
+        # The backing array without triggering a load. Only for use inside the
+        # load path, where #list would re-enter the load mutex and deadlock.
+        def raw_list
+          @@list
         end
 
-        # Retrieves the unique identifiers for the maps.
+        # Replaces the room list and normalizes tag metadata.
         #
-        # @return [Hash] hash mapping unique identifiers to map IDs
+        # @param value [Array<Map>] the new room list
+        # @return [Array<Map>] the assigned list
+        # @note Calls normalize_tag_lists on the new value
+        # @api private
+        def list=(value)
+          @@list = value
+          normalize_tag_lists(value)
+        end
+
+        # Returns the UID-to-room-IDs mapping for disambiguation.
+        #
+        # @return [Hash{Integer => Array<Integer>}] maps server UID to list of room IDs sharing that UID
         def uids
           @@uids
         end
 
-        # Clears the cached tags for the maps.
+        # Invalidates the tag index cache, forcing tags to be re-indexed on next query.
         #
         # @return [void]
+        # @api private
         def clear_tags_cache
-          @@tags.clear
+          reset_tag_index
         end
 
-        # Marks the map as loaded.
+        # Marks the map as fully loaded from storage.
         #
         # @return [void]
+        # @api private
         def mark_loaded
           @@loaded = true
         end
 
+        # Acquires the load mutex and executes the block, preventing concurrent map loads.
+        #
+        # @yield Executes the block while holding the load mutex
+        # @return [Object] the return value of the block
+        # @api private
         def synchronize_load(&block)
           @@load_mutex.synchronize(&block)
         end
       end
 
-      # Finds a map by its genie reference.
+      # Looks up a room by its genie (map client) zone and node identifiers.
       #
-      # @param zone_id [String] the zone identifier
-      # @param node_id [String] the node identifier
-      # @return [Map, nil] the map if found, nil otherwise
+      # @param zone_id [Integer, String] the genie zone identifier
+      # @param node_id [Integer, String] the genie node identifier
+      # @return [Map, nil] the matched room, or nil if no room carries that genie reference
+      # @note Triggers .load if not yet loaded
       def self.by_genie_ref(zone_id, node_id)
         self.load unless @@loaded
         @@list.find { |r| r&.genie_zone == zone_id.to_s && r&.genie_id == node_id.to_s }
       end
 
-      # Retrieves a free ID for a new map.
+      # Returns the room the character was in before the current room.
       #
-      # @return [Integer] a unique ID for a new map
-      def self.get_free_id
-        self.load unless @@loaded
-        @@list.compact.max_by(&:id).id + 1
-      end
-
-      def self.[](val)
-        self.load unless @@loaded
-        if val.is_a?(Integer) || val =~ /^[0-9]+$/
-          @@list[val.to_i]
-        elsif val =~ /^u(-?\d+)$/i
-          uid_request = ::Regexp.last_match(1).dup.to_i
-          @@list[(ids_from_uid(uid_request)[0]).to_i]
-        else
-          chkre = /#{val.strip.sub(/\.$/, '').gsub(/\.(?:\.\.)?/, '|')}/i
-          chk = /#{Regexp.escape(val.strip)}/i
-          @@list.find { |room| room&.title&.find { |title| title =~ chk } } ||
-            @@list.find { |room| room&.description&.find { |desc| desc =~ chk } } ||
-            @@list.find { |room| room&.description&.find { |desc| desc =~ chkre } }
-        end
-      end
-
-      # Retrieves the previous map.
-      #
-      # @return [Map, nil] the previous map if available, nil otherwise
+      # @return [Map, nil] the previous room, or nil if no previous room has been recorded
       def self.previous
         @@list[@@previous_room_id]
       end
 
-      # Retrieves the previous UID for the map.
+      # Returns the character's current room by resolving game state to a room ID.
       #
-      # @return [String] the previous UID
-      def self.previous_uid
-        XMLData.previous_nav_rm
-      end
-
-      # Retrieves the current map.
+      # Uses exact title/description/paths matching when a script is running (#match_current),
+      # or fuzzy matching when scriptless (#match_fuzzy). Applies UID disambiguation to reject
+      # matches if the game exposes a live UID that contradicts the matched room's stored UIDs.
       #
-      # @return [Map, nil] the current map if available, nil otherwise
+      # @return [Map, nil] the current room, or nil when no room matches the game state
+      # @note Triggers .load if not yet loaded; caches result based on XMLData.room_count
       def self.current
         self.load unless @@loaded
         if Script.current
@@ -207,29 +244,74 @@ module Lich
         match_no_uid
       end
 
-      # Matches the current map when no UID is available.
+      # Pattern identifying a room whose disambiguation depends on a manual
+      # +peer+ action (for example peering through a doorway to read an adjacent
+      # room before committing to a match). Such rooms cannot be told apart
+      # without a running script to perform the peer, so scriptless fuzzy
+      # matching declines to resolve them. Kept verbatim from the historical
+      # inline checks in {match_fuzzy}.
+      PEER_TAG_PATTERN = /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/
+
+      # Whether +room+ carries a peer-disambiguation tag (see {PEER_TAG_PATTERN}).
       #
-      # @return [Map, nil] the matched map if found, nil otherwise
-      def self.match_no_uid
-        if (script = Script.current)
-          set_current(match_current(script))
-        else
-          set_fuzzy(match_fuzzy)
+      # @param room [Lich::Common::Map] a room already matched on
+      #   title/description/paths
+      # @return [Boolean] +true+ when the room requires a manual peer to
+      #   disambiguate, +false+ otherwise
+      def self.peer_disambiguation_tag?(room)
+        room.tags.any? { |tag| tag =~ PEER_TAG_PATTERN }
+      end
+
+      # Resolve a room that already matched on title/description/paths down to a
+      # final room id, applying UID disambiguation.
+      #
+      # The governing invariant is that *a stored UID must never make a room less
+      # resolvable than an otherwise identical room with no UID.*
+      #
+      # * When the game exposes a live UID (+XMLData.room_id+ is non-zero) and the
+      #   matched room carries one or more UIDs, the match only stands if the live
+      #   UID is among them. This is what keeps distinct rooms that share a
+      #   title/description/paths (day/night variants, look-alike maze cells) from
+      #   collapsing onto one another.
+      # * When the game exposes *no* UID (+XMLData.room_id+ is zero, a room the
+      #   server does not surface a UID for), UID disambiguation is skipped and the
+      #   title/description/paths match is trusted regardless of any UID stored on
+      #   the room. Previously such a room returned +nil+ here (a stored UID can
+      #   never include the zero live id), so a UID accidentally or provisionally
+      #   stamped onto a no-UID room made that room permanently unresolvable
+      #   (+Map.current+ became +nil+). Trusting the text match in the no-UID case
+      #   removes that failure mode without weakening disambiguation when the game
+      #   does expose a UID.
+      #
+      # @param room [Lich::Common::Map] the room matched on title/description/paths
+      # @param honor_peer_tags [Boolean] when +true+, a room requiring a manual
+      #   peer to disambiguate (see {peer_disambiguation_tag?}) resolves to +nil+;
+      #   used by scriptless fuzzy matching, which cannot perform the peer. Exact
+      #   ({match_current}) matching passes +false+ and never consults peer tags.
+      # @return [Integer, nil] the resolved room id; +nil+ when a UID'd room's
+      #   stored UIDs exclude the live game UID, or when a peer-tagged room cannot
+      #   be disambiguated
+      def self.resolve_matched_room(room, honor_peer_tags:)
+        if room.uid.any? && !XMLData.room_id.zero?
+          return room.uid.include?(XMLData.room_id) ? room.id : nil
         end
+        return nil if honor_peer_tags && peer_disambiguation_tag?(room)
+
+        room.id
       end
 
-      # Sets the current map using fuzzy matching.
+      # Resolve the current room by exact title/description/paths matching.
       #
-      # @param id [Integer] the ID of the map to set
-      # @return [Map, nil] the set map if successful, nil otherwise
-      def self.set_fuzzy(id)
-        @@previous_room_id = @@current_room_id if !id.nil? && id != @@current_room_id
-        @@current_room_id = id
-        return nil if id.nil?
-
-        @@list[id]
-      end
-
+      # Used when a script is running (see {match_no_uid}). Tries an exact
+      # description match first, then a punctuation-tolerant regex description
+      # match, re-reading the room whenever the live +room_count+ changes
+      # mid-match. Final UID disambiguation is delegated to
+      # {resolve_matched_room} (peer tags are not honored on this path).
+      #
+      # @param _script [Object] the running script (unused; retained for the
+      #   historical call signature)
+      # @return [Integer, nil] the resolved room id, or +nil+ when nothing matches
+      #   or UID disambiguation rejects the match
       def self.match_current(_script)
         @@current_room_mutex.synchronize do
           need_set_desc_off = false
@@ -238,34 +320,30 @@ module Lich
               @@current_room_count = XMLData.room_count
               foggy_exits = XMLData.room_exits_string =~ /^Obvious (?:exits|paths): obscured by a thick fog$/
               room = @@list.find do |r|
-                r.title.include?(XMLData.room_title) &&
+                # Skip nil holes without relying on Lich's NilClass patch.
+                r &&
+                  r.title.include?(XMLData.room_title) &&
                   r.description.include?(XMLData.room_description.strip) &&
                   (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip))
               end
 
               if room
                 redo unless @@current_room_count == XMLData.room_count
-                if room.uid.any?
-                  return room.uid.include?(XMLData.room_id) ? room.id : nil
-                else
-                  return room.id
-                end
+                return resolve_matched_room(room, honor_peer_tags: false)
               else
                 redo unless @@current_room_count == XMLData.room_count
                 desc_regex = /#{Regexp.escape(XMLData.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
                 room = @@list.find do |r|
-                  r.title.include?(XMLData.room_title) &&
+                  # Skip nil holes without relying on Lich's NilClass patch.
+                  r &&
+                    r.title.include?(XMLData.room_title) &&
                     (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip)) &&
                     (XMLData.room_window_disabled || r.description.any? { |desc| desc =~ desc_regex })
                 end
 
                 if room
                   redo unless @@current_room_count == XMLData.room_count
-                  if room.uid.any?
-                    return room.uid.include?(XMLData.room_id) ? room.id : nil
-                  else
-                    return room.id
-                  end
+                  return resolve_matched_room(room, honor_peer_tags: false)
                 else
                   redo unless @@current_room_count == XMLData.room_count
                   return nil
@@ -278,16 +356,25 @@ module Lich
         end
       end
 
-      # Matches the current map using fuzzy logic.
+      # Resolve the current room by fuzzy title/description/paths matching.
       #
-      # @return [Map, nil] the matched map if found, nil otherwise
+      # Used when no script is running (see {match_no_uid}). Mirrors
+      # {match_current} but honors peer-disambiguation tags: a room that would
+      # need a manual peer to tell apart cannot be resolved without a script, so
+      # it yields +nil+. Final UID disambiguation is delegated to
+      # {resolve_matched_room} with +honor_peer_tags: true+.
+      #
+      # @return [Integer, nil] the resolved room id, or +nil+ when nothing
+      #   matches, UID disambiguation rejects the match, or the room needs a peer
       def self.match_fuzzy
         @@fuzzy_room_mutex.synchronize do
           @@fuzzy_room_count = XMLData.room_count
           loop do
             foggy_exits = XMLData.room_exits_string =~ /^Obvious (?:exits|paths): obscured by a thick fog$/
             room = @@list.find do |r|
-              r.title.include?(XMLData.room_title) &&
+              # Skip nil holes without relying on Lich's NilClass patch.
+              r &&
+                r.title.include?(XMLData.room_title) &&
                 r.description.include?(XMLData.room_description.strip) &&
                 (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip))
             end
@@ -295,18 +382,14 @@ module Lich
             if room
               redo unless @@fuzzy_room_count == XMLData.room_count
 
-              if room.uid.any?
-                return room.uid.include?(XMLData.room_id) ? room.id : nil
-              elsif room.tags.any? { |tag| tag =~ /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/ }
-                return nil
-              else
-                return room.id
-              end
+              return resolve_matched_room(room, honor_peer_tags: true)
             else
               redo unless @@fuzzy_room_count == XMLData.room_count
               desc_regex = /#{Regexp.escape(XMLData.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
               room = @@list.find do |r|
-                r.title.include?(XMLData.room_title) &&
+                # Skip nil holes without relying on Lich's NilClass patch.
+                r &&
+                  r.title.include?(XMLData.room_title) &&
                   (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip)) &&
                   (XMLData.room_window_disabled || r.description.any? { |desc| desc =~ desc_regex })
               end
@@ -314,13 +397,7 @@ module Lich
               if room
                 redo unless @@fuzzy_room_count == XMLData.room_count
 
-                if room.uid.any?
-                  return room.uid.include?(XMLData.room_id) ? room.id : nil
-                elsif room.tags.any? { |tag| tag =~ /^(set desc on; )?peer [a-z]+ =~ \/.+\/$/ }
-                  return nil
-                else
-                  return room.id
-                end
+                return resolve_matched_room(room, honor_peer_tags: true)
               else
                 redo unless @@fuzzy_room_count == XMLData.room_count
                 return nil
@@ -330,9 +407,16 @@ module Lich
         end
       end
 
-      # Retrieves the current map or creates a new one if none exists.
+      # Returns the current room, or mints a new room if none exists.
       #
-      # @return [Map, nil] the current or newly created map
+      # Resolves the character's current location like .current, but creates and registers
+      # a new room if no match is found and a script is running. Skips minting when the arrival
+      # frame is blank (no UID, pitch-dark, no exits), as the server is likely still loading
+      # the real room.
+      #
+      # @return [Map, nil] the current room (matched or newly minted), or nil if no script is running, the frame is blank, or matching fails
+      # @note Adds server UIDs to room.uid and updates the @@uids index when found; only callable from a running script
+      # @api private
       def self.current_or_new
         return nil unless Script.current
 
@@ -354,6 +438,25 @@ module Lich
           return set_current(room.id)
         end
 
+        # Guard against a blank/incomplete arrival frame. DR occasionally streams a room whose
+        # <nav> UID is delayed or absent (room_id 0) before the room text populates: the
+        # description is only the "pitch dark" placeholder and there are no exits. Minting a
+        # room here creates a junk stub (empty title, no UID) that orphans or duplicates the
+        # real room. Keep the current room instead; the real room resolves by UID once the
+        # delayed nav (or a re-look) provides it.
+        if XMLData.room_id.zero? &&
+           XMLData.room_exits_string.to_s.strip.empty? &&
+           XMLData.room_description.to_s.strip == "It's pitch dark and you can't see a thing!"
+          echo 'Map: skipped blank/incomplete room frame (no uid, pitch-dark, no exits)'
+          # Keep the current room - but only if one has actually resolved.
+          # @@current_room_id is the -1 sentinel before the first match; passing
+          # that to set_current would index @@list[-1] (the last room) and make an
+          # unrelated room current, so fall back to nil in that case instead.
+          return set_current(@@current_room_id) if @@current_room_id.is_a?(Integer) && @@current_room_id >= 0
+
+          return nil
+        end
+
         id = get_free_id
         title = [XMLData.room_title]
         description = [XMLData.room_description.strip]
@@ -365,36 +468,20 @@ module Lich
         set_current(id)
       end
 
-      # Sets the current map by ID.
+      # Rebuilds the UID-to-room-IDs index from the current room list.
       #
-      # @param id [Integer] the ID of the map to set
-      # @return [Map, nil] the set map if successful, nil otherwise
-      def self.set_current(id)
-        @@previous_room_id = @@current_room_id if id != @@current_room_id
-        @@current_room_id = id
-        return nil if id.nil?
-
-        @@list[id]
-      end
-
-      # Matches multiple IDs for the current map.
-      #
-      # @param ids [Array<Integer>] the IDs to match
-      # @return [Integer, nil] the matched ID if found, nil otherwise
-      def self.match_multi_ids(ids)
-        matches = ids.find_all { |s| @@list[@@current_room_id].wayto.keys.include?(s.to_s) }
-        return matches[0] if matches.size == 1
-
-        nil
-      end
-
-      # Loads unique identifiers for the maps.
+      # Clears and repopulates @@uids, aggregating all UIDs stored on all rooms.
+      # Handles sparse maps (nil holes) gracefully without relying on NilClass patches.
       #
       # @return [void]
+      # @note Triggers .load if not yet loaded
+      # @api private
       def self.load_uids
         self.load unless @@loaded
         @@uids.clear
-        @@list.each do |r|
+        # compact rather than relying on Lich's NilClass patch to make r.uid on a
+        # hole return nil; a sparse map should not need that to load.
+        @@list.compact.each do |r|
           r.uid.each do |u|
             if @@uids[u].nil?
               @@uids[u] = [r.id]
@@ -405,283 +492,49 @@ module Lich
         end
       end
 
-      # Retrieves the tags associated with the maps.
+      # Returns the list of room IDs sharing a given server UID.
       #
-      # @return [Array<String>] array of unique tags
-      def self.tags
-        self.load unless @@loaded
-        @@tags = @@list.compact.each_with_object({}) { |r, h| r.tags.each { |t| h[t] = nil unless h.key?(t) } }.keys if @@tags.empty?
-        @@tags.dup
-      end
-
-      # Retrieves map IDs from a given UID.
-      #
-      # @param n [Integer] the UID to look up
-      # @return [Array<Integer>] array of map IDs associated with the UID
+      # @param n [Integer] the server UID to look up
+      # @return [Array<Integer>] room IDs with that UID, or [] if the UID is unknown or zero
       def self.ids_from_uid(n)
         @@uids[n].nil? || n.zero? ? [] : @@uids[n]
       end
 
-      # Clears the map data and resets the state.
+      # Clears all rooms from memory and resets map state.
       #
-      # @return [Boolean] true if cleared successfully, false otherwise
+      # Clears the room list, tag index cache, and resets the loaded flag. Requests garbage
+      # collection after clearing.
+      #
+      # @return [Boolean] always returns true
+      # @note Acquires the load mutex; blocks other load attempts until completion
+      # @api private
       def self.clear
         @@load_mutex.synchronize do
           @@list.clear
-          @@tags.clear
+          clear_tags_cache
           @@loaded = false
           GC.start
         end
         true
       end
 
-      # Loads map data from a file.
-      #
-      # @param filename [String, nil] optional filename to load from
-      # @return [Boolean] true if loaded successfully, false otherwise
-      def self.load(filename = nil)
-        file_list = if filename.nil?
-                      Dir.entries(File.join(DATA_DIR, XMLData.game))
-                         .find_all { |fn| fn =~ /^map-[0-9]+\.(?:dat|xml|json)$/i }
-                         .collect { |fn| File.join(DATA_DIR, XMLData.game, fn) }
-                         .sort
-                         .reverse
-                    else
-                      [filename]
-                    end
-
-        if file_list.empty?
-          respond '--- Lich: error: no map database found'
-          return false
-        end
-
-        while (filename = file_list.shift)
-          if filename =~ /\.json$/i
-            return true if load_json(filename)
-          elsif filename =~ /\.xml$/
-            return true if load_xml(filename)
-          elsif load_dat(filename)
-            return true
-          end
-        end
-        false
-      end
-
-      # Loads map data from a JSON file.
-      #
-      # @param filename [String, nil] optional filename to load from
-      # @return [Boolean] true if loaded successfully, false otherwise
-      def self.load_json(filename = nil)
-        @@load_mutex.synchronize do
-          return true if @@loaded
-
-          file_list = if filename
-                        [filename]
-                      else
-                        Dir.entries(File.join(DATA_DIR, XMLData.game))
-                           .find_all { |fn| fn =~ /^map-[0-9]+\.json$/i }
-                           .collect { |fn| File.join(DATA_DIR, XMLData.game, fn) }
-                           .sort
-                           .reverse
-                      end
-
-          if file_list.empty?
-            respond '--- Lich: error: no map database found'
-            return false
-          end
-
-          while (filename = file_list.shift)
-            next unless File.exist?(filename)
-
-            File.open(filename) do |f|
-              JSON.parse(f.read).each do |room|
-                room['wayto'].keys.each do |k|
-                  if room['wayto'][k][0..2] == ';e '
-                    room['wayto'][k] = StringProc.new(room['wayto'][k][3..])
-                  end
-                end
-                room['timeto'].keys.each do |k|
-                  if room['timeto'][k].is_a?(String) && room['timeto'][k][0..2] == ';e '
-                    room['timeto'][k] = StringProc.new(room['timeto'][k][3..])
-                  end
-                end
-                room['tags'] ||= []
-                room['uid'] ||= []
-                new(
-                  room['id'], room['title'], room['description'], room['paths'],
-                  room['uid'], room['location'], room['climate'], room['terrain'],
-                  room['wayto'], room['timeto'], room['image'], room['image_coords'],
-                  room['tags'], room['check_location'], room['unique_loot'],
-                  nil, # _room_objects
-                  room['genie_id'], room['genie_zone'], room['genie_pos']
-                )
-              end
-            end
-            @@tags.clear
-            respond "--- Map loaded #{filename}"
-            @@loaded = true
-            load_uids
-            return true
-          end
-        end
-      end
-
-      # Loads map data from an XML file.
-      #
-      # @param filename [String] the filename to load from
-      # @return [Boolean] true if loaded successfully, false otherwise
-      def self.load_xml(filename = File.join(DATA_DIR, XMLData.game, 'map.xml'))
-        respond '--- WARNING: Map.load_xml is deprecated. Use Map.load_json instead.'
-        @@load_mutex.synchronize do
-          return true if @@loaded
-
-          unless File.exist?(filename)
-            raise Exception.exception('MapDatabaseError'), "Fatal error: file `#{filename}' does not exist!"
-          end
-
-          missing_end = false
-          current_tag = nil
-          current_attributes = nil
-          room = nil
-          buffer = String.new
-          unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
-
-          tag_start = proc do |element, attributes|
-            current_tag = element
-            current_attributes = attributes
-            if element == 'room'
-              room = {}
-              room['id'] = attributes['id'].to_i
-              room['location'] = attributes['location']
-              room['climate'] = attributes['climate']
-              room['terrain'] = attributes['terrain']
-              room['wayto'] = {}
-              room['timeto'] = {}
-              room['title'] = []
-              room['description'] = []
-              room['paths'] = []
-              room['tags'] = []
-              room['unique_loot'] = []
-              room['uid'] = []
-              room['room_objects'] = []
-            elsif element =~ /^(?:image|tsoran)$/ && attributes['name'] && attributes['x'] && attributes['y'] && attributes['size']
-              room['image'] = attributes['name']
-              room['image_coords'] = [
-                (attributes['x'].to_i - (attributes['size'] / 2.0).round),
-                (attributes['y'].to_i - (attributes['size'] / 2.0).round),
-                (attributes['x'].to_i + (attributes['size'] / 2.0).round),
-                (attributes['y'].to_i + (attributes['size'] / 2.0).round)
-              ]
-            elsif element == 'image' && attributes['name'] && attributes['coords'] && attributes['coords'] =~ /[0-9]+,[0-9]+,[0-9]+,[0-9]+/
-              room['image'] = attributes['name']
-              room['image_coords'] = attributes['coords'].split(',').collect(&:to_i)
-            elsif element == 'map'
-              missing_end = true
-            end
-          end
-
-          text = proc do |text_string|
-            if current_tag == 'tag'
-              room['tags'].push(text_string)
-            elsif current_tag =~ /^(?:title|description|paths|unique_loot|tag|room_objects)$/
-              room[current_tag].push(text_string)
-            elsif current_tag =~ /^(?:uid)$/
-              room[current_tag].push(text_string.to_i)
-            elsif current_tag == 'exit' && current_attributes['target']
-              room['wayto'][current_attributes['target']] = if current_attributes['type'].downcase == 'string'
-                                                              text_string
-                                                            else
-                                                              StringProc.new(text_string)
-                                                            end
-              room['timeto'][current_attributes['target']] = if current_attributes['cost'] =~ /^[0-9.]+$/
-                                                               current_attributes['cost'].to_f
-                                                             elsif current_attributes['cost'].length.positive?
-                                                               StringProc.new(current_attributes['cost'])
-                                                             else
-                                                               0.2
-                                                             end
-            end
-          end
-
-          tag_end = proc do |element|
-            if element == 'room'
-              room['unique_loot'] = nil if room['unique_loot'].empty?
-              room['room_objects'] = nil if room['room_objects'].empty?
-              new(
-                room['id'], room['title'], room['description'], room['paths'],
-                room['uid'], room['location'], room['climate'], room['terrain'],
-                room['wayto'], room['timeto'], room['image'], room['image_coords'],
-                room['tags'], room['check_location'], room['unique_loot'], room['room_objects']
-              )
-            elsif element == 'map'
-              missing_end = false
-            end
-            current_tag = nil
-          end
-
-          begin
-            File.open(filename) do |file|
-              while (line = file.gets)
-                buffer.concat(line)
-                while (str = buffer.slice!(/^<([^>]+)><\/\1>|^[^<]+(?=<)|^<[^<]+>/))
-                  if str[0, 1] == '<'
-                    if str[1, 1] == '/'
-                      element = %r{^</([^\s>/]+)}.match(str).captures.first
-                      tag_end.call(element)
-                    elsif str =~ %r{^<([^>]+)></\1>}
-                      element = ::Regexp.last_match(1)
-                      tag_start.call(element)
-                      text.call('')
-                      tag_end.call(element)
-                    else
-                      element = %r{^<([^\s>/]+)}.match(str).captures.first
-                      attributes = {}
-                      str.scan(/([A-z][A-z0-9_-]*)=(["'])(.*?)\2/).each do |attr|
-                        attributes[attr[0]] = attr[2].gsub(/&(#{unescape.keys.join('|')});/) { unescape[::Regexp.last_match(1)] }
-                      end
-                      tag_start.call(element, attributes)
-                      tag_end.call(element) if str[-2, 1] == '/'
-                    end
-                  else
-                    text.call(str.gsub(/&(#{unescape.keys.join('|')});/) { unescape[::Regexp.last_match(1)] })
-                  end
-                end
-              end
-            end
-
-            if missing_end
-              respond "--- Lich: error: failed to load #{filename}: unexpected end of file"
-              return false
-            end
-
-            @@tags.clear
-            load_uids
-            @@loaded = true
-            true
-          rescue StandardError => e
-            respond "--- Lich: error: failed to load #{filename}: #{e}"
-            false
-          end
-        end
-      end
-
-      # Saves the map data to an XML file.
-      #
-      # @param _filename [String, nil] optional filename to save to
-      # @return [void]
-      def self.save_xml(_filename = nil)
-        respond '--- WARNING: Map.save_xml is deprecated. Use Map.save_json instead.'
+      # Construct a room from a parsed JSON hash
+      # @param room [Hash]
+      # @return [Map] the registered room
+      def self.room_from_json(room)
+        new(
+          room['id'], room['title'], room['description'], room['paths'],
+          room['uid'], room['location'], room['climate'], room['terrain'],
+          room['wayto'], room['timeto'], room['image'], room['image_coords'],
+          room['tags'], room['check_location'], room['unique_loot'],
+          nil, # _room_objects
+          room['genie_id'], room['genie_zone'], room['genie_pos']
+        )
       end
     end
 
+    # Alias for Map; provided for API compatibility.
     class Room < Map
-      def self.method_missing(*args)
-        super
-      end
-
-      def self.respond_to_missing?(*args)
-        super
-      end
     end
   end
 end

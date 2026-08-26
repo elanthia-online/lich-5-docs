@@ -1,29 +1,42 @@
 # frozen_string_literal: true
 
-# CLI argument processing and orchestration for the Lich project.
-#
-# This module handles the validation and routing of command-line arguments to appropriate handlers.
-#
-# @see Lich::Main::CliPasswordManager for domain-specific handlers.
 # CLI argument processing and orchestration (Layer 2)
 # Three-layer architecture:
-#   - Layer 1 (Opts): Pure parsing of ARGV → frozen OpenStruct
+#   - Layer 1 (Opts): Pure parsing of ARGV -> frozen OpenStruct
 #   - Layer 2 (this file): Validation, routing to handlers, side effects
 #   - Layer 3 (CliPasswordManager): Domain-specific handlers
 
 require File.join(LIB_DIR, 'util', 'opts.rb')
 require File.join(LIB_DIR, 'common', 'cli', 'cli_orchestration.rb')
+require File.join(LIB_DIR, 'common', 'bind_host_resolver.rb')
+require File.join(LIB_DIR, 'main', 'bind_address_option.rb')
 require File.join(LIB_DIR, 'main', 'arg_normalization.rb')
+require File.join(LIB_DIR, 'main', 'detachable_client_target.rb')
 require File.join(LIB_DIR, 'main', 'help_text.rb')
+require File.join(LIB_DIR, 'main', 'startup_theme.rb')
 
 module Lich
   module Main
+    # Orchestrates ARGV processing: parsing -> validation -> handler execution -> side effects
     module ArgvOptions
+      # CLI operations are now handled by lib/common/cli/cli_orchestration.rb
+      # which handles early-exit operations (password mgmt, conversion)
+      # before normal argv_options processing
 
-      # Module for parsing command-line options.
-      #
-      # This module is responsible for executing the command-line options and managing the associated side effects.
+      # Parse ARGV and build @argv_options hash for backward compatibility
       module OptionParser
+        # Parses ARGV into a hash of option flags and values for backward compatibility.
+        #
+        # Processes command-line arguments including help, version, SGE/SAL linking,
+        # installation, game connection details, UI settings, and launch configuration.
+        # Exits immediately for early-exit operations (--help, --version, --install).
+        #
+        # @return [Hash] option hash with keys like :start_scripts, :host, :gui, :game,
+        #   :password, :character, :frontend, :save, :pipe, :sal, :dark_mode
+        # @note Modifies ARGV by calling handle_sal_file and may clear bad_args
+        # @note Early-exit operations (help, version, SGE/SAL links, install) call
+        #   exit and do not return
+        # @api private
         def self.execute
           @argv_options = {}
           bad_args = []
@@ -78,9 +91,11 @@ module Lich
               @argv_options[:reconnect_delay] = $1
             when /^--host=(.+):(.+)$/
               @argv_options[:host] = { domain: $1, port: $2.to_i }
+            when /^--bind-address=(.+)$/i
+              @argv_options[:bind_address] = $1
             when /^--hosts-file=(.+)$/i
               @argv_options[:hosts_file] = $1
-            when /^--no-gui$/i
+            when /^--no-(?:gui|gtk)$/i
               @argv_options[:gui] = false
             when /^--gui$/i
               @argv_options[:gui] = true
@@ -98,6 +113,8 @@ module Lich
               @argv_options[:frontend_command] = $1
             when /^--save$/i
               @argv_options[:save] = true
+            when /^--pipe$/i
+              @argv_options[:pipe] = true
             when /^--wine(?:\-prefix)?=.+$/i
               nil # already used when defining the Wine module
             when /\.sal$|Gse\.~xt$/i
@@ -105,6 +122,8 @@ module Lich
               bad_args.clear
             when /^--dark-mode=(true|false|on|off)$/i
               handle_dark_mode($1)
+            when /^--saga$/i
+              $frontend = 'saga'
             else
               bad_args.push(arg)
             end
@@ -113,11 +132,16 @@ module Lich
           @argv_options
         end
 
-        # Handles the processing of .sal files from command-line arguments.
+        # Records a SAL or Gse.~xt launch file path in argv_options, resolving
+        # Windows paths and Wine prefix translations as needed.
         #
-        # This method checks if the specified .sal file exists and updates the @argv_options accordingly.
-        # @param arg [String] the .sal file argument from ARGV
+        # Sets :sal key to the resolved file path. If the file does not exist,
+        # attempts to extract a Windows path from ARGV, then (if Wine is defined)
+        # translates the path to a Wine drive_c location.
+        #
+        # @param arg [String] the SAL or .~xt file path argument
         # @return [void]
+        # @api private
         def self.handle_sal_file(arg)
           @argv_options[:sal] = arg
           unless File.exist?(@argv_options[:sal])
@@ -128,33 +152,31 @@ module Lich
           end
         end
 
-        # Handles the dark mode setting based on command-line arguments.
+        # Sets dark mode flag based on --dark-mode argument value.
         #
-        # This method updates the dark mode setting in @argv_options and applies it to the GTK settings if applicable.
-        # @param value [String] the value indicating dark mode preference (e.g., "true", "false")
+        # Converts string values like "true", "on", "false", "off" to a strict boolean.
+        #
+        # @param value [String] the regex capture group from --dark-mode=(true|false|on|off)
         # @return [void]
+        # @api private
         def self.handle_dark_mode(value)
-          # Regex returns Integer/nil; force strict boolean for persisted settings.
+          # Regex returns Integer/nil; force strict boolean for startup handling.
           @argv_options[:dark_mode] = !!(value =~ /^(true|on)$/i)
-          if defined?(Gtk)
-            @theme_state = Lich.track_dark_mode = @argv_options[:dark_mode]
-            Gtk::Settings.default.gtk_application_prefer_dark_theme = true if @theme_state == true
-          end
         end
 
-        # Prints help text for the CLI.
+        # Prints help text to stdout, optionally for a specific topic.
         #
-        # This method displays help information based on the provided topic.
-        # @param topic [String, nil] the specific help topic to display
+        # @param topic [String, nil] optional help topic name; if nil, prints general help
         # @return [void]
+        # @api private
         def self.print_help(topic = nil)
           puts HelpText.render(topic)
         end
 
-        # Prints the version information of the Lich project.
+        # Prints version information and copyright notices to stdout.
         #
-        # This method outputs the version and copyright information to the console.
         # @return [void]
+        # @api private
         def self.print_version
           puts "The Lich, version #{LICH_VERSION}"
           puts ' (an implementation of the Ruby interpreter by Yukihiro Matsumoto designed to be a \'script engine\' for text-based MUDs)'
@@ -168,23 +190,67 @@ module Lich
         end
       end
 
-      # Module for handling side effects of command-line options.
-      #
-      # This module executes actions that result from the parsed command-line options.
+      # Apply side effects: dark mode, hosts-dir, bind-address, detachable-client
       module SideEffects
+        # Applies side effects for dark mode, hosts directory, bind address,
+        # detachable client configuration, and SAL launch file handling.
+        #
+        # Mutates argv_options by adding or resolving :bind_address,
+        # :detachable_client_host, :detachable_client_port, :hosts_dir, and
+        # processing :sal launch files. May exit with error status if
+        # configuration is invalid.
+        #
+        # @param argv_options [Hash] mutable option hash from OptionParser.execute
+        # @return [Hash] the mutated argv_options hash
+        # @api private
         def self.execute(argv_options)
+          StartupTheme.apply(argv_options)
           handle_hosts_dir(argv_options)
+          handle_bind_address(argv_options)
           handle_detachable_client(argv_options)
           handle_sal_launch(argv_options)
           argv_options
         end
 
+        # Surface a message on both channels every bind handler uses.
+        def self.announce(level, message)
+          $stdout.puts "#{level}: #{message}"
+          Lich.log "#{level}: #{message}"
+        end
+
+        # Fatal argv problem: tell the user everywhere, then stop.
+        def self.die(message)
+          announce('error', message)
+          exit 1
+        end
+
+        # --bind-address shares the keyword vocabulary of --detachable-client
+        # hosts (tailscale/lan/any). Resolve it once, up front, so the
+        # frontend listener, the --game proxy, and a detachable client that
+        # inherits it all bind the same concrete address -- and so the
+        # exposure warning appears exactly once.
+        def self.handle_bind_address(argv_options)
+          result = BindAddressOption.apply(argv_options[:bind_address])
+          die(result.error) if result.error
+          return unless result.host
+
+          argv_options[:bind_address] = result.host
+          announce('warning', result.warning) if result.warning
+        end
+
+        # Processes --hosts-dir argument and sets argv_options[:hosts_dir] if valid.
+        #
+        # Extracts the directory path from --hosts-dir=PATH in ARGV, validates
+        # existence, normalizes slashes, and removes the argument from ARGV.
+        # Warns if the directory does not exist but does not exit.
+        #
+        # @param argv_options [Hash] mutable option hash
+        # @return [void]
+        # @api private
         def self.handle_hosts_dir(argv_options)
-          if (arg = ARGV.find { |a| a == '--hosts-dir' })
-            i = ARGV.index(arg)
-            ARGV.delete_at(i)
-            hosts_dir = ARGV[i]
-            ARGV.delete_at(i)
+          if (arg = ARGV.find { |a| a =~ /^--hosts-dir=(.+)$/i })
+            hosts_dir = arg[/^--hosts-dir=(.+)$/i, 1]
+            ARGV.delete(arg)
             if hosts_dir && File.exist?(hosts_dir)
               hosts_dir = hosts_dir.tr('\\', '/')
               hosts_dir += '/' unless hosts_dir[-1..-1] == '/'
@@ -195,18 +261,51 @@ module Lich
           end
         end
 
+        # Processes --detachable-client argument and configures host and port.
+        #
+        # Parses --detachable-client=HOST:PORT or --detachable-client=PORT,
+        # resolving the host via BindHostResolver (unless port-only), and
+        # inherits :bind_address from argv_options if no explicit host is given.
+        # Sets :detachable_client_host and :detachable_client_port in argv_options.
+        #
+        # @param argv_options [Hash] mutable option hash
+        # @return [void]
+        # @raise [DetachableClientTarget::ParseError] if argument format is invalid
+        # @raise [Lich::Common::BindHostResolver::Error] if host resolution fails
+        # @api private
         def self.handle_detachable_client(argv_options)
-          argv_options[:detachable_client_host] = '127.0.0.1'
+          argv_options[:detachable_client_host] = argv_options[:bind_address] || '127.0.0.1'
           argv_options[:detachable_client_port] = nil
-          if (arg = ARGV.find { |a| a =~ /^\-\-detachable\-client=[0-9]+$/ })
-            argv_options[:detachable_client_port] = /^\-\-detachable\-client=([0-9]+)$/.match(arg).captures.first.to_i
-          elsif (arg = ARGV.find { |a| a =~ /^\-\-detachable\-client=auto$/i })
-            argv_options[:detachable_client_port] = 0
-          elsif (arg = ARGV.find { |a| a =~ /^\-\-detachable\-client=((?:\d{1,3}\.){3}\d{1,3}):([0-9]{1,5})$/ })
-            argv_options[:detachable_client_host], argv_options[:detachable_client_port] = /^\-\-detachable\-client=((?:\d{1,3}\.){3}\d{1,3}):([0-9]{1,5})$/.match(arg).captures
+          arg = ARGV.find { |a| a.start_with?('--detachable-client=') }
+          return unless arg
+
+          begin
+            target = DetachableClientTarget.parse(arg.split('=', 2).last)
+            if target.host
+              resolution = Lich::Common::BindHostResolver.resolve(target.host)
+              argv_options[:detachable_client_host] = resolution.host
+              announce('warning', resolution.warning) if resolution.warning
+            end
+            # (The port-only form inherits --bind-address, which
+            # handle_bind_address already resolved and warned about; the
+            # loopback default warrants no warning.)
+            argv_options[:detachable_client_port] = target.port
+          rescue DetachableClientTarget::ParseError, Lich::Common::BindHostResolver::Error => e
+            die(e.message)
           end
         end
 
+        # Launches a SAL or Gse.~xt file if argv_options[:sal] is set.
+        #
+        # Validates file existence, looks up the Simutronics launcher, and
+        # executes it via Win32.ShellExecute (Windows), Wine (if defined),
+        # or system() (other platforms). Logs and shows error messages, then exits
+        # on failure. Exits after successful launch.
+        #
+        # @param argv_options [Hash] option hash with optional :sal key
+        # @return [void]
+        # @note Exits on file not found, launcher not found, or after successful launch
+        # @api private
         def self.handle_sal_launch(argv_options)
           return unless argv_options[:sal]
 
@@ -231,7 +330,7 @@ module Lich
               dir = dir_file.slice(/^.*[\\\/]/)
               file = dir_file.sub(/^.*[\\\/]/, '')
               operation = (Win32.isXP? ? 'open' : 'runas')
-              Win32.ShellExecute(lpOperation: operation, lpFile: file, lpDirectory: dir, lpParameters: param)
+              r = Win32.ShellExecute(lpOperation: operation, lpFile: file, lpDirectory: dir, lpParameters: param)
               Lich.log "error: Win32.ShellExecute returned #{r}; Win32.GetLastError: #{Win32.GetLastError}" if r < 33
             elsif defined?(Wine)
               system("#{Wine::BIN} #{launcher_cmd}")
@@ -243,15 +342,18 @@ module Lich
         end
       end
 
-      # Module for handling game connection configurations.
-      #
-      # This module manages the connection settings based on the command-line arguments.
+      # Handle game connection configuration
       module GameConnection
-        # Executes the game connection configuration based on command-line options.
+        # Routes game connection configuration based on ARGV flags.
         #
-        # This method determines the appropriate game connection settings based on the provided arguments.
-        # @param processed_options [Hash] the processed command-line options
-        # @return [Hash] the updated processed options with game connection settings
+        # Checks for explicit -g/--game, --shattered, --fallen, and game-specific
+        # flags (--gemstone, --dragonrealms) in ARGV and delegates to the
+        # corresponding handler. Sets :game_host and :game_port in processed_options.
+        # Falls through to set both to nil if no route matches.
+        #
+        # @param processed_options [Hash] mutable option hash
+        # @return [Hash] the mutated processed_options hash
+        # @api private
         def self.execute(processed_options)
           if (arg = ARGV.find { |a| a == '-g' || a == '--game' })
             handle_explicit_game_connection(arg, processed_options)
@@ -271,106 +373,160 @@ module Lich
           processed_options
         end
 
+        # Handles explicit -g/--game HOST:PORT connection configuration.
+        #
+        # Extracts host and port from the argument following -g or --game in ARGV,
+        # determines the frontend from other ARGV flags, and initializes the
+        # frontend from the parent process unless --detachable-client is present.
+        #
+        # @param arg [String] the -g or --game flag itself
+        # @param processed_options [Hash] mutable option hash
+        # @return [void]
+        # @api private
         def self.handle_explicit_game_connection(arg, processed_options)
           processed_options[:game_host], processed_options[:game_port] = ARGV[ARGV.index(arg) + 1].split(':')
           processed_options[:game_port] = processed_options[:game_port].to_i
           $frontend = determine_frontend
           # Initialize frontend from parent process unless using detachable client
-          unless ARGV.any? { |a| a =~ /^--detachable-client/ }
+          unless ARGV.any? { |a| a =~ /^--detachable-client/i }
             Lich::Common::Frontend.init_from_parent(Process.ppid)
           end
         end
 
+        # Configures GemStone IV connection details based on ARGV flags.
+        #
+        # Sets host to storm.gs4.game.play.net, port based on --platinum, --test,
+        # and --stormfront flags, and determines the frontend (stormfront, wizard,
+        # avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.
+        #
+        # @param processed_options [Hash] mutable option hash; sets :game_host and :game_port
+        # @return [void]
+        # @api private
         def self.handle_gemstone_connection(processed_options)
           if ARGV.include?('--platinum')
             $platinum = true
-            if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+            if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
               processed_options[:game_host] = 'storm.gs4.game.play.net'
               processed_options[:game_port] = 10124
               $frontend = 'stormfront'
             else
               processed_options[:game_host] = 'storm.gs4.game.play.net'
               processed_options[:game_port] = 10124
-              $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : 'wizard'
+              $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
             end
           else
             $platinum = false
-            if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+            if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
               processed_options[:game_host] = 'storm.gs4.game.play.net'
               processed_options[:game_port] = ARGV.include?('--test') ? 10624 : 10024
               $frontend = 'stormfront'
             else
               processed_options[:game_host] = 'storm.gs4.game.play.net'
               processed_options[:game_port] = ARGV.include?('--test') ? 10624 : 10024
-              $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : 'wizard'
+              $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
             end
           end
         end
 
+        # Configures Shattered connection details.
+        #
+        # Sets host to storm.gs4.game.play.net and port to 10324.
+        # Determines frontend from ARGV (stormfront or wizard/avalon/frostbite/saga default).
+        # Sets $platinum to false.
+        #
+        # @param processed_options [Hash] mutable option hash; sets :game_host and :game_port
+        # @return [void]
+        # @api private
         def self.handle_shattered_connection(processed_options)
           $platinum = false
-          if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+          if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
             processed_options[:game_host] = 'storm.gs4.game.play.net'
             processed_options[:game_port] = 10324
             $frontend = 'stormfront'
           else
             processed_options[:game_host] = 'storm.gs4.game.play.net'
             processed_options[:game_port] = 10324
-            $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : 'wizard'
+            $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
           end
         end
 
+        # Configures Fallen connection details.
+        #
+        # Sets host to dr.simutronics.net and port to 11324.
+        # Determines frontend from ARGV (stormfront, genie, or wizard/avalon/frostbite/saga default).
+        # Sets $platinum to false.
+        #
+        # @param processed_options [Hash] mutable option hash; sets :game_host and :game_port
+        # @return [void]
+        # @api private
         def self.handle_fallen_connection(processed_options)
           $platinum = false
-          if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+          if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
             processed_options[:game_host] = 'dr.simutronics.net'
             processed_options[:game_port] = 11324
             $frontend = 'stormfront'
-          elsif ARGV.grep(/--genie/).any?
+          elsif ARGV.grep(/--genie/i).any?
             processed_options[:game_host] = 'dr.simutronics.net'
             processed_options[:game_port] = 11324
             $frontend = 'genie'
           else
             processed_options[:game_host] = 'dr.simutronics.net'
             processed_options[:game_port] = 11324
-            $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : ARGV.any? { |a| a == '--frostbite' } ? 'frostbite' : 'wizard'
+            $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
           end
         end
 
+        # Configures DragonRealms connection details based on ARGV flags.
+        #
+        # Sets host to dr.simutronics.net, port based on --platinum, --test,
+        # and --stormfront/--genie flags, and determines frontend from ARGV.
+        # Sets $platinum global accordingly.
+        #
+        # @param processed_options [Hash] mutable option hash; sets :game_host and :game_port
+        # @return [void]
+        # @api private
         def self.handle_dragonrealms_connection(processed_options)
           if ARGV.include?('--platinum')
             $platinum = true
-            if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+            if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = 11124
               $frontend = 'stormfront'
-            elsif ARGV.grep(/--genie/).any?
+            elsif ARGV.grep(/--genie/i).any?
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = 11124
               $frontend = 'genie'
             else
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = 11124
-              $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : ARGV.any? { |a| a == '--frostbite' } ? 'frostbite' : 'wizard'
+              $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
             end
           else
             $platinum = false
-            if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
+            if ARGV.any? { |a| a =~ /^-s$/i || a =~ /^--stormfront$/i }
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = ARGV.include?('--test') ? 11624 : 11024
               $frontend = 'stormfront'
-            elsif ARGV.grep(/--genie/).any?
+            elsif ARGV.grep(/--genie/i).any?
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = ARGV.include?('--test') ? 11624 : 11024
               $frontend = 'genie'
             else
               processed_options[:game_host] = 'dr.simutronics.net'
               processed_options[:game_port] = ARGV.include?('--test') ? 11624 : 11024
-              $frontend = ARGV.any? { |a| a == '--avalon' } ? 'avalon' : ARGV.any? { |a| a == '--frostbite' } ? 'frostbite' : 'wizard'
+              $frontend = ARGV.any? { |a| a =~ /^--avalon$/i } ? 'avalon' : ARGV.any? { |a| a =~ /^--frostbite$/i } ? 'frostbite' : ARGV.any? { |a| a =~ /^--saga$/i } ? 'saga' : 'wizard'
             end
           end
         end
 
+        # Returns the frontend name based on ARGV flags.
+        #
+        # Checks for -s/--stormfront, -w/--wizard, --avalon, --frostbite, and --saga
+        # in ARGV in that order of precedence.
+        #
+        # @return [String] the frontend name: "stormfront", "wizard", "avalon",
+        #   "frostbite", "saga", or "unknown" if no flag matches
+        # @api private
         def self.determine_frontend
           if ARGV.any? { |a| a == '-s' || a == '--stormfront' }
             'stormfront'
@@ -380,16 +536,15 @@ module Lich
             'avalon'
           elsif ARGV.any? { |a| a == '--frostbite' }
             'frostbite'
+          elsif ARGV.any? { |a| a == '--saga' }
+            'saga'
           else
             'unknown'
           end
         end
       end
 
-      # Processes the command-line arguments for the Lich project.
-      #
-      # This method orchestrates the normalization, parsing, and application of command-line options.
-      # @return [Hash] the final processed command-line options
+      # Main orchestrator: Step 1-4 of ARGV processing
       def self.process_argv
         # Step 1: Clean launcher.exe
         ARGV.delete_if { |arg| arg =~ /launcher\.exe/i }

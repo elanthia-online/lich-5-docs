@@ -1,10 +1,23 @@
+# frozen_string_literal: true
 
+require File.join(LIB_DIR, 'common', 'xml_entities.rb')
+
+# Namespace for the Lich 5 scripting engine and its subsystems.
 module Lich
+  # Namespace for DragonRealms-specific scripting APIs.
   module DragonRealms
-    # Provides methods for parsing DragonRealms server output.
+    # Parser for DragonRealms server output. Processes game lines and updates
+    # global game state objects (DRStats, DRRoom, DRSkill, DRSpells, etc.).
     #
-    # @see Lich::DragonRealms
+    # Handles event flag registration, game shutdown announcements, experience
+    # modifier tracking, and ability/spell parsing for all character types
+    # (mages, barbarians, thieves).
     module DRParser
+      # Frozen regular expression patterns for parsing DragonRealms game output.
+      #
+      # Patterns are organized by feature: experience tracking, character stats,
+      # room state, spellbooks, barbarian abilities, thief khri, and other commands
+      # like `inv search`, `exp mods`, and `played`.
       module Pattern
         ExpColumns = /(?:\s*(?<skill>[a-zA-Z\s]+)\b:\s*(?<rank>\d+)\s+(?<percent>\d+)%\s+(?<rate>[a-zA-Z\s]+)\b)/.freeze
         BriefExpOn = %r{<component id='exp .*?<d cmd='skill (?<skill>[a-zA-Z\s]+)'.*:\s+(?<rank>\d+)\s+(?<percent>\d+)%\s*\[\s?(?<rate>\d+)\/34\].*?<\/component>}.freeze
@@ -15,7 +28,8 @@ module Lich
         TDPValue = /You have (?<tdp>\d+) TDPs\./.freeze
         EncumbranceValue = /^\s*Encumbrance\s+:\s+(?<encumbrance>[\w\s'?!]+)$/.freeze
         LuckValue = /^\s*Luck\s+:\s+.*\((?<luck>[-\d]+)\/3\)/.freeze
-        BalanceValue = /^(?:You are|\[You're) (?<balance>#{Regexp.union(DR_BALANCE_VALUES)}) balanced?/.freeze
+        BalanceValue = /^(?:You are|\[You're)(?:.*,)? (?<balance>#{Regexp.union(DR_BALANCE_VALUES)}) balanced?\b/.freeze
+        PositionValue = /balanced? (?:and|with) (?<position>#{Regexp.union(DR_POSITION_VALUES.keys)})/.freeze
         ExpClearMindstate = %r{<component id='exp (?<skill>[a-zA-Z\s]+)'><\/component>}.freeze
         RoomPlayers = %r{\'room players\'>Also here: (?<players>.*)\.</component>}.freeze
         RoomPlayersEmpty = %r{\'room players\'></component>}.freeze
@@ -32,12 +46,20 @@ module Lich
         PlayedAccount = /^(?:<.*?\/>)?Account Info for (?<account>.+):/.freeze
         PlayedSubscription = /Current Account Status: (?<subscription>F2P|Basic|Premium|Platinum)/.freeze
         LastLogoff = /^\s+Logoff :  (?<weekday>[A-Z][a-z]{2}) (?<month>[A-Z][a-z]{2}) (?<day>[\s\d]{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) ET (?<year>\d{4})/.freeze
-        RoomIDOff = /^You will no longer see room IDs when LOOKing in the game and room windows\./.freeze
         Rested_EXP = %r{^<component id='exp rexp'>Rested EXP Stored:\s*(?<stored>.*?)\s*Usable This Cycle:\s*(?<usable>.*?)\s*Cycle Refreshes:\s*(?<refresh>.*)</component>}.freeze
         Rested_EXP_F2P = %r{^<component id='exp rexp'>\[Unlock Rested Experience}.freeze
         TDPValue_XPWindow = %r{^<component id='exp tdp'>\s*TDPs:\s*(?<tdp>\d+)</component>}.freeze
         FavorValue_XPWindow = %r{^<component id='exp favor'>\s*Favors:\s*(?<favor>\d+)</component>}.freeze
         InventoryGetStart = %r{You rummage about your person, looking for}.freeze
+
+        # Scheduled shutdown announcement, e.g. "Announcement: DragonRealms will
+        # be shutting down in 15 minutes for routine maintenance." Anchored to
+        # the start of the line (with the optional "Announcement:" prefix) so
+        # quoted or chat text containing the phrase cannot trigger it. Only the
+        # stem is stable: the count drops to "1 minute" (singular) and the
+        # reason/trailing text varies ("...as soon as possible."), so match the
+        # stem and capture the count.
+        GameShutdown = /^(?:Announcement:\s+)?DragonRealms will be shutting down in (?<minutes>\d+) minutes?\b/.freeze
 
         # Spell parsing patterns (check_known_spells)
         OutputClassMono = %r{^<output class="mono"/>}.freeze
@@ -69,9 +91,14 @@ module Lich
       @@parsing_exp_mods_output = false
       @@parsing_inventory_get = false
 
-      # Checks the server string for events and updates flags accordingly.
-      # @param server_string [String] the server output string to check
-      # @return [String] the original server string
+      # Wall-clock time the game is expected to go down for maintenance, set
+      # from a shutdown announcement. nil when no shutdown is pending.
+      @@shutdown_at = nil
+
+      # Checks server output against registered Flag matchers.
+      # Updates Flags.flags hash when a pattern matches.
+      # @param server_string [String] A line of server output to check
+      # @return [String] The unmodified server_string
       def self.check_events(server_string)
         Flags.matchers.each do |key, regexes|
           regexes.each do |regex|
@@ -84,9 +111,104 @@ module Lich
         server_string
       end
 
-      # Populates inventory items from the server output string.
-      # @param server_string [String] the server output string containing inventory data
-      # @return [String] the original server string
+      # Detects scheduled maintenance shutdown notices and records the target
+      # time, so any script can read DRParser.shutting_down? and
+      # DRParser.shutdown_minutes to wind down cleanly before the disconnect.
+      # Recomputing the target on every announcement keeps the estimate
+      # accurate as the warnings count down; a nil count (a final notice with
+      # no number) means shutdown is now.
+      # @param line [String] A line of server output to check
+      # @return [void]
+      def self.check_game_shutdown(line)
+        return unless (match = line.match(Pattern::GameShutdown))
+
+        minutes = match[:minutes]&.to_i
+        @@shutdown_at = minutes ? Time.now + (minutes * 60) : Time.now
+      end
+
+      # @return [Boolean] true once a maintenance shutdown has been announced
+      def self.shutting_down?
+        !@@shutdown_at.nil?
+      end
+
+      # Minutes remaining until the announced shutdown, counted down in real
+      # time (never negative). nil when no shutdown is pending.
+      # @return [Integer, nil]
+      def self.shutdown_minutes
+        return nil unless @@shutdown_at
+
+        [(@@shutdown_at - Time.now) / 60.0, 0].max.ceil
+      end
+
+      # Ox::Sax handler that extracts the cmd attribute and item name from the first
+      # <d> element of an inventory line, e.g. <d cmd='get #12345'>a small pouch</d>.
+      # Streaming means the element is captured before any trailing prose, which is
+      # not well-formed XML; the resulting parse error is swallowed by #error.
+      class InventoryItemSax
+        attr_reader :cmd, :name
+
+        # Initializes the SAX handler with parsing state ready to extract the cmd
+        # attribute and item name from the first <d> element in an inventory line.
+        #
+        # @return [void]
+        def initialize
+          @in_d = false
+          @done = false
+          @cmd = nil
+          @name = nil
+        end
+
+        # Records when a <d> element begins, marking it for attribute and text capture.
+        #
+        # @param name [String] the XML element name (e.g., "d", "output")
+        # @return [void]
+        # @api private
+        def start_element(name)
+          @in_d = true if name == "d" && !@done
+        end
+
+        # Captures the cmd attribute from an open <d> element.
+        #
+        # @param name [String] the attribute name (e.g., "cmd")
+        # @param value [String] the attribute value (e.g., "get #12345 in #67890")
+        # @return [void]
+        # @api private
+        def attr(name, value)
+          @cmd = value if @in_d && name == "cmd"
+        end
+
+        # Records the item name from the text content of a <d> element.
+        # Only captures the first text node; subsequent text is ignored.
+        #
+        # @param value [String] the text content of the element
+        # @return [void]
+        # @api private
+        def text(value)
+          @name = value if @in_d && @name.nil?
+        end
+
+        # Marks the end of a <d> element and stops parsing after the first one.
+        # Subsequent <d> elements are ignored; only the leading item is extracted.
+        #
+        # @param name [String] the XML element name
+        # @return [void]
+        # @api private
+        def end_element(name)
+          return unless @in_d && name == "d"
+
+          @in_d = false
+          @done = true # ignore any later <d> elements; we only want the leading item
+        end
+
+        # Trailing prose after </d> is not valid XML. We have already captured the
+        # element by the time Ox reports it, so the error is intentionally ignored.
+        def error(_message, _line, _column); end
+      end
+
+      # Parses inventory search output and populates GameObj inventory.
+      # Called for each line when @@parsing_inventory_get is true.
+      # @param server_string [String] A line of server output
+      # @return [String] The unmodified server_string
       def self.populate_inventory_get(server_string)
         case server_string
         when Pattern::OutputClassEmpty
@@ -97,19 +219,24 @@ module Lich
           # This block parses a single line from the output of the `inv search <string>` verb,
           # which lists items on your character. Each line is an XML-like string.
           # Example: <d cmd='get #12345'>a small pouch</d>
-          if @@parsing_inventory_get && server_string.strip.start_with?('<d cmd=')
-            # The server string is an XML fragment, so we wrap it in a root element to make it parsable.
-            document = REXML::Document.new("<root>#{server_string.strip}</root>")
-            d_element = document.root.elements["d"]
+          if @@parsing_inventory_get && (stripped = server_string.strip).start_with?('<d cmd=')
+            # Pull the cmd attribute and item name out of the line's leading <d> element
+            # with a SAX handler. The element is captured as it streams in, before any
+            # trailing prose (e.g. "... is in your right hand.") -- which is not valid XML
+            # and would break a tree parse -- is reached.
+            handler = InventoryItemSax.new
+            # convert_special: false matches Game.process_xml_data: Ox never turns a
+            # numeric entity into UTF-8. Ox leaves the standard entities literal, so
+            # XmlEntities.decode restores them in the item name below.
+            Ox.sax_parse(handler, stripped, convert_special: false, symbolize: false, skip: :skip_none)
 
-            return unless d_element
+            return server_string unless handler.cmd
 
-            # Extract the item name from the text inside the <d> tag.
-            # Normalize it by lowercasing and removing leading articles ('a', 'an', 'some').
-            item_name = d_element.text.sub(/^(?:a|an|some)\s/, '').strip
+            # Normalize the item name by removing leading articles ('a', 'an', 'some').
+            item_name = Lich::Common::XmlEntities.decode(handler.name.to_s).sub(/^(?:a|an|some)\s/, '').strip
 
             # Extract the command and the unique item ID from the 'cmd' attribute.
-            cmd = d_element.attributes["cmd"].downcase.strip
+            cmd = handler.cmd.to_s.downcase.strip
             id_match = /get (?<itemID>#\d+)(?: in (?<container1>#\d+|[^']+))?(?: in (?<container2>#\d+|[^']+))?/.match(cmd)
             # <!-- Regex to capture item and container IDs: cmd='get (?<itemID>#\d+)(?: in (?<container1>#\d+|[^']+))?(?: in (?<container2>#\d+|[^']+))?' -->
             # <d cmd='get #8286821 in #8286816 in #8286762'>A papyrus parchment</d> is in a black winter cloak crafted from thick cashmere, which is in a scuffed traveler's pack.
@@ -142,9 +269,10 @@ module Lich
         server_string
       end
 
-      # Parses the output from the `exp mods` command and updates skill modifiers.
-      # @param server_string [String] the server output string to parse
-      # @return [String] the original server string
+      # Parses 'exp mods' output and updates DRSkill.exp_modifiers.
+      # Called for each line when @@parsing_exp_mods_output is true.
+      # @param server_string [String] A line of server output
+      # @return [String] The unmodified server_string
       def self.check_exp_mods(server_string)
         # This method parses the output from `exp mods` command
         # and updates the DRSkill.exp_modifiers hash with the skill and value.
@@ -190,9 +318,11 @@ module Lich
         server_string
       end
 
-      # Parses the output from the `spells` command and updates known spells.
-      # @param server_string [String] the server output string to parse
-      # @return [String] the original server string
+      # Parses 'spells' command output for magic users.
+      # Populates DRSpells.known_spells and DRSpells.known_feats.
+      # Handles both column-formatted and non-column output formats.
+      # @param server_string [String] A line of server output
+      # @return [String] The unmodified server_string
       def self.check_known_spells(server_string)
         # This method parses the output from `spells` command for magic users
         # and populates the known spells/feats based on the output.
@@ -291,9 +421,10 @@ module Lich
         server_string
       end
 
-      # Parses the output from the `ability` command for Barbarians and updates known abilities.
-      # @param server_string [String] the server output string to parse
-      # @return [String] the original server string
+      # Parses 'ability' command output for Barbarians.
+      # Populates DRSpells.known_spells (abilities) and DRSpells.known_feats (masteries).
+      # @param server_string [String] A line of server output
+      # @return [String] The unmodified server_string
       def self.check_known_barbarian_abilities(server_string)
         # This method parses the output from `ability` command for Barbarians
         # and populates the known spells/feats based on the known abilities/masteries.
@@ -336,9 +467,10 @@ module Lich
         server_string
       end
 
-      # Parses the output from the `ability` command for Thieves and updates known khri.
-      # @param server_string [String] the server output string to parse
-      # @return [String] the original server string
+      # Parses 'ability' command output for Thieves.
+      # Populates DRSpells.known_spells with known khri abilities.
+      # @param server_string [String] A line of server output
+      # @return [String] The unmodified server_string
       def self.check_known_thief_khri(server_string)
         # This method parses the output from `ability` command for Thieves
         # and populates the known spells/feats based on the known khri.
@@ -368,12 +500,14 @@ module Lich
         server_string
       end
 
-      # Parses a line of server output and updates game state accordingly.
-      # @param line [String] the server output line to parse
+      # Main parser entry point. Processes a line of server output
+      # and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).
+      # @param line [String] A line of server output to parse
       # @return [void]
       def self.parse(line)
         check_events(line)
         begin
+          check_game_shutdown(line)
           if Pattern::InventoryGetStart.match?(line)
             GameObj.clear_inv
             GameObj.clear_all_containers
@@ -397,6 +531,9 @@ module Lich
             DRStats.tdps = match[:tdp].to_i
           elsif (match = line.match(Pattern::BalanceValue))
             DRStats.balance = DR_BALANCE_VALUES.index(match[:balance])
+            if (position_match = line.match(Pattern::PositionValue))
+              DRStats.position = DR_POSITION_VALUES[position_match[:position]]
+            end
           elsif Pattern::RoomPlayersEmpty.match?(line)
             DRRoom.pcs = []
           elsif (match = line.match(Pattern::RoomPlayers))
@@ -491,10 +628,6 @@ module Lich
               end
               $last_logoff = Time.new(match[:year].to_i, month, match[:day].to_i, match[:hour].to_i, match[:minute].to_i, match[:second].to_i, tz).getlocal
             end
-          elsif Pattern::RoomIDOff.match?(line)
-            put("flag showroomid on")
-            Lich::Messaging.msg("bold", "DRParser: Lich requires ShowRoomID to be ON for mapping to work, please do not turn this off.")
-            Lich::Messaging.msg("plain", "DRParser: If you wish to hide the Real ID#, you can toggle it off by doing ;display flaguid")
           elsif (match = line.match(Pattern::Rested_EXP))
             DRSkill.update_rested_exp(match[:stored].strip, match[:usable].strip, match[:refresh].strip)
           elsif Pattern::Rested_EXP_F2P.match?(line)

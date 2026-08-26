@@ -1,13 +1,16 @@
+# frozen_string_literal: true
 
-# Module containing constants and data structures for the Lich project.
-#
-# @see Lich::DragonRealms for DragonRealms specific constants.
+# Namespace for the Lich scripting engine and its game-specific extensions.
 module Lich
+  # Namespace for DragonRealms-specific constants, data structures, and utilities.
   module DragonRealms
-    # Array of learning rates used in the DragonRealms.
+    # Learning rate progression levels in DragonRealms, from slowest to fastest.
     #
-    # @example Learning rates
-    #   DR_LEARNING_RATES.each { |rate| puts rate }
+    # These levels are used to interpret the "learning" component of skill experience
+    # displays and are ordered from "clear" (no experience gain) to "mind lock" (maximum
+    # learning rate).
+    #
+    # @return [Array<String>] immutable array of learning rate names
     DR_LEARNING_RATES = [
       'clear',
       'dabbling',
@@ -47,13 +50,14 @@ module Lich
     ].freeze
 
     # Length of the longest learning rate name, used for padding in exp display
-    # Length of the longest learning rate name, used for padding in experience display.
     DR_LONGEST_LEARNING_RATE_LENGTH = DR_LEARNING_RATES.max_by(&:length).length
 
-    # Array of balance values used in the DragonRealms.
+    # Combat balance modifiers in DragonRealms, reflecting body control and stance.
     #
-    # @example Balance values
-    #   DR_BALANCE_VALUES.each { |value| puts value }
+    # These values describe how well-balanced a combatant is, independent of positional
+    # advantage against an opponent. Used to interpret combat status messages.
+    #
+    # @return [Array<String>] immutable array of balance descriptions
     DR_BALANCE_VALUES = [
       'completely',
       'hopelessly',
@@ -69,10 +73,42 @@ module Lich
       'incredibly'
     ].freeze
 
-    # Hash containing skill data for various skillsets in DragonRealms.
+    # Combat positioning relative to your opponent, captured from the balance
+    # status line (e.g. "[You're solidly balanced and in good position.]").
+    # Stored as a signed magnitude: positive means you hold the advantage,
+    # negative means your opponent does, and 0 is an even contest. The scale is
+    # symmetric, and the two "overwhelming opponent" phrasings map to the same
+    # value.
+    DR_POSITION_VALUES = {
+      'opponent overwhelming you'        => -9,
+      'opponent dominating'              => -8,
+      'opponent in excellent position'   => -7,
+      'opponent in superior position'    => -6,
+      'opponent in very strong position' => -5,
+      'opponent in strong position'      => -4,
+      'opponent in good position'        => -3,
+      'opponent in better position'      => -2,
+      'opponent has slight advantage'    => -1,
+      'no advantage'                     => 0,
+      'have slight advantage'            => 1,
+      'in better position'               => 2,
+      'in good position'                 => 3,
+      'in strong position'               => 4,
+      'in very strong position'          => 5,
+      'in superior position'             => 6,
+      'in excellent position'            => 7,
+      'in dominating position'           => 8,
+      'overwhelming opponent'            => 9,
+      'overwhelming your opponent'       => 9
+    }.freeze
+
+    # Canonical skill hierarchy and guild-specific skill aliases for DragonRealms.
     #
-    # @example Accessing skills
-    #   DR_SKILLS_DATA[:skillsets]['Armor']
+    # Contains two top-level keys:
+    # - `skillsets`: a [Hash] mapping skill categories ("Armor", "Lore", "Weapon", "Magic", "Survival") to arrays of individual skill names
+    # - `guild_skill_aliases`: a [Hash] mapping guild names to their primary magic overrides (e.g., "Cleric" maps "Primary Magic" to "Holy Magic")
+    #
+    # @return [Hash] immutable nested structure with symbolized and stringified keys
     DR_SKILLS_DATA = {
       skillsets: {
         'Armor'    => [
@@ -171,15 +207,25 @@ module Lich
       }.freeze
     }.freeze
 
-    # Array of bank names in the Kronar region.
+    # Towns in DragonRealms where Kronars (the primary currency) can be exchanged.
+    #
+    # @return [Array<String>] immutable array of town names
     KRONAR_BANKS = ['Crossings', 'Dirge', 'Ilaya Taipa', 'Leth Deriel'].freeze
+    # Towns in DragonRealms where Lirums (the eastern currency) can be exchanged.
+    #
+    # @return [Array<String>] immutable array of town names
     LIRUM_BANKS = ["Aesry Surlaenis'a", "Hara'jaal", "Mer'Kresh", "Muspar'i", 'Ratha', 'Riverhaven', "Rossman's Landing", 'Therenborough', 'Throne City'].freeze
+    # Towns in DragonRealms where Dokoras (the southern currency) can be exchanged.
+    #
+    # @return [Array<String>] immutable array of town names
     DOKORA_BANKS = ['Ain Ghazal', 'Boar Clan', "Chyolvea Tayeu'a", 'Hibarnhvidar', 'Fang Cove', "Raven's Point", 'Shard'].freeze
 
-    # Hash mapping bank names to their titles in the DragonRealms.
+    # Room titles of bank deposit windows in DragonRealms towns, indexed by town name.
     #
-    # @example Accessing bank titles
-    #   BANK_TITLES['Crossings']
+    # Maps each town to an array of full room titles (e.g., "[[Provincial Bank, Teller]]").
+    # Used to locate and identify bank deposit windows when depositing or checking balances.
+    #
+    # @return [Hash{String => Array<String>}] immutable mapping from town name to room title array
     BANK_TITLES = {
       "Aesry Surlaenis'a" => ['[[Tona Kertigen, Deposit Window]]'].freeze,
       'Ain Ghazal'        => ['[[Ain Ghazal, Private Depository]]'].freeze,
@@ -203,10 +249,13 @@ module Lich
       'Throne City'       => ['[[Faldesu Exchequer, Teller]]'].freeze
     }.freeze
 
-    # Hash mapping vault names to their titles in the DragonRealms.
+    # Room titles of vault carousel chambers in DragonRealms towns, indexed by town name.
     #
-    # @example Accessing vault titles
-    #   VAULT_TITLES['Crossings']
+    # Maps each town with a vault carousel to its full room title
+    # (e.g., "[[Crossing, Carousel Chamber]]"). Used to locate and identify vault chambers
+    # when managing long-term item storage.
+    #
+    # @return [Hash{String => Array<String>}] immutable mapping from town name to room title array
     VAULT_TITLES = {
       'Crossings'     => ['[[Crossing, Carousel Chamber]]'].freeze,
       'Fang Cove'     => ['[[Fang Cove, Carousel Chamber]]'].freeze,
@@ -226,13 +275,18 @@ module Lich
     # doesn't have Power Monger mastery to see true
     # durations but only vague guestimates.
     # In those situations, we set use this value.
-    # Constant representing an unknown duration for spells or abilities.
     UNKNOWN_DURATION = 1000 unless defined?(UNKNOWN_DURATION)
 
-    # Hash mapping hometown names to their corresponding regular expressions for matching.
+    # Case-insensitive regex patterns for matching DragonRealms hometown abbreviations and aliases.
     #
-    # @example Matching hometowns
-    #   HOMETOWN_REGEX_MAP['Crossing']
+    # Maps each canonical hometown name to a pattern that matches common abbreviations and
+    # full names. Patterns are anchored to word boundaries and support apostrophe/optional-character
+    # variations in names. For example, 'Therenborough' matches /^(theren(borough)?)$/i to accept
+    # both "theren" and "therenborough".
+    #
+    # @return [Hash{String => Regexp}] immutable mapping from canonical town name to regex pattern
+    # @see HOMETOWN_LIST
+    # @see HOMETOWN_REGEX
     HOMETOWN_REGEX_MAP = {
       'Arthe Dale'        => /^(arthe( dale)?)$/i,
       'Crossing'          => /^(cross(ing)?)$/i,
@@ -264,20 +318,32 @@ module Lich
     }.freeze
 
     # List of canonical town names, like 'Therenborough' and 'Langenfirth'.
-    # List of canonical town names, like 'Therenborough' and 'Langenfirth'.
     HOMETOWN_LIST = HOMETOWN_REGEX_MAP.keys.freeze
 
     # Union of regular expressions that match town names, like /^(theren(borough)?)$/i
-    # Union of regular expressions that match town names.
     HOMETOWN_REGEX = Regexp.union(HOMETOWN_REGEX_MAP.values)
 
-    # Array of ordinal numbers as strings.
+    # English ordinal words from "first" through "twentieth".
+    #
+    # Used to parse and convert written ordinal expressions ("first", "third", "tenth") in game text.
+    #
+    # @return [Array<String>] immutable array of ordinal words
     ORDINALS = %w[first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth].freeze
 
-    # Array of currency names used in the DragonRealms.
+    # The three playable currencies in DragonRealms.
+    #
+    # Kronars are primary in western towns; Lirums in the east; Dokoras in the south.
+    #
+    # @return [Array<String>] immutable array of currency names
     CURRENCIES = %w[Kronars Lirums Dokoras].freeze
 
-    # Hash mapping encumbrance descriptions to their corresponding values.
+    # Encumbrance levels in DragonRealms, mapped to numeric burden values.
+    #
+    # Maps descriptive encumbrance states ("None", "Light Burden", "Overburdened", etc.)
+    # to a numeric scale from 0 (no burden) to 11 (maximum burden). Used to interpret
+    # encumbrance status messages and assess character mobility.
+    #
+    # @return [Hash{String => Integer}] immutable mapping from encumbrance description to numeric level
     ENC_MAP = {
       'None'                              => 0,
       'Light Burden'                      => 1,
@@ -293,7 +359,12 @@ module Lich
       "It's amazing you aren't squashed!" => 11
     }.freeze
 
-    # Hash mapping number words to their corresponding integer values.
+    # English number words mapped to their integer values.
+    #
+    # Covers cardinal numbers from "zero" through "ninety" (including teens and common tens).
+    # Used to parse written numbers in game text and convert them to integers.
+    #
+    # @return [Hash{String => Integer}] immutable mapping from word to integer value
     NUM_MAP = {
       'zero'      => 0,
       'one'       => 1,
@@ -325,10 +396,25 @@ module Lich
       'ninety'    => 90
     }.freeze
 
-    # Regular expression for matching various types of boxes.
-    BOX_REGEX = /((?:brass|copper|deobar|driftwood|iron|ironwood|mahogany|oaken|pine|steel|wooden) (?:box|caddy|casket|chest|coffer|crate|skippet|strongbox|trunk))/.freeze
+    # Box wood/material adjectives recognized in rummaged box lists. Players
+    # extend this via the +custom_box_woods+ setting; see
+    # {Lich::DragonRealms::DRC.box_list_to_adj_and_noun}.
+    BOX_WOODS = %w[brass copper deobar driftwood iron ironwood mahogany oaken pine steel wooden].freeze
+    # Box container nouns recognized in rummaged box lists. Players extend this
+    # via the +custom_box_containers+ setting.
+    BOX_CONTAINERS = %w[box caddy casket chest coffer crate skippet strongbox trunk].freeze
+    # Recognizes "<wood> <container>" box descriptions. Built from {BOX_WOODS}
+    # and {BOX_CONTAINERS} so both remain a single source of truth; kept as a
+    # global ($box_regex) for third-party scripts.
+    BOX_REGEX = /((?:#{BOX_WOODS.join('|')}) (?:#{BOX_CONTAINERS.join('|')}))/.freeze
 
-    # Hash mapping mana quality descriptions to their corresponding arrays of strings.
+    # Mana adjectives grouped by mana development tier in DragonRealms.
+    #
+    # Maps each development level ("weak", "developing", "improving", "good") to an array
+    # of adjectives that indicate mana at that tier (e.g., "weak" mana may appear "dim",
+    # "glowing", or "bright"). Used to parse spell descriptions and estimate mana control.
+    #
+    # @return [Hash{String => Array<String>}] immutable mapping from tier to array of adjectives
     MANA_MAP = {
       'weak'       => %w[dim glowing bright].freeze,
       'developing' => %w[faint muted glowing luminous bright].freeze,
@@ -336,12 +422,34 @@ module Lich
       'good'       => %w[faint dim hazy dull muted dusky pale flickering shimmering pulsating glowing lambent shining luminous radiant fulgent brilliant flaring glaring blazing blinding].freeze
     }.freeze
 
-    # Regular expression pattern for matching primary sigils.
+    # Pattern matching primary (tier 1) sigil names in spell descriptions.
+    #
+    # Matches the five primary sigils: abolition, congruence, induction, permutation, rarefaction.
+    #
+    # @return [Regexp] immutable regex matching a primary sigil word
+    # @example
+    #   "abolition sigil" =~ PRIMARY_SIGILS_PATTERN #=> 0
+    #   "congruence sigil" =~ PRIMARY_SIGILS_PATTERN #=> 0
+    # @see SECONDARY_SIGILS_PATTERN
     PRIMARY_SIGILS_PATTERN = /\b(?:abolition|congruence|induction|permutation|rarefaction) sigil\b/.freeze
-    # Regular expression pattern for matching secondary sigils.
+    # Pattern matching secondary (tier 2) sigil names in spell descriptions.
+    #
+    # Matches the ten secondary sigils: antipode, ascension, clarification, decay, evolution,
+    # integration, metamorphosis, nurture, paradox, unity.
+    #
+    # @return [Regexp] immutable regex matching a secondary sigil word
+    # @example
+    #   "antipode sigil" =~ SECONDARY_SIGILS_PATTERN #=> 0
+    #   "unity sigil" =~ SECONDARY_SIGILS_PATTERN #=> 0
+    # @see PRIMARY_SIGILS_PATTERN
     SECONDARY_SIGILS_PATTERN = /\b(?:antipode|ascension|clarification|decay|evolution|integration|metamorphosis|nurture|paradox|unity) sigil\b/.freeze
 
-    # Hash mapping volume descriptions to their corresponding values.
+    # Container volume categories in DragonRealms, mapped to numeric capacity values.
+    #
+    # Maps descriptive size adjectives ("enormous", "tiny", etc.) to numeric volume units.
+    # Used to estimate storage capacity of containers based on their described size.
+    #
+    # @return [Hash{String => Integer}] immutable mapping from volume adjective to capacity value
     VOL_MAP = {
       'enormous' => 20,
       'massive'  => 10,

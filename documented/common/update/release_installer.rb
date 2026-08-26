@@ -8,27 +8,65 @@
   updates and SnapshotManager for backups.
 =end
 
-# Provides utility functions for Lich5.
+# Namespace for the Lich scripting engine.
 #
-# @see Lich::Util for additional utility methods.
+# @see Lich::Util
 module Lich
+  # Namespace for Lich utility modules and classes.
+  #
+  # @see Lich::Util::Update
   module Util
+    # Namespace for release installation and update utilities.
+    #
+    # @see Lich::Util::Update::ReleaseInstaller
     module Update
-      # Handles the installation of Lich5 from GitHub releases.
+      # Installs Lich5 from GitHub releases (stable and beta).
       #
-      # This class manages release announcements, downloads,
-      # Ruby compatibility checks, and file extraction.
-      # It delegates data/script updates to FileUpdater and backups to SnapshotManager.
+      # Handles release announcements, tarball downloads, Ruby compatibility checks,
+      # and file extraction. Delegates to FileUpdater for data/script updates and
+      # SnapshotManager for backups.
+      #
+      # @api public
       class ReleaseInstaller
-        # Top-level files (besides lib/ and lich.rbw) to copy from release archive.
-        # lich.rbw is handled separately due to its dynamic target name.
-        TOP_LEVEL_FILES = %w[Gemfile LICENSE].freeze
+        # Top-level files (besides lib/ and lich.rbw) copied verbatim from the
+        # release/branch archive into LICH_DIR during a self-update. lich.rbw is
+        # handled separately due to its dynamic target name.
+        #
+        # Gemfile.lock travels alongside Gemfile so the resolved dependency set
+        # on disk stays consistent with the Gemfile after an update. Shipping a
+        # new Gemfile without its lock would leave a stale lock that a later
+        # `bundle install` (or any Bundler invocation) has to re-resolve.
+        # Entries absent from the archive are skipped (see #copy_top_level_files).
+        TOP_LEVEL_FILES = %w[Gemfile Gemfile.lock LICENSE].freeze
 
-        # Initializes a new ReleaseInstaller instance.
-        # @param client [Object] the client used to interact with GitHub.
-        # @param resolver [Object] the resolver for versioning.
-        # @param snapshot_manager [Object] the manager for snapshots.
-        # @return [void]
+        # Archive entries that must exist for an extracted download to count as a
+        # structurally valid Lich installation. Deliberately distinct from
+        # TOP_LEVEL_FILES so that optional payload (e.g. Gemfile.lock, which older
+        # release tarballs may omit) never gates an update.
+        REQUIRED_ARCHIVE_ITEMS = %w[lib lich.rbw Gemfile LICENSE].freeze
+        # Matches the REQUIRED_RUBY constant declaration in lib/version.rb.
+        #
+        # Captures the required Ruby version string (e.g., "3.0.0").
+        #
+        # @example
+        #   # Matches lines like:
+        #   # REQUIRED_RUBY = "3.0.0"
+        #   # REQUIRED_RUBY = '3.0.0'
+        #
+        # @see #ruby_upgrade_required?
+        # @see #check_ruby_compatibility
+        REQUIRED_RUBY_PATTERN = /REQUIRED_RUBY\s*=\s*["']([^"']+)["']/.freeze
+        # URL to GemStone IV Lich installation and upgrade documentation.
+        #
+        # Displayed when a Ruby upgrade is required before updating Lich.
+        #
+        # @see #announce
+        # @see #check_ruby_compatibility
+        GEMSTONE_INSTALL_URL = 'https://gswiki.play.net/Lich:Software/Installation'.freeze
+
+        # @param client [GitHubClient] GitHub API client instance
+        # @param resolver [ChannelResolver] channel resolver instance
+        # @param snapshot_manager [SnapshotManager] snapshot manager instance
         def initialize(client, resolver, snapshot_manager)
           @client = client
           @resolver = resolver
@@ -38,13 +76,17 @@ module Lich
           @holder = nil
           @new_features = nil
           @zipfile = nil
+          @release_tag = nil
+          @required_ruby = nil
         end
 
-        # Announces the availability of a new version of Lich5.
+        # Displays announcement if new version available.
+        #
         # @return [void]
-        # @note This method checks the current version and compares it to the latest available version.
         def announce
           prep_update
+          return unless @update_to
+
           if "#{LICH_VERSION}".chr == '5'
             if Gem::Version.new(@current) < Gem::Version.new(@update_to)
               unless @new_features.empty?
@@ -56,7 +98,13 @@ module Lich
                 respond @new_features
                 respond ''
                 respond ''
-                respond "If you are interested in updating, run '#{$clean_lich_char}lich5-update --update' now."
+                if ruby_upgrade_required?
+                  respond "Lich version #{@update_to} requires Ruby #{@required_ruby} or higher."
+                  respond "Your current Ruby version is #{RUBY_VERSION}."
+                  respond "Upgrade Ruby before updating Lich: #{GEMSTONE_INSTALL_URL}"
+                else
+                  respond "If you are interested in updating, run '#{$clean_lich_char}lich5-update --update' now."
+                end
                 respond ''
               end
             else
@@ -69,9 +117,9 @@ module Lich
           end
         end
 
-        # Prepares for an update by fetching the latest release information.
+        # Fetches latest stable release metadata from GitHub.
+        #
         # @return [void]
-        # @raise [StandardError] if the latest release payload cannot be read.
         def prep_update
           latest = @client.fetch_github_json("https://api.github.com/repos/#{GITHUB_REPO}/releases/latest")
           if latest.is_a?(Hash) && latest['prerelease']
@@ -92,14 +140,34 @@ module Lich
             respond "Update notice: no release tarball found in assets (prep_update)."
             return
           end
-          @update_to = latest['tag_name'].to_s.sub('v', '')
+          @release_tag = latest['tag_name'].to_s
+          @update_to = @release_tag.sub(/^v/, '')
           @new_features = latest['body'].to_s.gsub(/\#\# What's Changed.+$/m, '').gsub(/<!--[\s\S]*?-->/, '')
           @zipfile = release_asset.fetch('browser_download_url')
         end
 
-        # Prepares for beta testing of the next Lich release.
-        # @param type [String, nil] the type of beta test.
-        # @param requested_file [String, nil] the file requested for the beta test.
+        # Reads the target release's Ruby floor without downloading its archive.
+        # A failed metadata read must not suppress an otherwise valid update notice.
+        #
+        # @return [Boolean] true when the running Ruby is too old for the release
+        def ruby_upgrade_required?
+          return false if @release_tag.nil? || @release_tag.empty?
+
+          version_url = "https://raw.githubusercontent.com/#{GITHUB_REPO}/#{@release_tag}/lib/version.rb"
+          version_content = @client.http_get(version_url, auth: false)
+          match = version_content&.match(REQUIRED_RUBY_PATTERN)
+          return false unless match
+
+          @required_ruby = match[1]
+          Gem::Version.new(RUBY_VERSION) < Gem::Version.new(@required_ruby)
+        rescue ArgumentError
+          false
+        end
+
+        # Handles beta update requests (full install or individual file).
+        #
+        # @param type [String, nil] file type ('script', 'library', 'data') or nil for full beta
+        # @param requested_file [String, nil] file name if type is set
         # @return [void]
         def prep_betatest(type = nil, requested_file = nil)
           if type.nil?
@@ -185,9 +253,9 @@ module Lich
           end
         end
 
-        # Downloads the release update for Lich5.
+        # Downloads and installs latest stable release.
+        #
         # @return [void]
-        # @raise [StandardError] if the update cannot be performed.
         def download_release_update
           prep_update if @update_to.nil? || @update_to.empty?
           if Gem::Version.new("#{@update_to}") <= Gem::Version.new("#{@current}") && !defined?(LICH_BRANCH)
@@ -243,10 +311,11 @@ module Lich
           end
         end
 
-        # Performs the update of Lich5 to the specified version.
-        # @param source_dir [String] the directory containing the new version files.
-        # @param version [String] the version to update to.
-        # @return [Boolean] true if the update was successful, false otherwise.
+        # Copies lib files and lich.rbw from extracted source to install dirs.
+        #
+        # @param source_dir [String] extracted tarball directory
+        # @param version [String] version string
+        # @return [Boolean] true if update succeeded
         def perform_update(source_dir, version)
           unless validate_lich_structure(source_dir)
             respond "Error: extracted source is missing required files. Aborting update to protect installation."
@@ -263,14 +332,7 @@ module Lich
           respond "All Lich lib files have been updated."
           respond
 
-          # Copy top-level release files to LICH_DIR
-          TOP_LEVEL_FILES.each do |filename|
-            src = File.join(source_dir, filename)
-            if File.exist?(src)
-              FileUtils.cp(src, File.join(LICH_DIR, filename))
-              respond "Updated #{filename}."
-            end
-          end
+          copy_top_level_files(source_dir)
 
           file_updater = FileUpdater.new(@client, @resolver)
           file_updater.update_core_data_and_scripts(version)
@@ -281,23 +343,42 @@ module Lich
           true
         end
 
-        # Validates the structure of the Lich installation directory.
-        # @param dir [String] the directory to validate.
-        # @return [Boolean] true if the structure is valid, false otherwise.
-        def validate_lich_structure(dir)
-          required_items = ['lib', 'lich.rbw'] + TOP_LEVEL_FILES
-          required_items.all? { |item| File.exist?(File.join(dir, item)) }
+        # Copies each top-level file present in the extracted archive into
+        # LICH_DIR. Files missing from the archive are skipped rather than
+        # treated as errors, so a partial archive (e.g. one without Gemfile.lock)
+        # updates cleanly instead of aborting.
+        #
+        # @param source_dir [String] extracted tarball directory
+        # @return [void]
+        def copy_top_level_files(source_dir)
+          TOP_LEVEL_FILES.each do |filename|
+            src = File.join(source_dir, filename)
+            next unless File.exist?(src)
+
+            FileUtils.cp(src, File.join(LICH_DIR, filename))
+            respond "Updated #{filename}."
+          end
         end
 
-        # Checks if the Ruby version is compatible with the specified Lich version.
-        # @param source_dir [String] the directory containing the Lich version files.
-        # @param version [String] the version of Lich to check compatibility for.
-        # @return [Boolean] true if compatible, false otherwise.
+        # Validates the extracted directory contains every archive entry Lich
+        # requires to install safely.
+        #
+        # @param dir [String] directory to check
+        # @return [Boolean] true if all required entries are present
+        def validate_lich_structure(dir)
+          REQUIRED_ARCHIVE_ITEMS.all? { |item| File.exist?(File.join(dir, item)) }
+        end
+
+        # Checks if current Ruby meets minimum version requirement.
+        #
+        # @param source_dir [String] extracted tarball directory
+        # @param version [String] version string
+        # @return [Boolean] true if compatible
         def check_ruby_compatibility(source_dir, version)
           version_file_path = File.join(source_dir, "lib", "version.rb")
           if File.exist?(version_file_path)
             version_file_content = File.read(version_file_path)
-            if (match = version_file_content.match(/REQUIRED_RUBY\s*=\s*["']([^"']+)["']/))
+            if (match = version_file_content.match(REQUIRED_RUBY_PATTERN))
               required_ruby_version = match[1]
               current_ruby_version = RUBY_VERSION
               if Gem::Version.new(current_ruby_version) < Gem::Version.new(required_ruby_version)
@@ -310,7 +391,7 @@ module Lich
                 respond "Please update your Ruby installation before updating Lich."
                 respond
                 respond "DragonRealms - https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich"
-                respond "Gemstone IV  - https://gswiki.play.net/Lich:Software/Installation"
+                respond "Gemstone IV  - #{GEMSTONE_INSTALL_URL}"
                 respond
                 return false
               end
@@ -319,9 +400,10 @@ module Lich
           true
         end
 
-        # Extracts the Lich version from the specified version file.
-        # @param version_file_path [String] the path to the version file.
-        # @return [String, nil] the extracted version or nil if not found.
+        # Extracts LICH_VERSION constant from version.rb file.
+        #
+        # @param version_file_path [String] path to version.rb
+        # @return [String, nil] version string or nil
         def extract_version_from_file(version_file_path)
           return nil unless File.exist?(version_file_path)
 

@@ -1,28 +1,30 @@
+# frozen_string_literal: true
 
-
-# Namespace for the Lich project.
 #
-# This module contains various submodules related to the game's mechanics.
+# Attack Pattern Definitions
+# Converted from ctparser/AttackDefs.rb to Lich::Gemstone::Combat namespace
+#
+
+require_relative 'pattern_gate'
+
+# Root namespace for the Lich game scripting engine.
 module Lich
+  # Namespace for GemStone IV and DragonRealms game logic.
   module Gemstone
+    # Namespace for combat-related functionality and pattern matching.
     module Combat
+      # Namespace for combat action and pattern definitions.
       module Definitions
+        # Combat attack patterns and definitions for matching in-game combat messages.
+        #
+        # Defines structured patterns that match player and companion attacks from game output,
+        # organized into categories: basic weapon attacks, spells, weapon maneuvers, and companion actions.
+        # Uses a literal-substring gate for fast rejection of non-matching lines (~7us/line)
+        # before attempting regex matching.
         module Attacks
-          # Represents an attack definition with a name and associated patterns.
-          #
-          # @!attribute [r] name
-          #   @return [Symbol] the name of the attack
-          # @!attribute [r] patterns
-          #   @return [Array<Regexp>] the patterns that match the attack description
           AttackDef = Struct.new(:name, :patterns)
 
           # Core attack patterns - most common combat actions
-          # Core attack patterns - most common combat actions.
-          #
-          # @example Basic attack patterns
-          #   BASIC_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           BASIC_ATTACKS = [
             AttackDef.new(:attack, [/You(?<aimed> take aim and)? swing .+? at (?<target>[^!]+)!/].freeze),
             AttackDef.new(:fire, [/You(?<aimed> take aim and)? fire .+? at (?<target>[^!]+)!/].freeze),
@@ -34,12 +36,6 @@ module Lich
           ].freeze
 
           # Spell-based attacks
-          # Spell-based attacks.
-          #
-          # @example Spell attack patterns
-          #   SPELL_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           SPELL_ATTACKS = [
             AttackDef.new(:balefire, [/You hurl a ball of greenish-black flame at (?<target>[^!]+)!/].freeze),
             AttackDef.new(:cold_snap, [/An airy mist rolls into the area, carrying a harsh chill with it./].freeze),
@@ -50,14 +46,17 @@ module Lich
               /The earth cracks beneath (?<target>[^,]+), releasing a column of frigid air!/,
               /Icy stalagmites burst from the ground beneath (?<target>[^!]+)!/
             ].freeze),
-            AttackDef.new(:ewave, [/(?:An?|Some) (?<target>.+?) is buffeted by the \w+ ethereal waves(?: and is knocked to the ground)?\./].freeze),
+            # "formless black waves"/"formless black sphere" are the dark-variant
+            # messagings of the same spell family (found in session logs)
+            AttackDef.new(:ewave, [/(?:An?|Some) (?<target>.+?) is buffeted by the (?:\w+ ethereal waves|formless black (?:waves|sphere))(?: and is knocked to the ground)?\./].freeze),
             AttackDef.new(:natures_fury, [/The surroundings advance upon (?<target>.+?) with relentless fury!/].freeze),
             AttackDef.new(:searing_light, [/The radiant burst of light engulfs (?<target>[^!]+)!/].freeze),
             AttackDef.new(:spikethorn, [/Dozens of long thorns suddenly grow out from the ground underneath (?<target>[^!]+)!/].freeze),
             AttackDef.new(:stone_fist, [/The ground beneath you rumbles, then erupts in a shower of rubble that coalesces in to a large hand with slender fingers in mid-air./].freeze),
             AttackDef.new(:sunburst, [/The dazzling solar blaze flashes before (?<target>[^!]+)!/].freeze),
             AttackDef.new(:tangleweed, [
-              /The (?<weed>.+?) lashes out violently at (?<target>[^,]+), dragging .+? to the ground!/,
+              # "to the ground!" and "to the floor!" are both live variants
+              /The (?<weed>.+?) lashes out violently at (?<target>[^,]+), dragging .+? to the (?:ground|floor)!/,
               /The (?<weed>.+?) lashes out at (?<target>[^,]+), wraps itself around .+? body and entangles .+? on the ground\./
             ].freeze),
             AttackDef.new(:tonis_bolt, [/You unleash a bolt of churning air at (?<target>[^!]+)!/].freeze),
@@ -66,12 +65,6 @@ module Lich
           ].freeze
 
           # Weapon maneuvers
-          # Weapon maneuvers.
-          #
-          # @example Weapon attack patterns
-          #   WEAPON_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           WEAPON_ATTACKS = [
             AttackDef.new(:cripple, [/You reverse your grip on your .+? and dart toward (?<target>.+?) at an angle!/].freeze),
             AttackDef.new(:flurry, [
@@ -88,25 +81,16 @@ module Lich
           ].freeze
 
           # Combat maneuvers
-          # Combat maneuvers.
-          #
-          # @example Maneuver attack patterns
-          #   MANEUVER_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           MANEUVER_ATTACKS = [
             # AttackDef.new(:hamstring, [/You(?: make a precise)? attempt to grapple (?<target>[^!]+)!/].freeze),
           ].freeze
 
+          # Shield-based attack patterns (currently unused; reserved for future implementation).
+          #
+          # @return [Array] empty frozen array
           SHIELD_ATTACKS = [].freeze
 
           # Companion/pet attacks
-          # Companion/pet attacks.
-          #
-          # @example Companion attack patterns
-          #   COMPANION_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           COMPANION_ATTACKS = [
             AttackDef.new(:companion, [
               /(?<companion>.+?) pounces on (?<target>[^,]+), knocking the .+? painfully to the ground!/,
@@ -116,43 +100,30 @@ module Lich
           ].freeze
 
           # Environmental attacks
-          # Environmental attacks.
-          #
-          # @example Environmental attack patterns
-          #   ENVIRONMENTAL_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           ENVIRONMENTAL_ATTACKS = [].freeze
 
           # All attack definitions combined
-          # All attack definitions combined.
-          #
-          # @example All attack patterns
-          #   ALL_ATTACKS.each do |attack|
-          #     puts attack.name
-          #   end
           ALL_ATTACKS = (BASIC_ATTACKS + SPELL_ATTACKS + MANEUVER_ATTACKS + WEAPON_ATTACKS +
                         SHIELD_ATTACKS + COMPANION_ATTACKS + ENVIRONMENTAL_ATTACKS).freeze
 
           # Create lookup table for fast pattern matching
-          # Create lookup table for fast pattern matching.
-          #
-          # @example Lookup table usage
-          #   ATTACK_LOOKUP.each do |pattern, name|
-          #     puts "Pattern: \\#{pattern}, Attack: \\#{name}"
-          #   end
           ATTACK_LOOKUP = ALL_ATTACKS.flat_map do |attack_def|
             attack_def.patterns.compact.map { |pattern| [pattern, attack_def.name] }
           end.freeze
 
-          # Compiled regex for fast detection
-          # Compiled regex for fast detection of attacks.
-          #
-          # @example Using the attack detector
-          #   if input.match?(ATTACK_DETECTOR)
-          #     puts "Attack detected!"
-          #   end
+          # Compiled regex for fast detection. NOTE: costs ~0.5ms per
+          # non-matching line (unanchored `.+?` alternatives); kept for
+          # compatibility but the literal gate below is what the parser uses.
           ATTACK_DETECTOR = Regexp.union(ATTACK_LOOKUP.map(&:first)).freeze
+
+          # Literal-substring gate (~7us/line): a line can only match an
+          # attack pattern if it contains that pattern's longest literal.
+          ATTACK_GATE, ATTACK_ALWAYS_SCAN = PatternGate.build(ATTACK_LOOKUP.map(&:first))
+
+          # True when the line cannot match any attack pattern
+          def self.rejects?(line)
+            PatternGate.rejects?(ATTACK_GATE, ATTACK_ALWAYS_SCAN, line)
+          end
         end
       end
     end

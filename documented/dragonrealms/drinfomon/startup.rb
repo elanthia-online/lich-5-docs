@@ -2,11 +2,22 @@
 
 require_relative '../../common/watchable'
 
-# Provides the main namespace for the Lich project.
-#
-# @see Lich::DragonRealms for DragonRealms specific functionality.
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for DragonRealms-specific functionality.
   module DragonRealms
+    # Populates initial game state after login and manages startup completion tracking.
+    #
+    # Sends game commands (info, played, exp all 0, ability, flag) whose output is parsed
+    # by DRParser to populate XMLData with character stats, skills, spells, and other
+    # essential state. Uses ExecScript to ensure commands block until responses are parsed.
+    #
+    # Scripts should check {.startup_complete?} before issuing their own info/played/exp/ability
+    # commands to avoid sending duplicates during initialization.
+    #
+    # Includes automatic filesystem warnings about obsolete scripts and shadowed custom files.
+    #
+    # @see Lich::Common::Watchable
     module DRInfomon
       extend Lich::Common::Watchable
       # Populates initial game state after login by issuing
@@ -24,14 +35,19 @@ module Lich
       #     Use this to avoid sending duplicate info/played/exp/ability commands.
       @@startup_complete = false
 
-      # Checks if the startup process is complete.
-      # @return [Boolean] true if startup commands have finished, false otherwise.
+      # Returns whether DRInfomon has finished populating initial game state after login.
+      #
+      # @return [Boolean] true if startup commands have all completed, false otherwise
+      # @example
+      #   unless DRInfomon.startup_complete?
+      #     wait_while { !DRInfomon.startup_complete? }
+      #   end
       def self.startup_complete?
         @@startup_complete
       end
 
-      # Starts a thread to monitor the game state and execute startup commands.
-      # @return [void]
+      # Self-watching thread that triggers startup when ready
+      # Follows the ActiveSpell.watch! pattern for lifecycle management
       def self.watch!
         @startup_thread ||= Thread.new do
           begin
@@ -48,14 +64,31 @@ module Lich
         end
       end
 
-      # Executes the startup script to initialize game state.
+      # Runs the startup script that populates initial game state.
+      #
+      # Executes {.startup_script} via ExecScript with quiet mode and a descriptive name.
+      # Called once by the {.watch!} lifecycle hook after the character is ready.
+      #
       # @return [void]
+      # @api private
       def self.startup
         ExecScript.start(startup_script, { quiet: true, name: 'drinfomon_startup' })
       end
 
-      # Provides the script to be executed during startup.
-      # @return [String] the startup script containing game commands.
+      # Generates the startup script content that populates game state.
+      #
+      # Constructs a heredoc string containing game commands issued in order:
+      # - info: populates character stats (name, race, guild, circle)
+      # - played: populates account name and subscription level
+      # - exp all 0: populates all skill ranks and learning rates
+      # - ability: populates spells, barbarian abilities, or thief khri (guild-dependent)
+      # - flag: ensures MonsterBold is enabled (one-time per character)
+      #
+      # Each command uses Lich::Util.issue_command with regex patterns and 1-second timeout.
+      # Completes by calling {.startup_completed!} to signal readiness.
+      #
+      # @return [String] the startup script as a heredoc
+      # @api private
       def self.startup_script
         <<~SCRIPT
           # Populate stats, race, guild, circle, etc.
@@ -74,10 +107,12 @@ module Lich
           #   - Thieves: parsed by check_known_thief_khri
           Lich::Util.issue_command("ability", /^You (?:know the Berserks|recall the spells you have learned from your training)|^From (?:your apprenticeship you remember practicing|the \\w+ tree)/, /^You (?:recall that you have \\d+ training sessions|can use SPELL STANCE \\[HELP\\]|have \\d+ available slot)/, quiet: true, timeout: 1)
 
-          # Ensure ShowRoomID and MonsterBold flags are enabled (one-time per character)
+          # Ensure the MonsterBold flag is enabled (one-time per character). ShowRoomID is no
+          # longer forced: room UIDs now come from the <nav> tag regardless of that flag, so
+          # whether the game shows inline room IDs is left entirely to the player's preference.
           unless UserVars.dependency_setflags
             flags = Array(Lich::Util.issue_command("flag", /^Usage/, /^For other setting options, see AVOID, SET, and TOGGLE/, quiet: true, timeout: 1, usexml: false))
-            required = ["ShowRoomID", "MonsterBold"]
+            required = ["MonsterBold"]
             required.each do |flag|
               fput("flag \#{flag} on") unless flags.any? { |f| f.match?(/\#{Regexp.escape(flag)}\\s+ON/) }
             end
@@ -90,29 +125,41 @@ module Lich
         SCRIPT
       end
 
-      # Marks the startup process as complete and triggers post-startup checks.
+      # Marks startup as complete and triggers post-startup housekeeping.
+      #
+      # Sets the startup_complete flag to true, calls PostLoad.game_loaded! if available,
+      # and runs {.post_startup_checks} to warn about obsolete and shadowed scripts.
+      #
       # @return [void]
+      # @api private
       def self.startup_completed!
         @@startup_complete = true
         PostLoad.game_loaded! if defined?(PostLoad)
         post_startup_checks
       end
 
-      # Performs checks after the startup process to warn about obsolete scripts and data files.
+      # Best-effort filesystem checks that run once after startup completes.
+      # These don't need game commands, just file existence checks and warnings.
+      # Failures are logged but do not block the PostLoad lifecycle.
+      #
       # @return [void]
       def self.post_startup_checks
         warn_obsolete_scripts
         warn_obsolete_data_files
         warn_custom_scripts
         $setupfiles.reload if defined?($setupfiles) && $setupfiles
+        # Drop CustomSubstitutions' memoized lists so a fresh login re-reads any
+        # edited custom_* settings (its cache is separate from $setupfiles').
+        Lich::DragonRealms::CustomSubstitutions.reset! if defined?(Lich::DragonRealms::CustomSubstitutions)
       rescue StandardError => e
         safe_message('error', "DRInfomon: post_startup_checks failed: #{e.message}")
         safe_log("DRInfomon: post_startup_checks error: #{e.inspect}\n\t#{e.backtrace&.first(5)&.join("\n\t")}")
       end
 
-      # Sends a message safely, either through the messaging system or logs it directly.
-      # @param type [String] the type of message (e.g., 'error', 'info')
-      # @param text [String] the message text to send or log.
+      # Guarded messaging -- safe to call if Lich::Messaging is unavailable.
+      #
+      # @param type [String] message type (e.g. 'error', 'info')
+      # @param text [String] message text
       # @return [void]
       def self.safe_message(type, text)
         if defined?(Lich::Messaging) && Lich::Messaging.respond_to?(:msg)
@@ -122,8 +169,9 @@ module Lich
         end
       end
 
-      # Logs a message safely, either through the logging system or to standard error.
-      # @param text [String] the message text to log.
+      # Guarded logging -- safe to call if Lich.log is unavailable.
+      #
+      # @param text [String] log message
       # @return [void]
       def self.safe_log(text)
         if defined?(Lich) && Lich.respond_to?(:log)
@@ -135,10 +183,6 @@ module Lich
 
       # Script names that are obsolete and should be deleted.
       # Checked on login to warn users about stale files.
-      # List of obsolete script names that should be deleted.
-      #
-      # @example
-      #   DR_OBSOLETE_SCRIPTS #=> ["events", "slackbot", ...]
       DR_OBSOLETE_SCRIPTS = %w[
         events slackbot spellmonitor exp-monitor
         common-travel common-validation common drinfomon equipmanager
@@ -148,13 +192,10 @@ module Lich
       ].freeze
 
       # Data filenames that are obsolete and should be deleted.
-      # List of obsolete data filenames that should be deleted.
-      #
-      # @example
-      #   DR_OBSOLETE_DATA_FILES #=> []
       DR_OBSOLETE_DATA_FILES = %w[].freeze
 
-      # Warns the user about obsolete scripts that should be deleted.
+      # Warns about obsolete .lic files still present in SCRIPT_DIR.
+      #
       # @return [void]
       def self.warn_obsolete_scripts
         DR_OBSOLETE_SCRIPTS.each do |script_name|
@@ -165,7 +206,8 @@ module Lich
         end
       end
 
-      # Warns the user about obsolete data files that can be safely deleted.
+      # Warns about obsolete data files still present in SCRIPT_DIR/data.
+      #
       # @return [void]
       def self.warn_obsolete_data_files
         data_dir = File.join(SCRIPT_DIR, 'data')
@@ -177,7 +219,9 @@ module Lich
         end
       end
 
-      # Warns the user if custom scripts shadow curated scripts.
+      # Warns when scripts/custom/ contains files that shadow curated scripts,
+      # preventing the curated versions from receiving updates.
+      #
       # @return [void]
       def self.warn_custom_scripts
         custom_dir = File.join(SCRIPT_DIR, 'custom')
@@ -195,6 +239,7 @@ module Lich
     end
   end
 
+  # Namespace for Lich-wide common functionality and constants.
   module Common
     CORE_DR_STARTUP = true
   end

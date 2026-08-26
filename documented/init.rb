@@ -3,36 +3,9 @@
 #
 # Report an error if Lich 4.4 data is found
 #
-# Checks if the Lich 4.4 data file exists and reports an error if found.
-#
-# @note This check is crucial to prevent using outdated configurations.
 if File.exist?("#{DATA_DIR}/lich.sav")
   Lich.log "error: Archaic Lich 4.4 configuration found: Please remove #{DATA_DIR}/lich.sav"
   Lich.msgbox "error: Archaic Lich 4.4 configuration found: Please remove #{DATA_DIR}/lich.sav"
-  exit
-end
-
-# Checks if the current Ruby version meets the required version.
-#
-# @note If the Ruby version is too old, a warning is displayed and the program exits.
-if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(REQUIRED_RUBY)
-  if (RUBY_PLATFORM =~ /mingw|win/) and (RUBY_PLATFORM !~ /darwin/i)
-    require 'win32ole'
-    shell = WIN32OLE.new('WScript.Shell')
-    message = "!!ALERT!!\nYour version #{RUBY_VERSION} of Ruby is too old!\nUpgrade Ruby to version #{REQUIRED_RUBY} or newer!\nClick OK to launch browser to go to documentation now!"
-    title = "Lich v#{LICH_VERSION}"
-    type = 1 + 64  # OK/Cancel buttons + Information icon
-    result = shell.Popup(message, 0, title, type)
-
-    if result == 1 # OK button clicked
-      shell.Run("https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich")
-    end
-  else
-    puts "!!ALERT!!"
-    puts "Your version #{RUBY_VERSION} of Ruby is too old!"
-    puts "Upgrade Ruby to version #{REQUIRED_RUBY} or newer!"
-    puts "Go to https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich for more info!"
-  end
   exit
 end
 
@@ -49,73 +22,6 @@ rescue
   nil
 end
 
-# find the FE locations for Win and for Linux | WINE
-
-if (RUBY_PLATFORM =~ /mingw|win/i) && (RUBY_PLATFORM !~ /darwin/i)
-  require 'win32/registry'
-  include Win32
-
-  paths = ['SOFTWARE\\WOW6432Node\\Simutronics\\STORM32',
-           'SOFTWARE\\WOW6432Node\\Simutronics\\WIZ32']
-
-  # Checks if a registry key exists at the specified path.
-  # @param path [String] the registry path to check.
-  # @return [Boolean] true if the key exists, false otherwise.
-  # @api private
-  def key_exists?(path)
-    Registry.open(Registry::HKEY_LOCAL_MACHINE, path, ::Win32::Registry::KEY_READ)
-    true
-  rescue StandardError
-    false
-  end
-
-  paths.each do |path|
-    next unless key_exists?(path)
-
-    Registry.open(Registry::HKEY_LOCAL_MACHINE, path).each_value do |_subkey, _type, data|
-      dirloc = data
-      if path =~ /WIZ32/
-        $wiz_fe_loc = dirloc
-      elsif path =~ /STORM32/
-        $sf_fe_loc = dirloc
-      else
-        Lich.log("Hammer time, couldn't find me a SIMU FE on a Windows box")
-      end
-    end
-  end
-elsif defined?(Wine)
-  ## reminder Wine is defined in the file wine.rb by confirming prefix, directory and executable
-  unless (sf_fe_loc_temp = Wine.registry_gets('HKEY_LOCAL_MACHINE\\Software\\Simutronics\\STORM32\\Directory'))
-    sf_fe_loc_temp = Wine.registry_gets('HKEY_LOCAL_MACHINE\\Software\\Wow6432Node\\Simutronics\\STORM32\\Directory')
-  end
-  unless (wiz_fe_loc_temp = Wine.registry_gets('HKEY_LOCAL_MACHINE\\Software\\Simutronics\\WIZ32\\Directory'))
-    wiz_fe_loc_temp = Wine.registry_gets('HKEY_LOCAL_MACHINE\\Software\\Wow6432Node\\Simutronics\\WIZ32\\Directory')
-  end
-  ## at this point, the temp variables are either FalseClass or have what wine believes is the Directory subkey from registry
-  ## fix it up so we can use it on a *nix based system.  If the return is FalseClass, leave it FalseClass
-  sf_fe_loc_temp ? $sf_fe_loc = sf_fe_loc_temp.gsub('\\', '/').gsub('C:', Wine::PREFIX + '/drive_c') : :noop
-  wiz_fe_loc_temp ? $wiz_fe_loc = wiz_fe_loc_temp.gsub('\\', '/').gsub('C:', Wine::PREFIX + '/drive_c') : :noop
-  ## if we have a String class (directory) and the directory exists -- no error detectable at this level
-  ## if we have a nil, we have no directory, or if we have a path but cannot find that path (directory) we have an error
-  if $sf_fe_loc.nil? # no directory
-    Lich.log("STORM equivalent FE is not installed under WINE.") if $debug
-  else
-    unless $sf_fe_loc.is_a? String and File.exist?($sf_fe_loc) # cannot confirm directory location
-      Lich.log("Cannot find STORM equivalent FE to launch under WINE.")
-    end
-  end
-  if $wiz_fe_loc.nil? # no directory
-    Lich.log("WIZARD FE is not installed under WINE.") if $debug
-  else
-    unless $wiz_fe_loc.is_a? String and File.exist?($wiz_fe_loc) # cannot confirm directory location
-      Lich.log("Cannot find WIZARD FE to launch under WINE.")
-    end
-  end
-  if $sf_fe_loc.nil? and $wiz_fe_loc.nil? # got nuttin - no FE installed under WINE in registry (or something changed. . . )
-    Lich.log("This system has WINE installed but does not have a suitable FE from Simu installed under WINE.")
-  end
-  ## We have either declared an error, or the global variables for Simu FE are populated with a confirmed path
-end
 ## The following should be deprecated with the direct-frontend-launch-method
 ## TODO: remove as part of chore/Remove unnecessary Win32 calls
 ## Temporarily reinstatated for DR
@@ -126,30 +32,94 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
   #
   require 'fiddle'
   require 'fiddle/import'
+  # Namespace for Windows API bindings via Fiddle, providing access to kernel, user, shell, and registry operations.
+  # Available only on Windows platforms (mingw/win without darwin).
+  #
+  # @api private
   module Win32
+    # Size of a C char in bytes, delegated from Fiddle.
+    #
+    # @api private
     SIZEOF_CHAR = Fiddle::SIZEOF_CHAR
+    # Size of a C long in bytes, delegated from Fiddle.
+    #
+    # @api private
     SIZEOF_LONG = Fiddle::SIZEOF_LONG
+    # Windows API flag for ShellExecuteEx: do not close the process handle automatically.
+    #
+    # @api private
     SEE_MASK_NOCLOSEPROCESS = 0x00000040
+    # Windows API message box button flag: OK button only.
+    #
+    # @api private
     MB_OK = 0x00000000
+    # Windows API message box button flag: OK and Cancel buttons.
+    #
+    # @api private
     MB_OKCANCEL = 0x00000001
+    # Windows API message box button flag: Yes and No buttons.
+    #
+    # @api private
     MB_YESNO = 0x00000004
+    # Windows API message box icon flag: error icon.
+    #
+    # @api private
     MB_ICONERROR = 0x00000010
+    # Windows API message box icon flag: question mark icon.
+    #
+    # @api private
     MB_ICONQUESTION = 0x00000020
+    # Windows API message box icon flag: warning/exclamation icon.
+    #
+    # @api private
     MB_ICONWARNING = 0x00000030
     IDIOK = 1
     IDICANCEL = 2
     IDIYES = 6
     IDINO = 7
+    # Windows registry access flag: all access permissions.
+    #
+    # @api private
     KEY_ALL_ACCESS = 0xF003F
+    # Windows registry access flag: permission to create subkeys.
+    #
+    # @api private
     KEY_CREATE_SUB_KEY = 0x0004
+    # Windows registry access flag: permission to enumerate subkeys.
+    #
+    # @api private
     KEY_ENUMERATE_SUB_KEYS = 0x0008
+    # Windows registry access flag: permission to execute/read registry keys.
+    #
+    # @api private
     KEY_EXECUTE = 0x20019
+    # Windows registry access flag: permission to request change notifications.
+    #
+    # @api private
     KEY_NOTIFY = 0x0010
+    # Windows registry access flag: permission to query registry value data.
+    #
+    # @api private
     KEY_QUERY_VALUE = 0x0001
+    # Windows registry access flag: read permissions for registry keys.
+    #
+    # @api private
     KEY_READ = 0x20019
+    # Windows registry access flag: permission to set registry value data.
+    #
+    # @api private
     KEY_SET_VALUE = 0x0002
+    # Windows registry access flag: access 32-bit registry view on 64-bit Windows.
+    #
+    # @api private
     KEY_WOW64_32KEY = 0x0200
+    # Windows registry access flag: access 64-bit registry view on 64-bit Windows.
+    #
+    # @api private
     KEY_WOW64_64KEY = 0x0100
+    # Windows registry access flag: write permissions for registry keys.
+    #
+    # @api private
     KEY_WRITE = 0x20006
     TokenElevation = 20
     TOKEN_QUERY = 8
@@ -183,10 +153,31 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int CreateProcess(void*, void*, void*, void*, int, int, void*, void*, void*, void*)'
     end
 
+    # Retrieves the last error code from the Windows API.
+    #
+    # @return [Integer] the error code
+    # @api private
     def Win32.GetLastError
       return Kernel32.GetLastError()
     end
 
+    # Creates a new process on Windows.
+    #
+    # @param args [Hash] process creation parameters
+    # @option args [String] :lpCommandLine command line string (will be duplicated internally)
+    # @option args [Boolean, Integer] :bInheritHandles whether to inherit handles; true/false or 0/1
+    # @option args [String, nil] :lpApplicationName application executable path
+    # @option args [String, nil] :lpProcessAttributes process security attributes
+    # @option args [String, nil] :lpThreadAttributes thread security attributes
+    # @option args [Integer] :dwCreationFlags process creation flags
+    # @option args [String, nil] :lpEnvironment environment block (Array not yet supported)
+    # @option args [String, nil] :lpCurrentDirectory working directory
+    # @option args [Integer] :dwX window X position
+    # @option args [Integer] :dwY window Y position
+    # @option args [Integer] :dwXSize window width
+    # @option args [Integer] :dwYSize window height
+    # @return [Hash] result hash with keys: :return (Boolean), :hProcess, :hThread, :dwProcessId, :dwThreadId
+    # @api private
     def Win32.CreateProcess(args)
       if args[:lpCommandLine]
         lpCommandLine = args[:lpCommandLine].dup
@@ -223,16 +214,33 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => (r > 0 ? true : false), :hProcess => lpProcessInformation[0], :hThread => lpProcessInformation[1], :dwProcessId => lpProcessInformation[2], :dwThreadId => lpProcessInformation[3]
     end
 
+    #      Win32.CreateProcess(:lpApplicationName => 'Launcher.exe', :lpCommandLine => 'lich2323.sal', :lpCurrentDirectory => 'C:\\PROGRA~1\\SIMU')
+    #      def Win32.OpenProcess(args={})
+    #         return Kernel32.OpenProcess(args[:dwDesiredAccess].to_i, args[:bInheritHandle].to_i, args[:dwProcessId].to_i)
+    #      end
     def Win32.GetCurrentProcess
       return Kernel32.GetCurrentProcess
     end
 
+    # Retrieves the exit code of a process.
+    #
+    # @param args [Hash] process handle parameters
+    # @option args [Integer] :hProcess handle to the process
+    # @return [Hash] result hash with keys: :return (Integer), :lpExitCode (Integer)
+    # @api private
     def Win32.GetExitCodeProcess(args)
       lpExitCode = [0].pack('L')
       r = Kernel32.GetExitCodeProcess(args[:hProcess].to_i, lpExitCode)
       return :return => r, :lpExitCode => lpExitCode.unpack('L')[0]
     end
 
+    # Retrieves the filename of a loaded module.
+    #
+    # @param args [Hash] module parameters
+    # @option args [Integer] :hModule module handle (defaults to current process if omitted)
+    # @option args [Integer] :nSize buffer size in bytes (default: 256)
+    # @return [Hash] result hash with keys: :return (Integer), :lpFilename (String without null terminators)
+    # @api private
     def Win32.GetModuleFileName(args = {})
       args[:nSize] ||= 256
       buffer = "\0" * args[:nSize].to_i
@@ -240,6 +248,10 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :lpFilename => buffer.gsub("\0", '')
     end
 
+    # Retrieves Windows OS version information.
+    #
+    # @return [Hash] result hash with keys: :return (Integer), :dwOSVersionInfoSize, :dwMajorVersion, :dwMinorVersion, :dwBuildNumber, :dwPlatformId, :szCSDVersion (String), :wServicePackMajor, :wServicePackMinor, :wSuiteMask, :wProductType
+    # @api private
     def Win32.GetVersionEx
       a = [156, 0, 0, 0, 0, ("\0" * 128), 0, 0, 0, 0, 0].pack('LLLLLa128SSSCC')
       r = Kernel32.GetVersionEx(a)
@@ -247,17 +259,32 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :dwOSVersionInfoSize => a[0], :dwMajorVersion => a[1], :dwMinorVersion => a[2], :dwBuildNumber => a[3], :dwPlatformId => a[4], :szCSDVersion => a[5].strip, :wServicePackMajor => a[6], :wServicePackMinor => a[7], :wSuiteMask => a[8], :wProductType => a[9]
     end
 
+    # Fiddle binding to the Windows user32 library.
+    #
+    # @api private
     module User32
       extend Fiddle::Importer
       dlload 'user32'
       extern 'int MessageBox(int, char*, char*, int)'
     end
 
+    # Displays a message box dialog on Windows.
+    #
+    # @param args [Hash] message box parameters
+    # @option args [Integer] :hWnd parent window handle
+    # @option args [String] :lpText message text
+    # @option args [String] :lpCaption window title (default: "Lich v#{LICH_VERSION}")
+    # @option args [Integer] :uType message box type flags (buttons and icons)
+    # @return [Integer] dialog result code
+    # @api private
     def Win32.MessageBox(args)
       args[:lpCaption] ||= "Lich v#{LICH_VERSION}"
       return User32.MessageBox(args[:hWnd].to_i, args[:lpText], args[:lpCaption], args[:uType].to_i)
     end
 
+    # Fiddle binding to the Windows advapi32 library (Advanced Windows API).
+    #
+    # @api private
     module Advapi32
       extend Fiddle::Importer
       dlload 'advapi32'
@@ -270,6 +297,13 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int RegCloseKey(int)'
     end
 
+    # Retrieves information about an access token.
+    #
+    # @param args [Hash] token parameters
+    # @option args [Integer] :TokenHandle handle to the access token
+    # @option args [Integer] :TokenInformationClass information class (e.g., TokenElevation)
+    # @return [Hash, nil] result hash with keys: :return (Integer), :TokenIsElevated (Integer); nil if TokenInformationClass is not TokenElevation
+    # @api private
     def Win32.GetTokenInformation(args)
       if args[:TokenInformationClass] == TokenElevation
         token_information_length = SIZEOF_LONG
@@ -284,18 +318,41 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
+    # Opens an access token associated with a process.
+    #
+    # @param args [Hash] process token parameters
+    # @option args [Integer] :ProcessHandle process handle
+    # @option args [Integer] :DesiredAccess desired access level (e.g., TOKEN_QUERY)
+    # @return [Hash] result hash with keys: :return (Integer), :TokenHandle (Integer)
+    # @api private
     def Win32.OpenProcessToken(args)
       token_handle = [0].pack('L')
       r = Advapi32.OpenProcessToken(args[:ProcessHandle].to_i, args[:DesiredAccess].to_i, token_handle)
       return :return => r, :TokenHandle => token_handle.unpack('L')[0]
     end
 
+    # Opens a registry key with extended options.
+    #
+    # @param args [Hash] registry key parameters
+    # @option args [Integer] :hKey parent registry key handle
+    # @option args [String] :lpSubKey subkey path
+    # @option args [Integer] :samDesired desired access level
+    # @return [Hash] result hash with keys: :return (Integer), :phkResult (Integer, opened key handle)
+    # @api private
     def Win32.RegOpenKeyEx(args)
       phkResult = [0].pack('L')
       r = Advapi32.RegOpenKeyEx(args[:hKey].to_i, args[:lpSubKey].to_s, 0, args[:samDesired].to_i, phkResult)
       return :return => r, :phkResult => phkResult.unpack('L')[0]
     end
 
+    # Queries a registry value, automatically converting to the appropriate Ruby type.
+    #
+    # @param args [Hash] registry value parameters
+    # @option args [Integer] :hKey registry key handle
+    # @option args [String] :lpValueName value name (default: nil)
+    # @return [Hash] result hash with keys: :return (Integer), :lpType (Integer, registry type), :lpcbData (Integer, size), :lpData (String, Integer, Array, or nil depending on type)
+    # @note REG_SZ, REG_EXPAND_SZ, REG_LINK are returned as String; REG_MULTI_SZ as Array<String>; REG_DWORD as Integer; REG_QWORD as Integer; others are unparsed
+    # @api private
     def Win32.RegQueryValueEx(args)
       args[:lpValueName] ||= 0
       lpcbData = [0].pack('L')
@@ -329,6 +386,15 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
+    # Sets a registry value, converting from Ruby types to Windows registry format.
+    #
+    # @param args [Hash] registry value parameters
+    # @option args [Integer] :hKey registry key handle
+    # @option args [String] :lpValueName value name (default: nil)
+    # @option args [Integer] :dwType registry data type (REG_SZ, REG_DWORD, REG_MULTI_SZ, REG_QWORD, etc.)
+    # @option args [String, Integer, Array] :lpData data to store (must match dwType)
+    # @return [Integer] Windows API result code; false if dwType is REG_BINARY or REG_DWORD_BIG_ENDIAN (not yet implemented)
+    # @api private
     def Win32.RegSetValueEx(args)
       if [REG_EXPAND_SZ, REG_SZ, REG_LINK].include?(args[:dwType]) and (args[:lpData].is_a?(String))
         lpData = args[:lpData].dup
@@ -357,15 +423,31 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return Advapi32.RegSetValueEx(args[:hKey].to_i, args[:lpValueName], 0, args[:dwType], lpData, cbData)
     end
 
+    # Deletes a registry value.
+    #
+    # @param args [Hash] registry value parameters
+    # @option args [Integer] :hKey registry key handle
+    # @option args [String] :lpValueName value name (default: nil)
+    # @return [Integer] Windows API result code
+    # @api private
     def Win32.RegDeleteValue(args)
       args[:lpValueName] ||= 0
       return Advapi32.RegDeleteValue(args[:hKey].to_i, args[:lpValueName])
     end
 
+    # Closes a registry key handle.
+    #
+    # @param args [Hash] registry key parameters
+    # @option args [Integer] :hKey registry key handle
+    # @return [Integer] Windows API result code
+    # @api private
     def Win32.RegCloseKey(args)
       return Advapi32.RegCloseKey(args[:hKey])
     end
 
+    # Fiddle binding to the Windows shell32 library.
+    #
+    # @api private
     module Shell32
       extend Fiddle::Importer
       dlload 'shell32'
@@ -373,6 +455,22 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int ShellExecute(int, char*, char*, char*, char*, int)'
     end
 
+    # Executes a file with extended shell options (includes UAC elevation support).
+    #
+    # @param args [Hash] shell execution parameters
+    # @option args [String] :lpVerb verb to perform, e.g. 'open', 'edit', 'runas' (for elevation)
+    # @option args [String] :lpFile file or URL to execute
+    # @option args [String] :lpParameters command-line arguments
+    # @option args [String] :lpDirectory working directory
+    # @option args [Integer] :nShow window display flag (e.g., SW_SHOW, SW_SHOWNORMAL)
+    # @option args [Integer] :fMask operation flags
+    # @option args [Integer] :hwnd parent window handle
+    # @option args [Integer] :hkeyClass registry key for file class
+    # @option args [Integer] :dwHotKey hot key
+    # @option args [Integer] :hIcon icon handle
+    # @option args [Integer] :hMonitor monitor handle
+    # @return [Hash] result hash with keys: :return (Integer), :hProcess (Integer), :hInstApp (Integer)
+    # @api private
     def Win32.ShellExecuteEx(args)
       #         struct = [ (SIZEOF_LONG * 15), 0, 0, 0, 0, 0, 0, SW_SHOWNORMAL, 0, 0, 0, 0, 0, 0, 0 ]
       struct = [(SIZEOF_LONG * 15), 0, 0, 0, 0, 0, 0, SW_SHOW, 0, 0, 0, 0, 0, 0, 0]
@@ -394,6 +492,17 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :hProcess => struct[struct_index[:hProcess]], :hInstApp => struct[struct_index[:hInstApp]]
     end
 
+    # Executes a file with basic shell options.
+    #
+    # @param args [Hash] shell execution parameters
+    # @option args [Integer] :hwnd parent window handle
+    # @option args [String] :lpOperation verb ('open', 'edit', etc.; default: nil)
+    # @option args [String] :lpFile file or URL to execute
+    # @option args [String] :lpParameters command-line arguments (default: nil)
+    # @option args [String] :lpDirectory working directory (default: nil)
+    # @option args [Integer] :nShowCmd window display flag (default: 1)
+    # @return [Integer] Windows API result code
+    # @api private
     def Win32.ShellExecute(args)
       args[:lpOperation] ||= 0
       args[:lpParameters] ||= 0
@@ -403,6 +512,9 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
     end
 
     begin
+      # Extended Fiddle binding to kernel32 for process enumeration.
+      #
+      # @api private
       module Kernel32
         extern 'int EnumProcesses(void*, int, void*)'
       end
@@ -416,12 +528,21 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
         return :return => r, :pProcessIds => pProcessIds.unpack(''.rjust((args[:cb] / SIZEOF_LONG), 'L'))[0...(pBytesReturned / SIZEOF_LONG)], :pBytesReturned => pBytesReturned
       end
     rescue
+      # Fiddle binding to the Windows psapi library (fallback for process enumeration).
+      #
+      # @api private
       module Psapi
         extend Fiddle::Importer
         dlload 'psapi'
         extern 'int EnumProcesses(void*, int, void*)'
       end
 
+      # Enumerates all running process IDs on Windows via psapi (fallback implementation).
+      #
+      # @param args [Hash] enumeration parameters
+      # @option args [Integer] :cb buffer size in bytes (default: 400)
+      # @return [Hash] result hash with keys: :return (Integer), :pProcessIds (Array<Integer>), :pBytesReturned (Integer, bytes actually populated)
+      # @api private
       def Win32.EnumProcesses(args = {})
         args[:cb] ||= 400
         pProcessIds = Array.new((args[:cb] / SIZEOF_LONG), 0).pack(''.rjust((args[:cb] / SIZEOF_LONG), 'L'))
@@ -432,10 +553,18 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
+    # Checks whether the operating system is Windows XP or earlier.
+    #
+    # @return [Boolean] true if OS major version is less than 6 (XP and below), false otherwise
+    # @api private
     def Win32.isXP?
       return (Win32.GetVersionEx[:dwMajorVersion] < 6)
     end
 
+    #      def Win32.isWin8?
+    #         r = Win32.GetVersionEx
+    #         return ((r[:dwMajorVersion] == 6) and (r[:dwMinorVersion] >= 2))
+    #      end
     def Win32.admin?
       if Win32.isXP?
         return true
@@ -447,6 +576,12 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
+    # Elevates the current Lich process via UAC and executes a shell command with admin privileges.
+    #
+    # @param args [Hash] shell execution parameters (see .Win32.ShellExecute)
+    # @note Only executes if not already running in an eval/run context (to prevent infinite recursion)
+    # @return [void]
+    # @api private
     def Win32.AdminShellExecute(args)
       # open ruby/lich as admin and tell it to open something else
       if not caller.any? { |c| c =~ /eval|run/ }
@@ -471,121 +606,72 @@ end
 
 begin
   require 'sqlite3'
-rescue LoadError
-  if defined?(Win32)
-    r = Win32.MessageBox(:lpText => "Lich needs sqlite3 to save settings and data, but it is not installed.\n\nWould you like to install sqlite3 now?", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_YESNO | Win32::MB_ICONQUESTION))
-    if r == Win32::IDIYES
-      r = Win32.GetModuleFileName
-      if r[:return] > 0
-        ruby_bin_dir = File.dirname(r[:lpFilename])
-        if File.exist?("#{ruby_bin_dir}\\gem.bat")
-          verb = (Win32.isXP? ? 'open' : 'runas')
-          r = Win32.ShellExecuteEx(:fMask => Win32::SEE_MASK_NOCLOSEPROCESS, :lpVerb => verb, :lpFile => "#{ruby_bin_dir}\\#{gem_file}", :lpParameters => 'install sqlite3 --no-ri --no-rdoc')
-          if r[:return] > 0
-            pid = r[:hProcess]
-            sleep 1 while Win32.GetExitCodeProcess(:hProcess => pid)[:lpExitCode] == Win32::STILL_ACTIVE
-            r = Win32.MessageBox(:lpText => "Install finished.  Lich will restart now.", :lpCaption => "Lich v#{LICH_VERSION}", :uType => Win32::MB_OKCANCEL)
-          else
-            # ShellExecuteEx failed: this seems to happen with an access denied error even while elevated on some random systems
-            r = Win32.ShellExecute(:lpOperation => verb, :lpFile => "#{ruby_bin_dir}\\#{gem_file}", :lpParameters => 'install sqlite3 --no-ri --no-rdoc')
-            if r <= 32
-              Win32.MessageBox(:lpText => "error: failed to start the sqlite3 installer\n\nfailed command: Win32.ShellExecute(:lpOperation => #{verb.inspect}, :lpFile => \"#{ruby_bin_dir}\\#{gem_file}\", :lpParameters => \"install sqlite3 --no-ri --no-rdoc'\")\n\nerror code: #{Win32.GetLastError}", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-              exit
-            end
-            r = Win32.MessageBox(:lpText => "When the installer is finished, click OK to restart Lich.", :lpCaption => "Lich v#{LICH_VERSION}", :uType => Win32::MB_OKCANCEL)
-          end
-          if r == Win32::IDIOK
-            if File.exist?("#{ruby_bin_dir}\\rubyw.exe")
-              Win32.ShellExecute(:lpOperation => 'open', :lpFile => "#{ruby_bin_dir}\\rubyw.exe", :lpParameters => "\"#{File.expand_path($PROGRAM_NAME)}\"")
-            else
-              Win32.MessageBox(:lpText => "error: failed to find rubyw.exe; can't restart Lich for you", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-            end
-          else
-            # user doesn't want to restart Lich
-          end
-        else
-          Win32.MessageBox(:lpText => "error: Could not find gem.cmd or gem.bat in directory #{ruby_bin_dir}", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-        end
-      else
-        Win32.MessageBox(:lpText => "error: GetModuleFileName failed", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-      end
-    else
-      # user doesn't want to install sqlite3 gem
+rescue LoadError => sqlite_load_error
+  # sqlite3 is a required dependency. It is restored only from an approved,
+  # hash-verified Ruby4Lich5 manifest unit; this never falls back to `gem
+  # install` or a user GEM_HOME.
+  unless Lich::GemCheck.self_healing_supported?
+    Lich::GemCheck.alert(missing: ['sqlite3'], groups: [:default], error: sqlite_load_error)
+    exit 1
+  end
+
+  result = Lich::GemCheck.recover_with_consent!(['sqlite3'], force: true, groups: [:default])
+  if result.nil?
+    exit 1
+  elsif result.restart_required
+    exit 0
+  elsif result.success?
+    begin
+      require 'sqlite3'
+    rescue LoadError => e
+      Lich::GemCheck.alert(missing: ['sqlite3'], groups: [:default], error: e)
+      exit 1
     end
   else
-    # fixme: no sqlite3 on Linux/Mac
-    puts "The sqlite3 gem is not installed (or failed to load), you may need to: gem install sqlite3"
+    Lich::GemCheck.alert(
+      missing: ['sqlite3'], groups: [:default], error: Lich::DependencyRecovery::Error.new(result.error)
+    )
+    exit 1
   end
-  exit
 end
 
-unless (ARGV.grep(/^--no-(?:gtk|gui)$/).any? || RUBY_PLATFORM !~ /mingw/ && (ENV['DISPLAY'].nil? && !ARGV.include?('--gtk')))
+unless ARGV.any? { |arg| arg.match?(/^--no-(?:gtk|gui)$/i) }
   begin
     require 'gtk3'
     HAVE_GTK = true
-  rescue LoadError
-    if (ENV['RUN_BY_CRON'].nil? or ENV['RUN_BY_CRON'] == 'false') and ARGV.empty? or ARGV.any? { |any_arg| any_arg =~ /^--gui$/ } or not $stdout.isatty
-      if defined?(Win32)
-        r = Win32.MessageBox(:lpText => "Lich uses gtk3 to create windows, but it is not installed.  You can use Lich from the command line (ruby lich.rbw --help) or you can install gtk3 for a point and click interface.\n\nWould you like to install gtk3 now?", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_YESNO | Win32::MB_ICONQUESTION))
-        if r == Win32::IDIYES
-          r = Win32.GetModuleFileName
-          if r[:return] > 0
-            ruby_bin_dir = File.dirname(r[:lpFilename])
-            if File.exist?("#{ruby_bin_dir}\\gem.cmd")
-              gem_file = 'gem.cmd'
-            elsif File.exist?("#{ruby_bin_dir}\\gem.bat")
-              gem_file = 'gem.bat'
-            else
-              gem_file = nil
-            end
-            if gem_file
-              verb = (Win32.isXP? ? 'open' : 'runas')
-              r = Win32.ShellExecuteEx(:fMask => Win32::SEE_MASK_NOCLOSEPROCESS, :lpVerb => verb, :lpFile => "#{ruby_bin_dir}\\gem.bat", :lpParameters => 'install gtk3 --no-ri --no-rdoc')
-              if r[:return] > 0
-                pid = r[:hProcess]
-                sleep 1 while Win32.GetExitCodeProcess(:hProcess => pid)[:lpExitCode] == Win32::STILL_ACTIVE
-                r = Win32.MessageBox(:lpText => "Install finished.  Lich will restart now.", :lpCaption => "Lich v#{LICH_VERSION}", :uType => Win32::MB_OKCANCEL)
-              else
-                # ShellExecuteEx failed: this seems to happen with an access denied error even while elevated on some random systems
-                r = Win32.ShellExecute(:lpOperation => verb, :lpFile => "#{ruby_bin_dir}\\gem.bat", :lpParameters => 'install gtk3 --no-ri --no-rdoc')
-                if r <= 32
-                  Win32.MessageBox(:lpText => "error: failed to start the gtk3 installer\n\nfailed command: Win32.ShellExecute(:lpOperation => #{verb.inspect}, :lpFile => \"#{ruby_bin_dir}\\gem.bat\", :lpParameters => \"install gtk3 --no-ri --no-rdoc\")\n\nerror code: #{Win32.GetLastError}", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-                  exit
-                end
-                r = Win32.MessageBox(:lpText => "When the installer is finished, click OK to restart Lich.", :lpCaption => "Lich v#{LICH_VERSION}", :uType => Win32::MB_OKCANCEL)
-              end
-              if r == Win32::IDIOK
-                if File.exist?("#{ruby_bin_dir}\\rubyw.exe")
-                  Win32.ShellExecute(:lpOperation => 'open', :lpFile => "#{ruby_bin_dir}\\rubyw.exe", :lpParameters => "\"#{File.expand_path($PROGRAM_NAME)}\"")
-                else
-                  Win32.MessageBox(:lpText => "error: failed to find rubyw.exe; can't restart Lich for you", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-                end
-              else
-                # user doesn't want to restart Lich
-              end
-            else
-              Win32.MessageBox(:lpText => "error: Could not find gem.bat in directory #{ruby_bin_dir}", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-            end
-          else
-            Win32.MessageBox(:lpText => "error: GetModuleFileName failed", :lpCaption => "Lich v#{LICH_VERSION}", :uType => (Win32::MB_OK | Win32::MB_ICONERROR))
-          end
-        else
-          # user doesn't want to install gtk3 gem
+  rescue LoadError => gtk_load_error
+    # gtk3 stands for the whole GTK runtime unit in the manifest. A missing
+    # native dependency therefore restores the complete, ordered closure.
+    if Lich::GemCheck.self_healing_supported?
+      result = Lich::GemCheck.recover_with_consent!(['gtk3'], force: true, groups: [:gtk])
+      if result.nil?
+        exit 1
+      elsif result.restart_required
+        exit 0
+      elsif result.success?
+        begin
+          require 'gtk3'
+          HAVE_GTK = true
+        rescue LoadError => recovered_error
+          Lich::GemCheck.alert(missing: ['gtk3'], groups: [:gtk], error: recovered_error)
+          exit 1
         end
       else
-        # fixme: no gtk3 on Linux/Mac
-        puts "The gtk3 gem is not installed (or failed to load), you may need to: gem install gtk3"
+        Lich::GemCheck.alert(
+          missing: ['gtk3'], groups: [:gtk], error: Lich::DependencyRecovery::Error.new(result.error)
+        )
+        exit 1
       end
-      exit
     else
-      # gtk is optional if command line arguments are given or started in a terminal
-      HAVE_GTK = false
-      @early_gtk_error = "warning: failed to load GTK\n\t#{$!}\n\t#{$!.backtrace.join("\n\t")}"
+      # GTK is required unless the user explicitly selected a headless launch.
+      # Do not infer that choice from DISPLAY, TTY, or cron environment state.
+      Lich::GemCheck.alert(missing: ['gtk3'], groups: [:gtk], error: gtk_load_error)
+      exit 1
     end
   end
 else
   HAVE_GTK = false
-  @early_gtk_error = "info: DISPLAY environment variable is not set; not trying gtk"
+  @early_gtk_error = 'info: GTK disabled by command-line option'
 end
 
 unless File.exist?(LICH_DIR)
@@ -702,14 +788,8 @@ unless File.exist?(BACKUP_DIR)
   end
 end
 
-# Initializes the Lich database.
-#
-# @note This method sets up the necessary database structure for Lich to function.
 Lich.init_db
 
-# Cleans up debug logs in the specified temporary directory.
-# @param temp_dir [String] the directory where debug logs are stored.
-# @return [void]
 Lich.cleanup_debug_logs(TEMP_DIR)
 
 # todo: deprecate / remove for Ruby 3.2.1?

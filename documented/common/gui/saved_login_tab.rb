@@ -1,32 +1,34 @@
 # frozen_string_literal: true
 
 require_relative 'favorites_manager'
+require_relative 'frontend_selector'
 require_relative 'parameter_objects'
 require_relative 'login_tab_utils'
 require_relative 'theme_utils'
 
+# Namespace for the Lich 5 scripting engine and related utilities.
 module Lich
+  # Namespace for common Lich 5 functionality shared across components.
   module Common
+    # Namespace for Lich 5 GUI components and login-related interfaces.
     module GUI
-      # Represents a tab for managing saved login entries.
-      #
-      # This class handles the display and management of saved login information,
-      # including favorites and UI state persistence.
-      #
-      # @see Lich::Common::GUI for related GUI components.
+      # Handles the "Saved Entry" tab functionality for the Lich GUI login system
+      # Enhanced with integrated favorites functionality for seamless user experience
+      # Now includes data refresh capability for cross-tab synchronization
       class SavedLoginTab
         attr_accessor :favorites_enabled
 
-        # Initializes a new SavedLoginTab instance.
-        # @param parent [Gtk::Widget] the parent widget for this tab
-        # @param entry_data [Array<Hash>] the saved login entries data
-        # @param theme_state [String] the current theme state
-        # @param tab_layout_state [Boolean] the layout state of the tab
-        # @param autosort_state [Boolean] the autosort state for entries
-        # @param default_icon [Gtk::Icon] the default icon for the tab
-        # @param data_dir [String] the directory where data is stored
-        # @param callbacks [Hash] optional callbacks for various actions
-        # @return [SavedLoginTab]
+        # Initializes a new SavedLoginTab instance with favorites support
+        #
+        # @param parent [Object] Parent window or container
+        # @param entry_data [Array] Array of saved login entries
+        # @param theme_state [Boolean] Whether dark theme is enabled
+        # @param tab_layout_state [Boolean] Whether tab layout is enabled
+        # @param autosort_state [Boolean] Whether auto-sorting is enabled
+        # @param default_icon [Gdk::Pixbuf] Default icon for dialogs
+        # @param data_dir [String] Directory containing entry data for favorites management
+        # @param callbacks [Hash, CallbackParams] Callback handlers for various events
+        # @return [SavedLoginTab] New instance
         def initialize(parent, entry_data, theme_state, tab_layout_state, autosort_state, default_icon, data_dir, callbacks = {})
           @parent = parent
           @entry_data = entry_data
@@ -58,8 +60,10 @@ module Lich
           create_tab_content
         end
 
-        # Refreshes the saved login data and updates the UI.
-        # This method reloads the data from the YAML file and rebuilds the tab content.
+        # Refreshes the tab data while preserving UI state
+        # Reloads entry data from YAML and rebuilds data-dependent UI elements
+        # while maintaining user's current selections and scroll position
+        #
         # @return [void]
         def refresh_data
           # Save current UI state before refresh
@@ -81,12 +85,16 @@ module Lich
           show_refresh_notification
         end
 
-        # Returns the tab widget for quick game entries.
-        # @return [Gtk::Widget] the quick game entry tab widget
+        # Returns the tab widget for adding to a notebook
+        #
+        # @return [Gtk::Widget] The tab widget
         def tab_widget
           @quick_game_entry_tab
         end
 
+        # Returns references to UI elements that need to be accessed externally
+        #
+        # @return [Hash] Hash of UI element references
         def ui_elements
           {
             custom_launch_entry: @custom_launch_entry,
@@ -99,8 +107,9 @@ module Lich
           }
         end
 
-        # Updates the theme state of the UI elements.
-        # @param theme_state [String] the new theme state to apply
+        # Updates the theme state and refreshes UI elements accordingly
+        #
+        # @param theme_state [Boolean] New theme state
         # @return [void]
         def update_theme_state(theme_state)
           @ui_config.theme_state = theme_state
@@ -109,6 +118,10 @@ module Lich
 
         private
 
+        # Saves the current UI state for restoration after refresh
+        # Captures selection state, scroll position, and expanded sections
+        #
+        # @return [Hash] Hash containing current UI state
         def save_current_ui_state
           state = {
             selected_entry: nil,
@@ -131,6 +144,10 @@ module Lich
           state
         end
 
+        # Rebuilds the tab content with current entry data
+        # Clears existing content and recreates all UI elements
+        #
+        # @return [void]
         def rebuild_tab_content
           # Clear existing content
           @quick_game_entry_tab.children.each { |child| @quick_game_entry_tab.remove(child) }
@@ -146,6 +163,11 @@ module Lich
           @quick_game_entry_tab.show_all
         end
 
+        # Restores UI state after refresh
+        # Restores selections, scroll position, and other UI state
+        #
+        # @param saved_state [Hash] Previously saved UI state
+        # @return [void]
         def restore_ui_state(saved_state)
           return unless saved_state
 
@@ -165,18 +187,31 @@ module Lich
           end
         end
 
+        # Shows a brief notification that refresh occurred
+        # Provides visual feedback to user that data was refreshed
+        #
+        # @return [void]
         def show_refresh_notification
           # Create temporary status message
           # This could be enhanced with a status bar or toast notification
           Lich.log "info: Saved entries refreshed from YAML data"
         end
 
+        # Creates empty tab content when no saved entries exist
+        # Displays a simple message when no saved entries are available
+        #
+        # @return [void]
         def create_empty_tab_content
           box = Gtk::Box.new(:horizontal)
           box.pack_start(Gtk::Label.new('You have no saved login info.'), expand: true, fill: true, padding: 5)
           @quick_game_entry_tab.pack_start(box, expand: true, fill: true, padding: 0)
         end
 
+        # Creates populated tab content with saved login entries
+        # Builds a tab with all saved login entries organized by account
+        # Includes refresh button for manual data refresh
+        #
+        # @return [void]
         def create_populated_tab_content
           last_user_id = nil
 
@@ -203,6 +238,10 @@ module Lich
           create_global_settings_components
         end
 
+        # Creates a refresh button for manual data refresh
+        # Adds a button that allows users to manually refresh the saved entries
+        #
+        # @return [void]
         def create_refresh_button
           refresh_button = Gtk::Button.new(label: "Refresh Entries")
           refresh_button.tooltip_text = "Reload saved entries from file"
@@ -225,6 +264,10 @@ module Lich
           @quick_game_entry_tab.pack_start(button_container, expand: false, fill: false, padding: 5)
         end
 
+        # Applies the current theme state to all UI elements
+        # Updates the appearance of UI elements based on dark/light theme setting
+        #
+        # @return [void]
         def apply_theme_to_ui_elements
           ui_elements = {
             play_button: @play_button,
@@ -240,7 +283,9 @@ module Lich
           LoginTabUtils.apply_theme_to_ui_elements(@ui_config.theme_state, ui_elements, providers)
         end
 
-        # Creates the content for the tab based on the current entry data.
+        # Creates the tab content
+        # Builds the main UI elements for the saved login tab
+        #
         # @return [void]
         def create_tab_content
           if @entry_data.empty?
@@ -250,6 +295,10 @@ module Lich
           end
         end
 
+        # Creates an empty tab when no saved entries exist
+        # Displays a simple message when no saved entries are available
+        #
+        # @return [void]
         def create_empty_tab
           box = Gtk::Box.new(:horizontal)
           box.pack_start(Gtk::Label.new('You have no saved login info.'), expand: true, fill: true, padding: 5)
@@ -258,6 +307,10 @@ module Lich
           @quick_game_entry_tab.pack_start(box, expand: true, fill: true, padding: 0)
         end
 
+        # Creates a populated tab with saved login entries
+        # Builds a tab with all saved login entries organized by account
+        #
+        # @return [void]
         def create_populated_tab
           last_user_id = nil
 
@@ -286,8 +339,10 @@ module Lich
           create_global_settings_components
         end
 
-        # Creates a tabbed layout for the saved login entries.
-        # @return [Gtk::ScrolledWindow] the scrolled window containing the tabbed layout
+        # Creates a tabbed layout for accounts with favorites support
+        # Organizes saved entries in tabs by account, with a dedicated FAVORITES tab
+        #
+        # @return [Gtk::ScrolledWindow] Scrolled window containing the account notebook
         def create_tabbed_layout
           @account_book = Gtk::Notebook.new
           @account_book.set_tab_pos(:left)
@@ -341,14 +396,14 @@ module Lich
           quick_sw
         end
 
-        # Creates a tab for displaying favorite characters.
+        # Creates a dedicated favorites tab showing all favorite characters
         # @return [void]
         def create_favorites_tab
           favorites_box = Gtk::Box.new(:vertical, 0)
 
           # Get all favorite characters with frontend precision
           favorite_entries = @entry_data.select do |login_info|
-            FavoritesManager.is_favorite?(@data_dir, login_info[:user_id], login_info[:char_name], login_info[:game_code], login_info[:frontend])
+            FavoritesManager.is_favorite?(@data_dir, login_info[:user_id], login_info[:char_name], login_info[:game_code], login_info[:frontend], login_info[:custom_launch])
           end
 
           # Sort favorites by favorite_order if available, then by character name
@@ -366,7 +421,9 @@ module Lich
           # Add favorites to the tab
           if favorite_entries.empty?
             # Show message when no favorites exist
+            # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
             no_favorites_label = Gtk::Label.new("No favorite characters yet.\n\nMark characters as favorites using the ★ button\nin the account tabs or saved entries list.")
+            # rubocop:enable Custom/AsciiOnlySource
             no_favorites_label.set_justify(:center)
             no_favorites_label.set_margin_top(50)
             no_favorites_label.set_margin_bottom(50)
@@ -383,12 +440,16 @@ module Lich
           scrolled_window.set_policy(:never, :automatic)
           scrolled_window.add(favorites_box)
 
+          # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
           @account_book.prepend_page(scrolled_window, Gtk::Label.new("★ FAVORITES"))
+          # rubocop:enable Custom/AsciiOnlySource
         end
 
-        # Creates a list layout for the saved login entries.
-        # @param last_user_id [String] the last user ID processed
-        # @return [Gtk::ScrolledWindow] the scrolled window containing the list layout
+        # Creates a list layout for accounts (non-tabbed)
+        # Organizes saved entries in a flat list grouped by account
+        #
+        # @param last_user_id [String] Last processed user ID
+        # @return [Gtk::ScrolledWindow] Scrolled window containing the account list
         def create_list_layout(last_user_id)
           quick_box = Gtk::Box.new(:vertical, 0)
 
@@ -407,7 +468,7 @@ module Lich
             if login_params.custom_launch && !login_params.custom_launch.empty?
               frontend_display = 'Custom'
             else
-              frontend_display = login_params.frontend.capitalize == 'Stormfront' ? 'Wrayth' : login_params.frontend.capitalize
+              frontend_display = Frontend.display_name(login_params.frontend)
             end
 
             label = Gtk::Label.new("#{login_params.char_name} (#{login_params.game_name}, #{frontend_display})")
@@ -443,9 +504,17 @@ module Lich
           quick_sw
         end
 
-        # Creates a UI entry for a character in the account box.
-        # @param account_box [Gtk::Box] the box to add the character entry to
-        # @param login_info [Hash] the login information for the character
+        # Creates a character entry in the tabbed layout
+        # Builds a UI element for a single character entry
+        #
+        # @param account_box [Gtk::Box] Box to add the character entry to
+        # @param login_info [Hash] Login information for the character
+        # Creates a character entry with favorites support
+        # Builds UI elements for a single character with play, remove, and favorites buttons
+        # Enhanced with favorites functionality and visual indicators
+        #
+        # @param account_box [Gtk::Box] Container for the character entry
+        # @param login_info [Hash] Character login information
         # @return [void]
         def create_character_entry(account_box, login_info)
           # Convert to LoginParams object for consistency
@@ -453,7 +522,7 @@ module Lich
 
           # Check if this character is a favorite with frontend precision
           is_favorite = @favorites_enabled &&
-                        FavoritesManager.is_favorite?(@data_dir, login_info[:user_id], login_info[:char_name], login_info[:game_code], login_info[:frontend])
+                        FavoritesManager.is_favorite?(@data_dir, login_info[:user_id], login_info[:char_name], login_info[:game_code], login_info[:frontend], login_info[:custom_launch])
 
           # Get realm name from game code
           realm = Utilities.game_code_to_realm(login_params.game_code)
@@ -465,14 +534,16 @@ module Lich
           @play_button = Gtk::Button.new()
 
           # Add favorite indicator to character name if it's a favorite
+          # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
           char_name_text = is_favorite ? "★ #{login_params.char_name}" : login_params.char_name
+          # rubocop:enable Custom/AsciiOnlySource
           char_label = Gtk::Label.new(char_name_text)
           char_label.set_width_chars(15)
 
           if login_params.custom_launch && !login_params.custom_launch.empty?
             frontend_display = 'Custom'
           else
-            frontend_display = login_params.frontend.capitalize == 'Stormfront' ? 'Wrayth' : login_params.frontend.capitalize
+            frontend_display = Frontend.display_name(login_params.frontend)
           end
 
           fe_label = Gtk::Label.new("#{frontend_display}")
@@ -508,7 +579,9 @@ module Lich
           @favorite_button = nil
           if @favorites_enabled
             @favorite_button = Gtk::Button.new()
+            # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
             favorite_text = is_favorite ? '★' : '☆'
+            # rubocop:enable Custom/AsciiOnlySource
             favorite_label = Gtk::Label.new(favorite_text)
             favorite_label.set_width_chars(3)
             @favorite_button.add(favorite_label)
@@ -542,19 +615,39 @@ module Lich
           end
         end
 
+        # Sets up the favorite button handler
+        # Configures the click event for toggling favorite status
+        #
+        # @param favorite_button [Gtk::Button] Favorite button
+        # @param login_params [LoginParams] Character login parameters
+        # @param char_box [Gtk::Box] Character container box
+        # @param char_label [Gtk::Label] Character name label
+        # @param favorite_label [Gtk::Label] Favorite button label
+        # @return [void]
         def setup_favorite_button_handler(favorite_button, login_params, _char_box, char_label, favorite_label)
           favorite_button.signal_connect('clicked') do
             begin
               # Toggle favorite status with frontend precision
-              new_status = FavoritesManager.toggle_favorite(@data_dir, login_params.user_id, login_params.char_name, login_params.game_code, login_params.frontend)
+              new_status = FavoritesManager.toggle_favorite(
+                @data_dir,
+                login_params.user_id,
+                login_params.char_name,
+                login_params.game_code,
+                login_params.frontend,
+                login_params.custom_launch
+              )
 
               # Update button appearance
+              # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
               favorite_text = new_status ? '★' : '☆'
+              # rubocop:enable Custom/AsciiOnlySource
               favorite_label.text = favorite_text
               favorite_button.tooltip_text = new_status ? 'Remove from favorites' : 'Add to favorites'
 
               # Update character name display
+              # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
               char_name_text = new_status ? "★ #{login_params.char_name}" : login_params.char_name
+              # rubocop:enable Custom/AsciiOnlySource
               char_label.text = char_name_text
 
               # Update play button styling
@@ -591,7 +684,9 @@ module Lich
           end
         end
 
-        # Creates UI components for managing characters.
+        # Creates character management components
+        # Builds UI elements for adding new characters to accounts
+        #
         # @return [void]
         def create_character_management_components
           # Character entry
@@ -620,21 +715,13 @@ module Lich
           add_instance_pane.add2(add_inst_select)
 
           # Frontend options
-          q_stormfront_option = Gtk::RadioButton.new(label: 'Stormfront')
-          q_wizard_option = Gtk::RadioButton.new(label: 'Wizard', member: q_stormfront_option)
-          q_avalon_option = Gtk::RadioButton.new(label: 'Avalon', member: q_stormfront_option)
+          frontend_selector = FrontendSelector.new(refresh: false)
 
           # Add character button
           add_char_button = Gtk::Button.new(label: "Add to this account")
 
           # Frontend selection box
-          q_frontend_box = Gtk::Box.new(:horizontal, 10)
-          if RUBY_PLATFORM =~ /darwin/i
-            q_frontend_box.pack_end(q_avalon_option, expand: false, fill: false, padding: 0)
-          else
-            q_frontend_box.pack_end(q_wizard_option, expand: false, fill: false, padding: 0)
-            q_frontend_box.pack_end(q_stormfront_option, expand: false, fill: false, padding: 0)
-          end
+          q_frontend_box = frontend_selector.widget
 
           # Character and instance panes
           @bonded_pair_char = Gtk::Paned.new(:horizontal)
@@ -648,22 +735,26 @@ module Lich
           @bonded_pair_inst.add2(add_char_button)
 
           # Set up add character button handler
-          setup_add_character_handler(add_char_button, add_char_entry, add_inst_select, q_stormfront_option, q_wizard_option, q_avalon_option)
+          setup_add_character_handler(add_char_button, add_char_entry, add_inst_select, frontend_selector)
         end
 
-        def setup_add_character_handler(add_char_button, add_char_entry, add_inst_select, q_stormfront_option, q_wizard_option, q_avalon_option)
+        # Sets up the add character button handler
+        # Configures the click event for adding a new character
+        #
+        # @param add_char_button [Gtk::Button] Add character button
+        # @param add_char_entry [Gtk::Entry] Character name entry
+        # @param add_inst_select [Gtk::ComboBoxText] Instance selection
+        # @param frontend_selector [FrontendSelector] shared frontend selector
+        # @return [void]
+        def setup_add_character_handler(add_char_button, add_char_entry, add_inst_select, frontend_selector)
           add_char_button.signal_connect('clicked') {
             # Handle adding a character
             if @callbacks.on_add_character
-              frontend = if q_wizard_option.active?
-                           'wizard'
-                         elsif q_avalon_option.active?
-                           'avalon'
-                         elsif q_stormfront_option.active?
-                           'stormfront'
-                         else # default to
-                           'stormfront'
-                         end
+              frontend = frontend_selector.selected_id
+              unless frontend
+                @callbacks.on_error&.call('No supported frontend is available.')
+                next
+              end
 
               @callbacks.on_add_character.call(
                 character: add_char_entry.text,
@@ -674,7 +765,9 @@ module Lich
           }
         end
 
-        # Creates global settings components for the tab.
+        # Creates global settings components
+        # Builds UI elements for global application settings
+        #
         # @return [void]
         def create_global_settings_components
           # Use shared utility method to create settings components
@@ -696,10 +789,18 @@ module Lich
           @slider_box = settings[:slider_box]
         end
 
+        # Creates a custom launch entry
+        # Builds a combo box for custom launch commands
+        #
+        # @return [Gtk::ComboBoxText] The custom launch entry widget
         def create_custom_launch_entry
           @custom_launch_entry = LoginTabUtils.create_custom_launch_entry
         end
 
+        # Creates a custom launch directory entry
+        # Builds a combo box for custom launch directories
+        #
+        # @return [Gtk::ComboBoxText] The custom launch directory widget
         def create_custom_launch_dir
           @custom_launch_dir = LoginTabUtils.create_custom_launch_dir
         end

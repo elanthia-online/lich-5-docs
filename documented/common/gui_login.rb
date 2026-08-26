@@ -10,6 +10,7 @@ require_relative 'session_launcher'
 require_relative 'gui/components'
 require_relative 'gui/conversion_ui'
 require_relative 'gui/favorites_manager'
+require_relative 'gui/frontend_selector'
 require_relative 'gui/game_selection'
 require_relative 'gui/login_tab_utils'
 require_relative 'gui/manual_login_tab'
@@ -22,16 +23,17 @@ require_relative 'gui/utilities'
 require_relative 'gui/tab_communicator'
 require_relative 'gui/window_settings'
 
+# Lich scripting engine for GemStone IV and DragonRealms.
 module Lich
-  # Provides common GUI functionality for the Lich application.
-  #
-  # @see Lich::Common::GUI
+  # Namespace for common Lich functionality including GUI, authentication, and session management.
   module Common
-    # Initializes the GUI login process.
+    # Provides graphical login functionality for the Lich application
     #
-    # @return [Hash, nil] launch data if successful, otherwise nil
-    # @example Start the GUI login process
-    #   Lich::Common.gui_login
+    # This module contains the main entry point for the GUI login system
+    # and coordinates the interaction between saved and manual login tabs.
+    # It also provides account management functionality.
+    # Enhanced with cross-tab communication for data synchronization and
+    # targeted refresh capability for post-conversion scenarios.
     def gui_login
       initialize_login_state
       setup_gui_window
@@ -45,7 +47,10 @@ module Lich
 
     private
 
-    # Initializes the state for the login GUI.
+    # Initializes the login state variables
+    #
+    # Sets up all necessary state tracking variables and loads saved entries
+    # from the YAML state file. Also initializes cross-tab communication.
     #
     # @return [void]
     def initialize_login_state
@@ -70,10 +75,14 @@ module Lich
       @account_manager_ui = Lich::Common::GUI::AccountManagerUI.new(DATA_DIR)
     end
 
-    # Refreshes the GUI window after a conversion process.
+    # Refreshes the window after conversion without creating duplicate windows
+    #
+    # Reloads entry data and refreshes existing UI elements while preserving
+    # the current window structure. This prevents duplicate window creation
+    # that occurs with full reinitialization. Enhanced to properly enable
+    # favorites display and populate account management data.
     #
     # @return [void]
-    # @note This method handles errors and logs them appropriately.
     def refresh_window_after_conversion
       begin
         # Reload entry data from newly created YAML file
@@ -140,7 +149,10 @@ module Lich
       end
     end
 
-    # Triggers a refresh of the account management tab.
+    # Triggers the account management refresh by finding and clicking the refresh button
+    #
+    # Locates the refresh button in the account management tab and programmatically
+    # triggers it to populate the accounts view with the new YAML data.
     #
     # @return [void]
     def trigger_account_management_refresh
@@ -162,10 +174,13 @@ module Lich
       end
     end
 
-    # Finds the refresh button within a given container.
+    # Recursively finds the refresh button in a container widget
     #
-    # @param container [Object] the container to search within
-    # @return [Gtk::Button, nil] the refresh button if found, otherwise nil
+    # Searches through the widget hierarchy to locate the refresh button
+    # in the account management tab.
+    #
+    # @param container [Gtk::Container] Container to search
+    # @return [Gtk::Button, nil] Found refresh button or nil
     def find_refresh_button_in_container(container)
       return nil unless container.respond_to?(:each)
 
@@ -185,7 +200,10 @@ module Lich
       nil
     end
 
-    # Updates the visibility of UI elements after conversion.
+    # Updates UI element visibility after conversion
+    #
+    # Adjusts the visibility and state of UI elements based on the
+    # newly loaded entry data after conversion.
     #
     # @return [void]
     def update_ui_elements_after_conversion
@@ -202,7 +220,10 @@ module Lich
       end
     end
 
-    # Sets up the main GUI window for the application.
+    # Sets up the main GUI window and tabs
+    #
+    # Creates the main window, initializes all tabs, and configures
+    # the notebook and window properties. Also sets up cross-tab communication.
     #
     # @return [void]
     def setup_gui_window
@@ -229,7 +250,11 @@ module Lich
       }
     end
 
-    # Sets up communication between different tabs in the GUI.
+    # Sets up cross-tab communication between tabs
+    #
+    # Configures the communication system that allows tabs to notify
+    # each other of data changes for real-time synchronization.
+    # Enhanced to include manual login tab cache refresh for account/character removal events.
     #
     # @return [void]
     def setup_cross_tab_communication
@@ -264,7 +289,10 @@ module Lich
       @account_manager_ui.register_for_notifications(@tab_communicator)
     end
 
-    # Creates instances of the various tabs in the GUI.
+    # Creates tab instances for the notebook
+    #
+    # Initializes the saved login tab, manual login tab, and account management tab
+    # with appropriate callbacks and UI elements.
     #
     # @return [void]
     def create_tab_instances
@@ -281,7 +309,8 @@ module Lich
             login_info[:user_id],
             login_info[:char_name],
             login_info[:game_code],
-            login_info[:frontend]
+            login_info[:frontend],
+            login_info[:custom_launch]
           )
             # Reload entry_data from updated YAML to stay in sync
             begin
@@ -302,6 +331,9 @@ module Lich
         },
         on_add_character: ->(character:, instance:, frontend:) {
           # Handle adding a character
+        },
+        on_error: ->(message) {
+          @msgbox.call(message)
         },
         on_theme_change: ->(state) {
           # Update theme state for all components
@@ -345,6 +377,10 @@ module Lich
         on_play: ->(launch_data, login_context = nil) {
           handle_play_action(launch_data, login_context)
         },
+        # Handles successful login data saving from manual login tab
+        # Optimized to reduce redundant cache refreshes
+        #
+        # @param launch_data [Hash] Login data that was saved (for notification only)
         on_save: ->(launch_data) {
           # Only refresh cache if we don't already have the latest data
           # This prevents redundant file I/O operations
@@ -396,7 +432,9 @@ module Lich
       @slider_box = @saved_login_ui[:slider_box]
     end
 
-    # Sets up the notebook widget containing the tabs.
+    # Sets up the notebook with tabs
+    #
+    # Creates the notebook widget and adds all tabs to it.
     #
     # @return [void]
     def setup_notebook
@@ -426,6 +464,7 @@ module Lich
       @account_manager_ui.create_add_account_tab(account_notebook)
       @account_manager_ui.create_encryption_management_tab(account_notebook)
 
+      # Register notification callback now that @notebook is set
       @account_manager_ui.register_notification_callback
 
       # Add the notebook to the box
@@ -443,7 +482,10 @@ module Lich
       end
     end
 
-    # Configures the main window properties and settings.
+    # Configures the main window properties
+    #
+    # Sets up the window title, size, and other properties.
+    # Enhanced with targeted refresh for post-conversion scenarios.
     #
     # @return [void]
     def configure_window
@@ -457,15 +499,8 @@ module Lich
       window_settings = Lich::Common::GUI::WindowSettings.load(DATA_DIR)
       Lich::Common::GUI::WindowSettings.apply_to_window(@window, window_settings)
 
-      @window.signal_connect('delete_event') {
-        # Save window geometry before destruction
-        save_window_geometry
-
-        # Clean up cross-tab communication
-        @tab_communicator.clear_callbacks if @tab_communicator
-        @window.destroy unless @window.destroyed?
-        @done = true
-      }
+      @window.signal_connect('delete_event') { handle_window_delete_event }
+      @window.signal_connect('destroy') { handle_window_destroy }
 
       # Apply initial theme to window
       if @theme_state
@@ -497,7 +532,10 @@ module Lich
       end
     end
 
-    # Saves the current geometry of the window.
+    # Saves current window geometry to settings file
+    #
+    # Captures window position and dimensions and persists them
+    # for restoration on next launch.
     #
     # @return [void]
     def save_window_geometry
@@ -510,7 +548,36 @@ module Lich
       )
     end
 
-    # Applies a light mode style to buttons in the GUI.
+    # Handles a user-initiated window close request.
+    #
+    # GTK expects `delete_event` handlers to either veto closure or allow the
+    # default destroy path to proceed. We save launcher state here and let GTK
+    # perform the actual widget destruction so shutdown does not become
+    # re-entrant inside the close signal callback.
+    #
+    # @return [Boolean] false to allow GTK to destroy the window normally
+    def handle_window_delete_event
+      save_window_geometry
+      false
+    end
+
+    # Finalizes launcher shutdown state once GTK has destroyed the main window.
+    #
+    # This callback is intentionally idempotent because both user-driven closes
+    # and programmatic single-launch shutdown flow through the same destroy path.
+    #
+    # @return [void]
+    def handle_window_destroy
+      return if @window_destroyed
+
+      @window_destroyed = true
+      @tab_communicator.clear_callbacks if @tab_communicator
+      @done = true
+    end
+
+    # Applies button style for light mode
+    #
+    # Sets a lighter background color for buttons when in light mode.
     #
     # @return [void]
     def apply_button_style_for_light_mode
@@ -524,10 +591,10 @@ module Lich
       apply_style_to_buttons(@manual_login_ui, whitergrey)
     end
 
-    # Applies a specified style to buttons in the given UI elements.
+    # Applies style to buttons in a UI element collection
     #
-    # @param ui_elements [Hash] the UI elements containing buttons
-    # @param color [Gdk::RGBA] the color to apply to the buttons
+    # @param ui_elements [Hash] Hash of UI elements
+    # @param color [Gdk::RGBA] Color to apply to buttons
     # @return [void]
     def apply_style_to_buttons(ui_elements, color)
       ui_elements.each do |_key, element|
@@ -537,7 +604,10 @@ module Lich
       end
     end
 
-    # Hides optional elements in the GUI based on the current state.
+    # Hides optional UI elements
+    #
+    # Hides UI elements that are not needed initially.
+    # Enhanced to ensure proper visibility state after window refresh.
     #
     # @return [void]
     def hide_optional_elements
@@ -550,13 +620,19 @@ module Lich
       @notebook.set_page(1) if @entry_data.empty?
     end
 
-    # Handles the action of playing a game based on the provided launch data.
+    # Handles launch action for both saved and manual tabs.
+    # Persistent launcher mode is intentionally scoped to saved-entry launches.
+    # Manual login launches keep single-launch semantics to avoid form-reset friction.
     #
-    # @param launch_data [Hash] data required to launch the game
-    # @param login_context [Hash, nil] context for the login, if applicable
+    # @param launch_data [Array<String>] Prepared launch data from auth flow
+    # @param login_context [Hash, nil] Optional launch context from GUI tabs
     # @return [void]
     def handle_play_action(launch_data, login_context = nil)
-      if use_persistent_launcher?(login_context)
+      if managed_launch_completed?(login_context)
+        # Saga has already launched and owns authentication. Single-launch mode
+        # only needs to close; persistent mode remains available for more starts.
+        close_launcher_window unless @persistent_launcher_mode
+      elsif use_persistent_launcher?(login_context)
         # Persistent mode: launch child session, keep the launcher window active.
         if login_context.is_a?(Hash) && !login_context.key?(:dark_mode)
           # Propagate the current launcher theme state into detached child startup.
@@ -575,17 +651,24 @@ module Lich
         # Default/single-launch path: used when persistent mode is disabled OR
         # when launch originates from manual login.
         @launch_data = launch_data
-        Gtk.queue {
-          @window.destroy unless @window.destroyed?
-          @done = true
-        }
+        close_launcher_window
       end
     end
 
-    # Determines if the persistent launcher should be used based on the context.
+    # Returns whether the frontend session was launched before this lifecycle
+    # callback. Such launches must never be sent through SessionLauncher again.
     #
-    # @param login_context [Hash, nil] context for the login
-    # @return [Boolean] true if persistent launcher should be used, false otherwise
+    # @param login_context [Hash, nil]
+    # @return [Boolean]
+    def managed_launch_completed?(login_context)
+      login_context.is_a?(Hash) && login_context[:managed_launch_completed] == true
+    end
+
+    # Returns true only for saved-entry launches while persistent mode is enabled.
+    # A manual login qualifies only after its requested saved entry was written.
+    #
+    # @param login_context [Hash, nil]
+    # @return [Boolean]
     def use_persistent_launcher?(login_context)
       return false unless @persistent_launcher_mode
       return true unless login_context.is_a?(Hash)
@@ -593,15 +676,19 @@ module Lich
       saved_entry_context?(login_context)
     end
 
-    # Checks if the provided login context corresponds to a saved entry.
+    # Saved-entry callbacks carry account credentials in context.
     #
-    # @param login_context [Hash] the context to check
-    # @return [Boolean] true if it is a saved entry context, false otherwise
+    # @param login_context [Hash]
+    # @return [Boolean]
     def saved_entry_context?(login_context)
-      login_context.key?(:user_id) && login_context.key?(:password)
+      login_context[:saved_entry] == true ||
+        (login_context.key?(:user_id) && login_context.key?(:password))
     end
 
-    # Saves entry data if the flag is set to do so.
+    # Saves entry data if needed
+    #
+    # Saves the entry data to the YAML file if there are unsaved changes.
+    # Optimized to avoid redundant operations.
     #
     # @return [void]
     def save_entry_data_if_needed
@@ -612,16 +699,42 @@ module Lich
       end
     end
 
-    # Returns the launch data or exits the application if no data is available.
+    # Returns launch data or exits
     #
-    # @return [Hash, nil] launch data if available, otherwise nil
+    # Returns the launch data if available, otherwise exits the application.
+    #
+    # @return [Array, nil] Launch data if available
     def return_launch_data_or_exit
       if @launch_data.nil?
-        Gtk.queue { Gtk.main_quit }
+        Lich::Common.shutdown_gtk_before_exit
         exit
       end
 
       @launch_data
+    end
+
+    # Closes the launcher window through GTK's normal destroy path.
+    #
+    # Single-launch mode uses the same close sequence as a user clicking the
+    # window close button so all launcher cleanup remains centralized.
+    #
+    # @return [void]
+    def close_launcher_window
+      queued = Gtk.queue { destroy_launcher_window }
+      return if queued
+
+      destroy_launcher_window
+      handle_window_destroy
+    end
+
+    # Saves launcher geometry and destroys the window when it is still live.
+    #
+    # @return [void]
+    def destroy_launcher_window
+      return if @window.nil? || (@window.respond_to?(:destroyed?) && @window.destroyed?)
+
+      save_window_geometry
+      @window.destroy
     end
   end
 end

@@ -1,15 +1,22 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich scripting engine and its subsystems.
 module Lich
+  # Namespace for GemStone IV and DragonRealms game-specific functionality.
   module Gemstone
+    # Namespace for the infomon subsystem that tracks character stats, experience, skills, and game state.
     module Infomon
+      # this module handles all of the logic for parsing game lines that infomon depends on
       module Parser
+        # Namespace for regular expression patterns that parse game server output lines.
+        #
+        # Patterns are organized by purpose: character stats (CharRaceProf, Stat), experience (RealExp, TotalExp),
+        # skills and ranks (Skill, SpellRanks), player society and housing (Society, ProfileHouseCHE),
+        # and status conditions (SleepActive, BindActive, CutthroatActive). Most patterns use named captures
+        # to extract values. All patterns are frozen and optimized for high-volume line parsing.
+        #
+        # See ALL_LIST and AllStart for pattern union compilation used in the fast-path parser.
         module Pattern
-          # Regex patterns for parsing various character attributes and statistics.
-          #
-          # These patterns are used to extract information from game output related to character stats,
-          # skills, experience, and other gameplay elements.
-          #
-          # @see Lich::Gemstone::Infomon
           # Regex patterns grouped for Info, Exp, Skill and PSM parsing - calls upsert_batch to reduce db impact
           CharRaceProf = /^Name:\s+(?<name>[A-z\s'-]+)\s+Race:\s+(?<race>[A-z]+|[A-z]+(?: |-)[A-z]+)\s+Profession:\s+(?<profession>[-A-z]+)/.freeze
           CharGenderAgeExpLevel = /^Gender:\s+(?<gender>[A-z]+)\s+Age:\s+(?<age>[,0-9]+)\s+Expr:\s+(?<experience>[0-9,]+)\s+Level:\s+(?<level>[0-9]+)/.freeze
@@ -21,6 +28,17 @@ module Lich
           RealExp = %r{^\s+Experience: [\d,]+\s+Field Exp: (?<fxp_current>[\d,]+)/(?<fxp_max>[\d,]+)$}.freeze
           AscExp = /^\s+Ascension Exp: (?<ascension_experience>[\d,]+)\s+Recent Deaths: [\d,]+$/.freeze
           TotalExp = /^\s+Total Exp: (?<total_experience>[\d,]+)\s+Death's Sting: (?<deaths_sting>None|Light|Moderate|Sharp|Harsh|Piercing|Crushing)$/.freeze
+          # Matches the Long-Term Experience and Deeds line from the full INFO command output.
+          #
+          # Captures long-term accumulated experience and the count of deeds completed.
+          #
+          # @example
+          #   "  Long-Term Exp: 12,345,678  Deeds: 42" =~ Pattern::LTE
+          #   Regexp.last_match[:long_term_experience] #=> "12,345,678"
+          #   Regexp.last_match[:deeds] #=> "42"
+          # @see Pattern::Fame
+          # @see Pattern::TotalExp
+          # @see Pattern::ExprEnd
           LTE = /^\s+Long-Term Exp: (?<long_term_experience>[\d,]+)\s+Deeds: (?<deeds>\d+)$/.freeze
           ExprEnd = /^\s+Exp (?:until lvl|to next TP): -?[\d,]+/.freeze
           SkillStart = /^\s\w+\s\(at level \d+\), your current skill bonuses and ranks/.freeze
@@ -31,6 +49,22 @@ module Lich
           GoalsEnded = /^Further information can be found in the FAQs\.$/.freeze
           InnCheckedOut = /^Leaving your room, you check back out of .*, wander over to the front desk and hand the room key back to the innkeeper\./.freeze
           PSMStart = /^\w+, the following (?<cat>Ascension Abilities|Armor Specializations|Combat Maneuvers|Feats|Shield Specializations|Weapon Techniques) are available:$/.freeze
+          # Matches a single entry from the PSM (Personal Special Maneuver / Specialization / Feat) list output.
+          #
+          # Each line in a PSM category (Armor Specializations, Combat Maneuvers, Weapon Techniques, etc.)
+          # lists the maneuver name, its slash command, current rank, and maximum rank. The pattern captures
+          # all four components for storage in the infomon database.
+          #
+          # @example
+          #   "  Shield Slam shield 2/5 abc" =~ Pattern::PSM
+          #   Regexp.last_match[:name] #=> "Shield Slam"
+          #   Regexp.last_match[:command] #=> "shield"
+          #   Regexp.last_match[:ranks] #=> "2"
+          #   Regexp.last_match[:max] #=> "5"
+          # @see Pattern::PSMStart
+          # @see Pattern::PSMEnd
+          # @see Pattern::LearnPSM
+          # @see Pattern::UnlearnPSM
           PSM = /^\s+(?<name>[A-z\s\-':]+)\s+(?<command>[a-z]+)\s+(?<ranks>\d+)\/(?<max>\d+).*$/.freeze
           PSMEnd = /^   Subcategory: all$/.freeze
 
@@ -73,6 +107,7 @@ module Lich
           TicketEtherealScrip = /^\s*Reim - (?<ethereal_scrip>[\d,]+) ethereal scrip\.$/.freeze
           TicketSoulShards = /^\s*Ebon Gate - (?<soul_shards>[\d,]+) soul shards?\.$/.freeze
           TicketRaikhen = /^\s*Rumor Woods - (?<raikhen>[\d,]+) raikhen\.$/.freeze
+          TicketAevit = /^\s*Inquisitor - (?<aevit>[\d,]+) aevit\.$/.freeze
           TicketGold = /^\s*Gold - (?<gold>[\d,]+) gold\.$/.freeze
           WealthSilver = /^You have (?<silver>no|[,\d]+|but one) silver with you\./.freeze
           WealthSilverContainer = /^You are carrying (?<silver>[\d,]+) silver stored within your /.freeze
@@ -93,7 +128,9 @@ module Lich
           SilenceNoActive = /^The pall of silence leaves you\./.freeze
           CalmActive = /^A calm washes over you\./.freeze
           CalmNoActive = /^You are enraged by .*? attack!|^The feeling of calm leaves you\./.freeze
-          CutthroatActive = /slices deep into your vocal cords!$|^All you manage to do is cough up some blood\.$/.freeze
+          CutthroatActiveMid = /slices deep into your vocal cords!$/.freeze # mid-line: cannot be part of the anchored fast path
+          CutthroatActiveStart = /^All you manage to do is cough up some blood\.$/.freeze
+          CutthroatActive = Regexp.union(CutthroatActiveMid, CutthroatActiveStart).freeze
           CutthroatNoActive = /^\s*The horrible pain in your vocal cords subsides as you spit out the last of the blood clogging your throat\.$|^That tingles, but there are no head injuries to repair\.$/.freeze
           ThornPoisonStart = /^One of the vines surrounding .*? lashes out at you, driving a thorn into your skin!  You feel poison coursing through your veins\.$/.freeze
           ThornPoisonProgression = /^You begin to feel a strange fatigue, spreading throughout your body\.$|^The strange lassitude is growing worse, making it difficult to keep up with any strenuous activities\.$|^You find yourself gradually slowing down, your muscles trembling with fatigue\.$|^It\'s getting increasingly difficult to move. It feels almost as if the air itself is growing thick as molasses\.$|^No longer able to fight this odd paralysis, you collapse to the ground, as limp as an old washrag\.$/.freeze
@@ -127,31 +164,53 @@ module Lich
           EnhanciveOff = /^You (?:are no longer|already are not|are not currently) accepting the benefit(?:s)? of (?:your|any) enhancive (?:inventory )?items(?: in your inventory)?\./.freeze
           EnhancivePauses = /^You currently have (?<pauses>\d+) enhancive pauses? available\.$/.freeze
 
-          All = Regexp.union(CharRaceProf, CharGenderAgeExpLevel, Stat, StatEnd, Fame, RealExp, AscExp, TotalExp, LTE,
-                             ExprEnd, SkillStart, Skill, SpellRanks, SkillEnd, PSMStart, PSM, PSMEnd, Levelup, SpellsSolo,
-                             Citizenship, NoCitizenship, Society, NoSociety, SleepActive, SleepNoActive, BindActive,
-                             BindNoActive, SilenceActive, SilenceNoActive, CalmActive, CalmNoActive, CutthroatActive,
-                             CutthroatNoActive, SpellUpMsgs, SpellDnMsgs, Warcries, NoWarcries, SocietyJoin, SocietyStep,
-                             SocietyResign, LearnPSM, UnlearnPSM, LostTechnique, LearnTechnique, UnlearnTechnique,
-                             Resource, Suffused, VolnFavor, GigasArtifactFragments, RedsteelMarks, TicketGeneral, TicketGold,
-                             TicketBlackscrip, TicketBloodscrip, TicketEtherealScrip, TicketSoulShards, TicketRaikhen,
-                             WealthSilver, WealthSilverContainer, GoalsDetected, GoalsEnded, InnCheckedOut, SpellsongRenewed,
-                             ThornPoisonStart, ThornPoisonProgression, ThornPoisonDeprogression, ThornPoisonEnd, CovertArtsCharges,
-                             AccountName, AccountSubscription, ProfileStart, ProfileName, ProfileHouseCHE, ResignCHE, ResignConfirmCHE,
-                             ShadowEssence, ShadowEssenceGain, ShadowEssenceCap, SacrificeMana, SacrificeChannel, SacrificeInfest,
-                             SacrificeFate, SacrificeShift, GemstoneDust, EnhanciveStart, EnhanciveStat, EnhanciveSkillsSection,
-                             EnhanciveSkillRanks, EnhanciveSkillBonus, EnhanciveResourcesSection, EnhanciveResource,
-                             EnhanciveMartialSection, EnhanciveMartialSkill, EnhanciveSpellsSection, EnhanciveSpells,
-                             EnhanciveStatisticsSection, EnhanciveStatistic, EnhanciveEnd, EnhanciveNone,
-                             EnhanciveOn, EnhanciveOff, EnhancivePauses)
+          # Comprehensive list of all line-start-anchored regex patterns used by the parser.
+          #
+          # This array is compiled into AllStart, an optimized union regex anchored to \A that serves as
+          # a guard for the main Parser.parse method. The guard allows the engine to attempt the union only
+          # at position 0 instead of scanning every position of long lines, reducing server-thread CPU time.
+          # Mid-line patterns (AllMid) are checked separately outside this union.
+          #
+          # @see Pattern::AllStart
+          # @see Pattern::AllMid
+          # @see Parser.parse
+          ALL_LIST = [CharRaceProf, CharGenderAgeExpLevel, Stat, StatEnd, Fame, RealExp, AscExp, TotalExp, LTE,
+                      ExprEnd, SkillStart, Skill, SpellRanks, SkillEnd, PSMStart, PSM, PSMEnd, Levelup, SpellsSolo,
+                      Citizenship, NoCitizenship, Society, NoSociety, SleepActive, SleepNoActive, BindActive,
+                      BindNoActive, SilenceActive, SilenceNoActive, CalmActive, CalmNoActive, CutthroatActiveStart,
+                      CutthroatNoActive, SpellUpMsgs, SpellDnMsgs, Warcries, NoWarcries, SocietyJoin, SocietyStep,
+                      SocietyResign, LearnPSM, UnlearnPSM, LostTechnique, LearnTechnique, UnlearnTechnique,
+                      Resource, Suffused, VolnFavor, GigasArtifactFragments, RedsteelMarks, TicketGeneral, TicketGold,
+                      TicketBlackscrip, TicketBloodscrip, TicketEtherealScrip, TicketSoulShards, TicketRaikhen, TicketAevit,
+                      WealthSilver, WealthSilverContainer, GoalsDetected, GoalsEnded, InnCheckedOut, SpellsongRenewed,
+                      ThornPoisonStart, ThornPoisonProgression, ThornPoisonDeprogression, ThornPoisonEnd, CovertArtsCharges,
+                      AccountName, AccountSubscription, ProfileStart, ProfileName, ProfileHouseCHE, ResignCHE, ResignConfirmCHE,
+                      ShadowEssence, ShadowEssenceGain, ShadowEssenceCap, SacrificeMana, SacrificeChannel, SacrificeInfest,
+                      SacrificeFate, SacrificeShift, GemstoneDust, EnhanciveStart, EnhanciveStat, EnhanciveSkillsSection,
+                      EnhanciveSkillRanks, EnhanciveSkillBonus, EnhanciveResourcesSection, EnhanciveResource,
+                      EnhanciveMartialSection, EnhanciveMartialSkill, EnhanciveSpellsSection, EnhanciveSpells,
+                      EnhanciveStatisticsSection, EnhanciveStatistic, EnhanciveEnd, EnhanciveNone,
+                      EnhanciveOn, EnhanciveOff, EnhancivePauses].freeze
+          # Mid-line patterns are matched anywhere in the line, so they cannot be part
+          # of the \A-anchored fast path. Add future mid-line patterns here (wrap in
+          # Regexp.union for more than one); the Parser.parse guard does not change.
+          AllMid = CutthroatActiveMid
+          # Fast-path guard for Parser.parse. Every pattern in ALL_LIST is anchored to
+          # the start of the line, so anchoring the union with \A lets the engine
+          # attempt it only at position 0 instead of scanning every position of long
+          # (usually non-matching) lines -- that scan was ~half of all server-thread
+          # CPU. Mid-line patterns (AllMid) keep their own scanning check.
+          AllStart = Regexp.new('\A(?:' + Regexp.union(ALL_LIST).source + ')').freeze
         end
 
-        # Manages the state of the Infomon parser.
+        # Namespace for parser state tracking during multi-line game output parsing.
         #
-        # This module keeps track of the current state of the parser, allowing transitions between
-        # different states such as ready, goals, and profile.
+        # Maintains the current parse state (e.g., :ready, :goals, :profile, :enhancive_stats) to handle
+        # commands whose output spans multiple server lines (SKILL GOALS, PROFILE, INVENTORY ENHANCIVE TOTALS).
+        # State transitions are guarded to catch parser state machine errors.
         #
-        # @see Lich::Gemstone::Infomon::Parser
+        # @see Parser.State.set
+        # @see Parser.State.get
         module State
           @state = :ready
           Goals = :goals
@@ -165,12 +224,18 @@ module Lich
           EnhanciveSpells = :enhancive_spells
           EnhanciveStatistics = :enhancive_statistics
 
-          # Sets the current state of the parser.
+          # Sets the parser state with transition validation.
           #
-          # This method validates the state transition and updates the internal state variable.
+          # Enforces valid state transitions: Goals and Profile states can only be entered from Ready;
+          # Enhancive states can transition from Ready or between other Enhancive states. Attempting an
+          # invalid transition raises an error with caller context for debugging.
           #
-          # @param state [Symbol] the new state to set
-          # @return [void]
+          # @param state [Symbol] the target state (:goals, :profile, :ready, :enhancive_stats, etc.)
+          # @return [Symbol] the state that was set
+          # @raise [RuntimeError] if the state transition is invalid
+          # @see Parser.State.get
+          # @see Parser.State::Goals
+          # @see Parser.State::EnhanciveStats
           def self.set(state)
             case state
             when Goals, Profile
@@ -188,29 +253,42 @@ module Lich
             @state = state
           end
 
-          # Retrieves the current state of the parser.
+          # Returns the current parser state.
           #
-          # @return [Symbol] the current state of the parser
+          # @return [Symbol] the current state (:ready, :goals, :profile, :enhancive_stats, etc.)
+          # @see Parser.State.set
           def self.get
             @state
           end
 
-          # Checks if the current state is one of the enhancive states.
+          # Returns true if the parser is in any of the Enhancive parsing states.
           #
-          # @return [Boolean] true if in an enhancive state, false otherwise
+          # Useful for detecting whether enhancive inventory output is being parsed and for guarding
+          # initialization of @enhancive_hold across multiple section handlers.
+          #
+          # @return [Boolean] true if state is EnhanciveStats, EnhanciveSkills, EnhanciveResources,
+          #   EnhanciveMartial, EnhanciveSpells, or EnhanciveStatistics; false otherwise
+          # @see Parser.State.set
           def self.enhancive_state?
             [EnhanciveStats, EnhanciveSkills, EnhanciveResources,
              EnhanciveMartial, EnhanciveSpells, EnhanciveStatistics].include?(@state)
           end
         end
 
-        # Determines the category of a given string based on its content.
+        # Maps a full PSM category name to its short database key.
         #
-        # @param category [String] the category string to analyze
-        # @return [String, nil] the determined category or nil if not matched
+        # Converts the verbose category names from game server output (e.g., "Armor Specializations")
+        # to the short form stored in infomon.db (e.g., "Armor"). Used during PSM learning/unlearning
+        # to normalize the category before database lookup.
+        #
+        # @param category [String] the full category name (e.g., "Combat Maneuvers", "Weapon Techniques")
+        # @return [String, nil] the short form ("Armor", "Ascension", "CMan", "Feat", "Shield", "Weapon"),
+        #   or nil if the category is not recognized
         # @example
-        #   find_cat("Armor") # => "Armor"
-        #   find_cat("Combat") # => "CMan"
+        #   Parser.find_cat("Armor Specializations") #=> "Armor"
+        #   Parser.find_cat("Combat Maneuvers") #=> "CMan"
+        # @see Pattern::PSMStart
+        # @see Pattern::LearnPSM
         def self.find_cat(category)
           case category
           when /Armor/
@@ -228,17 +306,47 @@ module Lich
           end
         end
 
-        # Parses a line of game output and updates the internal state accordingly.
+        # Parses a single game server output line and updates infomon database state accordingly.
         #
-        # This method uses regex patterns to identify and extract relevant data from the input line,
-        # updating the Infomon database with the parsed information.
+        # This is the main entry point for the infomon parser. It employs a fast-path guard
+        # (Pattern::AllStart) to check only line-start patterns on non-matching lines, then uses a
+        # case statement to dispatch the line to specific handlers. Each handler extracts values via
+        # regex captures and calls Infomon.set or Infomon.upsert_batch to update the database.
         #
-        # @param line [String] the line of game output to parse
-        # @return [Symbol] status of the parsing operation, e.g., :ok, :noop
-        # @raise [StandardError] if an error occurs during parsing
+        # For multi-line commands (SKILL GOALS, PROFILE, INVENTORY ENHANCIVE TOTALS), the parser
+        # manages state transitions via Parser.State. Batch operations (stats, experience, skills)
+        # use mutex locks to synchronize with the database.
+        #
+        # Mid-line patterns (e.g., CutthroatActiveMid) are also checked to catch status conditions
+        # that may not be anchored to the start of the line.
+        #
+        # @param line [String] a single physical line from the game server output, typically stripped
+        #   of trailing whitespace and already split from the \r\n-delimited server stream
+        # @return [Symbol] :ok if the line matched and was processed, :noop if the line did not match
+        #   or processing was skipped (e.g., mutex not held), or in rare error cases after logging
+        # @raise [StandardError] lines that raise exceptions are caught, logged with line content,
+        #   and converted to :noop to prevent parser crashes
+        # @note Callers should not rely on the return value to determine action; handlers trigger
+        #   side effects (database writes, state transitions) directly
+        # @example
+        #   line = "Gender: Male  Age: 42  Expr: 1,234,567  Level: 28"
+        #   Parser.parse(line) #=> :ok
+        #   # infomon database now contains updated experience value
+        # @see Pattern
+        # @see Parser.State
+        # @see Infomon.set
+        # @see Infomon.upsert_batch
         def self.parse(line)
-          # O(1) vs O(N)
-          return :noop unless line =~ Pattern::All
+          # O(1) vs O(N): the anchored union is attempted only at line start; mid-line
+          # patterns (AllMid) are checked separately.
+          #
+          # No multi-line fallback is needed here (unlike infomon/xmlparser.rb, which
+          # is handed the raw, possibly multi-line server_string). Parser.parse is fed
+          # one physical line at a time -- Game.process_xml_data does
+          # stripped_server.split("\r\n").each { |l| Infomon::Parser.parse(l) } -- and
+          # the server stream is \r\n-aligned, so +line+ never carries an interior
+          # newline whose 2nd+ line an inner ^ anchor would need to match.
+          return :noop unless Pattern::AllStart.match?(line) || Pattern::AllMid.match?(line)
 
           begin
             case line
@@ -293,8 +401,8 @@ module Lich
               :ok
             when Pattern::TotalExp
               match = Regexp.last_match
-              @expr_hold.push(['experience.total_experience', match[:total_experience].delete(',').to_i],
-                              ['experience.deaths_sting', match[:deaths_sting]])
+              @expr_hold.push(['experience.total_experience', match[:total_experience].delete(',').to_i])
+              @expr_hold.push(['experience.deaths_sting', match[:deaths_sting]])
               :ok
             when Pattern::LTE
               match = Regexp.last_match
@@ -547,6 +655,10 @@ module Lich
             when Pattern::TicketRaikhen
               match = Regexp.last_match
               Infomon.set('currency.raikhen', match[:raikhen].delete(',').to_i)
+              :ok
+            when Pattern::TicketAevit
+              match = Regexp.last_match
+              Infomon.set('currency.aevit', match[:aevit].delete(',').to_i)
               :ok
             when Pattern::WealthSilver
               match = Regexp.last_match

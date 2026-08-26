@@ -8,30 +8,35 @@
   Supports both built-in SCRIPT_REPOS and user-registered custom repos.
 =end
 
+# Namespace for the Lich scripting engine and its utilities.
 module Lich
+  # Namespace for Lich utility modules.
   module Util
+    # Namespace for script update and repository management utilities.
     module Update
-      # Manages user-tracked script lists for :explicit tracking mode repos.
+      # Manages user-tracked script lists for repositories in :explicit tracking mode.
       #
-      # Combines default_tracked scripts from config with user-added scripts from
-      # UserVars. Provides CLI for adding/removing tracked scripts.
-      # Supports both built-in SCRIPT_REPOS and user-registered custom repos.
+      # Combines default tracked scripts from repository config with user-added scripts
+      # stored in UserVars. Provides methods to query, add, and remove tracked scripts,
+      # and to display tracked scripts in tabular format. Supports both built-in SCRIPT_REPOS
+      # and user-registered custom repositories.
       class TrackedScripts
-        # Returns a unique list of tracked scripts for the given repository configuration.
+        # Returns all tracked scripts for a repository config.
         #
-        # @param config [Hash] the configuration hash for the repository
-        # @return [Array<String>] an array of unique tracked script names
-        def tracked_scripts(config)
+        # @param config [Hash] repository config from SCRIPT_REPOS or custom repo
+        # @param repo_key [String, nil] explicit repo key (avoids config-equality lookup)
+        # @return [Array<String>] list of tracked script filenames
+        def tracked_scripts(config, repo_key: nil)
           defaults = config[:default_tracked] || []
-          repo_key = SCRIPT_REPOS.key(config) || CustomRepos.all.find { |k, v| CustomRepos.build_config(k, v) == config }&.first
+          repo_key ||= SCRIPT_REPOS.key(config)
           user_additions = UserVars.tracked_scripts&.dig(repo_key) || [] rescue []
           (defaults + user_additions).uniq
         end
 
-        # Resolves the configuration for a given repository key.
+        # Resolves a repo_key to its config, checking both SCRIPT_REPOS and custom repos.
         #
-        # @param repo_key [String] the key of the repository to resolve
-        # @return [Hash, nil] the configuration hash for the repository or nil if not found
+        # @param repo_key [String] repository key
+        # @return [Hash, nil] config hash or nil
         def resolve_config(repo_key)
           config = SCRIPT_REPOS[repo_key]
           return config if config
@@ -42,20 +47,20 @@ module Lich
           nil
         end
 
-        # Checks for script name collisions in tracked repositories.
+        # Checks for filename collisions across all repos.
         #
-        # @param script_name [String] the name of the script to check
-        # @param exclude_repo [String] the repository key to exclude from the check
-        # @return [String, nil] a warning or error message if a collision is found, otherwise nil
+        # @param script_name [String] script filename to check
+        # @param exclude_repo [String] repo key to exclude from check
+        # @return [String, nil] warning message if collision found, nil otherwise
         def check_collision(script_name, exclude_repo)
-          all_repo_warning = nil
-
           # Check built-in repos
           SCRIPT_REPOS.each do |key, config|
             next if key == exclude_repo
 
             if config[:tracking_mode] == :all
-              all_repo_warning ||= "Warning: '#{script_name}' may conflict with #{config[:display_name]} (syncs all .lic files)."
+              if File.exist?(File.join(SCRIPT_DIR, script_name))
+                return "Error: '#{script_name}' is already installed from #{config[:display_name]}. The custom version would shadow it at runtime."
+              end
               next
             end
 
@@ -75,13 +80,13 @@ module Lich
             end
           end
 
-          all_repo_warning
+          nil
         end
 
-        # Tracks a script for a given repository key.
+        # Adds a script to user's tracked list for a repository.
         #
-        # @param repo_key [String] the key of the repository to track the script in
-        # @param script_name [String] the name of the script to track
+        # @param repo_key [String] repository key (built-in or custom)
+        # @param script_name [String] script filename
         # @return [void]
         def track_script(repo_key, script_name)
           config = resolve_config(repo_key)
@@ -96,21 +101,20 @@ module Lich
             StatusReporter.respond_mono("[lich5-update: '#{script_name}' is already tracked in #{name}.]")
           else
             collision = check_collision(script_name, repo_key)
-            if collision&.start_with?('Error:')
+            if collision
               StatusReporter.respond_mono("[lich5-update: #{collision}]")
               return
             end
-            StatusReporter.respond_mono("[lich5-update: #{collision}]") if collision
             UserVars.tracked_scripts[repo_key].push(script_name)
             Vars.save
             StatusReporter.respond_mono("[lich5-update: Added '#{script_name}' to #{name} tracked list.]")
           end
         end
 
-        # Untracks a script from a given repository key.
+        # Removes a script from user's tracked list for a repository.
         #
-        # @param repo_key [String] the key of the repository to untrack the script from
-        # @param script_name [String] the name of the script to untrack
+        # @param repo_key [String] repository key (built-in or custom)
+        # @param script_name [String] script filename
         # @return [void]
         def untrack_script(repo_key, script_name)
           config = resolve_config(repo_key)
@@ -141,10 +145,9 @@ module Lich
           end
         end
 
-        # Displays the list of tracked scripts for the specified repository.
-        # If no repository key is provided, it shows all tracked scripts.
+        # Displays Terminal::Table of tracked scripts for one or all repos.
         #
-        # @param repo_key [String, nil] the key of the repository to show tracked scripts for
+        # @param repo_key [String, nil] repository key or nil for all repos
         # @return [void]
         def show_tracked(repo_key = nil)
           table_rows = []

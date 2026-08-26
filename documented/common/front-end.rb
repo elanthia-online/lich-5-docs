@@ -6,10 +6,40 @@ require 'fileutils'
 require 'fiddle'
 require 'fiddle/import'
 require 'open3'
+require 'os'
+require_relative '../util/deep_freeze'
 
-# Windows API modules for frontend PID detection and window focus
-# These need to be defined at the top level
-if RUBY_PLATFORM =~ /mingw|mswin/
+# Define the ABI predicate before the top-level Win32 binding guard that uses it;
+# the main Frontend implementation continues in the module reopening below.
+module Lich
+  # Namespace for common Lich functionality shared across the system.
+  module Common
+    # Frontend registry and capabilities system for client identification.
+    #
+    # Manages a registry of game frontends (e.g., Wrayth, Saga, Wizard) with their
+    # capabilities and discovery metadata. Scripts query this module to check
+    # frontend features and access the current client identity.
+    module Frontend
+      # Canonical platform identifiers used in discovery and launch plans.
+      #
+      # @see .platform_key
+      # @see .validate_platform_key!
+      PLATFORM_KEYS = %i[darwin linux windows unsupported].freeze
+
+      # Native user32 bindings require a Windows MRI ABI, not merely a Windows host.
+      # @return [Boolean]
+      def self.native_windows_runtime?
+        OS.host_os.to_s.match?(/mingw|mswin/i)
+      end
+    end
+  end
+end
+
+# Windows API modules for frontend PID detection and window focus.
+# Keep this narrower than Frontend.windows_platform?: these direct Fiddle
+# bindings are supported by native mingw/mswin Ruby, not every Windows-like
+# compatibility runtime recognized for executable discovery.
+if Lich::Common::Frontend.native_windows_runtime?
   unless defined?(::Win32Enum)
     module ::Win32Enum
       extend Fiddle::Importer
@@ -33,85 +63,205 @@ if RUBY_PLATFORM =~ /mingw|mswin/
 end
 
 module Lich
-  # Provides common functionality for the Lich frontend.
-  #
-  # This module contains methods for managing frontend capabilities,
-  # registration, and session handling.
-  #
-  # @see Lich::Common::Frontend
   module Common
     module Frontend
       @session_file = nil
       @tmp_session_dir = File.join Dir.tmpdir, "simutronics", "sessions"
       @frontend_pid = nil
       @pid_mutex = Mutex.new
+      ORIGIN_SENTINEL = "\x1f"
 
-      # ─── Frontend Registry ─────────────────────────────────────
+      # Recursively duplicates a nested structure of Hashes, Arrays, and scalars.
+      #
+      # Scalar values are duplicated with `.dup` (excluding frozen/symbol literals).
+      # Used internally to isolate registry entries from mutation by callers.
+      #
+      # @param value [Hash, Array, Object] the value to copy
+      # @return [Hash, Array, Object] a new structure with copied contents
+      # @api private
+      def self.deep_copy(value)
+        case value
+        when Hash
+          value.each_with_object({}) { |(key, item), copy| copy[key] = deep_copy(item) }
+        when Array
+          value.map { |item| deep_copy(item) }
+        else
+          value.dup
+        end
+      end
+      private_class_method :deep_copy
+
+      # --- Frontend Registry -------------------------------------
       # Each registered frontend has:
       #   - capabilities: Set of symbols (e.g., :xml, :streams, :mono)
       #   - metadata: Hash of additional data (e.g., client_string)
       #
       # This registry-based approach allows adding new frontends via
       # configuration without modifying the controller code.
-      @registry = Hash.new { |h, k| h[k] = { capabilities: Set.new, metadata: {} } }
+      @registry = {}
+      @aliases = {}
+      @definitions = {}
 
-      # Registers a new frontend with the specified capabilities and metadata.
-      #
-      # @param name [String] the name of the frontend to register
-      # @param capabilities [Array<Symbol>] a list of capabilities for the frontend
-      # @param metadata [Hash] additional metadata for the frontend
-      # @return [void]
+      # Registers a frontend with its capabilities and metadata.
+      # @param name [Symbol, String] The name of the frontend (e.g., :wrayth)
+      # @param capabilities [Array<Symbol>] A list of capabilities (e.g., [:xml, :streams])
+      # @param metadata [Hash] Additional data (e.g., { client_string: "..." })
       def self.register(name, capabilities: [], metadata: {})
-        entry = @registry[name.to_s.downcase]
+        key = name.to_s.downcase
+        raise ArgumentError, 'frontend name must not be empty' if key.empty?
+
+        entry = (@registry[key] ||= { capabilities: Set.new, metadata: {} })
         entry[:capabilities].merge(capabilities.map(&:to_sym))
-        entry[:metadata].merge!(metadata)
+        entry[:metadata].merge!(deep_copy(metadata))
+        Array(metadata[:aliases]).each { |alias_name| @aliases[alias_name.to_s.downcase] = key }
+        @definitions.delete(key)
+      end
+
+      # Returns the stable catalog identifier for a frontend or alias.
+      # Unknown values are normalized but are not registered.
+      #
+      # @param frontend_name [String, Symbol]
+      # @return [String]
+      def self.canonical_name(frontend_name)
+        key = frontend_name.to_s.downcase
+        @aliases.fetch(key, key)
       end
 
       # Checks if a frontend has a specific capability.
-      #
-      # @param frontend_name [String] the name of the frontend
-      # @param capability [Symbol] the capability to check
-      # @return [Boolean] true if the frontend has the capability, false otherwise
+      # @param frontend_name [String] The name of the frontend to check
+      # @param capability [Symbol] The capability to check for
+      # @return [Boolean]
       def self.has_capability?(frontend_name, capability)
         return false if frontend_name.nil?
 
-        @registry[frontend_name.to_s.downcase][:capabilities].include?(capability.to_sym)
+        entry = @registry[canonical_name(frontend_name)]
+        entry ? entry[:capabilities].include?(capability.to_sym) : false
       end
 
-      # Retrieves metadata for a registered frontend by key.
-      #
-      # @param frontend_name [String] the name of the frontend
-      # @param key [String] the key of the metadata to retrieve
-      # @return [String, nil] the metadata value or nil if not found
+      # Retrieves a metadata value for a given frontend.
+      # @param frontend_name [String] The name of the frontend
+      # @param key [Symbol] The metadata key to retrieve
+      # @return [Object, nil]
       def self.metadata_for(frontend_name, key)
         return nil if frontend_name.nil?
 
-        @registry[frontend_name.to_s.downcase][:metadata][key]
+        entry = @registry[canonical_name(frontend_name)]
+        entry && entry[:metadata][key]
       end
 
-      # Returns a list of all registered frontend names.
+      # Returns an immutable catalog definition for a registered frontend.
       #
-      # @return [Array<String>] an array of registered frontend names
+      # Accepted inputs are a non-empty String or Symbol naming an existing
+      # registry entry. Invalid or unknown identifiers raise ArgumentError.
+      # This method performs no discovery and persists nothing.
+      #
+      # @param frontend_name [String, Symbol]
+      # @return [Hash]
+      # @raise [ArgumentError] if frontend_name is blank or unregistered
+      def self.definition_for(frontend_name)
+        key = canonical_name(frontend_name)
+        raise ArgumentError, 'frontend name must not be empty' if key.empty?
+        raise ArgumentError, "unknown frontend: #{frontend_name}" unless @registry.key?(key)
+
+        @definitions[key] ||= Lich::Util.deep_freeze(
+          {
+            id: key,
+            capabilities: @registry.fetch(key)[:capabilities].to_a,
+            metadata: deep_copy(@registry.fetch(key)[:metadata])
+          }
+        )
+      end
+
+      # Returns immutable catalog definitions, optionally restricted to those
+      # intended for the graphical launcher.
+      #
+      # @param gui_selectable [Boolean, nil]
+      # @return [Array<Hash>]
+      def self.definitions(gui_selectable: nil)
+        definitions = @registry.keys.map { |name| definition_for(name) }
+        return definitions if gui_selectable.nil?
+
+        definitions.select do |definition|
+          definition.dig(:metadata, :gui_selectable) == gui_selectable
+        end
+      end
+
+      # Returns the canonical platform key used by frontend discovery and
+      # launch-plan metadata.
+      #
+      # @return [Symbol] :darwin, :windows, :linux, or :unsupported
+      def self.platform_key
+        return :darwin if OS.mac?
+        return :linux if OS.linux?
+        return :windows if OS.windows?
+
+        :unsupported
+      end
+
+      # Validates a canonical platform key used by discovery and launch plans.
+      #
+      # @param key [Symbol]
+      # @return [Symbol]
+      # @raise [ArgumentError] when key is not canonical
+      def self.validate_platform_key!(key)
+        return key if PLATFORM_KEYS.include?(key)
+
+        raise ArgumentError, "invalid platform key: #{key.inspect}"
+      end
+
+      # Returns whether the current host is classified as Windows.
+      #
+      # @return [Boolean]
+      def self.windows_platform?
+        platform_key == :windows
+      end
+
+      # Returns the catalog display name, with a stable fallback for legacy
+      # saved entries that predate the catalog.
+      #
+      # @param frontend_name [String, Symbol]
+      # @return [String]
+      def self.display_name(frontend_name)
+        definition_for(frontend_name).dig(:metadata, :display_name) || frontend_name.to_s.capitalize
+      rescue ArgumentError
+        frontend_name.to_s.capitalize
+      end
+
+      # Returns every recognized frontend name: canonical catalog identifiers
+      # followed by their accepted aliases.
+      # @return [Array<String>]
       def self.registered_frontends
-        @registry.keys
+        @registry.keys + @aliases.keys
       end
 
-      # Returns a list of frontend names that support a specific capability.
-      #
-      # @param capability [Symbol] the capability to check for
-      # @return [Array<String>] an array of frontend names that support the capability
+      # Returns all frontends that have a specific capability.
+      # @param capability [Symbol] The capability to filter by
+      # @return [Array<String>]
       def self.frontends_with_capability(capability)
-        @registry.select { |_name, data| data[:capabilities].include?(capability.to_sym) }.keys
+        canonical = @registry.select { |_name, data| data[:capabilities].include?(capability.to_sym) }.keys
+        aliases = @aliases.filter_map do |alias_name, name|
+          alias_name if canonical.include?(name)
+        end
+        canonical + aliases
       end
 
-      # ─── Default Frontend Registrations ────────────────────────
-      # Ideally this would live in a separate config file loaded during init.
-
-      register(:wrayth,
-               capabilities: %i[xml streams mono room_window])
+      # --- Default Frontend Registrations ------------------------
 
       register(:stormfront,
-               capabilities: %i[xml streams mono room_window])
+               capabilities: %i[xml streams mono room_window],
+               metadata: {
+                 display_name: 'Wrayth',
+                 aliases: %w[wrayth],
+                 gui_selectable: true,
+                 launcher_adapter: :simutronics,
+                 discovery: {
+                   executables: %w[Wrayth.exe StormFront.exe],
+                   registry_keys: [
+                     'SOFTWARE\\Simutronics\\STORM32',
+                     'SOFTWARE\\WOW6432Node\\Simutronics\\STORM32'
+                   ]
+                 }
+               })
 
       register(:profanity,
                capabilities: %i[xml streams])
@@ -122,73 +272,226 @@ module Lich
       register(:frostbite,
                capabilities: %i[xml])
 
+      # SUKS has no client socket, so frontend protocol capabilities do not apply.
+      register(:suks,
+               metadata: {
+                 launcher_adapter: :embedded
+               })
+
       register(:wizard,
-               capabilities: %i[gsl])
+               capabilities: %i[gsl],
+               metadata: {
+                 display_name: 'Wizard',
+                 gui_selectable: true,
+                 launcher_adapter: :simutronics,
+                 discovery: {
+                   executables: %w[Wizard.exe],
+                   registry_keys: [
+                     'SOFTWARE\\Simutronics\\WIZ32',
+                     'SOFTWARE\\WOW6432Node\\Simutronics\\WIZ32'
+                   ]
+                 }
+               })
 
       register(:avalon,
-               capabilities: %i[gsl])
+               capabilities: %i[gsl],
+               metadata: {
+                 display_name: 'Avalon',
+                 gui_selectable: true,
+                 launcher_adapter: :avalon,
+                 native_launch_only: true,
+                 discovery: {
+                   executables: %w[Avalon avalon],
+                   mac_bundle_ids: %w[Avalon SimutronicsAvalon],
+                   path_lookup: false
+                 }
+               })
 
-      # ─── Client String ─────────────────────────────────────────
+      # Environment variables passed to Saga during launch via the launcher adapter.
+      #
+      # Tokens like `%host%`, `%port%`, and `%key%` are substituted by the launcher
+      # with values from the connection context.
+      #
+      # @see .register
+      SAGA_LICH_LAUNCH_ENVIRONMENT = {
+        'SAGA_LICH_MODE' => '1',
+        'SAGA_LICH_HOST' => '%host%',
+        'SAGA_LICH_PORT' => '%port%',
+        'SAGA_LICH_KEY'  => '%key%'
+      }.freeze
+
+      register(:saga,
+               capabilities: %i[xml streams mono room_window sentinel],
+               metadata: {
+                 display_name: 'Saga',
+                 gui_selectable: true,
+                 gui_platforms: %i[darwin windows linux],
+                 launcher_adapter: :environment,
+                 launcher_status: :supported_cold_start_only,
+                 launch_notice: 'Saga 0.8.5 environment handoff; cold start only',
+                 native_launch_only: true,
+                 # Saga 0.8.5 consumes this environment when it owns process
+                 # startup. Its single-instance relay currently drops the
+                 # per-launch host, port, and key.
+                 launch_plans: {
+                   darwin: {
+                     command: '/usr/bin/open',
+                     arguments: %w[-n -b com.auchand.saga],
+                     environment: SAGA_LICH_LAUNCH_ENVIRONMENT
+                   },
+                   windows: {
+                     command: :resolved_executable,
+                     arguments: [],
+                     environment: SAGA_LICH_LAUNCH_ENVIRONMENT
+                   },
+                   linux: {
+                     command: :resolved_executable,
+                     arguments: [],
+                     environment: SAGA_LICH_LAUNCH_ENVIRONMENT
+                   }
+                 },
+                 discovery: {
+                   executables: %w[Saga Saga.exe saga],
+                   mac_bundle_ids: %w[com.auchand.saga],
+                   # Do not search PATH: `saga` also names the unrelated SAGA GIS
+                   # executable. Saga's Linux AppImage location is user-selected;
+                   # /opt is one known convention pending desktop/AppImage discovery.
+                   path_lookup: false,
+                   paths: {
+                     windows: [
+                       '%LOCALAPPDATA%/Programs/Saga/Saga.exe',
+                       '%LOCALAPPDATA%/Programs/saga/Saga.exe',
+                       '%PROGRAMFILES%/Saga/Saga.exe',
+                       '%PROGRAMFILES(X86)%/Saga/Saga.exe'
+                     ],
+                     linux: [
+                       '/opt/Saga/saga'
+                     ]
+                   }
+                 }
+               })
+
+      # --- Client String -----------------------------------------
       # Default client string (Wrayth identity) sent during handshake
       CLIENT_STRING = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML"
 
-      # ─── Backward-Compatible Constants ─────────────────────────
+      # --- Backward-Compatible Constants -------------------------
       # These arrays are derived from the registry for backward compatibility.
       # External code may still reference these constants directly.
-      XML_FRONTENDS    = frontends_with_capability(:xml).freeze
-      GSL_FRONTENDS    = frontends_with_capability(:gsl).freeze
-      STREAM_FRONTENDS = frontends_with_capability(:streams).freeze
-      MONO_FRONTENDS   = frontends_with_capability(:mono).freeze
-
-
-      # Checks if the specified frontend supports XML capabilities.
+      XML_FRONTENDS      = frontends_with_capability(:xml).freeze
+      # Deprecated: list of frontends supporting GSL.
       #
-      # @param fe [String] the frontend to check (defaults to $frontend)
-      # @return [Boolean] true if the frontend supports XML, false otherwise
+      # For backward compatibility. New code should call `.frontends_with_capability(:gsl)`
+      # or check a specific frontend with `.has_capability?(name, :gsl)`.
+      GSL_FRONTENDS      = frontends_with_capability(:gsl).freeze
+      # Deprecated: list of frontends supporting XML streams.
+      #
+      # For backward compatibility. New code should call `.frontends_with_capability(:streams)`
+      # or check a specific frontend with `.has_capability?(name, :streams)`.
+      STREAM_FRONTENDS   = frontends_with_capability(:streams).freeze
+      # Deprecated: list of frontends supporting monospace rendering.
+      #
+      # For backward compatibility. New code should call `.frontends_with_capability(:mono)`
+      # or check a specific frontend with `.has_capability?(name, :mono)`.
+      MONO_FRONTENDS     = frontends_with_capability(:mono).freeze
+      # Deprecated: list of frontends supporting sentinel tags.
+      #
+      # For backward compatibility. New code should call `.frontends_with_capability(:sentinel)`
+      # or check a specific frontend with `.has_capability?(name, :sentinel)`.
+      SENTINEL_FRONTENDS = frontends_with_capability(:sentinel).freeze
+
+      # --- Predicate Methods -------------------------------------
+      # These now delegate to has_capability? for consistency.
+
+      # Checks whether a frontend supports XML protocol.
+      #
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:xml` capability
+      # @example
+      #   Frontend.supports_xml?("wrayth") #=> true
       def self.supports_xml?(fe = $frontend)
         has_capability?(fe, :xml)
       end
 
-      # Checks if the specified frontend supports GSL capabilities.
+      # Checks whether a frontend supports GSL (game scripting language).
       #
-      # @param fe [String] the frontend to check (defaults to $frontend)
-      # @return [Boolean] true if the frontend supports GSL, false otherwise
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:gsl` capability
+      # @example
+      #   Frontend.supports_gsl?("wizard") #=> true
       def self.supports_gsl?(fe = $frontend)
         has_capability?(fe, :gsl)
       end
 
-      # Checks if the specified frontend supports streams capabilities.
+      # Checks whether a frontend supports XML stream output.
       #
-      # @param fe [String] the frontend to check (defaults to $frontend)
-      # @return [Boolean] true if the frontend supports streams, false otherwise
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:streams` capability
+      # @example
+      #   Frontend.supports_streams?("saga") #=> true
       def self.supports_streams?(fe = $frontend)
         has_capability?(fe, :streams)
       end
 
-      # Checks if the specified frontend supports mono capabilities.
+      # Checks whether a frontend supports monospace rendering.
       #
-      # @param fe [String] the frontend to check (defaults to $frontend)
-      # @return [Boolean] true if the frontend supports mono, false otherwise
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:mono` capability
+      # @example
+      #   Frontend.supports_mono?("stormfront") #=> true
       def self.supports_mono?(fe = $frontend)
         has_capability?(fe, :mono)
       end
 
-      # Checks if the specified frontend supports room window capabilities.
+      # Checks whether a frontend supports a dedicated room window.
       #
-      # @param fe [String] the frontend to check (defaults to $frontend)
-      # @return [Boolean] true if the frontend supports room window, false otherwise
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:room_window` capability
+      # @example
+      #   Frontend.supports_room_window?("wrayth") #=> true
       def self.supports_room_window?(fe = $frontend)
         has_capability?(fe, :room_window)
       end
 
+      # Checks whether a frontend supports sentinel tags (detachable client protocol).
+      #
+      # @param fe [String, nil] frontend name; defaults to the current `$frontend`
+      # @return [Boolean] true if the frontend has the `:sentinel` capability
+      # @example
+      #   Frontend.supports_sentinel?("saga") #=> true
+      def self.supports_sentinel?(fe = $frontend)
+        has_capability?(fe, :sentinel)
+      end
+
+      # Build the <playerID> re-emit tag for a detachable client (e.g. Saga).
+      #
+      # Lich consumes the game's one-time <playerID> during its own login
+      # handshake, before a detachable client attaches, so the client never
+      # sees it. XMLData.player_id stores the id verbatim, so re-emitting
+      # reproduces exactly what a Direct login delivers.
+      #
+      # Returns the tag string only when player_id is a bare numeric id (the
+      # form the game sends). Returns nil otherwise, so callers skip emitting
+      # an empty or malformed tag before login has populated the id.
+      def self.player_id_tag(player_id)
+        id = player_id.to_s
+        return nil unless id =~ /\A\d+\z/
+
+        "<playerID id='#{id}'/>"
+      end
+
+      # Accessor for the current frontend identity ($frontend global)
       def self.client
         $frontend
       end
 
+      # Setter for the current frontend identity
       def self.client=(value)
         $frontend = value
       end
 
+      # Send version string, ready signals, and setup commands to the game server.
+      # Used during login handshake for wizard/avalon/frostbite frontends.
       def self.send_handshake(version_string)
         $_CLIENTBUFFER_.push(version_string.dup)
         Game._puts(version_string)
@@ -205,13 +508,20 @@ module Lich
         end
       end
 
-      # Creates a session file for the specified frontend session.
+      # Writes a session descriptor to a temporary file for detachable clients.
       #
-      # @param name [String] the name of the session
-      # @param host [String] the host for the session
-      # @param port [Integer] the port for the session
-      # @param display_session [Boolean] whether to display session information (default: true)
+      # Creates the directory structure under the system temp folder
+      # (`$TMPDIR/simutronics/sessions/`) and writes a JSON file with the session
+      # details. Used by launcher adapters to hand off connection info to frontends
+      # like Saga.
+      #
+      # @param name [String, nil] character name (lowercase, then capitalized for filename); if nil, does nothing
+      # @param host [String] game server hostname or IP
+      # @param port [Integer] game server port
+      # @param display_session [Boolean] if true, prints the descriptor to stdout
       # @return [void]
+      # @example
+      #   Frontend.create_session_file("Talan", "eaccess.play.net", 7024)
       def self.create_session_file(name, host, port, display_session: true)
         return if name.nil?
         FileUtils.mkdir_p @tmp_session_dir
@@ -223,48 +533,49 @@ module Lich
         end
       end
 
-      # Returns the location of the current session file.
+      # Returns the path to the session descriptor file, or nil if not yet created.
       #
-      # @return [String, nil] the session file location or nil if not set
+      # @return [String, nil] absolute path to the session file
+      # @see .create_session_file
       def self.session_file_location
         @session_file
       end
 
-      # Cleans up (deletes) the current session file if it exists.
+      # Deletes the session descriptor file if it exists.
+      #
+      # Called during shutdown to clean up temporary launch artifacts.
       #
       # @return [void]
+      # @see .create_session_file
       def self.cleanup_session_file
         return if @session_file.nil?
         File.delete(@session_file) if File.exist? @session_file
       end
 
+      # Frontend PID tracking functionality
 
-      # Retrieves the current frontend process ID (PID).
-      #
-      # @return [Integer, nil] the current PID or nil if not set
+      # Get the current frontend PID
+      # @return [Integer, nil] The PID if set, nil otherwise
       def self.pid
         @pid_mutex.synchronize { @frontend_pid }
       end
 
-      # Sets the frontend process ID (PID).
-      #
-      # @param value [Integer] the PID to set
-      # @return [void]
+      # Set the frontend PID
+      # @param value [Integer] The PID to store
+      # @return [Integer] The stored PID
       def self.pid=(value)
         value = value.to_i
         @pid_mutex.synchronize { @frontend_pid = value }
       end
 
-      # Initializes the frontend from a parent process ID.
-      #
-      # @param parent_pid [Integer] the parent process ID to initialize from
-      # @return [Integer] the resolved frontend PID
+      # Initialize PID from parent process (for Warlock)
+      # @return [Integer, nil] The resolved frontend PID
       def self.init_from_parent(parent_pid)
         Lich.log "=== Frontend.init_from_parent called ==="
         Lich.log "Parent process PID: #{parent_pid}"
 
         # Let's see what process this actually is on Windows
-        if RUBY_PLATFORM =~ /mingw|mswin/
+        if windows_platform?
           begin
             require 'win32ole'
             wmi = WIN32OLE.connect('winmgmts://')
@@ -273,7 +584,7 @@ module Lich
             if row
               Lich.log "Parent process name: #{row.Name}"
             end
-          rescue => e
+          rescue StandardError, LoadError => e
             Lich.log "Could not get parent process name: #{e.message}"
           end
         end
@@ -287,19 +598,18 @@ module Lich
         resolved_pid
       end
 
-      # Sets the frontend PID from the client.
-      #
-      # @param pid [Integer] the PID to set
-      # @return [Integer] the set PID
+      # Set PID from a detachable frontend such as Profanity or Saga.
+      # @param pid [Integer] The PID sent by the client
+      # @return [Integer] The stored PID
       def self.set_from_client(pid)
         self.pid = pid
         Lich.log "Frontend PID set from client: #{pid}" if defined?(Lich.log)
         pid
       end
 
-      # Detects the frontend process ID (PID) based on the launch method.
-      #
-      # @return [Integer, nil] the detected PID or nil if not found
+      # Detect and store the frontend process ID
+      # Uses various methods depending on how Lich was launched
+      # @return [Integer, nil] The detected PID or nil if detection fails
       def self.detect_pid
         # Return existing PID if already set
         current_pid = self.pid
@@ -320,9 +630,8 @@ module Lich
         end
       end
 
-      # Refocuses the frontend window based on the detected platform.
-      #
-      # @return [Boolean] true if refocus was successful, false otherwise
+      # Refocus the frontend window
+      # @return [Boolean] true if successful, false otherwise
       def self.refocus
         pid = self.pid
         return false unless pid && pid > 0
@@ -339,9 +648,8 @@ module Lich
         end
       end
 
-      # Returns a callback proc for refocusing the frontend window.
-      #
-      # @return [Proc] a proc that refocuses the window when called
+      # Create a callback for GTK windows to refocus on click
+      # @return [Proc] A proc that can be called to refocus the frontend
       def self.refocus_callback
         proc {
           if defined?(GLib) && GLib.respond_to?(:Idle)
@@ -352,22 +660,16 @@ module Lich
         }
       end
 
-      # Detects the current platform (Windows, macOS, Linux, or unsupported).
-      #
-      # @return [Symbol] the detected platform symbol
+      # Detect the current platform
+      # @return [Symbol] :windows, :macos, :linux, or :unsupported
       def self.detect_platform
-        case RUBY_PLATFORM
-        when /mingw|mswin/ then :windows
-        when /darwin/      then :macos
-        when /linux/       then :linux
-        else                    :unsupported
-        end
+        key = platform_key
+        key == :darwin ? :macos : key
       end
 
-      # Resolves a process ID (PID) to find the correct one based on platform.
-      #
-      # @param pid [Integer] the PID to resolve
-      # @return [Integer] the resolved PID
+      # Resolve PID by walking up process tree to find window owner
+      # @param pid [Integer] Starting process ID
+      # @return [Integer] The resolved PID
       def self.resolve_pid(pid)
         pid = pid.to_i
         return pid if pid <= 0 # Return as-is if invalid
@@ -384,10 +686,7 @@ module Lich
         end
       end
 
-      # Resolves a Windows process ID (PID) to find the correct one based on window visibility.
-      #
-      # @param pid [Integer] the PID to resolve
-      # @return [Integer] the resolved PID
+      # Windows-specific PID resolution
       def self.resolve_windows_pid(pid)
         Lich.log "=== resolve_windows_pid starting with PID: #{pid} ==="
 
@@ -443,21 +742,14 @@ module Lich
         pid
       end
 
-      # Retrieves the parent process ID for a given Windows process ID.
-      #
-      # @param wmi [WIN32OLE] the WMI connection object
-      # @param pid [Integer] the PID to check
-      # @return [Integer] the parent process ID or 0 if not found
+      # Get parent process ID on Windows
       def self.windows_parent_pid(wmi, pid)
         rows = wmi.ExecQuery("SELECT ParentProcessId FROM Win32_Process WHERE ProcessId=#{pid}")
         row = rows.each.first rescue nil
         row ? row.ParentProcessId.to_i : 0
       end
 
-      # Resolves a Linux process ID (PID) to find the correct one based on window visibility.
-      #
-      # @param pid [Integer] the PID to resolve
-      # @return [Integer] the resolved PID
+      # Linux-specific PID resolution
       def self.resolve_linux_pid(pid)
         return pid unless system('which xdotool > /dev/null 2>&1')
 
@@ -483,10 +775,7 @@ module Lich
         pid
       end
 
-      # Refocuses a Windows window based on the given process ID (PID).
-      #
-      # @param pid [Integer] the PID of the window to refocus
-      # @return [Boolean] true if refocus was successful, false otherwise
+      # Windows refocus implementation
       def self.refocus_windows(pid)
         ensure_windows_modules
 
@@ -525,10 +814,7 @@ module Lich
         false
       end
 
-      # Refocuses a macOS window based on the given process ID (PID).
-      #
-      # @param pid [Integer] the PID of the window to refocus
-      # @return [Boolean] true if refocus was successful, false otherwise
+      # macOS refocus implementation
       def self.refocus_macos(pid)
         return false unless system('which osascript > /dev/null 2>&1')
 
@@ -546,10 +832,7 @@ module Lich
         false
       end
 
-      # Refocuses a Linux window based on the given process ID (PID).
-      #
-      # @param pid [Integer] the PID of the window to refocus
-      # @return [Boolean] true if refocus was successful, false otherwise
+      # Linux refocus implementation
       def self.refocus_linux(pid)
         return false unless system('which xdotool > /dev/null 2>&1')
 
@@ -566,15 +849,11 @@ module Lich
         false
       end
 
-      # Ensures that the necessary Windows modules are loaded.
-      #
-      # @return [Boolean] true if modules are loaded, false otherwise
+      # Ensure Windows modules are loaded (they're defined at top level)
       def self.ensure_windows_modules
-        # Check if modules exist - they should be defined at file load time
-        if RUBY_PLATFORM =~ /mingw|mswin/
-          return defined?(::Win32Enum) && defined?(::WinAPI)
-        end
-        false
+        return false unless native_windows_runtime?
+
+        defined?(::Win32Enum) && defined?(::WinAPI)
       end
     end
   end

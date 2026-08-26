@@ -1,5 +1,9 @@
+# Refactored Ruby-compatible Settings Implementation
 
+# Namespace for the Lich 5 scripting engine and related utilities.
 module Lich
+  # Namespace for common utilities and shared modules across Lich 5 scripts,
+  # including settings management, database operations, and script helpers.
   module Common
     require 'sequel'
     # rubocop:disable Lint/RedundantRequireStatement
@@ -11,13 +15,18 @@ module Lich
     require_relative 'settings/database_adapter'
     require_relative 'settings/path_navigator'
 
-    # Provides configuration settings for the Lich framework.
-    #
-    # This module manages settings with support for logging and path navigation.
-    #
-    # @see Lich::Common::SettingsProxy
+    # Centralized settings module providing persistent storage, retrieval, and
+    # navigation of per-script configuration data. Settings are persisted to a SQLite
+    # database and cached in-memory for performance. Supports nested Hash/Array structures
+    # with proxy-based live navigation.
     module Settings
+      # Raised when a circular reference is detected during unwrap_proxies or other
+      # recursive traversal of settings structures.
       class CircularReferenceError < StandardError
+        # Initializes a new CircularReferenceError.
+        #
+        # @param msg [String] the error message; defaults to "Circular Reference Detected"
+        # @return [void]
         def initialize(msg = "Circular Reference Detected")
           super(msg)
         end
@@ -34,8 +43,12 @@ module Lich
 
       # Sets the logging level for the Settings module.
       #
-      # @param level [Symbol] the desired log level, can be :none, :error, :info, or :debug
+      # @param level [Symbol, Integer] the log level; accepted values are :none, :error, :info, :debug
+      #   (or their corresponding integer constants LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG).
+      #   Invalid levels default to LOG_LEVEL_NONE with an error logged.
       # @return [void]
+      # @example
+      #   Lich::Common::Settings.set_log_level(:debug)
       def self.set_log_level(level)
         numeric_level = case level
                         when :none, LOG_LEVEL_NONE then LOG_LEVEL_NONE
@@ -49,12 +62,15 @@ module Lich
         @@log_level = numeric_level
       end
 
-      # Retrieves the current logging level for the Settings module.
-      # @return [Integer] the current log level
+      # Returns the current logging level of the Settings module.
+      #
+      # @return [Integer] the current log level (LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
       def self.get_log_level
         @@log_level
       end
 
+      # Internal logging method
+      # message_proc is a lambda/proc to delay string construction
       def self._log(level, prefix, message_proc)
         return unless Lich.respond_to?(:log)
         return unless level <= @@log_level
@@ -74,10 +90,8 @@ module Lich
         end
       end
 
-      # Reattaches the live proxy to the current script context.
-      #
-      # @param proxy [SettingsProxy] the proxy to reattach
-      # @return [Boolean] true if reattachment was successful, false otherwise
+      # Internal non-destructive correction method (issue from Lich 5.12.6)
+      # non-destructive methods (.sort) cannot own a proxy that requires update (.push)
       def self._reattach_live!(proxy)
         script_name = Script.current.name
         scope       = proxy.scope
@@ -106,14 +120,24 @@ module Lich
       DEFAULT_SCOPE = ":".freeze
       @safe_navigation_active = false
 
-      # Checks if the given value is a container (Hash or Array).
+      # Checks if a value is a container type (Hash or Array).
       #
       # @param value [Object] the value to check
-      # @return [Boolean] true if the value is a container, false otherwise
+      # @return [Boolean] true if value is a Hash or Array, false otherwise
+      # @api private
       def self.container?(value)
         value.is_a?(Hash) || value.is_a?(Array)
       end
 
+      # Recursively unwraps all SettingsProxy objects within a data structure,
+      # returning native Hash/Array values suitable for database persistence.
+      # Detects and raises CircularReferenceError on circular references.
+      #
+      # @param data [Object] the data structure to unwrap; may contain SettingsProxy, Hash, Array, or scalar values
+      # @param visited [Set] internal set tracking visited object_ids to detect cycles
+      # @return [Object] a new data structure with all proxies replaced by their targets
+      # @raise [CircularReferenceError] if a circular reference is detected
+      # @api private
       def self.unwrap_proxies(data, visited = Set.new)
         if visited.include?(data.object_id) && (data.is_a?(Hash) || data.is_a?(Array) || data.is_a?(SettingsProxy))
           _log(LOG_LEVEL_ERROR, @@log_prefix, -> { "unwrap_proxies: Circular reference detected for object_id: #{data.object_id}" })
@@ -145,11 +169,25 @@ module Lich
       end
       private_class_method :unwrap_proxies
 
-      # Retrieves the root proxy for the specified scope and script name.
+      # Creates a root-level SettingsProxy for the given scope.
       #
-      # @param scope [String] the scope for which to retrieve the root proxy
-      # @param script_name [String] the name of the script (optional)
-      # @return [SettingsProxy] the root proxy for the specified scope
+      # This factory ensures the proxy directly targets the cached root object
+      # for the (script_name, scope) pair. By using the cached root, it avoids
+      # "identity drift" bugs where the proxy's @target differs from the object
+      # being persisted by save_proxy_changes.
+      #
+      # @param scope [String] A logical scope identifier (for example,
+      #   "#{XMLData.game}:#{XMLData.name}").
+      # @param script_name [String, nil] The script namespace; defaults to
+      #   Script.current.name. Pass nil to fall back to the empty string.
+      #
+      # @return [SettingsProxy] a proxy wrapping the cached root object.
+      #
+      # @raise [ArgumentError] if scope is nil or empty.
+      #
+      # @example Create a root proxy for the current character
+      #   settings = Lich::Common::Settings.root_proxy_for("#{XMLData.game}:#{XMLData.name}")
+      #
       def self.root_proxy_for(scope, script_name: Script.current.name)
         raise ArgumentError, "scope must be a non-empty String" if scope.nil? || scope.to_s.strip.empty?
 
@@ -160,10 +198,13 @@ module Lich
         SettingsProxy.new(self, scope, [], root, script_name: script_name)
       end
 
-      # Saves changes made to the specified proxy back to the database.
+      # Persists changes made through a SettingsProxy to the database, handling both
+      # root-level and nested saves. Manages cache consistency and refreshes stale roots
+      # before save to prevent overwrites. Logs comprehensive diagnostics at each step.
       #
-      # @param proxy [SettingsProxy] the proxy containing changes to save
+      # @param proxy [SettingsProxy] the proxy whose changes should be persisted
       # @return [void]
+      # @api private
       def self.save_proxy_changes(proxy)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "save_proxy_changes: Initiated for proxy.scope: #{proxy.scope.inspect}, proxy.path: #{proxy.path.inspect}, proxy.target_object_id: #{proxy.target.object_id}" })
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "save_proxy_changes: proxy.target data: #{proxy.target.inspect}" })
@@ -223,7 +264,7 @@ module Lich
         end
         # -------------------------------------------------------------
 
-        # EMPTY PATH → Save *current root* (not proxy.target). Also covers detached "view" proxies.
+        # EMPTY PATH -> Save *current root* (not proxy.target). Also covers detached "view" proxies.
         if path.empty?
           _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "save_proxy_changes: Empty path; saving CURRENT ROOT for scope #{scope.inspect}" })
 
@@ -261,7 +302,7 @@ module Lich
 
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "save_proxy_changes: script_name: #{script_name.inspect}, cache_key: #{cache_key}" })
 
-        # From here on, we’re saving into a nested path. Ensure root is a container.
+        # From here on, we're saving into a nested path. Ensure root is a container.
         unless current_root_for_scope.is_a?(Hash) || current_root_for_scope.is_a?(Array)
           _log(LOG_LEVEL_INFO, @@log_prefix, -> { "save_proxy_changes: Root not a container; initializing {} for scope #{scope.inspect}" })
           current_root_for_scope = {}
@@ -273,7 +314,7 @@ module Lich
 
         # Pre-navigation diagnostics
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> {
-          "save_proxy_changes: Navigation preflight — parent_path=#{parent_path.inspect} (#{parent_path.map { |s| s.class }.inspect}), leaf_key=#{leaf_key.inspect} (#{leaf_key.class}), root_class=#{current_root_for_scope.class}"
+          "save_proxy_changes: Navigation preflight - parent_path=#{parent_path.inspect} (#{parent_path.map { |s| s.class }.inspect}), leaf_key=#{leaf_key.inspect} (#{leaf_key.class}), root_class=#{current_root_for_scope.class}"
         })
 
         # Navigate **within the freshly-loaded root** (do NOT re-fetch via PathNavigator here).
@@ -344,11 +385,14 @@ module Lich
         sync_cache.call(current_root_for_scope)
       end
 
-      # Retrieves the current settings for the specified script and scope.
+      # Retrieves a duplicate of the current script's settings for the given scope.
+      # Results are cached; this method returns a fresh copy from cache or loads from
+      # database if not cached.
       #
-      # @param scope [String] the scope for which to retrieve settings (default is DEFAULT_SCOPE)
-      # @param script_name [String] the name of the script (optional)
-      # @return [OpenStruct] the current settings for the specified script
+      # @param scope [String] the scope identifier (e.g. "#{XMLData.game}:#{XMLData.name}")
+      # @param script_name [String, nil] the script namespace; defaults to Script.current.name
+      # @return [Hash, Array] a duplicate of the cached settings structure for the given scope
+      # @api private
       def self.current_script_settings(scope = DEFAULT_SCOPE, script_name: nil)
         # Use provided script_name or fall back to Script.current.name
         script_name = script_name || Script.current.name
@@ -369,12 +413,15 @@ module Lich
         end
       end
 
-      # Saves the specified data to the database for the given script and scope.
+      # Persists a settings structure to the database after unwrapping any proxies.
+      # Updates the in-memory cache with the unwrapped data.
       #
-      # @param data_to_save [Object] the data to save
-      # @param scope [String] the scope for which to save the data (default is DEFAULT_SCOPE)
-      # @param script_name [String] the name of the script (optional)
+      # @param data_to_save [Object] the settings structure to persist (Hash, Array, or scalar)
+      # @param scope [String] the scope identifier
+      # @param script_name [String, nil] the script namespace; defaults to Script.current.name
       # @return [void]
+      # @note Does nothing and returns nil if script_name is nil or empty
+      # @api private
       def self.save_to_database(data_to_save, scope = DEFAULT_SCOPE, script_name: nil)
         # Use provided script_name or fall back to Script.current.name
         script_name = script_name || Script.current.name
@@ -398,10 +445,11 @@ module Lich
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "save_to_database: Cache updated for #{cache_key} with saved data (object_id: #{@settings_cache[cache_key].object_id})." })
       end
 
-      # Refreshes the settings data for the specified scope by clearing the cache.
+      # Clears the cache for the given scope and reloads settings from the database.
       #
-      # @param scope [String] the scope to refresh (default is DEFAULT_SCOPE)
-      # @return [OpenStruct] the refreshed settings
+      # @param scope [String] the scope identifier to refresh
+      # @return [Hash, Array] the reloaded settings
+      # @api private
       def self.refresh_data(scope = DEFAULT_SCOPE)
         script_name = Script.current.name
         cache_key = "#{script_name || ""}::#{scope}" # Use an empty string if script_name is nil
@@ -410,15 +458,24 @@ module Lich
         current_script_settings(scope)
       end
 
+      # Resets the path navigator's internal path state and returns the given value.
+      # Used after navigation operations to reset state for subsequent calls.
+      #
+      # @param value [Object] the value to return
+      # @return [Object] the value argument
+      # @api private
       def self.reset_path_and_return(value)
         @path_navigator.reset_path_and_return(value)
       end
 
-      # Navigates to the specified path within the current settings structure.
+      # Navigates through nested Hash/Array structures using the current path navigator's path,
+      # optionally creating missing intermediate nodes.
       #
-      # @param create_missing [Boolean] whether to create missing segments (default is true)
-      # @param scope [String] the scope for which to navigate (default is DEFAULT_SCOPE)
-      # @return [Array<Object>] an array containing the target object and the root for the scope
+      # @param create_missing [Boolean] if true, creates intermediate nodes of type Hash or Array as needed
+      # @param scope [String] the scope identifier
+      # @return [Array] [target, root] where target is the resolved nested value (or nil if not found),
+      #   and root is the root settings object for the scope
+      # @api private
       def self.navigate_to_path(create_missing = true, scope = DEFAULT_SCOPE)
         root_for_scope = current_script_settings(scope)
         return [root_for_scope, root_for_scope] if @path_navigator.path.empty?
@@ -445,13 +502,15 @@ module Lich
         [target, root_for_scope]
       end
 
-      # Sets a specific setting for the current script and scope.
+      # Sets a key-value pair in the script's settings at the current scope and path,
+      # persisting to the database.
       #
-      # @param scope [String] the scope in which to set the value (default is DEFAULT_SCOPE)
-      # @param name [String] the name of the setting to set
-      # @param value [Object] the value to assign to the setting
-      # @param script_name [String] the name of the script (optional)
-      # @return [void]
+      # @param scope [String] the scope identifier
+      # @param name [String, Symbol] the key to set
+      # @param value [Object] the value to set (will be unwrapped if a proxy)
+      # @param script_name [String, nil] the script namespace; defaults to Script.current.name
+      # @return [Object] the value argument
+      # @api private
       def self.set_script_settings(scope = DEFAULT_SCOPE, name, value, script_name: nil)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "set_script_settings: scope: #{scope.inspect}, name: #{name.inspect}, value: #{value.inspect}, script_name: #{script_name.inspect}, current_path: #{@path_navigator.path.inspect}" })
         unwrapped_value = unwrap_proxies(value)
@@ -478,6 +537,16 @@ module Lich
         reset_path_and_return(value)
       end
 
+      # Retrieves a setting by name at the current path. Wraps container values
+      # (Hash/Array) in SettingsProxy for live navigation. Activates safe navigation
+      # if the key is not found or value is nil.
+      #
+      # @param name [String, Symbol] the setting name
+      # @return [Object] the setting value (wrapped in SettingsProxy if a container)
+      # @example Retrieve a top-level setting
+      #   Lich::Common::Settings["my_key"] #=> "my_value"
+      # @example Retrieve a nested setting after navigation
+      #   Lich::Common::Settings.my_key.nested_key #=> proxy to nested value
       def self.[](name)
         scope_to_use = DEFAULT_SCOPE
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "Settings.[]: name: #{name.inspect}, current_path: #{@path_navigator.path.inspect}, safe_nav: #{@safe_navigation_active}" })
@@ -506,6 +575,14 @@ module Lich
         end
       end
 
+      # Sets a setting by name at the current path, persisting to the database.
+      # Disables safe navigation on assignment.
+      #
+      # @param name [String, Symbol] the setting name
+      # @param value [Object] the value to set
+      # @return [Object] the value argument
+      # @example
+      #   Lich::Common::Settings["my_key"] = "my_value"
       def self.[]=(name, value)
         scope_to_use = DEFAULT_SCOPE
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "Settings.[]=: name: #{name.inspect}, value: #{value.inspect}, current_path: #{@path_navigator.path.inspect}" })
@@ -527,12 +604,14 @@ module Lich
         end
       end
 
-      # Retrieves a setting value for a specific scope and key.
+      # Retrieves a single key-value setting from a specific scope without affecting
+      # the current path navigator state. Wraps container values in SettingsProxy.
       #
-      # @param scope_string [String] the scope to retrieve the setting from
-      # @param key_name [String] the name of the setting to retrieve
-      # @param script_name [String] the name of the script (optional)
-      # @return [Object] the value of the setting, or nil if not found
+      # @param scope_string [String] the scope identifier
+      # @param key_name [String, Symbol] the key to retrieve; may be nil to return the entire scope
+      # @param script_name [String, nil] the script namespace; defaults to current script
+      # @return [Object] the setting value (wrapped in SettingsProxy if a container), or nil if not found
+      # @api private
       def self.get_scoped_setting(scope_string, key_name, script_name: nil)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "get_scoped_setting: scope: #{scope_string.inspect}, key: #{key_name.inspect}, script_name: #{script_name.inspect}" })
         data_for_scope = current_script_settings(scope_string, script_name: script_name)
@@ -551,13 +630,15 @@ module Lich
         wrap_value_if_container(value, scope_string, key_name ? [key_name] : [], script_name: script_name)
       end
 
-      # Wraps a value in a proxy if it is a container (Hash or Array).
+      # Wraps a value in a SettingsProxy if it is a container (Hash or Array),
+      # otherwise returns the value unchanged.
       #
-      # @param value [Object] the value to wrap
-      # @param scope [String] the scope for the value
-      # @param path_array [Array<String>] the path to the value
-      # @param script_name [String] the name of the script (optional)
-      # @return [Object] the wrapped value or the original value if not a container
+      # @param value [Object] the value to conditionally wrap
+      # @param scope [String] the scope identifier
+      # @param path_array [Array] the navigation path to this value
+      # @param script_name [String, nil] the script namespace
+      # @return [SettingsProxy, Object] a proxy if value is a container, or the value itself
+      # @api private
       def self.wrap_value_if_container(value, scope, path_array, script_name: nil)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "wrap_value_if_container: value_class: #{value.class}, scope: #{scope.inspect}, path: #{path_array.inspect}, script_name: #{script_name.inspect}" })
         if container?(value)
@@ -569,10 +650,11 @@ module Lich
         end
       end
 
-      # Converts the current settings for the specified scope to a Hash.
+      # Returns the current script's settings as an unwrapped Hash or Array (snapshot),
+      # suitable for serialization or inspection without proxies.
       #
-      # @param scope [String] the scope to convert (default is DEFAULT_SCOPE)
-      # @return [Hash] the settings as a Hash
+      # @param scope [String] the scope identifier
+      # @return [Hash, Array] an unwrapped copy of the settings for the given scope
       def self.to_hash(scope = DEFAULT_SCOPE)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "to_hash: scope: #{scope.inspect}" })
         data = current_script_settings(scope)
@@ -581,50 +663,88 @@ module Lich
         return unwrapped_data
       end
 
+      # Legacy Support Methods
       def self.save
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.save called (legacy no-op)." })
         :noop
       end
 
+      # Legacy method; equivalent to refresh_data with default scope.
+      #
+      # @return [Hash, Array] the reloaded settings
+      # @deprecated Use {.refresh_data} instead
       def self.load
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.load called (legacy, aliasing to refresh_data)." })
         refresh_data
       end
 
+      # Legacy alias for {.to_hash}.
+      #
+      # @param scope [String] the scope identifier
+      # @return [Hash, Array] an unwrapped copy of the settings
+      # @deprecated Use {.to_hash} instead
       def self.to_h(scope = DEFAULT_SCOPE) # Added scope to match to_hash for consistency if used directly
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.to_h called (legacy, aliasing to to_hash)." })
         self.to_hash(scope)
       end
 
+      # Deprecated No-Op Methods from Original
       def self.save_all
         Lich.deprecated('Settings.save_all', 'not using, not applicable,', caller[0], fe_log: true) if Lich.respond_to?(:deprecated)
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.save_all called (legacy deprecated no-op)." })
         nil
       end
 
+      # Legacy deprecated no-op method.
+      #
+      # @return [void]
+      # @deprecated This method is not applicable
       def self.clear
         Lich.deprecated('Settings.clear', 'not using, not applicable,', caller[0], fe_log: true) if Lich.respond_to?(:deprecated)
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.clear called (legacy deprecated no-op)." })
         nil
       end
 
+      # Legacy deprecated no-op method.
+      #
+      # @param _val [Object] unused
+      # @return [void]
+      # @deprecated This method is not applicable
       def self.auto=(_val)
         Lich.deprecated('Settings.auto=(val)', 'not using, not applicable,', caller[0], fe_log: true) if Lich.respond_to?(:deprecated)
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.auto= called (legacy deprecated no-op)." })
       end
 
+      # Legacy deprecated no-op method.
+      #
+      # @return [void]
+      # @deprecated This method is not applicable
       def self.auto
         Lich.deprecated('Settings.auto', 'not using, not applicable,', caller[0], fe_log: true) if Lich.respond_to?(:deprecated)
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.auto called (legacy deprecated no-op)." })
         nil
       end
 
+      # Legacy deprecated no-op method.
+      #
+      # @return [void]
+      # @deprecated This method is not applicable
       def self.autoload
         Lich.deprecated('Settings.autoload', 'not using, not applicable,', caller[0], fe_log: true) if Lich.respond_to?(:deprecated)
         _log(LOG_LEVEL_INFO, @@log_prefix, -> { "Settings.autoload called (legacy deprecated no-op)." })
         nil
       end
+      # End Legacy Support Methods
 
+      # Delegates method calls to the path navigator, enabling method-chain-based
+      # navigation syntax (e.g., Settings.my_key.nested_value). Returns nil if safe
+      # navigation is active and a non-empty path exists.
+      #
+      # @param method [Symbol] the method name
+      # @param args [Array] method arguments
+      # @param block [Proc] optional block argument
+      # @return [Object] the result of delegating to path_navigator
+      # @api private
       def self.method_missing(method, *args, &block)
         _log(LOG_LEVEL_DEBUG, @@log_prefix, -> { "method_missing: method: #{method}, args: #{args.inspect}, path: #{@path_navigator.path.inspect}" })
         if @safe_navigation_active && !@path_navigator.path.empty?
@@ -639,10 +759,24 @@ module Lich
         @path_navigator.send(method, *args, &block)
       end
 
+      # Indicates that this module responds to method names delegated to the path navigator.
+      #
+      # @param method_name [Symbol] the method name to check
+      # @param include_private [Boolean] whether to include private methods
+      # @return [Boolean] true if the path navigator responds to the method
+      # @api private
       def self.respond_to_missing?(method_name, include_private = false)
         @path_navigator.respond_to?(method_name, include_private) || super
       end
 
+      # Retrieves a value from a Hash or Array container by key/index.
+      # Returns nil if the key does not exist, the index is out of bounds, or the
+      # container is not a Hash/Array.
+      #
+      # @param container [Object] the Hash or Array to access
+      # @param key [String, Symbol, Integer] the key (Hash) or index (Array)
+      # @return [Object, nil] the value at the key/index, or nil if not found
+      # @api private
       def self.get_value_from_container(container, key)
         if container.is_a?(Hash)
           container[key]

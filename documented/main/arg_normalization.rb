@@ -1,27 +1,50 @@
+# frozen_string_literal: true
+
+require_relative 'detachable_client_target'
 
 module Lich
   module Main
+    # Normalizes user-facing CLI aliases into the existing lower-level argument
+    # forms consumed elsewhere in startup.
     module ArgNormalization
-      # Regular expression pattern for matching the --headless argument.
+      # Matches `--headless` CLI arguments with optional inline port or target.
       #
-      # @example Matching examples
-      #   "--headless"
-      #   "--headless=8080"
-      #   "--headless=auto"
-      # @see #normalize! for usage
+      # Captures the port/target token if specified inline (e.g., `--headless=8080`),
+      # or nil if the token follows as the next argument (e.g., `--headless 8080`).
+      #
+      # @see .normalize!
+      # @see DETACHABLE_CLIENT_PREFIX
+      # @example
+      #   "--headless=8080".match?(HEADLESS_PATTERN) #=> true
+      #   "--headless=auto".match?(HEADLESS_PATTERN) #=> true
+      #   "--headless".match?(HEADLESS_PATTERN) #=> true
+      #   "--headless=".match?(HEADLESS_PATTERN) #=> true
       HEADLESS_PATTERN = /^--headless(?:=(.+))?$/i.freeze
+      # Prefix for the `--detachable-client` CLI argument.
+      #
+      # Used to construct arguments like `--detachable-client=8080` or
+      # `--detachable-client=127.0.0.1:8080` that enable headless operation
+      # with a remote frontend client.
+      #
+      # @see .normalize!
+      # @see .normalize_headless_target
       DETACHABLE_CLIENT_PREFIX = '--detachable-client='.freeze
 
-      # Normalizes command-line arguments for headless mode.
-      # This method modifies the argv array in place to replace the
-      # --headless argument with --without-frontend and appends the
-      # detachable client prefix with the specified port.
+      # Rewrites high-level aliases in-place on the provided argv array.
       #
-      # @param argv [Array<String>] the command-line arguments to normalize
-      # @return [Array<String>] the modified command-line arguments
-      # @raise [ArgumentError] if --headless is specified more than once
-      # @raise [ArgumentError] if --headless is combined with --detachable-client
-      # @raise [ArgumentError] if --headless does not have a valid port number
+      # Current rules:
+      # - `--headless PORT` => `--without-frontend --detachable-client=PORT`
+      # - `--headless auto` => `--without-frontend --detachable-client=0`
+      # - `--headless HOST:PORT` => `--without-frontend --detachable-client=HOST:PORT`
+      #   (HOST may be tailscale, lan, any, an IP address, or a hostname)
+      #
+      # Bare `--headless` is rejected because an unattached fully headless login
+      # is not a supported public workflow.
+      #
+      # @param argv [Array<String>] mutable argument vector
+      # @return [Array<String>] the normalized argv array
+      # @raise [ArgumentError] when `--headless` is missing a port or conflicts
+      #   with an explicit detachable-client flag
       def self.normalize!(argv)
         headless_indices = argv.each_index.select { |index| argv[index].match?(HEADLESS_PATTERN) }
         return argv if headless_indices.empty?
@@ -47,25 +70,27 @@ module Lich
         end
 
         argv[headless_index] = '--without-frontend'
-        argv.insert(headless_index + 1, "#{DETACHABLE_CLIENT_PREFIX}#{normalize_headless_port(port_token)}")
+        argv.insert(headless_index + 1, "#{DETACHABLE_CLIENT_PREFIX}#{normalize_headless_target(port_token)}")
         argv
       end
 
-      # Normalizes the headless port token.
-      # Converts the token to an integer if it's not 'auto'.
+      # Resolves the target token accepted by `--headless` to the canonical
+      # form consumed by `--detachable-client`.
       #
-      # @param token [String] the port token to normalize
-      # @return [Integer] the normalized port number
-      # @raise [ArgumentError] if the port number is not between 1 and 65535 or if it's not 'auto'
-      def self.normalize_headless_port(token)
-        return 0 if token.to_s.casecmp('auto').zero?
+      # @param token [String] user-provided token after `--headless`
+      # @return [String] canonical `PORT` or `HOST:PORT` (port `0` means
+      #   OS-assigned auto)
+      # @raise [ArgumentError] when the token is not a valid port, `auto`, or
+      #   HOST:PORT form
+      def self.normalize_headless_target(token)
+        target = DetachableClientTarget.parse(token)
+        return target.port.to_s if target.host.nil?
 
-        port = Integer(token, 10)
-        return port if port.positive? && port <= 65_535
-
-        raise ArgumentError, '--headless requires a port number between 1 and 65535, or auto'
-      rescue ArgumentError
-        raise ArgumentError, '--headless requires a port number between 1 and 65535, or auto'
+        host = target.host.include?(':') ? "[#{target.host}]" : target.host
+        "#{host}:#{target.port}"
+      rescue DetachableClientTarget::ParseError
+        raise ArgumentError, '--headless requires a port number between 1 and 65535, auto, ' \
+                             'or HOST:PORT (HOST may be tailscale, lan, any, an IP address, or a hostname)'
       end
     end
   end

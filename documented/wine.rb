@@ -2,6 +2,12 @@
 
 require 'rbconfig'
 
+# Resolve a wine executable from PATH without shelling out.
+#
+# This avoids OS-specific shell behavior (`which`, backticks, cmd.exe) and keeps
+# startup detection consistent across Linux/macOS/Windows Ruby runtimes.
+#
+# @return [String, nil] absolute path to a runnable wine binary, or nil
 find_wine_binary = lambda {
   exe_ext = RbConfig::CONFIG['EXEEXT'].to_s
   extensions = exe_ext.empty? ? [''] : [exe_ext, '']
@@ -40,23 +46,36 @@ unless $wine_bin.nil?
   end
 
   if $wine_bin and File.exist?($wine_bin) and File.file?($wine_bin) and $wine_prefix and File.exist?($wine_prefix) and File.directory?($wine_prefix)
-    # Module for interacting with Wine registry.
+    # Namespace for Wine runtime registry access and configuration.
     #
-    # This module provides methods to get and set values in the Wine registry.
+    # Provides methods to read and write Windows registry values through a Wine
+    # prefix when Wine is detected on the system. Only defined if Wine is available
+    # and both {.BIN} and {.PREFIX} point to valid executable and directory paths.
     #
-    # @see #registry_gets
-    # @see #registry_puts
+    # @see .BIN
+    # @see .PREFIX
+    # @see .registry_gets
+    # @see .registry_puts
     module Wine
+      # [String] Absolute path to the Wine executable.
+      #
+      # Resolved from `--wine=` CLI override, PATH lookup, or nil if Wine is not
+      # available or explicitly disabled with `--no-wine`.
       BIN = $wine_bin
+      # [String] Absolute path to the Wine prefix (WINEPREFIX directory).
+      #
+      # Resolved from `--wine-prefix=` CLI override, `WINEPREFIX` environment variable,
+      # or `$HOME/.wine` by default. Only set when {.BIN} points to a valid Wine executable
+      # and this directory exists.
       PREFIX = $wine_prefix
 
-      # Retrieves a value from the Wine registry.
+      # Reads a value from Wine's `system.reg` for `HKEY_LOCAL_MACHINE` keys.
       #
-      # @param key [String] the registry key in the format "HKEY_LOCAL_MACHINE\subkey\value"
-      # @return [String, nil] the value associated with the key, or nil if not found
-      # @raise [ArgumentError] if the key format is invalid
-      # @example Get a registry value
-      #   value = Wine.registry_gets("HKEY_LOCAL_MACHINE\Software\MyApp\Setting")
+      # @param key [String] registry path, e.g. `HKEY_LOCAL_MACHINE\Software\Foo\Bar`
+      # Note: malformed keys now intentionally raise ArgumentError (instead of
+      # the previous incidental NoMethodError from calling `captures` on nil).
+      # @raise [ArgumentError] when +key+ is not a supported registry path format
+      # @return [String, false] value string when found, false otherwise
       def Wine.registry_gets(key)
         match_data = /(HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\(.+)\\([^\\]*)/.match(key)
         raise ArgumentError, "Invalid registry key format: #{key.inspect}" unless match_data
@@ -72,7 +91,7 @@ unless $wine_bin.nil?
             end
             lookin = result = false
             File.open(PREFIX + '/system.reg') { |f| f.readlines }.each { |line|
-              if line[0...subkey.length] == subkey
+              if line[0...subkey.length].casecmp?(subkey)
                 lookin = true
               elsif line =~ /^\[/
                 lookin = false
@@ -93,14 +112,15 @@ unless $wine_bin.nil?
         end
       end
 
-      # Sets a value in the Wine registry.
+      # Writes a registry value through `regedit` using a temporary `.reg` file.
+      # Uses argv-style `system` invocation to avoid shell interpolation.
       #
-      # @param key [String] the registry key in the format "HKEY_LOCAL_MACHINE\subkey\value"
-      # @param value [String] the value to set for the key
-      # @return [Boolean] true if the operation succeeded, false otherwise
-      # @raise [ArgumentError] if the key format is invalid
-      # @example Set a registry value
-      #   success = Wine.registry_puts("HKEY_LOCAL_MACHINE\Software\MyApp\Setting", "new_value")
+      # @param key [String] registry path, e.g. `HKEY_LOCAL_MACHINE\Software\Foo\Bar`
+      # @param value [String] value to persist
+      # Note: malformed keys now intentionally raise ArgumentError (instead of
+      # the previous incidental NoMethodError from calling `captures` on nil).
+      # @raise [ArgumentError] when +key+ is not a supported registry path format
+      # @return [Boolean] true on successful write path, false on failures or regedit non-zero exit
       def Wine.registry_puts(key, value)
         match_data = /(HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\(.+)\\([^\\]*)/.match(key)
         raise ArgumentError, "Invalid registry key format: #{key.inspect}" unless match_data

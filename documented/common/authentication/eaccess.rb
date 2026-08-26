@@ -3,16 +3,23 @@
 require "openssl"
 require "socket"
 
+# Namespace for the Lich scripting engine and associated utilities.
 module Lich
+  # Namespace for common utilities and protocols shared across Lich.
   module Common
+    # Namespace for authentication protocols and game server access.
     module Authentication
+      # Core EAccess protocol implementation for Simutronics game servers
+      # Handles SSL socket creation, certificate management, and game authentication protocol
       module EAccess
-        # Represents an error that occurs during authentication.
-        #
-        # @see Lich::Common::Authentication::EAccess
+        # Authentication error raised when EAccess authentication fails
         class AuthenticationError < StandardError
           attr_reader :error_code
 
+          # Initializes an AuthenticationError with the given error code.
+          #
+          # @param error_code [String] the error code returned by the EAccess server
+          # @return [void]
           def initialize(error_code)
             @error_code = error_code
             super("Error(#{error_code})")
@@ -21,22 +28,21 @@ module Lich
 
         PACKET_SIZE = 8192
 
-        # Returns the path to the PEM file used for SSL connections.
-        # @return [String] path to the PEM file
+        # Character code that enters the character generator instead of selecting an existing character.
+        # When sent via the L command, the game server starts the character creation flow.
+        NEW_CHARACTER_CODE = "0"
+
+        # @api private
         def self.pem
           @pem ||= File.join(DATA_DIR, "simu.pem")
         end
 
-        # Checks if the PEM file exists on the filesystem.
-        # @return [Boolean] true if the PEM file exists, false otherwise
+        # @api private
         def self.pem_exist?
           File.exist? pem
         end
 
-        # Downloads the PEM file from the specified hostname and port.
-        # @param hostname [String] the hostname to connect to (default: "eaccess.play.net")
-        # @param port [Integer] the port to connect to (default: 7910)
-        # @return [void]
+        # @api private
         def self.download_pem(hostname = "eaccess.play.net", port = 7910)
           # Create an OpenSSL context
           ctx = OpenSSL::SSL::SSLContext.new
@@ -50,10 +56,7 @@ module Lich
           File.write(pem, ssl.peer_cert)
         end
 
-        # Verifies the PEM certificate against the stored PEM file.
-        # @param conn [OpenSSL::SSL::SSLSocket] the SSL connection to verify
-        # @return [Boolean] true if the certificate matches, false otherwise
-        # @raise AuthenticationError if the certificate does not match
+        # @api private
         def self.verify_pem(conn)
           # return if conn.peer_cert.to_s = File.read(pem)
           if !(conn.peer_cert.to_s == File.read(pem))
@@ -65,10 +68,7 @@ module Lich
           #     fail Exception, "\nssl peer certificate did not match #{pem}\nwas:\n#{conn.peer_cert}"
         end
 
-        # Establishes a secure socket connection to the specified hostname and port.
-        # @param hostname [String] the hostname to connect to (default: "eaccess.play.net")
-        # @param port [Integer] the port to connect to (default: 7910)
-        # @return [OpenSSL::SSL::SSLSocket] the established SSL socket
+        # @api private
         def self.socket(hostname = "eaccess.play.net", port = 7910)
           download_pem unless pem_exist?
           socket = TCPSocket.open(hostname, port)
@@ -83,15 +83,21 @@ module Lich
           return ssl_socket
         end
 
-        # Authenticates a user with the provided credentials.
-        # @param password [String] the user's password
-        # @param account [String] the user's account name
-        # @param character [String, nil] the character name (optional)
-        # @param game_code [String, nil] the game code (optional)
-        # @param legacy [Boolean] whether to use legacy authentication (default: false)
-        # @return [Array<Hash>] login information for the authenticated user
-        # @raise AuthenticationError if authentication fails
-        def self.auth(password:, account:, character: nil, game_code: nil, legacy: false)
+        # Authenticates with the EAccess server and launches a character session.
+        #
+        # When +generator+ is true, the character lookup is skipped and the server
+        # enters the character generator (character code "0") instead of selecting
+        # an existing character.
+        #
+        # @param password [String] account password (plaintext, will be hashed)
+        # @param account [String] account name
+        # @param character [String, nil] character name to select
+        # @param game_code [String, nil] game instance code (e.g. "DR", "GS3")
+        # @param legacy [Boolean] use legacy multi-game enumeration flow
+        # @param generator [Boolean] enter the character generator instead of selecting a character
+        # @return [Hash, Array] login info hash (normal) or array of character hashes (legacy)
+        # @raise [AuthenticationError] on auth failure or character not found
+        def self.auth(password:, account:, character: nil, game_code: nil, legacy: false, generator: false)
           # Set Account module state
           if defined?(Lich::Common::Account)
             Lich::Common::Account.name = account
@@ -126,7 +132,15 @@ module Lich
             unless legacy
               conn.puts "F\t#{game_code}\n"
               response = EAccess.read(conn)
-              raise StandardError, response unless response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/
+              # F reports the account's tier for this instance. NEW_TO_GAME is the
+              # normal response for any instance the account is not subscribed to --
+              # not an error. The generator path tolerates it because character
+              # creation is exactly the flow that targets instances the account does
+              # not already hold; whether creation is permitted is decided later by
+              # the L response, not here.
+              unless response =~ /NORMAL|PREMIUM|TRIAL|INTERNAL|FREE/ || (generator && response =~ /NEW_TO_GAME/)
+                raise StandardError, response
+              end
               if defined?(Lich::Common::Account)
                 Lich::Common::Account.subscription = response
               end
@@ -143,16 +157,21 @@ module Lich
               if defined?(Lich::Common::Account)
                 Lich::Common::Account.members = response
               end
-              char_entry = response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
-                                   .scan(/[^\t]+\t[^\t^\n]+/)
-                                   .find { |c| c.split("\t")[1] == character }
-              unless char_entry
-                raise AuthenticationError, "CHARACTER_NOT_FOUND"
-              end
-              char_code = char_entry.split("\t")[0]
+              char_code = generator ? NEW_CHARACTER_CODE : resolve_char_code(response, character)
               conn.puts "L\t#{char_code}\tSTORM\n"
               response = EAccess.read(conn)
-              raise StandardError, response unless response =~ /^L\t/
+              # Both success and failure are prefixed with "L\t" (e.g. the server
+              # returns "L\tPROBLEM\t1" when the account is not entitled to create on
+              # this instance), so require the explicit OK before parsing the launch
+              # payload -- otherwise a PROBLEM line is parsed into a garbage hash.
+              unless response =~ /^L\tOK\t/
+                # On the generator path a PROBLEM here means the account has no
+                # entitlement to create a character on this instance (e.g. an
+                # unsubscribed Fallen/Shattered). Fail fast with a clear code rather
+                # than crash or launch broken data.
+                raise AuthenticationError, "GENERATOR_NOT_AVAILABLE" if generator
+                raise StandardError, response
+              end
               # pp "L:response=%s" % response
               login_info = response.sub(/^L\tOK\t/, '')
                                    .split("\t")
@@ -162,7 +181,7 @@ module Lich
                                    }.to_h
             else
               login_info = Array.new
-              for game in response.sub(/^M\t/, '').scan(/[^\t]+\t[^\t^\n]+/)
+              for game in response.sub(/^M\t/, '').scan(/[^\t]+\t[^\t\n]+/)
                 game_code, game_name = game.split("\t")
                 # pp "M:response = %s" % response
                 conn.puts "N\t#{game_code}\n"
@@ -183,7 +202,7 @@ module Lich
                     if defined?(Lich::Common::Account)
                       Lich::Common::Account.members = response
                     end
-                    for code_name in response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '').scan(/[^\t]+\t[^\t^\n]+/)
+                    for code_name in response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '').scan(/[^\t]+\t[^\t\n]+/)
                       char_code, char_name = code_name.split("\t")
                       hash = { :game_code => "#{game_code}", :game_name => "#{game_name}",
                               :char_code => "#{char_code}", :char_name => "#{char_name}" }
@@ -199,11 +218,55 @@ module Lich
           end
         end
 
-        # Reads data from the given connection up to the defined packet size.
-        # @param conn [TCPSocket] the connection to read from
-        # @return [String] the data read from the connection
+        # Resolves the character code for the requested character from the C response.
+        #
+        # @param c_response [String] raw C command response from the server
+        # @param character [String] character name to look up
+        # @return [String] character code for the L command
+        # @raise [AuthenticationError] when the character is not found in the response
+        # @api private
+        def self.resolve_char_code(c_response, character)
+          char_entry = c_response.sub(/^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]/, '')
+                                 .scan(/[^\t]+\t[^\t\n]+/)
+                                 .find { |c| c.split("\t")[1] == character }
+
+          raise AuthenticationError, "CHARACTER_NOT_FOUND" unless char_entry
+
+          char_entry.split("\t")[0]
+        end
+
+        # @api private
         def self.read(conn)
           conn.sysread(PACKET_SIZE)
+        end
+
+        # Bounds how long the full SGE authentication exchange may block.
+        #
+        # {.auth} has no connect or read timeouts of its own -- every step (TCP
+        # connect, TLS handshake, and each K/A/M/F/G/P/C/L round-trip) is a bare
+        # blocking call. An unresponsive SGE backend (e.g. a stalled connect that
+        # never gets a SYN-ACK) hangs the caller indefinitely with no exception
+        # and no log output. This wraps the whole exchange the same way
+        # {Lich::GameBase::Game.open_with_timeout} bounds the game connect.
+        #
+        # @param timeout [Integer, Float] seconds to wait for the full exchange
+        # @param kwargs [Hash] forwarded to {.auth}
+        # @return [Hash, Array] see {.auth}
+        # @raise [RuntimeError] if the exchange does not complete within +timeout+
+        # @raise [StandardError] re-raises whatever {.auth} raises
+        # @see .auth
+        def self.auth_with_timeout(timeout: 30, **kwargs)
+          auth_thread = Thread.new {
+            # report_on_exception off: a failed auth is surfaced by the join below
+            # (which re-raises it), not by an auto-printed thread warning.
+            Thread.current.report_on_exception = false
+            auth(**kwargs)
+          }
+          if auth_thread.join(timeout).nil?
+            auth_thread.kill rescue nil
+            raise "error: timed out authenticating with EAccess after #{timeout}s"
+          end
+          auth_thread.value
         end
       end
     end

@@ -3,19 +3,23 @@ util.rb: Core lich file for collection of utilities to extend Lich capabilities.
 Entries added here should always be accessible from Lich::Util.feature namespace.
 =end
 
+require_relative 'deep_freeze'
+
 module Lich
-  # Provides a collection of utility methods to extend Lich capabilities.
-  #
-  # All entries added here should be accessible from the Lich::Util feature namespace.
   module Util
     include Enumerable
 
-    # Normalizes the lookup for effects based on the provided value.
+    # Normalizes and performs a lookup for an effect based on the provided value.
     #
-    # @param effect [String] the name of the effect to look up.
-    # @param val [String, Integer, Symbol] the value to normalize and check.
-    # @return [Boolean] true if the normalized value exists, false otherwise.
-    # @raise [RuntimeError] if the lookup case is invalid.
+    # Depending on the type of `val`, this method will:
+    # - For String: Check if the normalized string matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).
+    # - For Integer: Check if the effect is active for the given integer value.
+    # - For Symbol: Check if the normalized symbol matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).
+    #
+    # @param effect [String] The name of the effect class (without the "Effects::" prefix).
+    # @param val [String, Integer, Symbol] The value to look up; can be a string, integer, or symbol.
+    # @return [Boolean] True if the lookup is successful, false otherwise.
+    # @raise [RuntimeError] If `val` is not a String, Integer, or Symbol.
     def self.normalize_lookup(effect, val)
       caller_type = "Effects::#{effect}"
       case val
@@ -37,10 +41,18 @@ module Lich
     # - Converts spaces and hyphens to underscores.
     # - Removes colons and apostrophes.
     # - Converts symbols to strings.
-    # Normalizes a given name by converting it to a lowercase string and replacing or removing certain characters.
+    # - Converts all characters to lowercase.
     #
-    # @param name [String] the name to normalize.
-    # @return [String] the normalized name.
+    # Examples:
+    #   normalize_name("vault_kick")      #=> "vault_kick"
+    #   normalize_name("vault kick")      #=> "vault_kick"
+    #   normalize_name("vault-kick")      #=> "vault_kick"
+    #   normalize_name(:vault_kick)       #=> "vault_kick"
+    #   normalize_name(:vaultkick)        #=> "vaultkick"
+    #   normalize_name("predator's eye")  #=> "predators_eye"
+    #
+    # @param name [String, Symbol] The name to normalize.
+    # @return [String] The normalized name.
     def self.normalize_name(name)
       normal_name = name.to_s.downcase
       normal_name.gsub!(' ', '_') if name =~ (/\s/)
@@ -50,27 +62,94 @@ module Lich
       normal_name
     end
 
-    # Generates a unique anonymous hook name based on the current time and a random number.
+    # Generates a unique anonymous hook identifier string.
     #
-    # @param prefix [String] an optional prefix for the hook name.
-    # @return [String] the generated anonymous hook name.
+    # @param prefix [String] an optional prefix to include in the identifier (default: '')
+    # @return [String] a unique identifier in the format "Util::<prefix>-<timestamp>-<random_number>"
+    # @example
+    #   Util.anon_hook('event') #=> "Util::event-2024-06-13 12:34:56 +0000-1234"
     def self.anon_hook(prefix = '')
       now = Time.now
       "Util::#{prefix}-#{now}-#{Random.rand(10000)}"
     end
 
-    # Issues a command and captures the output based on the provided patterns.
+    # Self-closing tags that toggle persistent client display state (as
+    # opposed to e.g. <prompt>, which self-heals on the next prompt). The raw
+    # server chunk handed to a DownstreamHook proc is not split on line
+    # boundaries, so the server is free to bundle one of these onto the same
+    # chunk as text that quiet: true is about to drop. Silently discarding
+    # that chunk would discard the tag with it -- e.g. dropping a trailing
+    # mono-closing <output class=""/> that rode in on the same chunk as the
+    # <prompt> a quiet-filtered range ends on leaves the frontend stuck in
+    # mono mode until an unrelated, later mono tag happens to close it.
     #
-    # @param command [String] the command to execute.
-    # @param start_pattern [Regexp] the pattern to identify the start of the output.
-    # @param end_pattern [Regexp] the pattern to identify the end of the output (default: /<prompt/).
-    # @param include_end [Boolean] whether to include the end line in the result (default: true).
-    # @param timeout [Integer] the maximum time to wait for the command to complete (default: 5).
-    # @param silent [Boolean, nil] whether to suppress output (default: nil).
-    # @param usexml [Boolean] whether to use XML output (default: true).
-    # @param quiet [Boolean] whether to suppress output during processing (default: false).
-    # @param use_fput [Boolean] whether to use fput instead of put (default: true).
-    # @return [Array<String>] the lines of output captured from the command.
+    # Only the mono/formatting <output> tag is confirmed to hit this in
+    # practice today. The list is deliberately an array of patterns (not a
+    # single regex) so a future confirmed case -- e.g. pushBold/popBold or
+    # pushStream/popStream -- can be added as its own entry without touching
+    # the filtering logic below. Keep each pattern anchored to a single
+    # self-closing `<tag .../>`, with no capturing groups (String#scan
+    # returns captured subgroups instead of full matches when a pattern has
+    # any, which would silently change what preserve_quiet_state_tags
+    # returns), so a scan can't accidentally absorb surrounding text or
+    # change shape.
+    QUIET_STATE_TAGS = [
+      /<output class="[^"]*"\s*\/>/ # mono/formatting state toggle
+    ].freeze
+
+    # Combines QUIET_STATE_TAGS into a single alternation, scanned once per
+    # chunk. Scanning each pattern separately and concatenating the results
+    # (the original approach) groups matches by pattern rather than by where
+    # they actually appear -- invisible with a single pattern, but as soon as
+    # a second entry is added, two tags from different patterns on the same
+    # chunk would come back in pattern order instead of source order, which
+    # matters when the tags are an open/close pair. A single combined scan
+    # preserves the chunk's real left-to-right order regardless of how many
+    # patterns are registered.
+    QUIET_STATE_TAG_PATTERN = Regexp.union(QUIET_STATE_TAGS).freeze
+
+    # Pulls any QUIET_STATE_TAGS matches out of a chunk that quiet: true is
+    # about to drop, so callers can forward just the tags instead of the
+    # whole chunk.
+    #
+    # The returned string is newline-terminated even though the matched tags
+    # themselves never include one. Every other chunk that reaches this
+    # pipeline is newline/CRLF-terminated as part of the game server's
+    # line-oriented stream framing; a bare, unterminated tag is not a shape
+    # of line this pipeline produced before this method existed. For
+    # sentinel-supporting frontends (currently only Saga -- see
+    # Frontend::ORIGIN_SENTINEL and Game#prefix_origin_sentinel), every
+    # forwarded line gets a leading origin-marker byte that the client is
+    # expected to consume as routing metadata and strip before display. That
+    # worked here once the segment was given the same line termination as
+    # everything else the client already handles; without it, the client had
+    # nothing to delimit an otherwise content-only segment, and the marker
+    # byte fell through to the display as a literal, visible character.
+    #
+    # @param chunk [String] the raw stream chunk being suppressed.
+    # @return [String, nil] the concatenated tag matches, in the order they
+    #   appeared, terminated with a newline; or nil if none were found
+    #   (signals DownstreamHook to drop the chunk entirely, same as before
+    #   this method existed).
+    def self.preserve_quiet_state_tags(chunk)
+      tags = chunk.to_s.scan(QUIET_STATE_TAG_PATTERN)
+      return nil if tags.empty?
+
+      "#{tags.join}\n"
+    end
+
+    # Issues a command to the game and captures output between start and end patterns.
+    #
+    # @param command [String] The command to send.
+    # @param start_pattern [Regexp] Pattern marking the start of output capture.
+    # @param end_pattern [Regexp, Symbol] Pattern marking the end of output capture. Defaults to /<prompt/. Use :ignore for single-line capture.
+    # @param include_end [Boolean] Whether to include the end line in the result. Defaults to true.
+    # @param timeout [Integer] Timeout in seconds for the command. Defaults to 5.
+    # @param silent [Boolean, nil] Whether to silence script output. Defaults to nil (no change).
+    # @param usexml [Boolean] Whether to use XML downstream. Defaults to true.
+    # @param quiet [Boolean] If true, suppresses output of lines to FE starting with the start_pattern and ending with the end_pattern. Defaults to false.
+    # @param use_fput [Boolean] If true, uses fput to send the command; otherwise uses put. Defaults to true.
+    # @return [Array<String>] Lines of output captured between start and end patterns.
     def self.issue_command(command, start_pattern, end_pattern = /<prompt/, include_end: true, timeout: 5, silent: nil, usexml: true, quiet: false, use_fput: true)
       result = []
       name = self.anon_hook
@@ -93,13 +172,13 @@ module Lich
                 DownstreamHook.remove(name)
                 filter = false
                 if quiet && !ignore_end
-                  next(nil)
+                  next(preserve_quiet_state_tags(line))
                 else
                   line
                 end
               else
                 if quiet
-                  next(nil)
+                  next(preserve_quiet_state_tags(line))
                 else
                   line
                 end
@@ -107,14 +186,14 @@ module Lich
             elsif line =~ start_pattern
               filter = true
               if quiet
-                next(nil)
+                next(preserve_quiet_state_tags(line))
               else
                 line
               end
             else
               line
             end
-          })
+          }, persist: false) # scoped to this command; removed in the ensure below
           use_fput ? fput(command) : put(command)
 
           until (line = get) =~ start_pattern; end
@@ -141,36 +220,51 @@ module Lich
       return result
     end
 
-    # Issues a command quietly and captures the output in XML format.
+    # Issues a command to the game with XML downstream enabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.
     #
-    # @param command [String] the command to execute.
-    # @param start_pattern [Regexp] the pattern to identify the start of the output.
-    # @param end_pattern [Regexp] the pattern to identify the end of the output (default: /<prompt/).
-    # @param include_end [Boolean] whether to include the end line in the result (default: true).
-    # @param timeout [Integer] the maximum time to wait for the command to complete (default: 5).
-    # @param silent [Boolean] whether to suppress output (default: true).
-    # @return [Array<String>] the lines of output captured from the command.
+    # @param command [String] the command to send to the game
+    # @param start_pattern [Regexp] pattern marking the start of output capture
+    # @param end_pattern [Regexp] pattern marking the end of output capture; defaults to /\<prompt/
+    # @param include_end [Boolean] whether to include the line matching end_pattern in the result; defaults to true
+    # @param timeout [Integer] timeout in seconds for the command; defaults to 5
+    # @param silent [Boolean] whether to silence script output; defaults to true
+    # @return [Array<String>] lines of output captured between start and end patterns, stripped of trailing whitespace
+    # @example
+    #   lines = Util.quiet_command_xml('score', /^\s+HP\:/, /\<prompt/, include_end: true, timeout: 5, silent: true)
+    # @see .issue_command
+    # @see .quiet_command
     def self.quiet_command_xml(command, start_pattern, end_pattern = /<prompt/, include_end = true, timeout = 5, silent = true)
       return issue_command(command, start_pattern, end_pattern, include_end: include_end, timeout: timeout, silent: silent, usexml: true, quiet: true)
     end
 
-    # Issues a command quietly and captures the output.
+    # Issues a command to the game with XML downstream disabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.
     #
-    # @param command [String] the command to execute.
-    # @param start_pattern [Regexp] the pattern to identify the start of the output.
-    # @param end_pattern [Regexp] the pattern to identify the end of the output.
-    # @param include_end [Boolean] whether to include the end line in the result (default: true).
-    # @param timeout [Integer] the maximum time to wait for the command to complete (default: 5).
-    # @param silent [Boolean] whether to suppress output (default: true).
-    # @return [Array<String>] the lines of output captured from the command.
+    # @param command [String] the command to send to the game
+    # @param start_pattern [Regexp] pattern marking the start of output capture
+    # @param end_pattern [Regexp] pattern marking the end of output capture
+    # @param include_end [Boolean] whether to include the line matching end_pattern in the result; defaults to true
+    # @param timeout [Integer] timeout in seconds for the command; defaults to 5
+    # @param silent [Boolean] whether to silence script output; defaults to true
+    # @return [Array<String>] lines of output captured between start and end patterns, stripped of trailing whitespace
+    # @example
+    #   lines = Util.quiet_command('exp', /^\s+Exp\:/, /\<prompt/, include_end: false, timeout: 5, silent: true)
+    # @see .issue_command
+    # @see .quiet_command_xml
     def self.quiet_command(command, start_pattern, end_pattern, include_end = true, timeout = 5, silent = true)
       return issue_command(command, start_pattern, end_pattern, include_end: include_end, timeout: timeout, silent: silent, usexml: false, quiet: true)
     end
 
-    # Retrieves the count of silver from the output of a command.
+    # Retrieves the current silver count from the game output by issuing the 'info' command
+    # and parsing the response. Uses a downstream hook to filter and extract the silver value.
     #
-    # @param timeout [Integer] the maximum time to wait for the command to complete (default: 3).
-    # @return [Integer] the count of silver.
+    # @param timeout [Integer] the maximum number of seconds to wait for a response (default: 3)
+    # @return [Integer] the amount of silver, or 0 if not found or on timeout
+    #
+    # @example
+    #   silver = Util.silver_count
+    #
+    # This method temporarily silences output, sets up a downstream hook to capture the relevant
+    # lines, and restores the previous silence state after completion.
     def self.silver_count(timeout = 3)
       silence_me unless (undo_silence = silence_me)
       result = ''
@@ -197,7 +291,7 @@ module Lich
           else
             line
           end
-        })
+        }, persist: false) # scoped to this command; removed in the ensure below
         # script thread
         fput 'info'
         loop {
@@ -215,11 +309,25 @@ module Lich
       return result.gsub(',', '').to_i
     end
 
-    # Installs the specified Ruby gems and requires them if specified.
+    # Installs and optionally requires a set of Ruby gems specified in a Hash.
     #
-    # @param gems_to_install [Hash] a hash of gem names and whether to require them.
-    # @param user_install [Boolean] whether to install gems for the user (default: false).
-    # @raise [ArgumentError] if gems_to_install is not a Hash or has invalid keys/values.
+    # @param gems_to_install [Hash{String => Boolean}]
+    #   A hash where each key is the name of a gem to install (as a String),
+    #   and each value is a Boolean indicating whether to require the gem after installation.
+    #
+    # @raise [ArgumentError]
+    #   If the argument is not a Hash, or if the hash contains keys that are not Strings
+    #   or values that are not TrueClass/FalseClass.
+    #
+    # @raise [RuntimeError]
+    #   If any gems fail to install, raises an error listing the failed gems.
+    #
+    # @example
+    #   install_gem_requirements({ "json" => true, "colorize" => false })
+    #
+    # This method will attempt to install any gems that are not already installed.
+    # If a gem is installed and its value is true, it will be required.
+    # If installation fails for any gem, an error will be raised listing all failed gems.
     def self.install_gem_requirements(gems_to_install, user_install: false)
       raise ArgumentError, "install_gem_requirements must be passed a Hash" unless gems_to_install.is_a?(Hash)
       require "rubygems"
@@ -269,24 +377,6 @@ module Lich
           raise("Please install the failed gems: #{failed_gems.join(', ')} manually to continue.")
         end
       end
-    end
-
-    ##
-    # Recursively freezes an object and its contents.
-    #
-    # @param obj [Object] the object to freeze.
-    # @return [Object] the frozen object.
-    def self.deep_freeze(obj)
-      case obj
-      when Hash
-        obj.each do |k, v|
-          deep_freeze(k)
-          deep_freeze(v)
-        end
-      when Array
-        obj.each { |el| deep_freeze(el) }
-      end
-      obj.freeze
     end
   end
 end

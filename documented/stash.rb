@@ -4,22 +4,29 @@ stash.rb: Core lich file for extending free_hands, empty_hands functions in
   required to be maintained.
 =end
 
+# Namespace for Lich 5 scripting engine functionality.
 module Lich
-  # Provides methods for managing items in the game, including stashing and retrieving items from containers.
+  # Namespace for inventory container and equipment management.
   #
-  # @see Lich::Stash#find_container
-  # @see Lich::Stash#add_to_bag
+  # Provides methods to locate containers, move items between hands and storage,
+  # and manage the queuing of item stashing and equipping actions.
   module Stash
     @weapon_displayer ||= []
     @bandolier_weapon ||= {}
     @worn_items ||= {}
 
-    # Finds a container by its name.
+    # Finds a container in inventory by partial name match.
     #
-    # @param param [String, GameObj] the name of the container or a GameObj instance
-    # @param loud_fail [Boolean] whether to raise an error if the container is not found (default: true)
-    # @return [GameObj] the found container
-    # @raise [RuntimeError] if the container is not found and loud_fail is true
+    # Searches the player's inventory for a container whose name matches the given
+    # parameter using two regex patterns: literal substring match and flexible
+    # space-separated word match. Returns nil if not found and loud_fail is false.
+    #
+    # @param param [String, GameObj] container name or a GameObj to extract the name from
+    # @param loud_fail [Boolean] if true, raises an error when container not found; if false, returns nil
+    # @return [GameObj, nil] the found container, or nil if not found and loud_fail is false
+    # @raise [RuntimeError] "could not find Container[name: ...]" when container not found and loud_fail is true
+    # @example Find a backpack
+    #   Lich::Stash.find_container("backpack", loud_fail: false)
     def self.find_container(param, loud_fail: true)
       param = param.name if param.is_a?(GameObj) # (Lich::Gemstone::GameObj)
       found_container = GameObj.inv.find do |container|
@@ -32,10 +39,16 @@ module Lich
       end
     end
 
-    # Retrieves a container and ensures it is accessible.
+    # Returns a container after ensuring it is open and its contents are visible.
     #
-    # @param param [String] the name of the container
+    # Looks up the container using .find_container, opens it if closed, and updates
+    # the internal @weapon_displayer cache to track which containers have had their
+    # contents exposed. This is a setup method meant to be called before manipulating
+    # container contents.
+    #
+    # @param param [String, GameObj] container name or GameObj
     # @return [GameObj] the container object
+    # @raise [RuntimeError] if the container cannot be found
     def self.container(param)
       container_to_check = find_container(param)
       unless @weapon_displayer.include?(container_to_check.id)
@@ -46,12 +59,19 @@ module Lich
       return container_to_check
     end
 
-    # Attempts to execute a command and waits for a condition to be met.
+    # Executes a command and waits for a condition block to return true within a timeout.
     #
-    # @param seconds [Integer] the maximum time to wait for the command to succeed
+    # Issues the command with .fput, then repeatedly yields the fput result to the
+    # caller's block until the block returns true or the timeout expires. Raises an
+    # error if the timeout is exceeded.
+    #
+    # @param seconds [Numeric] how long to wait (default: 2)
     # @param command [String] the command to execute
+    # @yield [result] yields the fput result string to the block; block should return true when condition is met
     # @return [void]
-    # @raise [RuntimeError] if the command does not succeed within the specified time
+    # @raise [RuntimeError] "Error[command: ..., seconds: ...]" if timeout exceeded
+    # @example Wait for a successful result
+    #   Lich::Stash.try_or_fail(seconds: 3, command: "get sword") { |result| !result.include?("You can't find that") }
     def self.try_or_fail(seconds: 2, command: nil)
       result = fput(command)
       expiry = Time.now + seconds
@@ -59,16 +79,24 @@ module Lich
       fail "Error[command: #{command}, seconds: #{seconds}]" if Time.now > expiry
     end
 
-    # Adds an item to a specified bag, handling special cases like vapor messages.
+    # Moves an item into a container using _drag.
     #
-    # @param bag [String] the name of the bag to add the item to
-    # @param item [GameObj] the item to add
-    # @return [Boolean] true if the item was successfully added, false otherwise
+    # Drags the item into the bag and polls for confirmation that it arrived. Handles
+    # three special cases: bandolier weapons (which dissolve into vapor and are cached),
+    # ethereal weapons (checked by name pattern), and normal items. Retries for up to
+    # 2 seconds until the item is no longer in either hand and is present in the
+    # container or marked as stashed (for bandolier).
+    #
+    # @param bag [String, GameObj] container name or container GameObj
+    # @param item [GameObj] the item to move
+    # @return [Boolean] true if item was successfully moved or cached as bandolier; false if timeout
+    # @example
+    #   Lich::Stash.add_to_bag("backpack", GameObj.right_hand)
     def self.add_to_bag(bag, item)
       bag = container(bag)
       try_or_fail(command: "_drag ##{item.id} ##{bag.id}") do |result|
         # Check for vapor message first (bandolier)
-        if result =~ /As you drop .+ it dissolves into vapor\./
+        if result.is_a?(String) && result =~ /As you drop .+ it dissolves into vapor\./
           @bandolier_weapon[item.name] = "unknown"
           return true
         end
@@ -84,26 +112,41 @@ module Lich
       end
     end
 
-    # Attempts to wear an item and checks if it is successfully worn.
+    # Attempts to move an item from worn equipment to inventory via the wear command.
     #
-    # @param item [GameObj] the item to wear
-    # @return [Boolean] true if the item was successfully worn, false otherwise
+    # Uses the wear command to toggle an item off, which places it in inventory.
+    # Polls for up to 2 seconds for the item to leave both hands and appear in
+    # inventory. Caches the result in @worn_items. If the item cannot be worn to
+    # inventory (e.g., due to wear slot limitations), records false in the cache.
+    #
+    # @param item [GameObj] the equipped item to move to inventory
+    # @return [Boolean] false if the item could not be worn to inventory; true if successful
+    # @api private
     def self.wear_to_inv(item)
       try_or_fail(command: "wear ##{item.id}") do |result|
         20.times {
           return true if (![GameObj.right_hand, GameObj.left_hand].map(&:id).compact.include?(item.id) && GameObj.inv.to_a.map(&:id).include?(item.id))
           return true if item.name =~ /^ethereal \w+$/ && ![GameObj.right_hand, GameObj.left_hand].map(&:id).compact.include?(item.id)
           sleep 0.1
-        } unless result =~ /You can only wear two items in that location\./
+        } unless result.is_a?(String) && result =~ /You can only wear two items in that location\./
 
         return @worn_items[item.name] = false
       end
     end
 
-    # Finds the bag associated with a specific item in the bandolier.
+    # Locates which bandolier bag (if any) contains a bandolier weapon.
     #
-    # @param item [GameObj] the item to find the bag for
-    # @return [String, nil] the ID of the found bag or nil if not found
+    # Returns a cached container ID if valid and the container still exists in inventory.
+    # Otherwise queries inventory for all containers, then checks each one for the item's
+    # noun surrounded by swirling mist (the bandolier's display indicator). Caches the
+    # result as the container's ID or "unknown" if not found.
+    #
+    # @param item [GameObj] the weapon to search for
+    # @return [String, nil] the container ID if found; nil if not found in any bandolier
+    # @note Performs multiple server queries; may be slow when called for many items
+    # @example
+    #   bag_id = Lich::Stash.find_bandolier_bag(my_sword)
+    #   fput("rub ##{bag_id}") if bag_id
     def self.find_bandolier_bag(item)
       # Return cached value if valid and item exists in inventory
       cached_id = @bandolier_weapon[item.name]
@@ -153,12 +196,21 @@ module Lich
       @bandolier_weapon[item.name] = found_container&.id || "unknown"
     end
 
-    # Stashes items from the hands into appropriate containers based on user settings.
+    # Queues actions to stash items from one or both hands into containers.
     #
-    # @param right [Boolean] whether to stash the right hand
-    # @param left [Boolean] whether to stash the left hand
-    # @param both [Boolean] whether to stash both hands
+    # Constructs and caches a list of Procs that will move the current right hand,
+    # left hand, or both to appropriate containers based on ReadyList and StowList
+    # configuration. Prioritizes sheaths, then weaponsacks for weapons, then the
+    # lootsack, then any other available containers. Also handles ethereal weapons
+    # (rub tattoo) and bandolier weapons (rub bag). Call .equip_hands later to
+    # execute the queued actions.
+    #
+    # @param right [Boolean] if true, queue actions to stash the right hand item
+    # @param left [Boolean] if true, queue actions to stash the left hand item
+    # @param both [Boolean] if true, queue actions to stash both hands (takes precedence)
     # @return [void]
+    # @note Requires ReadyList and StowList to be valid; checks and updates them automatically
+    # @see .equip_hands
     def self.stash_hands(right: false, left: false, both: false)
       $fill_hands_actions ||= Array.new
       $fill_left_hand_actions ||= Array.new
@@ -300,12 +352,18 @@ module Lich
       $fill_right_hand_actions.push(actions) if right
     end
 
-    # Equips items from the stash back into the hands based on user settings.
+    # Executes queued stashing actions for one or both hands.
     #
-    # @param left [Boolean] whether to equip the left hand
-    # @param right [Boolean] whether to equip the right hand
-    # @param both [Boolean] whether to equip both hands
+    # Pops and calls the Procs that were queued by a prior call to .stash_hands.
+    # If both are specified, executes the both-hands queue. If left or right are
+    # specified, executes their respective queues. If none are specified, executes
+    # the right-hand queue if available, otherwise the left-hand queue.
+    #
+    # @param both [Boolean] if true, execute queued both-hands actions
+    # @param left [Boolean] if true, execute queued left-hand actions
+    # @param right [Boolean] if true, execute queued right-hand actions
     # @return [void]
+    # @see .stash_hands
     def self.equip_hands(left: false, right: false, both: false)
       if both
         for action in $fill_hands_actions.pop

@@ -1,22 +1,41 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich 5 scripting engine and related utilities.
+#
+# Lich 5 is a Ruby scripting engine for GemStone IV and DragonRealms that allows
+# players to write automation and quality-of-life scripts (.lic files) for their
+# in-game characters.
 module Lich
+  # Namespace for common, shared functionality used across Lich 5.
+  #
+  # This module contains utilities and helpers that are used by multiple subsystems,
+  # including authentication, account management, and GUI operations.
   module Common
+    # Namespace for Lich 5 GUI login system utilities and operations.
+    #
+    # This module contains high-level interfaces for managing the graphical login
+    # interface, including account and character management, favorites, and related
+    # administrative operations.
     module GUI
+      # Manages favorites-related operations for the Lich GUI login system
+      # Provides a high-level interface for favorites management operations
+      # following the established patterns from AccountManager
       module FavoritesManager
-        # Adds a character to the favorites list.
+        # Adds a character to the favorites list
+        # Marks the specified character as a favorite with proper ordering
         #
-        # @param data_dir [String] the directory containing data files
-        # @param username [String] the user's account name
-        # @param char_name [String] the name of the character to add
-        # @param game_code [String] the game code associated with the character
-        # @param frontend [String, nil] optional frontend identifier
-        # @return [Boolean] true if the character was added successfully, false otherwise
-        # @raise [StandardError] if an error occurs during the operation
-        def self.add_favorite(data_dir, username, char_name, game_code, frontend = nil)
+        # @param data_dir [String] Directory containing entry data
+        # @param username [String] Account username
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param frontend [String] Frontend identifier (optional for backward compatibility)
+        # @param custom_launch [String, nil, Symbol] Exact custom launch command, or :__unset for legacy matching
+        # @return [Boolean] True if operation was successful
+        def self.add_favorite(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)
           return false if data_dir.nil? || username.nil? || char_name.nil? || game_code.nil?
 
           begin
-            result = Lich::Common::Authentication::EntryStore.add_favorite(data_dir, username, char_name, game_code, frontend)
+            result = Lich::Common::Authentication::EntryStore.add_favorite(data_dir, username, char_name, game_code, frontend, custom_launch)
 
             if result
               frontend_info = frontend ? " (#{frontend})" : ""
@@ -33,20 +52,21 @@ module Lich
           end
         end
 
-        # Removes a character from the favorites list.
+        # Removes a character from the favorites list
+        # Unmarks the specified character as a favorite and reorders remaining favorites
         #
-        # @param data_dir [String] the directory containing data files
-        # @param username [String] the user's account name
-        # @param char_name [String] the name of the character to remove
-        # @param game_code [String] the game code associated with the character
-        # @param frontend [String, nil] optional frontend identifier
-        # @return [Boolean] true if the character was removed successfully, false otherwise
-        # @raise [StandardError] if an error occurs during the operation
-        def self.remove_favorite(data_dir, username, char_name, game_code, frontend = nil)
+        # @param data_dir [String] Directory containing entry data
+        # @param username [String] Account username
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param frontend [String] Frontend identifier (optional for backward compatibility)
+        # @param custom_launch [String, nil, Symbol] Exact custom launch command, or :__unset for legacy matching
+        # @return [Boolean] True if operation was successful
+        def self.remove_favorite(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)
           return false if data_dir.nil? || username.nil? || char_name.nil? || game_code.nil?
 
           begin
-            result = Lich::Common::Authentication::EntryStore.remove_favorite(data_dir, username, char_name, game_code, frontend)
+            result = Lich::Common::Authentication::EntryStore.remove_favorite(data_dir, username, char_name, game_code, frontend, custom_launch)
 
             if result
               frontend_info = frontend ? " (#{frontend})" : ""
@@ -63,24 +83,25 @@ module Lich
           end
         end
 
-        # Toggles a character's favorite status.
+        # Toggles the favorite status of a character
+        # Adds to favorites if not currently a favorite, removes if it is a favorite
         #
-        # @param data_dir [String] the directory containing data files
-        # @param username [String] the user's account name
-        # @param char_name [String] the name of the character to toggle
-        # @param game_code [String] the game code associated with the character
-        # @param frontend [String, nil] optional frontend identifier
-        # @return [Boolean] true if the character is now a favorite, false if it was removed
-        # @raise [StandardError] if an error occurs during the operation
-        def self.toggle_favorite(data_dir, username, char_name, game_code, frontend = nil)
+        # @param data_dir [String] Directory containing entry data
+        # @param username [String] Account username
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param frontend [String] Frontend identifier (optional for backward compatibility)
+        # @param custom_launch [String, nil, Symbol] Exact custom launch command, or :__unset for legacy matching
+        # @return [Boolean] True if character is now a favorite, false if not
+        def self.toggle_favorite(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)
           return false if data_dir.nil? || username.nil? || char_name.nil? || game_code.nil?
 
           begin
-            if is_favorite?(data_dir, username, char_name, game_code, frontend)
-              remove_favorite(data_dir, username, char_name, game_code, frontend)
+            if is_favorite?(data_dir, username, char_name, game_code, frontend, custom_launch)
+              remove_favorite(data_dir, username, char_name, game_code, frontend, custom_launch)
               false
             else
-              add_favorite(data_dir, username, char_name, game_code, frontend)
+              add_favorite(data_dir, username, char_name, game_code, frontend, custom_launch)
               true
             end
           rescue StandardError => e
@@ -89,31 +110,32 @@ module Lich
           end
         end
 
-        # Checks if a character is in the favorites list.
+        # Checks if a character is marked as a favorite
+        # Returns true if the specified character is in the favorites list
         #
-        # @param data_dir [String] the directory containing data files
-        # @param username [String] the user's account name
-        # @param char_name [String] the name of the character to check
-        # @param game_code [String] the game code associated with the character
-        # @param frontend [String, nil] optional frontend identifier
-        # @return [Boolean] true if the character is a favorite, false otherwise
-        # @raise [StandardError] if an error occurs during the operation
-        def self.is_favorite?(data_dir, username, char_name, game_code, frontend = nil)
+        # @param data_dir [String] Directory containing entry data
+        # @param username [String] Account username
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param frontend [String] Frontend identifier (optional for backward compatibility)
+        # @param custom_launch [String, nil, Symbol] Exact custom launch command, or :__unset for legacy matching
+        # @return [Boolean] True if character is a favorite
+        def self.is_favorite?(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)
           return false if data_dir.nil? || username.nil? || char_name.nil? || game_code.nil?
 
           begin
-            Lich::Common::Authentication::EntryStore.is_favorite?(data_dir, username, char_name, game_code, frontend)
+            Lich::Common::Authentication::EntryStore.is_favorite?(data_dir, username, char_name, game_code, frontend, custom_launch)
           rescue StandardError => e
             Lich.log "error: Error in FavoritesManager.is_favorite?: #{e.message}"
             false
           end
         end
 
-        # Retrieves all favorites for the specified data directory.
+        # Gets all favorite characters across all accounts
+        # Returns an array of favorite characters sorted by favorite order
         #
-        # @param data_dir [String] the directory containing data files
-        # @return [Array<Hash>] an array of favorite characters, each represented as a hash
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @return [Array] Array of favorite character data in legacy format
         def self.get_all_favorites(data_dir)
           return [] if data_dir.nil?
 
@@ -125,12 +147,12 @@ module Lich
           end
         end
 
-        # Reorders the favorites list based on the provided order.
+        # Reorders favorites based on provided character list
+        # Updates the favorite order for all favorites based on new ordering
         #
-        # @param data_dir [String] the directory containing data files
-        # @param ordered_favorites [Array<Hash>] the new order of favorites
-        # @return [Boolean] true if the reorder was successful, false otherwise
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @param ordered_favorites [Array] Array of hashes with username, char_name, game_code
+        # @return [Boolean] True if operation was successful
         def self.reorder_favorites(data_dir, ordered_favorites)
           return false if data_dir.nil? || ordered_favorites.nil?
 
@@ -150,11 +172,11 @@ module Lich
           end
         end
 
-        # Returns the count of favorites for the specified data directory.
+        # Gets the count of favorite characters
+        # Returns the total number of characters marked as favorites
         #
-        # @param data_dir [String] the directory containing data files
-        # @return [Integer] the number of favorites
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @return [Integer] Number of favorite characters
         def self.favorites_count(data_dir)
           return 0 if data_dir.nil?
 
@@ -166,12 +188,12 @@ module Lich
           end
         end
 
-        # Retrieves all favorites for a specific account.
+        # Gets favorites for a specific account
+        # Returns an array of favorite characters for the specified account
         #
-        # @param data_dir [String] the directory containing data files
-        # @param username [String] the user's account name
-        # @return [Array<Hash>] an array of favorites associated with the account
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @param username [String] Account username
+        # @return [Array] Array of favorite character data for the account
         def self.get_account_favorites(data_dir, username)
           return [] if data_dir.nil? || username.nil?
 
@@ -184,12 +206,12 @@ module Lich
           end
         end
 
-        # Retrieves all favorites for a specific game.
+        # Gets favorites for a specific game
+        # Returns an array of favorite characters for the specified game
         #
-        # @param data_dir [String] the directory containing data files
-        # @param game_code [String] the game code to filter favorites
-        # @return [Array<Hash>] an array of favorites associated with the game
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @param game_code [String] Game code
+        # @return [Array] Array of favorite character data for the game
         def self.get_game_favorites(data_dir, game_code)
           return [] if data_dir.nil? || game_code.nil?
 
@@ -202,14 +224,11 @@ module Lich
           end
         end
 
-        # Validates the favorites list and removes any orphaned entries.
+        # Validates favorites data integrity
+        # Checks that all favorites reference valid characters and removes orphaned favorites
         #
-        # @param data_dir [String] the directory containing data files
-        # @return [Hash] a hash containing validation results, including:
-        #   - valid [Boolean] indicates if the validation was successful
-        #   - cleaned [Integer] number of cleaned favorites
-        #   - errors [Array<String>] list of errors encountered during cleanup
-        # @raise [StandardError] if an error occurs during the operation
+        # @param data_dir [String] Directory containing entry data
+        # @return [Hash] Hash with validation results and cleanup statistics
         def self.validate_and_cleanup_favorites(data_dir)
           return { valid: false, cleaned: 0, errors: ['Invalid data directory'] } if data_dir.nil?
 
@@ -227,12 +246,20 @@ module Lich
                 entry[:user_id] == favorite[:user_id] &&
                   entry[:char_name] == favorite[:char_name] &&
                   entry[:game_code] == favorite[:game_code] &&
-                  (favorite[:frontend].nil? || entry[:frontend] == favorite[:frontend])
+                  (favorite[:frontend].nil? || entry[:frontend] == favorite[:frontend]) &&
+                  entry[:custom_launch] == favorite[:custom_launch]
               end
 
               unless character_exists
                 # Remove orphaned favorite
-                if remove_favorite(data_dir, favorite[:user_id], favorite[:char_name], favorite[:game_code], favorite[:frontend])
+                if remove_favorite(
+                  data_dir,
+                  favorite[:user_id],
+                  favorite[:char_name],
+                  favorite[:game_code],
+                  favorite[:frontend],
+                  favorite[:custom_launch]
+                )
                   cleaned_count += 1
                   frontend_info = favorite[:frontend] ? " (#{favorite[:frontend]})" : ""
                   Lich.log "info: Removed orphaned favorite: #{favorite[:char_name]} (#{favorite[:game_code]})#{frontend_info} from #{favorite[:user_id]}"
@@ -256,13 +283,14 @@ module Lich
           end
         end
 
-        # Creates a character ID hash from the provided parameters.
+        # Creates a character identifier hash for favorites operations
+        # Provides a consistent way to identify characters across favorites operations
         #
-        # @param username [String] the user's account name
-        # @param char_name [String] the name of the character
-        # @param game_code [String] the game code associated with the character
-        # @param frontend [String, nil] optional frontend identifier
-        # @return [Hash] a hash representing the character ID
+        # @param username [String] Account username
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param frontend [String] Frontend identifier (optional)
+        # @return [Hash] Character identifier hash
         def self.create_character_id(username, char_name, game_code, frontend = nil)
           {
             username: username,
@@ -272,10 +300,11 @@ module Lich
           }
         end
 
-        # Extracts character ID information from the provided entry data.
+        # Extracts character identifier from entry data
+        # Converts entry data hash to character identifier format
         #
-        # @param entry_data [Hash] the entry data containing character information
-        # @return [Hash] a hash containing the extracted character ID information, or an empty hash if input is invalid
+        # @param entry_data [Hash] Character entry data
+        # @return [Hash] Character identifier hash
         def self.extract_character_id(entry_data)
           return {} unless entry_data.is_a?(Hash)
 
@@ -287,10 +316,11 @@ module Lich
           }
         end
 
-        # Checks if favorites are available in the specified data directory.
+        # Checks if favorites functionality is available
+        # Verifies that the data directory and required files exist
         #
-        # @param data_dir [String] the directory containing data files
-        # @return [Boolean] true if favorites are available, false otherwise
+        # @param data_dir [String] Directory containing entry data
+        # @return [Boolean] True if favorites functionality is available
         def self.favorites_available?(data_dir)
           return false if data_dir.nil?
 
