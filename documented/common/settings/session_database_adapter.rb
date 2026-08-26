@@ -2,30 +2,28 @@
 
 require 'sqlite3'
 
+# Namespace for the Lich 5 scripting engine and its public API.
 module Lich
+  # Namespace for Lich 5 shared internal utilities and adapters.
   module Common
-    # Handles database interactions for session management.
-    #
-    # This class provides methods to upsert, find, delete, and query sessions.
-    #
-    # @see Lich::Common
+    # Row-oriented adapter for session summary state.
+    # This intentionally differs from blob-backed script_auto_settings storage.
     class SessionDatabaseAdapter
       DEFAULT_TABLE_NAME = 'session_summary_state'
 
-      # Initializes a new SessionDatabaseAdapter instance.
-      # @param db [SQLite3::Database, nil] the database connection (optional)
-      # @param data_dir [String] the directory where the database file is located
-      # @param table_name [String] the name of the table to use for sessions
-      # @return [SessionDatabaseAdapter]
+      # Builds an adapter bound to a row-oriented session summary table.
+      #
+      # @param db [SQLite3::Database, nil] optional injected database connection
+      # @param data_dir [String] directory containing lich.db3 when db is not injected
+      # @param table_name [String] session summary table name
       def initialize(db: nil, data_dir: DATA_DIR, table_name: DEFAULT_TABLE_NAME)
-        @db = db || SQLite3::Database.new(File.join(data_dir, 'lich.db3'))
+        @db = db || open_database(File.join(data_dir, 'lich.db3'))
         @table_name = table_name
       end
 
-      # Inserts or updates a session in the database.
+      # Inserts or updates a session row by pid.
       #
-      # This method will insert a new session or update an existing one based on the provided payload.
-      # @param payload [Hash] the session data to upsert
+      # @param payload [Hash] row fields for insert/update
       # @return [void]
       def upsert_session(payload)
         with_retry do
@@ -53,16 +51,18 @@ module Lich
         end
       end
 
-      # Retrieves all active sessions from the database.
-      # @return [Array<Hash>] an array of hashes representing active sessions
+      # Returns all rows currently tracked in the session summary table.
+      #
+      # @return [Array<Hash>] rows sorted by pid
       def active_sessions
         with_retry do
           rows_as_hashes("SELECT * FROM #{@table_name} ORDER BY pid ASC;")
         end
       end
 
-      # Deletes a session from the database by its process ID.
-      # @param pid [Integer] the process ID of the session to delete
+      # Deletes a row for the provided pid.
+      #
+      # @param pid [Integer]
       # @return [void]
       def delete_session(pid:)
         with_retry do
@@ -70,17 +70,20 @@ module Lich
         end
       end
 
-      # Finds a session by its process ID.
-      # @param pid [Integer] the process ID of the session to find
-      # @return [Hash, nil] the session data as a hash, or nil if not found
+      # Finds one row by pid.
+      #
+      # @param pid [Integer]
+      # @return [Hash, nil]
       def find_session(pid:)
         with_retry do
           rows_as_hashes("SELECT * FROM #{@table_name} WHERE pid = ? LIMIT 1;", [pid.to_i]).first
         end
       end
 
-      # Retrieves session names that have duplicates in the active sessions.
-      # @return [Array<Hash>] an array of hashes containing session names and their duplicate counts
+      # Returns names that currently appear more than once.
+      # Duplicate names are treated as data points, not enforcement failures.
+      #
+      # @return [Array<Hash>] rows containing `session_name` and `duplicate_count`
       def duplicate_active_session_names
         with_retry do
           rows_as_hashes(<<~SQL)
@@ -96,8 +99,10 @@ module Lich
         end
       end
 
-      # Retrieves sessions that are currently tracked and not exited.
-      # @return [Array<Hash>] an array of hashes representing tracked live candidates
+      # Returns rows that still appear active in storage and may need a
+      # liveness sweep against the current OS process table.
+      #
+      # @return [Array<Hash>] non-exited rows sorted by pid
       def tracked_live_candidates
         with_retry do
           rows_as_hashes(<<~SQL)
@@ -110,6 +115,16 @@ module Lich
 
       private
 
+      def open_database(path)
+        return Lich.open_sqlite_db(path) if defined?(Lich) && Lich.respond_to?(:open_sqlite_db)
+
+        SQLite3::Database.new(path)
+      end
+
+      # Binds payload values in stable column order for upsert SQL.
+      #
+      # @param payload [Hash]
+      # @return [Array]
       def bind_params(payload)
         [
           payload[:pid],
@@ -129,6 +144,11 @@ module Lich
         ]
       end
 
+      # Executes a query and normalizes sqlite hash rows to string-keyed hashes.
+      #
+      # @param sql [String]
+      # @param binds [Array] optional bind values used for placeholders in +sql+
+      # @return [Array<Hash>]
       def rows_as_hashes(sql, binds = [])
         rows_with_headers = @db.execute2(sql, binds)
         headers = rows_with_headers.shift || []
@@ -145,6 +165,11 @@ module Lich
         end
       end
 
+      # Retries DB work for transient sqlite busy locks.
+      #
+      # @param max_attempts [Integer]
+      # @yieldreturn [Object]
+      # @return [Object]
       def with_retry(max_attempts = 5)
         attempts = 0
         begin

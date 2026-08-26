@@ -1,147 +1,74 @@
+# frozen_string_literal: true
 
+require_relative '../custom_substitutions'
+
+# Namespace for the Lich 5 scripting engine for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for DragonRealms-specific utility methods and pattern constants.
   module DragonRealms
+    # Pattern constants for room/NPC parsing
     module DRDefsPattern
       # Pattern to extract the final "and X" portion of room player lists
-      # Pattern to extract the final "and X" portion of room player lists.
-      #
-      # @see DRDefsPattern::PLAYER_NAME
-      # @see DRDefsPattern::COMMA_OR_AND
       TRAILING_AND = / and (?<last>.*)$/.freeze
       # Pattern to match player status descriptions
-      # Pattern to match player status descriptions.
-      #
-      # @example Matches:
-      #   "who is glowing"
-      #   "whose body appears dead"
       PLAYER_STATUS = / (who|whose body)? ?(has|is|appears|glows) .+/.freeze
       # Pattern to match parenthetical info after player names
-      # Pattern to match parenthetical info after player names.
-      #
-      # @example Matches:
-      #   "(injured)"
-      #   "(asleep)"
       PARENTHETICAL = / \(.+\)/.freeze
       # Pattern to extract player name (word characters at end)
-      # Pattern to extract player name (word characters at end).
-      #
-      # @example Matches:
-      #   "John"
-      #   "Doe"
       PLAYER_NAME = /\w+$/.freeze
-      # Pattern for lying down players
-      # Pattern for lying down players.
-      #
-      # @example Matches:
-      #   "who is lying down"
-      LYING_DOWN = /who is lying down/i.freeze
-      # Pattern for sitting players
-      # Pattern for sitting players.
-      #
-      # @example Matches:
-      #   "who is sitting"
-      SITTING = /who is sitting/i.freeze
+      # Pattern for lying down / prone players. Matches the default
+      # "who is lying down" long form and the "(prone)" short form shown when
+      # the HidePostStrings option is on (issue #4529). PARENTHETICAL still
+      # strips the "(prone)" suffix before the name is extracted.
+      LYING_DOWN = /who is lying down|\(prone\)/i.freeze
+      # Pattern for sitting players. Matches the default "who is sitting" long
+      # form and the "(sitting)" short form shown when the HidePostStrings
+      # option is on (issue #4529).
+      SITTING = /who is sitting|\(sitting\)/i.freeze
       # Pattern for "You also see" prefix
-      # Pattern for "You also see" prefix.
-      #
-      # @example Matches:
-      #   "You also see a dragon"
       YOU_ALSO_SEE = /You also see/.freeze
       # Pattern for mount descriptions
-      # Pattern for mount descriptions.
-      #
-      # @example Matches:
-      #   "with a horse sitting astride its back"
       MOUNT_DESCRIPTION = / with a [\w\s]+ sitting astride its back/.freeze
       # Pattern to find NPCs in room objects (bold tags indicate creatures)
-      # Pattern to find NPCs in room objects (bold tags indicate creatures).
-      #
-      # @example Matches:
-      #   "<pushBold/>Goblin<popBold/> which appears dead"
       NPC_SCAN = %r{<pushBold/>[^<>]*<popBold/> which appears dead|<pushBold/>[^<>]*<popBold/> \(dead\)|<pushBold/>[^<>]*<popBold/>}.freeze
       # Pattern for dead NPCs
-      # Pattern for dead NPCs.
-      #
-      # @example Matches:
-      #   "which appears dead"
-      #   "(dead)"
       DEAD_NPC = /which appears dead|\(dead\)/.freeze
       # Pattern for pushBold tags (indicates creature, not object)
-      # Pattern for pushBold tags (indicates creature, not object).
-      #
-      # @example Matches:
-      #   "pushBold"
       PUSH_BOLD = /pushBold/.freeze
       # Pattern for leading articles
-      # Pattern for leading articles.
-      #
-      # @example Matches:
-      #   "a dragon"
-      #   "some goblins"
       LEADING_ARTICLE = /^(a|some) /.freeze
       # Pattern for trailing period
-      # Pattern for trailing period.
-      #
-      # @example Matches:
-      #   "This is a test."
       TRAILING_PERIOD = /\.$/.freeze
       # Pattern for splitting on comma or "and"
-      # Pattern for splitting on comma or "and".
-      #
-      # @example Matches:
-      #   "a, b, and c"
       COMMA_OR_AND = /,|\sand\s/.freeze
       # Pattern for extracting creature name (letters, hyphens, apostrophes only)
       # Note: Using [A-Za-z] instead of [A-z] to avoid matching [\]^_` characters
-      # Pattern for extracting creature name (letters, hyphens, apostrophes only).
-      #
-      # @example Matches:
-      #   "dragon"
-      #   "elf-king"
       CREATURE_NAME = /[A-Za-z'-]+$/.freeze
       # Pattern for "who has/is" descriptions
-      # Pattern for "who has/is" descriptions.
-      #
-      # @example Matches:
-      #   "who has a sword"
-      #   "who is glowing"
       WHO_STATUS = / who (has|is) .+/.freeze
       # Pattern for "glowing with" modifiers
-      # Pattern for "glowing with" modifiers.
-      #
-      # @example Matches:
-      #   "glowing with magic"
       GLOWING_WITH = /(?:\sglowing)?\swith\s.*/.freeze
       # Gelapod replacement pattern
-      # Gelapod replacement pattern.
-      #
-      # @example Matches:
-      #   "<pushBold/>a domesticated gelapod<popBold/>"
       GELAPOD = "<pushBold/>a domesticated gelapod<popBold/>".freeze
+      # Replacement string for the gelapod NPC when normalizing room objects.
+      #
+      # @return [String] the canonical gelapod name
+      # @see DRDefsPattern::GELAPOD
       GELAPOD_REPLACEMENT = 'domesticated gelapod'.freeze
-      # Creature name normalization patterns (creatures with variant descriptions)
-      # Creature name normalization patterns (creatures with variant descriptions).
+      # Canonical creature names whose variant descriptions should collapse to
+      # the bare name (e.g. "a savage alfar warrior" -> "alfar warrior"). Any
+      # room-object string containing one of these is reduced to it. Players
+      # extend this list via the +custom_creature_normalizations+ setting; see
+      # {Lich::DragonRealms#normalize_creature_names}.
       #
-      # @example Matches:
-      #   "alfar warrior"
-      ALFAR_WARRIOR_PATTERN = /.*alfar warrior.*/.freeze
-      # Creature name normalization patterns (creatures with variant descriptions).
-      #
-      # @example Matches:
-      #   "sinewy leopard"
-      SINEWY_LEOPARD_PATTERN = /.*sinewy leopard.*/.freeze
-      # Creature name normalization patterns (creatures with variant descriptions).
-      #
-      # @example Matches:
-      #   "lesser naga"
-      LESSER_NAGA_PATTERN = /.*lesser naga.*/.freeze
+      # @return [Array<String>] canonical creature names
+      CREATURE_NORMALIZATIONS = ['alfar warrior', 'sinewy leopard', 'lesser naga'].freeze
     end
 
-    # Converts a given amount of currency to copper.
-    #
-    # @param amt [Integer] the amount to convert
-    # @param denomination [String] the currency denomination (e.g., "gold")
-    # @return [Integer] the equivalent amount in copper
+    # Converts an amount and denomination to copper.
+    # @param amt [Integer, String] The amount to convert
+    # @param denomination [String] The denomination (platinum, gold, silver, bronze, copper)
+    # @return [Integer] The value in copper
     def convert2copper(amt, denomination)
       if denomination =~ /platinum/
         (amt.to_i * 10_000)
@@ -156,17 +83,15 @@ module Lich
       end
     end
 
-    # Checks for experience modifiers in the game.
-    #
-    # @return [void]
+    # Issues the 'exp mods' command and parses skill modifiers.
+    # @return [Array<String>, nil] The captured output lines or nil on timeout
     def check_exp_mods
       Lich::Util.issue_command("exp mods", /The following skills are currently under the influence of a modifier/, /^<output class=""/, quiet: true, include_end: false, usexml: false)
     end
 
-    # Converts a given amount of copper to various denominations.
-    #
-    # @param copper [Integer] the amount of copper to convert
-    # @return [String] a string representation of the denominations
+    # Converts copper to a readable currency string with denominations.
+    # @param copper [Integer] Amount in copper
+    # @return [String] Formatted string like "5 platinum, 3 gold, 2 silver"
     def convert2plats(copper)
       denominations = [[10_000, 'platinum'], [1000, 'gold'], [100, 'silver'], [10, 'bronze'], [1, 'copper']]
       denominations.inject([copper, []]) do |result, denomination|
@@ -179,10 +104,10 @@ module Lich
       end.last.join(', ')
     end
 
-    # Cleans and splits room objects into an array.
-    #
-    # @param room_objs [String] the room objects string
-    # @return [Array<String>] an array of cleaned room objects
+    # Cleans room objects string and splits into array.
+    # Removes "You also see" prefix and mount descriptions.
+    # @param room_objs [String] Raw room objects string from game output
+    # @return [Array<String>] Array of individual object strings
     def clean_and_split(room_objs)
       room_objs.sub(DRDefsPattern::YOU_ALSO_SEE, '')
                .sub(DRDefsPattern::MOUNT_DESCRIPTION, '')
@@ -190,10 +115,10 @@ module Lich
                .split(DRDefsPattern::COMMA_OR_AND)
     end
 
-    # Normalizes the trailing "and" in a string.
-    #
-    # @param text [String] the input text
-    # @return [String] the normalized text
+    # Normalizes "X and Y" to "X, Y" for consistent splitting.
+    # Used to handle the lack of Oxford comma in game output.
+    # @param text [String] Text that may end with "and X"
+    # @return [String] Text with trailing "and X" replaced by ", X"
     def normalize_trailing_and(text)
       if (match = text.match(DRDefsPattern::TRAILING_AND))
         text.sub(DRDefsPattern::TRAILING_AND, ", #{match[:last]}")
@@ -202,12 +127,11 @@ module Lich
       end
     end
 
-    # Extracts player characters from a room player string.
-    #
-    # @param room_players [String] the room players string
-    # @param filter_pattern [Regexp, nil] optional pattern to filter players
-    # @param status_pattern [Regexp] the pattern to match player status
-    # @return [Array<String>] an array of extracted player character names
+    # Extract player names from room player string
+    # @param room_players [String] The room players string from game output
+    # @param filter_pattern [Regexp, nil] Optional pattern to filter players (e.g., LYING_DOWN, SITTING)
+    # @param status_pattern [Regexp] Pattern to remove status text (defaults to PLAYER_STATUS)
+    # @return [Array<String>] List of player names
     def extract_pcs(room_players, filter_pattern: nil, status_pattern: DRDefsPattern::PLAYER_STATUS)
       return [] if room_players.nil? || room_players.empty?
 
@@ -220,34 +144,30 @@ module Lich
         .compact
     end
 
-    # Finds player characters in a room.
-    #
-    # @param room_players [String] the room players string
-    # @return [Array<String>] an array of player character names
+    # Finds all player names in the room.
+    # @param room_players [String] The "Also here:" room players string
+    # @return [Array<String>] List of player names
     def find_pcs(room_players)
       extract_pcs(room_players)
     end
 
-    # Finds player characters that are lying down in a room.
-    #
-    # @param room_players [String] the room players string
-    # @return [Array<String>] an array of prone player character names
+    # Finds players who are lying down in the room.
+    # @param room_players [String] The "Also here:" room players string
+    # @return [Array<String>] List of prone player names
     def find_pcs_prone(room_players)
       extract_pcs(room_players, filter_pattern: DRDefsPattern::LYING_DOWN, status_pattern: DRDefsPattern::WHO_STATUS)
     end
 
-    # Finds player characters that are sitting in a room.
-    #
-    # @param room_players [String] the room players string
-    # @return [Array<String>] an array of sitting player character names
+    # Finds players who are sitting in the room.
+    # @param room_players [String] The "Also here:" room players string
+    # @return [Array<String>] List of sitting player names
     def find_pcs_sitting(room_players)
       extract_pcs(room_players, filter_pattern: DRDefsPattern::SITTING, status_pattern: DRDefsPattern::WHO_STATUS)
     end
 
-    # Finds all non-player characters in a room.
-    #
-    # @param room_objs [String] the room objects string
-    # @return [Array<String>] an array of non-player character descriptions
+    # Finds all NPC strings (both living and dead) in room objects.
+    # @param room_objs [String] Raw room objects string from game output
+    # @return [Array<String>] Array of raw NPC strings with XML tags
     def find_all_npcs(room_objs)
       room_objs.sub(DRDefsPattern::YOU_ALSO_SEE, '')
                .sub(DRDefsPattern::MOUNT_DESCRIPTION, '')
@@ -255,10 +175,10 @@ module Lich
                .scan(DRDefsPattern::NPC_SCAN)
     end
 
-    # Cleans and normalizes a string of NPC names.
-    #
-    # @param npc_string [Array<String>] the array of NPC strings
-    # @return [Array<String>] an array of cleaned NPC names
+    # Cleans and normalizes NPC strings to creature names.
+    # Handles XML tag removal, name normalization, and ordinal numbering.
+    # @param npc_string [Array<String>] Array of raw NPC strings
+    # @return [Array<String>] Array of cleaned creature names with ordinals
     def clean_npc_string(npc_string)
       # Normalize NPC names
       normalized_npcs = npc_string
@@ -273,49 +193,62 @@ module Lich
       add_ordinals_to_duplicates(normalized_npcs)
     end
 
-    # Normalizes creature names based on specific patterns.
+    # Normalizes creature names that have variant descriptions, collapsing any
+    # string that contains a canonical name to just that name (e.g. "a sinewy
+    # leopard that is prowling" -> "sinewy leopard").
     #
-    # @param text [String] the input text
-    # @return [String] the normalized text
+    # The canonical list is {DRDefsPattern::CREATURE_NORMALIZATIONS} merged with
+    # the player's +custom_creature_normalizations+ setting, so a player can
+    # teach Lich about their own problematic creature/pet descriptions without a
+    # Lich release. The merged list is memoized; see
+    # {Lich::DragonRealms::CustomSubstitutions}.
+    #
+    # This runs on the hot NPC-parsing path ({find_npcs} fires on every room
+    # update), so it uses a plain substring check rather than compiling a regex
+    # per name per call.
+    #
+    # @param text [String] text containing a creature description
+    # @return [String] the canonical name if +text+ contains one, else +text+
+    # @example
+    #   normalize_creature_names('a massive sinewy leopard') #=> 'sinewy leopard'
+    # @see CustomSubstitutions.resolve
     def normalize_creature_names(text)
-      text
-        .sub(DRDefsPattern::ALFAR_WARRIOR_PATTERN, 'alfar warrior')
-        .sub(DRDefsPattern::SINEWY_LEOPARD_PATTERN, 'sinewy leopard')
-        .sub(DRDefsPattern::LESSER_NAGA_PATTERN, 'lesser naga')
+      names = CustomSubstitutions.resolve(:custom_creature_normalizations, DRDefsPattern::CREATURE_NORMALIZATIONS, type: :names)
+      # Longest match against the ORIGINAL text, not a fold over the accumulator:
+      # folding would let a later name that is a substring of an earlier match's
+      # replacement (e.g. 'war yak' after 'grumpy war yak') re-collapse it.
+      names.select { |name| text.include?(name) }.max_by(&:length) || text
     end
 
-    # Removes HTML tags from a string.
-    #
-    # @param text [String] the input text
-    # @return [String] the text without HTML tags
+    # Removes pushBold/popBold XML tags from text.
+    # @param text [String] Text with potential XML tags
+    # @return [String] Text with tags removed
     def remove_html_tags(text)
       text
         .sub('<pushBold/>', '')
         .sub(%r{<popBold/>.*}, '')
     end
 
-    # Extracts the last creature name from a string, removing modifiers.
-    #
-    # @param text [String] the input text
-    # @return [String] the last creature name
+    # Extracts the last creature from an "X and Y" string.
+    # Removes modifiers like "glowing with a holy aura".
+    # @param text [String] Text potentially containing multiple creatures
+    # @return [String] The last creature name portion
     def extract_last_creature(text)
       # Get the last creature name after "and", removing modifiers like "glowing with"
       text.split(/\sand\s/).last.sub(DRDefsPattern::GLOWING_WITH, '')
     end
 
-    # Extracts just the creature name from a string.
-    #
-    # @param text [String] the input text
-    # @return [String] the extracted creature name
+    # Extracts just the creature name (letters, hyphens, apostrophes).
+    # @param text [String] Text containing creature name
+    # @return [String, nil] The final creature name or nil
     def extract_final_name(text)
       # Extract just the creature name (letters, hyphens, apostrophes)
       text.strip.scan(DRDefsPattern::CREATURE_NAME).first
     end
 
-    # Adds ordinal numbers to duplicate NPC names in a list.
-    #
-    # @param npc_list [Array<String>] the list of NPC names
-    # @return [Array<String>] the list with ordinals added
+    # Adds ordinal prefixes to duplicate NPCs (e.g., "second goblin").
+    # @param npc_list [Array<String>] Array of NPC names
+    # @return [Array<String>] Array with ordinals added to duplicates
     def add_ordinals_to_duplicates(npc_list)
       flat_npcs = []
 
@@ -338,11 +271,10 @@ module Lich
       flat_npcs
     end
 
-    # Extracts non-player characters from room objects.
-    #
-    # @param room_objs [String] the room objects string
-    # @param select_dead [Boolean] whether to include dead NPCs
-    # @return [Array<String>] an array of extracted NPC names
+    # Extract NPCs from room objects
+    # @param room_objs [String] The room objects string from game output
+    # @param select_dead [Boolean] If true, select only dead NPCs; if false, reject dead NPCs
+    # @return [Array<String>] List of NPC names
     def extract_npcs(room_objs, select_dead: false)
       all_npcs = find_all_npcs(room_objs)
       filtered = if select_dead
@@ -353,26 +285,23 @@ module Lich
       clean_npc_string(filtered)
     end
 
-    # Finds non-player characters in a room.
-    #
-    # @param room_objs [String] the room objects string
-    # @return [Array<String>] an array of non-player character names
+    # Finds living NPCs in the room.
+    # @param room_objs [String] Raw room objects string from game output
+    # @return [Array<String>] Array of living NPC names
     def find_npcs(room_objs)
       extract_npcs(room_objs, select_dead: false)
     end
 
-    # Finds dead non-player characters in a room.
-    #
-    # @param room_objs [String] the room objects string
-    # @return [Array<String>] an array of dead non-player character names
+    # Finds dead NPCs in the room.
+    # @param room_objs [String] Raw room objects string from game output
+    # @return [Array<String>] Array of dead NPC names
     def find_dead_npcs(room_objs)
       extract_npcs(room_objs, select_dead: true)
     end
 
-    # Finds objects in a room, excluding certain patterns.
-    #
-    # @param room_objs [String] the room objects string
-    # @return [Array<String>] an array of found objects
+    # Finds non-NPC objects in the room (items, furniture, etc.).
+    # @param room_objs [String] Raw room objects string from game output
+    # @return [Array<String>] Array of object names
     def find_objects(room_objs)
       # Use sub instead of sub! to avoid mutating frozen strings
       processed_objs = room_objs.sub(DRDefsPattern::GELAPOD, DRDefsPattern::GELAPOD_REPLACEMENT)

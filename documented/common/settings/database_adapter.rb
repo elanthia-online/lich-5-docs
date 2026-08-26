@@ -1,25 +1,28 @@
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for common utilities shared across Lich 5.
   module Common
-    # Handles database interactions for Lich.
-    #
-    # This class is responsible for setting up the database and managing
-    # settings related to scripts and their scopes.
-    #
-    # @see Lich::Common
+    # Database adapter to separate database concerns
     class DatabaseAdapter
-      # Initializes a new DatabaseAdapter instance.
-      # @param data_dir [String] the directory where the database file is located
-      # @param table_name [String] the name of the table to use
+      # Opens or creates a SQLite database at `data_dir/lich.db3` and initializes
+      # the specified table for storing serialized settings.
+      #
+      # @param data_dir [String] the directory where the lich.db3 database file is stored
+      # @param table_name [String] the name of the table to create or use for this adapter
       # @return [void]
+      # @api private
       def initialize(data_dir, table_name)
         @file = File.join(data_dir, "lich.db3")
-        @db = Sequel.sqlite(@file)
+        @db = Lich.open_sequel_sqlite(@file)
         @table_name = table_name
         setup!
       end
 
-      # Sets up the database table if it does not exist.
+      # Creates the table if it does not exist, with columns for script name, scope,
+      # and a blob containing serialized settings data.
+      #
       # @return [void]
+      # @api private
       def setup!
         @db.create_table?(@table_name) do
           text :script
@@ -29,28 +32,39 @@ module Lich
         @table = @db[@table_name]
       end
 
-      # Returns the database table object.
-      # @return [Sequel::Dataset] the dataset representing the table
+      # Returns the Sequel dataset for direct table access.
+      #
+      # @return [Sequel::Dataset] the underlying database table
+      # @api private
       def table
         @table
       end
 
-      # Retrieves settings for a given script and scope.
-      # @param script_name [String] the name of the script to retrieve settings for
-      # @param scope [String] the scope of the settings (default is ":")
-      # @return [Hash] the settings for the script, or an empty hash if none found
+      # Retrieves persisted settings for a script, returning an empty hash if no
+      # entry exists for the given script name and scope.
+      #
+      # @param script_name [String] the name of the script
+      # @param scope [String] the scope identifier (default: ":")
+      # @return [Hash] the deserialized settings hash, or {} if not found
+      # @example
+      #   adapter.get_settings("my_script", "global") #=> {"key" => "value"}
       def get_settings(script_name, scope = ":")
         entry = @table.first(script: script_name, scope: scope)
         entry.nil? ? {} : Marshal.load(entry[:hash])
       end
 
-      # Saves settings for a given script and scope.
-      # @param script_name [String] the name of the script to save settings for
-      # @param settings [Hash] the settings to save
-      # @param scope [String] the scope of the settings (default is ":")
-      # @return [Boolean] true if settings were saved successfully, false otherwise
-      # @example Save settings for a script
-      #   adapter.save_settings("my_script", { key: "value" })
+      # Saves or updates settings for a script by serializing the hash and upserting
+      # into the database. Returns true on success, false on validation or database errors.
+      #
+      # Validates that settings is a Hash. On serialization or database errors, logs
+      # the exception and returns false.
+      #
+      # @param script_name [String] the name of the script
+      # @param settings [Hash] the settings hash to persist
+      # @param scope [String] the scope identifier (default: ":")
+      # @return [Boolean] true if saved successfully, false if validation or save failed
+      # @example
+      #   adapter.save_settings("my_script", {"key" => "value"}) #=> true
       def save_settings(script_name, settings, scope = ":")
         unless settings.is_a?(Hash)
           Lich::Messaging.msg("error", "--- Error: Report this - settings must be a Hash, got #{settings.class} ---")

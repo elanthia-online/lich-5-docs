@@ -30,10 +30,6 @@ require_relative 'common/update/release_installer'
 require_relative 'common/update/branch_installer'
 
 module Lich
-  # Provides utility methods for the Lich5 update system.
-  #
-  # This module contains methods for managing updates, syncing scripts,
-  # and handling versioning.
   module Util
     module Update
       # Update channel constants
@@ -87,12 +83,14 @@ module Lich
         }.freeze
       }.freeze
 
+      # ---------------------------------------------------------------
+      # Public API -- called by games.rb and global_defs.rb
+      # ---------------------------------------------------------------
 
-      # Processes update requests based on the provided type.
+      # Routes update commands to appropriate handler classes.
       #
-      # @param type [String] the type of request to process
+      # @param type [String] command flag (e.g. '--announce', '--update', '--sync')
       # @return [void]
-      # @note This method handles various update commands.
       def self.request(type = '--announce')
         case type
         when /^(?:--announce|-a)\b/
@@ -148,26 +146,33 @@ module Lich
         end
       end
 
-      # Syncs all script repositories for the current game.
+      # Syncs all script repositories for current game.
       #
       # @return [void]
-      # @example Sync all repositories
-      #   Lich::Util::Update.sync_all_repos
       def self.sync_all_repos
         script_sync.sync_all_repos
       end
 
-      # Updates the core data and scripts to the specified version.
+      # Updates core data files and scripts to specified version.
       #
-      # @param version [String] the version to update to (default is LICH_VERSION)
+      # @param version [String] version string (default: current LICH_VERSION)
       # @return [void]
-      # @example Update to a specific version
-      #   Lich::Util::Update.update_core_data_and_scripts("1.0.0")
       def self.update_core_data_and_scripts(version = LICH_VERSION)
         file_updater.update_core_data_and_scripts(version)
       end
 
+      # ---------------------------------------------------------------
+      # Help and status display
+      # ---------------------------------------------------------------
 
+      # Displays the lich5-update command reference.
+      #
+      # Lists all available update commands, script repository operations, custom
+      # repository management, individual file updates, and example workflows.
+      # Output is sent to the game window.
+      #
+      # @return [void]
+      # @note Includes examples for branch-based development workflows and custom 3rd-party repositories
       def self.help
         respond "
     --help                   Display this message
@@ -194,7 +199,7 @@ module Lich
     #{$clean_lich_char}lich5-update --custom-repos                      List registered custom repos
     #{$clean_lich_char}lich5-update --track=owner/repo:script.lic       Track a script from custom repo
     #{$clean_lich_char}lich5-update --sync=owner/repo                   Sync a custom repo
-    Custom scripts are installed to #{$clean_lich_char}scripts/custom/<owner-repo>/
+    Custom scripts install to #{$clean_lich_char}scripts/custom/<owner-repo>/ (name collisions rejected)
 
   [Individual file updates]
     #{$clean_lich_char}lich5-update --script=<name>                     Update script (auto-detects repo)
@@ -221,11 +226,13 @@ module Lich
     "
       end
 
-      # Displays the current status of the Lich5 ecosystem.
+      # Displays the current Lich5 version and tracking information.
+      #
+      # For release packages, shows the version number and suggests checking for updates.
+      # For development branches, displays the branch name, repository, and time since last update.
       #
       # @return [void]
-      # @example Show the current status
-      #   Lich::Util::Update.show_status
+      # @note Output is sent to the game window
       def self.show_status
         respond
         respond "Lich5 Version Information:"
@@ -251,12 +258,15 @@ module Lich
         respond
       end
 
+      # ---------------------------------------------------------------
+      # Branch tracking utilities (shared across installer classes)
+      # ---------------------------------------------------------------
 
-      # Stores the branch tracking information in the version file.
+      # Persists branch tracking info to version.rb.
       #
-      # @param branch_name [String] the name of the branch being tracked
-      # @param repo [String] the repository associated with the branch
-      # @param version [String] the version of the branch (not used)
+      # @param branch_name [String] branch name
+      # @param repo [String] repository identifier (e.g. 'owner/lich-5')
+      # @param _version [String] version string (unused)
       # @return [void]
       def self.store_branch_tracking(branch_name, repo, _version)
         version_file_path = File.join(LIB_DIR, "version.rb")
@@ -276,7 +286,7 @@ module Lich
         File.write(version_file_path, version_content)
       end
 
-      # Clears the branch tracking information from the version file.
+      # Removes branch tracking constants from version.rb.
       #
       # @return [void]
       def self.clear_branch_tracking
@@ -289,9 +299,9 @@ module Lich
         File.write(version_file_path, version_content)
       end
 
-      # Retrieves information about the currently tracked branch.
+      # Reads current branch tracking info if defined.
       #
-      # @return [Hash, nil] a hash containing branch information or nil if not set
+      # @return [Hash, nil] hash with :branch_name, :repository, :updated_at or nil
       def self.get_branch_info
         if defined?(LICH_BRANCH) && LICH_BRANCH && !LICH_BRANCH.empty?
           {
@@ -302,66 +312,104 @@ module Lich
         end
       end
 
+      # ---------------------------------------------------------------
+      # Lazy-initialized wiring (private)
+      # ---------------------------------------------------------------
 
-      # Returns the GitHub client instance used for API requests.
+      # Returns the GitHub API client, creating it on first access.
       #
-      # @return [GitHubClient] the GitHub client instance
+      # Lazy-initializes a shared GitHubClient instance used across all update operations.
+      #
+      # @return [GitHubClient] the GitHub API client
+      # @api private
       def self.client
         @client ||= GitHubClient.new
       end
 
-      # Returns the channel resolver instance used for resolving update channels.
+      # Returns the update channel resolver, creating it on first access.
       #
-      # @return [ChannelResolver] the channel resolver instance
+      # Lazy-initializes a shared ChannelResolver instance for resolving release channels
+      # and determining which version to download.
+      #
+      # @return [ChannelResolver] the channel resolver
+      # @api private
       def self.resolver
         @resolver ||= ChannelResolver.new(client)
       end
 
-      # Returns the snapshot manager instance used for managing snapshots.
+      # Returns the snapshot manager, creating it on first access.
       #
-      # @return [SnapshotManager] the snapshot manager instance
+      # Lazy-initializes a shared SnapshotManager instance for creating and reverting
+      # backup snapshots of the Lich5 ecosystem.
+      #
+      # @return [SnapshotManager] the snapshot manager
+      # @api private
       def self.snapshot_manager
         @snapshot_manager ||= SnapshotManager.new
       end
 
-      # Returns the release installer instance used for handling release updates.
+      # Returns the release installer, creating it on first access.
       #
-      # @return [ReleaseInstaller] the release installer instance
+      # Lazy-initializes a shared ReleaseInstaller instance for downloading and installing
+      # release-based updates, including stable and beta channel updates.
+      #
+      # @return [ReleaseInstaller] the release installer
+      # @api private
       def self.release_installer
-        ReleaseInstaller.new(client, resolver, snapshot_manager)
+        @release_installer ||= ReleaseInstaller.new(client, resolver, snapshot_manager)
       end
 
-      # Returns the branch installer instance used for handling branch updates.
+      # Returns the branch installer, creating it on first access.
       #
-      # @return [BranchInstaller] the branch installer instance
+      # Lazy-initializes a shared BranchInstaller instance for downloading and installing
+      # development branch updates.
+      #
+      # @return [BranchInstaller] the branch installer
+      # @api private
       def self.branch_installer
         @branch_installer ||= BranchInstaller.new(snapshot_manager, release_installer)
       end
 
-      # Returns the script sync instance used for syncing script repositories.
+      # Returns the script sync manager, creating it on first access.
       #
-      # @return [ScriptSync] the script sync instance
+      # Lazy-initializes a shared ScriptSync instance for synchronizing script repositories
+      # against their remote sources.
+      #
+      # @return [ScriptSync] the script sync manager
+      # @api private
       def self.script_sync
         @script_sync ||= ScriptSync.new(client)
       end
 
-      # Returns the tracked scripts manager instance used for managing tracked scripts.
+      # Returns the tracked scripts manager, creating it on first access.
       #
-      # @return [TrackedScripts] the tracked scripts manager instance
+      # Lazy-initializes a shared TrackedScripts instance for managing the set of scripts
+      # to be synced from each repository.
+      #
+      # @return [TrackedScripts] the tracked scripts manager
+      # @api private
       def self.tracked_scripts_manager
         @tracked_scripts_manager ||= TrackedScripts.new
       end
 
-      # Returns the custom repositories manager instance used for managing custom repos.
+      # Returns the custom repositories manager, creating it on first access.
       #
-      # @return [CustomRepos] the custom repositories manager instance
+      # Lazy-initializes a shared CustomRepos instance for registering, unregistering,
+      # and tracking 3rd-party script repositories.
+      #
+      # @return [CustomRepos] the custom repositories manager
+      # @api private
       def self.custom_repos_manager
         @custom_repos_manager ||= CustomRepos.new
       end
 
-      # Returns the file updater instance used for updating files.
+      # Returns the file updater, creating it on first access.
       #
-      # @return [FileUpdater] the file updater instance
+      # Lazy-initializes a shared FileUpdater instance for updating individual scripts,
+      # libraries, and data files from any registered repository.
+      #
+      # @return [FileUpdater] the file updater
+      # @api private
       def self.file_updater
         @file_updater ||= FileUpdater.new(client, resolver)
       end

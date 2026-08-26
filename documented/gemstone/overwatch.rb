@@ -1,63 +1,86 @@
+# frozen_string_literal: true
 
+# Namespace for Lich 5, the Ruby scripting engine for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV-specific scripting features.
   module Gemstone
-    # Manages the tracking of hidden targets in the game.
+    # Manages hidden creature detection and tracking in Gemstone IV.
+    # Automatically tracks when creatures hide and reveals them when they emerge.
+    # Integrates with GameObj and XMLData to maintain accurate target lists.
     #
-    # @see Lich::Gemstone::Observer
+    # @example Check if current room has hidden creatures
+    #   Overwatch.hiders? #=> true or false
+    #
+    # @example Get room ID where hiders were detected
+    #   room_id = Overwatch.room_with_hiders #=> 12345 or nil
+    #
+    # @example Enable debug output
+    #   Overwatch.debug = true
+    #
     class Overwatch
       @@hidden_targets ||= nil
       @@debug          ||= false
 
-      # Clears the list of hidden targets.
-      # @return [void]
+      # Clears the hidden targets tracking.
+      #
+      # @return [nil]
       def self.clear
         @@hidden_targets = nil
       end
 
-      # Returns the room ID with hidden targets.
-      # @return [String, nil] the room ID or nil if no targets are hidden
+      # Gets the room ID where hidden targets were last detected.
+      #
+      # @return [Integer, nil] room ID or nil if no hidden targets tracked
       def self.room_with_hiders
         @@hidden_targets
       end
 
-      # Checks if there are any hidden targets in the current room.
-      # @return [Boolean] true if there are hidden targets, false otherwise
+      # Checks if the current room has hidden targets.
+      #
+      # @return [Boolean] true if current room matches tracked hider room
       def self.hiders?
         return false if @@hidden_targets.nil?
         @@hidden_targets.eql?(XMLData.room_id)
       end
 
-      # Tracks the specified room ID as having hidden targets.
-      # @param room_id [String] the room ID to track
-      # @return [void]
+      # Sets the room where hidden targets were detected.
+      #
+      # @param room_id [Integer] the room ID to track
+      # @return [Integer] the room_id
       def self.track_hidden_targets(room_id)
         @@hidden_targets = room_id
       end
 
-      # Resets the room with hidden targets by clearing the list.
-      # @return [void]
+      # Clears hidden targets tracking.
+      # Alias for clear method.
+      #
+      # @return [nil]
       def self.room_with_hiders_reset
         clear
       end
 
-      # Sets the debug mode for tracking hidden targets.
-      # @param value [Boolean] true to enable debug mode, false to disable
-      # @return [void]
+      # Enables or disables debug output.
+      #
+      # @param value [Boolean] true to enable debug output
+      # @return [Boolean] the debug value
       def self.debug=(value)
         @@debug = value
       end
 
       # Checks if debug mode is enabled.
-      # @return [Boolean] true if debug mode is enabled, false otherwise
+      #
+      # @return [Boolean] true if debug is enabled
       def self.debug?
         @@debug
       end
 
-      # Pushes revealed targets into the tracking system.
-      # @param target_id [String] the ID of the target
-      # @param target_noun [String] the noun associated with the target
-      # @param target_name [String] the name of the target
-      # @param silent_strike [Boolean] whether the reveal is due to a silent strike
+      # Adds a revealed target to GameObj and XMLData if not already present.
+      # Handles silent strike detection by checking recent game output.
+      #
+      # @param target_id [String] the target's game object ID
+      # @param target_noun [String] the target's noun
+      # @param target_name [String] the target's full name
+      # @param silent_strike [Boolean] whether to check for silent strike rehide
       # @return [void]
       def self.push_revealed_targets(target_id, target_noun, target_name, silent_strike: false)
         @@hidden_targets = nil
@@ -100,10 +123,12 @@ module Lich
         end
       end
 
-      # Provides functionality for observing and reacting to hidden targets.
+      # Observer module handles parsing of game output for Overwatch.
+      # Integrates with Infomon::XMLParser for pattern matching.
       #
-      # @see Lich::Gemstone::Overwatch
+      # @api private
       module Observer
+        # Term module contains all regex patterns for detecting hiding and revealing.
         module Term
           # Patterns for creatures entering hiding
           HIDING = Regexp.union(
@@ -133,8 +158,25 @@ module Lich
           REVEALED_SHADOWS_MELT = /The shadows melt away to reveal <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/>!/
           REVEALED_YOU_DISCOVER = /You discover the hiding place of <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/>\!/
           REVEALED_YOU_REVEAL = /You reveal <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> from hiding\!/
+          # Matches when a thorny barrier reveals a hidden attacker.
+          #
+          # Captures the creature's ID, noun, and full name from the game output.
+          #
+          # @return [Regexp]
+          # @example
+          #   "The thorny barrier surrounding you blocks the attack from the assassin!" =~ REVEALED_WALL_THORNS
+          # @see REVEALED_FLAMING_AURA
           REVEALED_WALL_THORNS = /The thorny barrier surrounding you blocks the attack from the <pushBold\/><a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/>\!/
+          # Matches when a flaming aura reveals a hidden creature and forces it into view.
+          #
+          # Captures the creature's ID, noun, and full name from the game output.
+          #
+          # @return [Regexp]
+          # @example
+          #   "The flaming aura surrounding you lashes out at a warrior, who is forced into view!" =~ REVEALED_FLAMING_AURA
+          # @see REVEALED_WALL_THORNS
           REVEALED_FLAMING_AURA = /The flaming aura surrounding you lashes out at <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/>, who is forced into view!/
+          REVEALED_EXPLODES = /<pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> explodes from the shadows!  <pushBold\/><a exist="\d+" noun="[^"]+">[^<]+<\/a><popBold\/> shining eyes agleam with cunning, <pushBold\/>\w+ <a exist="\d+" noun="[^"]+">[^<]+<\/a><popBold\/> lashes out at you with <pushBold\/><a exist="\d+" noun="[^"]+">[^<]+<\/a><popBold\/> <a exist="\d+" noun="[^"]+">[^<]+<\/a>\!/
 
           # Animal companion reveals
           REVEALED_AC_CAT = /<pushBold\/>\w+ <a exist="\d+" noun="\w+">[^<]+<\/a><popBold\/> leaps suddenly forward, uncovering <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/>, who was hidden\!/
@@ -146,6 +188,14 @@ module Lich
           REVEALED_STALKER_STINGER = /<pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> twists fluidly to spear you with <pushBold\/><a exist="\d+" noun=" ?\w+">\w+<\/a><popBold\/> barbed stinger\!/
           REVEALED_STALKER_SLASH = /Without warning, <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> glides from the shadows and skitters mercilessly forward to slash at you with a razor-sharp foreleg\!/
           REVEALED_STALKER_INTERPOSE = /As you attempt to hide, <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> glides past you in a single fluid motion, interposing between you and the safety of the shadows\./
+          # Matches when a Kiramon stalker reveals itself but completely misses the player.
+          #
+          # Captures the stalker's ID and noun from the game output.
+          #
+          # @return [Regexp]
+          # @example
+          #   "Caught unaware, you can only stare in fascination as a Kiramon stalker manages to completely miss you while nearly dropping its weapon in the process." =~ REVEALED_STALKER_MISS
+          # @see REVEALED_STALKER_BITE
           REVEALED_STALKER_MISS = /Caught unaware, you can only stare in fascination as <pushBold\/><a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">\w+<\/a><popBold\/> manages to completely miss you while nearly dropping <pushBold\/><a exist="\d+" noun=" ?\w+">\w+<\/a><popBold\/>  in the process\./
 
           # Silent strike patterns - attacks that may result in immediate rehiding
@@ -154,6 +204,14 @@ module Lich
           SILENT_CANNIBAL_GRAPPLE = /With an ululating shriek, <pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> leaps from the shadows and throws <pushBold\/><a exist="\d+" noun="[^"]+">(?:his|her)<\/a><popBold\/> wiry arms around you, fueled by panicked hunger!/
           SILENT_LEAP_ATTACK = /<pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> leaps from hiding to attack\!/
           SILENT_SUBDUE = /<pushBold\/>\w+ <a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">(?<name>[^<]+)<\/a><popBold\/> springs upon you from behind and aims a blow to your head\!/
+          # Matches a Kiramon stalker's savage attack from hiding.
+          #
+          # Captures the stalker's ID, noun, and full name from the game output. This attack may result in the creature immediately rehiding.
+          #
+          # @return [Regexp]
+          # @example
+          #   "Catching you unaware, a Kiramon stalker carves into you with cruel and ruthless savagery!" =~ SILENT_STALKER_SAVAGE
+          # @see ANY_SILENT_STRIKE
           SILENT_STALKER_SAVAGE = /Catching you unaware, <pushBold\/><a exist="(?<id>\d+)" noun=" ?(?<noun>\w+)">\w+<\/a><popBold\/> carves into you with cruel and ruthless savagery\!/
 
           # Combined patterns for efficient matching
@@ -168,6 +226,7 @@ module Lich
             REVEALED_YOU_REVEAL,
             REVEALED_WALL_THORNS,
             REVEALED_FLAMING_AURA,
+            REVEALED_EXPLODES,
             REVEALED_AC_CAT,
             REVEALED_AC_CANINE,
             REVEALED_AC_AVIAN,
@@ -178,6 +237,12 @@ module Lich
             REVEALED_STALKER_MISS
           )
 
+          # Combined pattern matching all silent strike attack types.
+          #
+          # Useful for detecting any attack that originates from hiding and may result in immediate rehiding. Includes cannibal swings and grapples, creature leaps, subdues, and Kiramon stalker savagery.
+          #
+          # @return [Regexp]
+          # @see SILENT_CUTTHROAT, SILENT_CANNIBAL_SWING, SILENT_CANNIBAL_GRAPPLE, SILENT_LEAP_ATTACK, SILENT_SUBDUE, SILENT_STALKER_SAVAGE
           ANY_SILENT_STRIKE = Regexp.union(
             SILENT_CUTTHROAT,
             SILENT_CANNIBAL_SWING,
@@ -187,19 +252,28 @@ module Lich
             SILENT_STALKER_SAVAGE
           )
 
+          # Combined pattern matching all hiding, revealing, and silent strike events.
+          #
+          # This is the master pattern used by Observer.wants? to identify any Overwatch-relevant game output. Useful for script authors who need to detect hiding-related messages outside the normal Overwatch integration.
+          #
+          # @return [Regexp]
+          # @see HIDING, ANY_REVEALED, ANY_SILENT_STRIKE
           ANY = Regexp.union(HIDING, ANY_REVEALED, ANY_SILENT_STRIKE)
         end
 
-        # Determines if the given line matches any hiding or revealing patterns.
-        # @param line [String] the line to check
-        # @return [Boolean] true if the line matches any patterns, false otherwise
+        # Checks if a line contains Overwatch-related information.
+        #
+        # @param line [String] line of game output
+        # @return [Boolean, MatchData] match data if line matches, false otherwise
         def self.wants?(line)
           line.match(Term::ANY)
         end
 
-        # Consumes a line and processes it based on matching patterns.
-        # @param line [String] the line to consume
-        # @param match_data [MatchData] the data from the matched pattern
+        # Processes a line of Overwatch-related game output.
+        # Updates hidden target tracking and reveals creatures as appropriate.
+        #
+        # @param line [String] line of game output
+        # @param match_data [MatchData] regex match data from the line
         # @return [void]
         def self.consume(line, match_data)
           case line

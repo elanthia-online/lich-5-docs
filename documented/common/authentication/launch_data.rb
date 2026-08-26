@@ -1,19 +1,28 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich 5 scripting engine used by GemStone IV and DragonRealms.
 module Lich
+  # Namespace for common utilities shared across Lich 5 components.
   module Common
+    # Namespace for authentication-related functionality.
     module Authentication
+      # Handles formatting of launch data for different game frontends
       module LaunchData
-        # Prepares launch data based on authentication information and frontend type.
+        # @api private
+        # Prepares launch data from authentication result
+        # Formats the authentication data for use with different frontends
         #
-        # @param auth_data [Hash] authentication data as key-value pairs
-        # @param frontend [String] the frontend type (e.g., "wizard", "avalon")
-        # @param custom_launch [String, nil] optional custom launch command
-        # @param custom_launch_dir [String, nil] optional custom launch directory
-        # @return [Array<String>] formatted launch data strings
-        # @example Prepare launch data for wizard frontend
-        #   Lich::Common::Authentication::LaunchData.prepare(auth_data, "wizard")
+        # @param auth_data [Hash] Authentication data from the authenticate method
+        # @param frontend [String] Frontend type ('wizard', 'stormfront', 'avalon', 'saga', 'suks')
+        # @param custom_launch [String, nil] Custom launch command (optional)
+        # @param custom_launch_dir [String, nil] Custom launch directory (optional)
+        # @return [Array<String>] Launch data strings formatted for the selected frontend
         def self.prepare(auth_data, frontend, custom_launch = nil, custom_launch_dir = nil)
           launch_data = auth_data.map { |k, v| "#{k.upcase}=#{v}" }
+          custom_launch = custom_launch.to_s.strip
+          custom_launch = nil if custom_launch.empty?
+          custom_launch_dir = custom_launch_dir.to_s.strip if custom_launch
+          custom_launch_dir = nil if custom_launch_dir == ''
 
           # Modify launch data based on frontend
           case frontend.to_s.downcase
@@ -25,6 +34,8 @@ module Lich
             }
           when 'avalon'
             launch_data.collect! { |line| line.sub(/GAME=.+/, 'GAME=AVALON') }
+          when 'saga'
+            launch_data.collect! { |line| line.sub(/GAME=.+/, 'GAME=SAGA') }
           when 'suks'
             launch_data.collect! { |line|
               line.sub(/GAMEFILE=.+/, 'GAMEFILE=WIZARD.EXE')
@@ -41,26 +52,19 @@ module Lich
           launch_data
         end
 
-        # Creates a launch entry for a character in the game.
+        # @api private
+        # Creates a hash entry for saved login data
+        # This standardizes the format of saved login entries
         #
-        # @param char_name [String] the name of the character
-        # @param game_code [String] the code of the game
-        # @param game_name [String] the name of the game
-        # @param user_id [String] the user ID
-        # @param password [String] the password
-        # @param frontend [String] the frontend type
-        # @param custom_launch [String, nil] optional custom launch command
-        # @param custom_launch_dir [String, nil] optional custom launch directory
-        # @return [Hash] a hash representing the launch entry
-        # @example Create a launch entry
-        #   entry = Lich::Common::Authentication::LaunchData.create_entry(
-        #     char_name: "Hero",
-        #     game_code: "HERO123",
-        #     game_name: "The Great Adventure",
-        #     user_id: "user123",
-        #     password: "secret",
-        #     frontend: "wizard"
-        #   )
+        # @param char_name [String] Character name
+        # @param game_code [String] Game code
+        # @param game_name [String] Game name
+        # @param user_id [String] User ID
+        # @param password [String] Password
+        # @param frontend [String] Frontend type
+        # @param custom_launch [String, nil] Custom launch command (optional)
+        # @param custom_launch_dir [String, nil] Custom launch directory (optional)
+        # @return [Hash] Entry data hash ready for storage
         def self.create_entry(char_name:, game_code:, game_name:, user_id:, password:, frontend:, custom_launch: nil, custom_launch_dir: nil)
           {
             char_name: char_name,

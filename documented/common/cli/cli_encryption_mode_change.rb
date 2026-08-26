@@ -4,18 +4,22 @@ require_relative '../authentication/entry_store'
 require_relative '../gui/master_password_manager'
 require_relative '../authentication/cli_password'
 
+# Namespace for the Lich 5 scripting engine.
+#
+# Lich provides Ruby scripting support for text-based games GemStone IV and DragonRealms.
 module Lich
+  # Namespace for common utilities shared across Lich.
   module Common
+    # Namespace for command-line interface utilities.
     module CLI
+      # Handles encryption mode changes via CLI
+      # Manages prompting for passwords and calls EntryStore domain logic
       module EncryptionModeChange
-        # Changes the encryption mode for the application.
+        # Change encryption mode for all accounts
         #
-        # @param new_mode [Symbol] the new encryption mode to set (e.g., :plaintext, :standard, :enhanced)
-        # @param provided_password [String, nil] optional password for enhanced mode
-        # @return [Integer] status code indicating the result of the operation
-        # @example Change to enhanced mode
-        #   Lich::Common::CLI::EncryptionModeChange.change_mode(:enhanced)
-        # @note This method handles validation of the current mode and password requirements.
+        # @param new_mode [Symbol] Target encryption mode (:plaintext, :standard, :enhanced)
+        # @param provided_password [String, nil] Optional master password (for automated scripts)
+        # @return [Integer] Exit code (0=success, 1=error, 2=not found, 3=invalid mode, 4=cancelled)
         def self.change_mode(new_mode, provided_password = nil)
           data_dir = DATA_DIR
           yaml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(data_dir)
@@ -54,7 +58,7 @@ module Lich
             return 0
           end
 
-          puts "Changing encryption mode: #{current_mode} → #{new_mode}"
+          puts "Changing encryption mode: #{current_mode} -> #{new_mode}"
           puts "Accounts to re-encrypt: #{account_count}"
           puts ""
 
@@ -81,7 +85,7 @@ module Lich
               return 1
             end
 
-            puts "✓ Master password validated"
+            puts "ok: Master password validated"
             puts ""
           end
 
@@ -99,13 +103,13 @@ module Lich
               return 4
             end
 
-            puts "✓ Master password accepted"
+            puts "ok: Master password accepted"
             puts ""
           end
 
           # Warn about plaintext mode
           if new_mode == :plaintext
-            puts "⚠️  WARNING: Plaintext mode disables encryption"
+            puts "warning: Plaintext mode disables encryption"
             puts "Passwords will be stored unencrypted and visible in the file."
             puts ""
             print "Continue? (yes/no): "
@@ -131,10 +135,10 @@ module Lich
             return 1
           end
 
-          puts "✓ Encryption mode changed: #{current_mode} → #{new_mode}"
-          puts "✓ #{account_count} accounts re-encrypted" if account_count > 0
+          puts "ok: Encryption mode changed: #{current_mode} -> #{new_mode}"
+          puts "ok: #{account_count} accounts re-encrypted" if account_count > 0
 
-          Lich.log "info: CLI encryption mode change successful: #{current_mode} → #{new_mode}"
+          Lich.log "info: CLI encryption mode change successful: #{current_mode} -> #{new_mode}"
           0
         rescue StandardError => e
           puts "error: Unexpected error during encryption mode change: #{e.message}"

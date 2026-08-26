@@ -1,20 +1,40 @@
 require 'socket'
 
+# Namespace for the Lich 5 scripting engine and its libraries.
 module Lich
+  # Namespace for common utilities and helper functionality used across Lich 5.
   module Common
+    # Factory for creating TCP server sockets with SO_REUSEADDR set before binding.
+    #
+    # Ruby's +TCPServer.new+ calls +bind+ and +listen+ internally during construction,
+    # so any +setsockopt+ call made after construction is too late - the port is already
+    # bound without the reuse flag. This causes "Address already in use" failures when
+    # restarting quickly because the kernel holds the port in TIME_WAIT for ~60 seconds.
+    #
+    # This module separates socket creation from binding so that SO_REUSEADDR takes
+    # effect before the port is claimed.
+    #
+    # @example Create a reusable listener on a specific port
+    #   server = Lich::Common::ReusableTCPServer.create('127.0.0.1', 8000)
+    #   client = server.accept
+    #
+    # @see Lich::Common::SocketConfigurator for post-creation socket tuning
+    # @since 5.12.0
     module ReusableTCPServer
-      # Creates a reusable TCP server socket.
+      # Creates a TCP server socket with SO_REUSEADDR enabled before binding.
       #
-      # @param host [String] the hostname or IP address to bind the server to
-      # @param port [Integer] the port number to bind the server to
-      # @param backlog [Integer] the maximum length of the queue for pending connections (default is 1)
-      # @return [Socket] the created TCP server socket
-      # @raise [StandardError] raises an error if the server cannot be created
+      # @param host [String] the address to bind to (IPv4, IPv6, or hostname)
+      # @param port [Integer] the port to listen on
+      # @param backlog [Integer] the listen queue depth (default: 1)
+      # @return [Socket] a bound, listening socket ready for +accept+
+      # @raise [Errno::EADDRINUSE] if the port is unavailable even with SO_REUSEADDR
+      # @raise [SocketError] if the address is invalid
       def self.create(host, port, backlog: 1)
-        server = Socket.new(:INET, :STREAM)
+        address = Addrinfo.tcp(host, port)
+        server = Socket.new(address.afamily, :STREAM)
         begin
           server.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, 1)
-          server.bind(Addrinfo.tcp(host, port))
+          server.bind(address)
           server.listen(backlog)
           server
         rescue

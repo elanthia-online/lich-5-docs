@@ -1,70 +1,101 @@
 require "ostruct"
-require "benchmark"
 require_relative 'disk'
 
+# Namespace for the Lich scripting engine.
+#
+# Provides scripting capabilities for text-based games including GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV scripting functionality.
+  #
+  # Manages game state, player characters, items, and interactions specific to GemStone IV.
   module Gemstone
-    # Represents a group of members in the game.
+    # Manages group membership and leadership in Gemstone IV.
+    # Tracks group members, leader status, and group state (open/closed).
+    # Automatically updates based on game output through the Observer pattern.
     #
-    # This class manages group membership, leader status, and group operations.
+    # @example Check if player is group leader
+    #   Group.leader? #=> true or false
     #
-    # @see Lich::Gemstone::Group::Observer For observing group-related events.
+    # @example Get all group members
+    #   members = Group.members #=> [GameObj, GameObj, ...]
+    #
+    # @example Add a member to the group
+    #   Group.add("PlayerName")
+    #
     class Group
       @@members ||= []
       @@leader  ||= nil
       @@checked ||= false
       @@status  ||= :closed
 
-      # Clears the group members and resets the checked status.
-      # @return [void]
+      # Clears all group members and resets the checked flag.
+      # Does not change leader status.
+      #
+      # @return [Array] Empty array
       def self.clear()
         @@members = []
         @@checked = false
       end
 
-      # Checks if the group has been checked.
-      # @return [Boolean] true if checked, false otherwise.
+      # Checks if group data has been verified with the game.
+      #
+      # @return [Boolean] true if group data has been checked
       def self.checked?
         @@checked
       end
 
-      # Adds members to the group unless they are already included.
-      # @param members [Array<GameObj>] the members to add to the group.
-      # @return [void]
+      # Adds one or more members to the group if they're not already included.
+      # Does not duplicate members.
+      #
+      # @param members [Array<GameObj>] one or more GameObj instances to add
+      # @return [Array<GameObj>] the updated members array
       def self.push(*members)
         members.each do |member|
           @@members.push(member) unless include?(member)
         end
       end
 
-      # Removes members from the group based on their IDs.
-      # @param members [Array<GameObj>] the members to remove from the group.
-      # @return [void]
+      # Removes one or more members from the group by ID.
+      #
+      # @param members [Array<GameObj>] one or more GameObj instances to remove
+      # @return [Array<GameObj>] the updated members array
       def self.delete(*members)
         gone = members.map(&:id)
         @@members.reject! do |m| gone.include?(m.id) end
       end
 
-      # Refreshes the group members with a new list.
-      # @param members [Array<GameObj>] the new members to set for the group.
-      # @return [void]
+      # Replaces the entire members list with new members.
+      # Used when receiving a complete group listing from the game.
+      #
+      # @param members [Array<GameObj>] the complete list of group members
+      # @return [Array<GameObj>] the new members array
       def self.refresh(*members)
         @@members = members.dup
       end
 
-      # Returns a duplicate of the current group members.
-      # @return [Array<GameObj>] the current members of the group.
+      # Returns a copy of the current group members.
+      # Automatically checks group status if not already checked.
+      #
+      # @return [Array<GameObj>] copy of the members array
       def self.members
         maybe_check
         @@members.dup
       end
 
+      # Returns the internal members array without checking or copying.
+      # Used internally by the Observer to avoid infinite loops.
+      #
+      # @api private
+      # @return [Array<GameObj>] the internal members array
       def self._members
         @@members
       end
 
-      # Retrieves the disks associated with the group members.
-      # @return [Array<Disk>] the disks of the group members.
+      # Returns Disk objects for all group members.
+      # If the player is leader with no members, returns only the player's disk.
+      # Always includes the current character's disk if available.
+      #
+      # @return [Array<Disk>] array of Disk objects for group members
       def self.disks
         return [Disk.find_by_name(Char.name)].compact if Group.leader? && members.empty?
         member_disks = members.map(&:noun).compact.map { |noun| Disk.find_by_name(noun) }.compact
@@ -72,45 +103,57 @@ module Lich
         return member_disks
       end
 
+      # String representation of the group members.
+      #
+      # @return [String] string representation of members array
       def self.to_s
         @@members.to_s
       end
 
-      # Sets the checked status of the group.
-      # @param flag [Boolean] the new checked status.
-      # @return [void]
+      # Sets the checked flag indicating group data has been verified.
+      #
+      # @param flag [Boolean] true if group data is verified
+      # @return [Boolean] the flag value
       def self.checked=(flag)
         @@checked = flag
       end
 
-      # Sets the status of the group.
-      # @param state [Symbol] the new status of the group.
-      # @return [void]
+      # Sets the group status (open or closed).
+      #
+      # @param state [Symbol] :open or :closed
+      # @return [Symbol] the status value
       def self.status=(state)
         @@status = state
       end
 
-      # Returns the current status of the group.
-      # @return [Symbol] the current status of the group.
+      # Gets the current group status.
+      #
+      # @return [Symbol] :open or :closed
       def self.status()
         @@status
       end
 
-      # Checks if the group status is open.
-      # @return [Boolean] true if the group is open, false otherwise.
+      # Checks if the group is open to new members.
+      # Automatically verifies group status if not already checked.
+      #
+      # @return [Boolean] true if group status is open
       def self.open?
         maybe_check
         @@status.eql?(:open)
       end
 
-      # Checks if the group status is closed.
-      # @return [Boolean] true if the group is closed, false otherwise.
+      # Checks if the group is closed to new members.
+      #
+      # @return [Boolean] true if group status is not open
       def self.closed?
         not open?
       end
 
-      # Checks the group status and clears members if necessary.
-      # @return [Array<GameObj>] the current members of the group after checking.
+      # Actively checks group status by sending the GROUP command to the game.
+      # Clears current group data and waits up to 3 seconds for response.
+      # Should be called at script initialization.
+      #
+      # @return [Array<GameObj>] copy of the members array after checking
       def self.check
         Group.clear()
         ttl = Time.now + 3
@@ -119,38 +162,52 @@ module Lich
         @@members.dup
       end
 
+      # Checks group status only if not already checked.
+      #
+      # @return [Array<GameObj>, nil] members array if check was needed, nil otherwise
       def self.maybe_check
         Group.check unless checked?
       end
 
-      # Returns a list of characters that are not members of the group.
-      # @return [Array<GameObj>] the non-member characters.
+      # Returns all PCs in the room who are not in the group.
+      #
+      # @return [Array<GameObj>] array of PC GameObj instances not in group
       def self.nonmembers
         GameObj.pcs.to_a.reject { |pc| ids.include?(pc.id) }
       end
 
-      # Sets the leader of the group.
-      # @param char [GameObj] the character to set as the leader.
-      # @return [void]
+      # Sets the group leader.
+      #
+      # @param char [Symbol, GameObj] :self if current player is leader, or GameObj of leader
+      # @return [Symbol, GameObj] the leader value
       def self.leader=(char)
         @@leader = char
       end
 
-      # Returns the current leader of the group.
-      # @return [GameObj, nil] the current leader of the group or nil if none.
+      # Gets the current group leader.
+      #
+      # @return [Symbol, GameObj] :self if current player is leader, or GameObj of leader
       def self.leader
         @@leader
       end
 
-      # Checks if the current instance is the leader of the group.
-      # @return [Boolean] true if this instance is the leader, false otherwise.
+      # Checks if the current player is the group leader.
+      #
+      # @return [Boolean] true if current player is leader
       def self.leader?
         @@leader.eql?(:self)
       end
 
-      # Adds members to the group with checks for existing membership and status.
-      # @param members [Array<GameObj, String>] the members to add to the group.
-      # @return [Array<Hash>] results of the add operation for each member.
+      # Adds one or more members to the group by sending GROUP commands.
+      # Handles both String names and GameObj instances.
+      # Can accept nested arrays of members.
+      #
+      # @param members [Array<String, GameObj, Array>] members to add
+      # @return [Array<Hash>] array of results, each containing :ok or :err key with member
+      # @example Add a single member
+      #   Group.add("PlayerName")
+      # @example Add multiple members
+      #   Group.add("Player1", "Player2")
       def self.add(*members)
         members.map do |member|
           if member.is_a?(Array)
@@ -179,27 +236,34 @@ module Lich
         end
       end
 
-      # Returns the IDs of the current group members.
-      # @return [Array<Integer>] the IDs of the group members.
+      # Returns array of all member IDs.
+      #
+      # @return [Array<String>] array of member IDs
       def self.ids
         @@members.map(&:id)
       end
 
-      # Returns the nouns of the current group members.
-      # @return [Array<String>] the nouns of the group members.
+      # Returns array of all member nouns (names).
+      #
+      # @return [Array<String>] array of member nouns
       def self.nouns
         @@members.map(&:noun)
       end
 
-      # Checks if the specified members are included in the group.
-      # @param members [Array<GameObj>] the members to check for inclusion.
-      # @return [Boolean] true if all specified members are included, false otherwise.
+      # Checks if all specified members are in the group.
+      #
+      # @param members [Array<GameObj>] members to check
+      # @return [Boolean] true if all members are in the group
       def self.include?(*members)
         members.all? { |m| ids.include?(m.id) }
       end
 
-      # Checks if the group is in a broken state based on member status.
-      # @return [Boolean] true if the group is broken, false otherwise.
+      # Checks if the group state is broken or inconsistent.
+      # Waits for any claim locks to release before checking.
+      # For leaders: checks if member list matches actual PCs in room.
+      # For members: checks if leader is still present.
+      #
+      # @return [Boolean] true if group state is inconsistent
       def self.broken?
         sleep(0.1) while Lich::Gemstone::Claim::Lock.locked?
         if Group.leader?
@@ -211,45 +275,81 @@ module Lich
         end
       end
 
-      # Handles calls to methods that are not defined on the group, delegating to members.
-      # @param method [Symbol] the method name being called.
-      # @param args [Array] the arguments for the method call.
-      # @param block [Proc] an optional block for the method call.
-      # @return [Object] the result of the delegated method call.
+      # Delegates missing methods to the members array.
+      # Allows Group to act like an Array in many contexts.
+      #
+      # @api private
       def self.method_missing(method, *args, &block)
         @@members.send(method, *args, &block)
       end
     end
 
+    # Observes and manages group membership and state changes via game output.
+    #
+    # This is the second definition of the Group class, providing the Observer module
+    # that automatically updates group state when game output matches group-related patterns.
+    # Watches for membership changes, leadership transfers, group status updates, and
+    # hand-holding actions that form groups.
     class Group
+      # Observes game output and automatically updates Group state.
+      # Watches for group-related messages and updates membership, leadership, and status.
       module Observer
+        # Regular expressions and constants for matching group-related game output.
         module Term
+          # Matches when someone joins your group
+          # @example "<a exist="-10467645" noun="Oreh">Oreh</a> joins your group."
           JOIN    = %r{^<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> joins your group.\r?\n?$}
 
+          # Matches when someone leaves your group
+          # @example "<a exist="-10467645" noun="Oreh">Oreh</a> leaves your group"
           LEAVE   = %r{^<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> leaves your group.\r?\n?$}
 
+          # Matches when you add someone to your group
+          # @example "You add <a exist="-10467645" noun="Oreh">Oreh</a> to your group."
           ADD     = %r{^You add <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> to your group.\r?\n?$}
 
+          # Matches when you remove someone from the group
+          # @example "You remove <a exist="-10467645" noun="Oreh">Oreh</a> from the group."
           REMOVE  = %r{^You remove <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> from the group.\r?\n?$}
 
+          # Matches when trying to add someone already in group
+          # @example "But <a exist="-10467645" noun="Oreh">Oreh</a> is already a member of your group!"
           NOOP    = %r{^But <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> is already a member of your group!\r?\n?$}
 
+          # Matches when you receive leadership
+          # @example "<a exist="-10488845" noun="Etanamir">Etanamir</a> designates you as the new leader of the group."
           HAS_LEADER = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> designates you as the new leader of the group\.\r?\n?$}
 
+          # Matches when leadership changes to another player
+          # @example "<a exist="-10488845" noun="Etanamir">Etanamir</a> designates <a exist="-10488845" noun="Ondreian">Ondreian</a> as the new leader of the group."
           SWAP_LEADER = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> designates <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> as the new leader of the group.\r?\n?$}
 
+          # Matches when you give away leadership
+          # @example "You designate <a exist="-10778599" noun="Ondreian">Ondreian</a> as the new leader of the group."
           GAVE_LEADER_AWAY = %r{You designate <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> as the new leader of the group\.\r?\n?$}
 
+          # Matches when you disband the group
+          # @example "You disband your group."
           DISBAND = %r{^You disband your group}
 
+          # Matches when you're added to someone's group
+          # @example "<a exist="-10488845" noun="Etanamir">Etanamir</a> adds you to <a exist="-10488845" noun="Etanamir">his</a> group."
           ADDED_TO_NEW_GROUP = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> adds you to <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> group.\r?\n?$}
 
+          # Matches when you join someone's group
+          # @example "You join <a exist="-10488845" noun="Etanamir">Etanamir</a>."
           JOINED_NEW_GROUP = %r{You join <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a>\.\r?\n?$}
 
+          # Matches when your leader adds another member
+          # @example "<a exist="-10488845" noun="Etanamir">Etanamir</a> adds <a exist="-10974229" noun="Szan">Szan</a> to <a exist="-10488845" noun="Etanamir">his</a> group."
           LEADER_ADDED_MEMBER = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> adds <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> to <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> group\.\r?\n?$}
 
+          # Matches when your leader removes a member
+          # @example "<a exist="-10488845" noun="Etanamir">Etanamir</a> removes <a exist="-10974229" noun="Szan">Szan</a> from the group."
           LEADER_REMOVED_MEMBER = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> removes <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> from the group\.\r?\n?$}
 
+          # Matches when you grab someone's hand (reserved demeanor)
+          # @example "You grab <a exist="-10070682" noun="Dicate">Dicate's</a> hand."
           HOLD_RESERVED_FIRST = %r{^You grab <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> hand.\r?\n?$}
 
           # Matches when you hold someone's hand (neutral demeanor)
@@ -261,6 +361,8 @@ module Lich
           # Matches when you clasp someone's hand (warm demeanor)
           HOLD_WARM_FIRST = %r{^You clasp <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> hand tenderly.\r?\n?$}
 
+          # Matches when someone grabs your hand (reserved demeanor)
+          # @example "<indicator id='IconJOINED' visible='y'/><a exist="-10966483" noun="Nisugi">Nisugi</a> grabs your hand."
           HOLD_RESERVED_SECOND = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> grabs your hand.\r?\n?$}
 
           # Matches when someone holds your hand (neutral demeanor)
@@ -272,6 +374,8 @@ module Lich
           # Matches when someone clasps your hand (warm demeanor)
           HOLD_WARM_SECOND = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> clasps your hand tenderly.\r?\n?$}
 
+          # Matches when you observe someone grabbing another's hand (reserved demeanor)
+          # @example "<a exist="-10966483" noun="Nisugi">Nisugi</a> grabs <a exist="-10070682" noun="Dicate">Dicate's</a> hand."
           HOLD_RESERVED_THIRD = %r{^<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> grabs <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> hand.\r?\n?$}
 
           # Matches when you observe someone holding another's hand (neutral demeanor)
@@ -283,13 +387,20 @@ module Lich
           # Matches when you observe someone clasping another's hand (warm demeanor)
           HOLD_WARM_THIRD = %r{^<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> clasps <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> hand tenderly.\r?\n?$}
 
+          # Matches when someone else joins another's group
+          # @example "<a exist="-10154507" noun="Zoleta">Zoleta</a> joins <a exist="-10966483" noun="Nisugi">Nisugi's</a> group."
           OTHER_JOINED_GROUP = %r{^<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>\w+?)</a> joins <a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a> group.\r?\n?$}
 
           # Matches when not in any group
           NO_GROUP = /^You are not currently in a group/
 
+          # Matches group member listing from GROUP command
+          # @example "You are leading PlayerName, PlayerName2."
+          # @example "You are grouped with LeaderName, PlayerName."
           MEMBER   = /^You are (?:leading|grouped with) (.*)/
 
+          # Matches group status line
+          # @example "Your group status is currently open."
           STATUS   = /^Your group status is currently (?<status>open|closed)\./
 
           # UI indicator showing group is empty
@@ -338,15 +449,29 @@ module Lich
           EXIST = %r{<a exist="(?<id>[\d-]+)" noun="(?<noun>[A-Za-z]+)">(?<name>[\w']+?)</a>}
         end
 
+        # Extracts GameObj instances from XML character links in game output.
+        #
+        # @param xml [String] game output containing character XML tags
+        # @return [Array<GameObj>] array of GameObj instances found in the XML
         def self.exist(xml)
           xml.scan(Group::Observer::Term::EXIST).map { |id, _noun, _name| GameObj[id] }
         end
 
+        # Checks if a line of game output contains group-related information.
+        #
+        # @param line [String] line of game output
+        # @return [Boolean] true if line contains group information
         def self.wants?(line)
           line.strip.match(Term::ANY) or
             line.include?(Term::GROUP_EMPTIED)
         end
 
+        # Processes a line of group-related game output and updates Group state.
+        # Handles all types of group changes: joins, leaves, leadership changes, etc.
+        #
+        # @param line [String] line of game output
+        # @param match_data [MatchData] regex match data from the line
+        # @return [void]
         def self.consume(line, match_data)
           if line.include?(Term::GIVEN_LEADERSHIP)
             return Group.leader = :self

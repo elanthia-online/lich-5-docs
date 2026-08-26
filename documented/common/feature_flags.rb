@@ -1,13 +1,47 @@
+# frozen_string_literal: true
 
+# Namespace for Lich 5, a Ruby scripting engine for text-based games.
+#
+# Lich 5 enables script authors to automate gameplay in GemStone IV and
+# DragonRealms by providing access to the game server's XML feed, character
+# state, and in-game commands. Scripts are loaded and executed within this
+# namespace and its submodules.
 module Lich
+  # Namespace for shared utilities and infrastructure available to all Lich 5 scripts.
+  #
+  # This module houses common libraries like FeatureFlags that support the core
+  # Lich 5 scripting API.
   module Common
     # Provides persistent access to core feature flags.
     #
-    # Provides persistent access to core feature flags.
+    # Feature flags are stored in the `lich_settings` table using keys with the
+    # `feature_flag:` prefix. Missing keys fall back to values defined in
+    # {DEFAULTS}, or `false` when no explicit default is registered.
     #
-    # @see Lich::Common
+    # This module intentionally exposes a minimal surface area:
+    # - {.enabled?} reads a flag with safe fallback behavior
+    # - {.set} persists a flag value for future reads
+    #
+    # Keeping the API narrow makes it easier to adopt feature flags incrementally
+    # without introducing a second configuration framework.
     module FeatureFlags
       SETTINGS_PREFIX = 'feature_flag:'
+      # Pattern that validates normalized feature flag names.
+      #
+      # Flags must be lowercase alphanumeric or underscore, with no spaces or special
+      # characters. This ensures portable flag names that can be serialized as database
+      # keys without escaping.
+      #
+      # @example Valid flag names
+      #   "cache_enabled" matches
+      #   "enable_v2" matches
+      #   "flag_1" matches
+      # @example Invalid flag names
+      #   "CacheEnabled" does not match (uppercase)
+      #   "cache-enabled" does not match (hyphen)
+      #   "cache enabled" does not match (space)
+      # @see .normalize_name
+      # @see .validate_flag_name!
       VALID_NAME_PATTERN = /\A[a-z0-9_]+\z/
 
       # Defines default values for known feature flags.
@@ -16,13 +50,13 @@ module Lich
       # persisted value in `lich_settings` always overrides the default.
       DEFAULTS = {}.freeze
 
-      # Checks if a feature flag is enabled.
+      # Returns whether a feature flag is enabled.
       #
-      # @param name [String] the name of the feature flag
-      # @return [Boolean] true if the feature flag is enabled, false otherwise
-      # @raise [ArgumentError] if the flag name is invalid
-      # @example Check if a feature is enabled
-      #   Lich::Common::FeatureFlags.enabled?("new_feature")
+      # @param name [String, Symbol] the feature flag name
+      # @return [Boolean] the persisted flag value, the configured default, or
+      #   `false` if the flag is unknown or the value cannot be read
+      # @raise [ArgumentError] if the flag name is blank or contains unsupported
+      #   characters
       def self.enabled?(name)
         flag_name = validate_flag_name!(normalize_name(name))
         begin
@@ -36,14 +70,17 @@ module Lich
         end
       end
 
-      # Sets the value of a feature flag.
+      # Persists a feature flag value in `lich_settings`.
       #
-      # @param name [String] the name of the feature flag
-      # @param value [Boolean] the value to set for the feature flag
-      # @return [Boolean] true if the operation was successful, false otherwise
-      # @raise [ArgumentError] if the flag name is invalid
-      # @example Set a feature flag
-      #   Lich::Common::FeatureFlags.set("new_feature", true)
+      # Values are stored as strings to match the existing `lich_settings`
+      # storage model. Callers should prefer booleans, but any value responding
+      # to `#to_s` is accepted and later interpreted by {.enabled?}.
+      #
+      # @param name [String, Symbol] the feature flag name
+      # @param value [Object] the value to persist
+      # @return [Boolean] `true` when the write succeeds, otherwise `false`
+      # @raise [ArgumentError] if the flag name is blank or contains unsupported
+      #   characters
       def self.set(name, value)
         flag_name = validate_flag_name!(normalize_name(name))
         begin
@@ -54,20 +91,21 @@ module Lich
         end
       end
 
-      # Normalizes the feature flag name by stripping whitespace and converting to lowercase.
+      # Normalizes a feature flag identifier before validation.
       #
-      # @param name [String] the name of the feature flag
-      # @return [String] the normalized feature flag name
+      # @param name [String, Symbol, nil]
+      # @return [String]
       def self.normalize_name(name)
         name.to_s.strip.downcase
       end
       private_class_method :normalize_name
 
-      # Validates the feature flag name, ensuring it is non-empty and matches the valid pattern.
+      # Validates that a normalized feature flag name is usable.
       #
-      # @param flag_name [String] the name of the feature flag
-      # @return [String] the validated feature flag name
-      # @raise [ArgumentError] if the flag name is invalid
+      # @param flag_name [String]
+      # @return [String] the validated flag name
+      # @raise [ArgumentError] if the name is blank or contains characters
+      #   outside the supported snake_case style
       def self.validate_flag_name!(flag_name)
         raise ArgumentError, 'feature flag name must be non-empty' if flag_name.empty?
         raise ArgumentError, "feature flag name must match #{VALID_NAME_PATTERN.inspect}" unless flag_name.match?(VALID_NAME_PATTERN)
@@ -76,28 +114,28 @@ module Lich
       end
       private_class_method :validate_flag_name!
 
-      # Checks if a value is considered truthy for feature flags.
+      # Interprets persisted flag values using common truthy variants.
       #
-      # @param value [String] the value to check
-      # @return [Boolean] true if the value is truthy, false otherwise
+      # @param value [Object]
+      # @return [Boolean]
       def self.truthy?(value)
         value.to_s.match?(/\A(?:1|true|on|yes)\z/i)
       end
       private_class_method :truthy?
 
-      # Retrieves the default value for a feature flag.
+      # Returns the default value for a validated feature flag name.
       #
-      # @param flag_name [String] the name of the feature flag
-      # @return [Boolean] the default value for the feature flag
+      # @param flag_name [String]
+      # @return [Boolean]
       def self.default_for(flag_name)
         DEFAULTS.fetch(flag_name.to_sym, false)
       end
       private_class_method :default_for
 
-      # Reads the value of a feature flag from the database.
+      # Reads a persisted feature flag value from `lich_settings`.
       #
-      # @param flag_name [String] the name of the feature flag
-      # @return [String, nil] the value of the feature flag, or nil if not found
+      # @param flag_name [String]
+      # @return [String, nil]
       def self.read_flag(flag_name)
         db = fetch_db
         return nil unless db
@@ -106,11 +144,11 @@ module Lich
       end
       private_class_method :read_flag
 
-      # Writes the value of a feature flag to the database.
+      # Writes a feature flag value to `lich_settings`.
       #
-      # @param flag_name [String] the name of the feature flag
-      # @param value [String] the value to write
-      # @return [Boolean] true if the operation was successful, false otherwise
+      # @param flag_name [String]
+      # @param value [Object]
+      # @return [Boolean]
       def self.write_flag(flag_name, value)
         db = fetch_db
         return false unless db
@@ -123,31 +161,48 @@ module Lich
       end
       private_class_method :write_flag
 
-      # Constructs the setting key for a feature flag.
+      # Returns the fully qualified setting key for a validated flag name.
       #
-      # @param flag_name [String] the name of the feature flag
-      # @return [String] the setting key for the feature flag
+      # @param flag_name [String]
+      # @return [String]
       def self.setting_key(flag_name)
         "#{SETTINGS_PREFIX}#{flag_name}"
       end
       private_class_method :setting_key
 
-      # Fetches the database connection for feature flag operations.
+      # Returns the configured database handle when available.
       #
-      # @return [Object, nil] the database connection or nil if not available
+      # @return [Object, nil]
       def self.fetch_db
         return nil unless Lich.respond_to?(:db)
 
-        Lich.db
+        db = Lich.db
+        return nil if db.nil?
+        return nil if db_closed?(db)
+
+        db
       end
       private_class_method :fetch_db
 
-      # Logs a failure that occurred during feature flag operations.
+      # Indicates whether a database handle can no longer service queries.
       #
-      # @param operation [String] the operation that failed
-      # @param flag_name [String] the name of the feature flag
-      # @param error [StandardError] the error that occurred
-      # @api private
+      # Feature flag reads are used broadly across startup and shutdown code,
+      # so a closed database should be treated as unavailable rather than
+      # surfacing secondary SQLite errors from teardown paths.
+      #
+      # @param db [Object] database handle returned by {Lich.db}
+      # @return [Boolean]
+      def self.db_closed?(db)
+        db.respond_to?(:closed?) && db.closed?
+      end
+      private_class_method :db_closed?
+
+      # Logs a read or write failure without raising a second error.
+      #
+      # @param operation [String] the failed operation, such as `read` or `write`
+      # @param flag_name [String] the normalized feature flag name
+      # @param error [StandardError] the original failure
+      # @return [void]
       def self.log_failure(operation, flag_name, error)
         return unless defined?(Lich) && Lich.respond_to?(:log)
 

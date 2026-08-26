@@ -1,27 +1,168 @@
+# frozen_string_literal: true
 
+require_relative 'common/shutdown_log'
 
-# Main module for the Lich project.
-#
-# This module serves as the root namespace for all Lich-related classes and modules.
+# Modernized version of games.rb with separated DR and GS functionality
+# Original module carve out from lich.rbw
+# Refactored on 2025-04-01
+
+# Namespace for the Lich5 scripting engine, providing game-specific functionality
+# for GemStone IV and DragonRealms text-based games.
 module Lich
+  # Base module for game-specific functionality
+  # Unknown game type module
   module Unknown
+    # Placeholder module for unknown game types.
     module Game
       # Placeholder for unknown game types
     end
   end
 
-  # Module for common game functionality.
-  #
-  # This module contains shared methods and constants used across different game types.
+  # Common module for shared functionality
   module Common
     # Placeholder for common game functionality
   end
 
-  # Base module for game instances.
-  #
-  # This module provides the foundational classes and methods for creating game instances.
+  # Namespace for game-agnostic formatting and processing shared by all game instances.
   module GameBase
+    # Game-agnostic formatting for the Lich-injected room annotations
+    # (room number, obvious exits, and StringProc exits). Both the GemStone
+    # and DragonRealms game instances mix this in so the font and clickable-link
+    # toggles behave identically regardless of game: the module decides *how* an
+    # annotation looks, while each game instance decides *which* lines/streams to
+    # emit. Extracting it removes the near-duplicate exit/StringProc rendering
+    # that previously lived in both #process_room_display implementations.
+    #
+    # Two independent settings drive it:
+    # - Lich.display_room_links - clickable <d> command links vs plain text
+    # - Lich.display_room_mono  - fixed-width mono style vs the proportional game font
+    #
+    # The mono wrapper only escapes nothing and merely brackets the line, so a
+    # mono line can still contain live <d> links (the two toggles are orthogonal).
+    #
+    # Escaping: unlike respond (which HTML-escapes &, <, > for the classic
+    # roomnumbers.lic path), neither the mono wrapper nor the plain-text entries
+    # escape anything. This is deliberate - the links path emits live <d> markup
+    # that must survive verbatim, and both paths are kept consistent so a toggle
+    # never silently changes escaping. Exit commands and room titles come from the
+    # mapdb and contain no markup in practice; if untrusted text is ever fed here
+    # the caller must escape it first.
+    module RoomFormatter
+      # Obvious compass / up / down / out exits (usually rendered by the game
+      # itself), excluded from the "Room Exits:" line. Hoisted here so the GS and
+      # DR paths share a single, identical definition.
+      OBVIOUS_EXIT_PATTERN = /^(?:o|d|u|n|ne|e|se|s|sw|w|nw|out|down|up|north|northeast|east|southeast|south|southwest|west|northwest)$/.freeze
+
+      # Everything below is internal formatting detail, marked +private+ so the
+      # mixin adds no new public surface to the game instances that include it.
+      # The game #process_room_display methods reach these via implicit self
+      # (which is legal for private methods); the unit specs exercise them
+      # through a throwaway host class that re-publicizes them.
+      private
+
+      # Whether the injected room lines should render in the fixed-width mono
+      # style. Gated on the frontend actually supporting mono so non-mono clients
+      # never receive stray <output> tags (mirrors respond's own guard).
+      # @return [Boolean]
+      # @api private
+      def room_mono?
+        Lich.display_room_mono && Frontend.supports_mono?
+      end
+
+      # Whether room exits should render as clickable <d> command links.
+      # @return [Boolean]
+      # @api private
+      def room_links?
+        Lich.display_room_links
+      end
+
+      # Wraps a completed line body in the classic mono style when enabled, else
+      # returns it unchanged. Never escapes, so any <d> links in body survive.
+      # @param body [String] the fully built line (label plus entries)
+      # @return [String] the styled (or unchanged) line
+      # @api private
+      def room_styled(body)
+        room_mono? ? "<output class=\"mono\"/>#{body}<output class=\"\"/>" : body
+      end
+
+      # Builds the StringProc-exit entries for the current room, honoring the
+      # links toggle. Returns [] when the feature is off so callers add no line
+      # and Map is not touched.
+      # NOTE: StringProc overrides #class and #kind_of? (both report Proc), so
+      # detection MUST use #is_a?, which reflects the real class - see
+      # lib/common/class_exts/stringproc.rb.
+      # @return [Array<String>] formatted entries (links or plain labels)
+      # @api private
+      def room_stringproc_entries
+        return [] unless Lich.display_stringprocs
+
+        entries = []
+        Map.current.wayto.each do |key, value|
+          next unless value.is_a?(StringProc)
+          # Only routable StringProcs (a numeric travel time) are useful to show.
+          timeto = Map.current.timeto[key]
+          next unless timeto.is_a?(Numeric) || (timeto.is_a?(StringProc) && timeto.call.is_a?(Numeric))
+          # Guard against a dangling wayto reference (destination room missing
+          # from the mapdb) rather than crashing the whole downstream hook.
+          dest = Map[key]
+          next if dest.nil?
+
+          label = "#{dest.title.first.gsub(/\[|\]/, '')}#{Lich.display_lichid ? "(#{dest.id})" : ''}"
+          entries << (room_links? ? "<d cmd=';go2 #{key}'>#{label}</d>" : label)
+        end
+        entries
+      end
+
+      # Builds the obvious-exit entries (non-compass go/climb style exits) for the
+      # current room, honoring the links toggle. Returns [] when the feature is
+      # off so callers add no line and Map is not touched.
+      # @return [Array<String>] formatted entries (links or plain commands)
+      # @api private
+      def room_exit_entries
+        return [] unless Lich.display_exits
+
+        entries = []
+        Map.current.wayto.each_value do |value|
+          next if value.to_s =~ OBVIOUS_EXIT_PATTERN
+          next if value.is_a?(StringProc)
+
+          # Derive the command via to_s (as the OBVIOUS_EXIT_PATTERN check above
+          # already does) before #dump, so a non-String wayto value is coerced
+          # rather than raising NoMethodError inside the downstream hook. For the
+          # String values the mapdb actually stores, value.to_s is the same object
+          # so this is byte-identical to the previous value.dump.
+          cmd = value.to_s.dump[1..-2]
+          entries << (room_links? ? "<d cmd='#{cmd}'>#{cmd}</d>" : cmd)
+        end
+        entries
+      end
+
+      # Prepends the shared "StringProcs:" and "Room Exits:" lines (in that
+      # order, so exits end up above StringProcs and any later room-number line
+      # ends up above both) to alt_string, each only when it has entries. This is
+      # the composition both games share. Entries are passed in (built once by the
+      # caller) so a game that also reuses them - e.g. the GemStone room-window
+      # mirror - does not iterate Map.current.wayto twice.
+      # @param alt_string [String] the server string being rewritten
+      # @param stringproc_entries [Array<String>] pre-built StringProc entries
+      # @param exit_entries [Array<String>] pre-built obvious-exit entries
+      # @return [String] alt_string with the room lines prepended
+      # @api private
+      def prepend_room_lines(alt_string, stringproc_entries, exit_entries)
+        alt_string = "#{room_styled("StringProcs: #{stringproc_entries.join(', ')}")}\r\n#{alt_string}" unless stringproc_entries.empty?
+        alt_string = "#{room_styled("Room Exits: #{exit_entries.join(', ')}")}\r\n#{alt_string}" unless exit_entries.empty?
+        alt_string
+      end
+    end
+
+    # Factory for creating game-specific objects
     module GameInstanceFactory
+      # Creates a game-specific instance based on the game type identifier.
+      #
+      # @param game_type [String] the game identifier, matching /^GS/ for GemStone or /^DR/ for DragonRealms
+      # @return [Lich::Gemstone::GameInstance, Lich::DragonRealms::GameInstance, Lich::GameBase::GameInstance::Base] a game instance for the type, or base implementation if unknown
+      # @example
+      #   GameInstanceFactory.create("GS") #=> Gemstone::GameInstance
       def self.create(game_type)
         case game_type
         when /^GS/
@@ -35,16 +176,12 @@ module Lich
       end
     end
 
-    # Module for game instance management.
-    #
-    # This module contains classes and methods related to managing individual game instances.
+    # Game instance interface for game-specific behaviors
     module GameInstance
-      # Base class for game instances.
-      #
-      # This class provides the core functionality for all game instances.
-      #
-      # @note This class is intended to be subclassed for specific game types.
+      # Base instance class that defines the interface
       class Base
+        include RoomFormatter
+
         def initialize
           @atmospherics = false
           @combat_count = 0
@@ -68,30 +205,54 @@ module Lich
           raise NotImplementedError, "#{self.class} must implement #get_documentation_url"
         end
 
-        def process_game_specific_data(server_string)
+        def process_game_specific_data(server_string, stripped_server = nil)
           raise NotImplementedError, "#{self.class} must implement #process_game_specific_data"
         end
 
-        def modify_room_display(alt_string, uid_from_string, lichid_from_uid_string)
+        def modify_room_display(alt_string)
           raise NotImplementedError, "#{self.class} must implement #modify_room_display"
         end
 
+        # Injects room information lines (exits, StringProcs, room numbers) into the display.
+        #
+        # This method is overridden by game-specific implementations to format and place
+        # room annotations according to game and frontend conventions.
+        #
+        # @param alt_string [String] the server string being rewritten
+        # @return [String] the rewritten server string
+        # @raise [NotImplementedError] when called on the base class
+        # @api private
         def process_room_display(alt_string)
           raise NotImplementedError, "#{self.class} must implement #process_room_display"
         end
 
+        # Returns the current nesting depth of the combat stream.
+        #
+        # @return [Integer] the number of active combat streams
+        # @api private
         def combat_count
           @combat_count
         end
 
+        # Returns whether an atmospheric stream is currently active.
+        #
+        # @return [Boolean] true if an atmospherics pushStream is open
+        # @api private
         def atmospherics
           @atmospherics
         end
 
+        # Sets the atmospheric stream state.
+        #
+        # @param value [Boolean] whether an atmospherics stream is active
+        # @return [Boolean] the assigned value
+        # @api private
         def atmospherics=(value)
           @atmospherics = value
         end
 
+        # Buffer split <component id='room objs'> or <component id='room players'> when server sends "...wait N seconds." on separate line
+        # Returns [should_skip, server_string]
         def buffer_room_objs(server_string)
           if @pending_room_objs
             if server_string.include?("</component>")
@@ -125,8 +286,19 @@ module Lich
       end
     end
 
+    # XML string cleaner module
     module XMLCleaner
       class << self
+        # Escapes nested single and double quotes within XML attribute values.
+        #
+        # Converts matching quote pairs to XML entities (&apos;, &quot;) to repair
+        # malformed tags where a quote inside an attribute value prematurely closes it.
+        #
+        # @param server_string [String] the server string, modified in place
+        # @return [String] the server string with nested quotes escaped
+        # @example
+        #   XMLCleaner.clean_nested_quotes("<a x='Tsetem's Items'>") #=> "<a x='Tsetem&apos;s Items'>"
+        # @api private
         def clean_nested_quotes(server_string)
           # Fix nested single quotes
           unless (matches = server_string.scan(/'([^=>]*'[^=>]*)'/)).empty?
@@ -149,13 +321,17 @@ module Lich
           server_string
         end
 
+        # Removes or escapes invalid characters that cause XML parsing failures.
+        #
+        # Strips bell characters (\a) that are not valid in XML.
+        #
+        # @param server_string [String] the server string, modified in place
+        # @return [String] the server string with invalid characters removed
+        # @api private
         def fix_invalid_characters(server_string)
-          # Fix ampersands
-          if server_string.include?('&') && !server_string.include?('&amp;') && !server_string.include?('&gt;') && !server_string.include?('&lt;') && !server_string.include?('&apos;') && !server_string.include?('&quot;')
-            Lich.log "Invalid & detected: #{server_string.inspect}"
-            server_string.gsub!('&', '&amp;')
-            Lich.log "Invalid & fixed to: #{server_string.inspect}"
-          end
+          # Note: a bare '&' is intentionally not escaped here. REXML raised on it
+          # (hence the old escaping); Ox tolerates it (convert_special: false emits
+          # it verbatim with no error), so escaping is no longer needed for parsing.
 
           # Fix bell character
           if server_string.include?("\a")
@@ -164,16 +340,17 @@ module Lich
             Lich.log "Invalid \\a stripped out: #{server_string.inspect}"
           end
 
-          # Fix poorly encoded apostrophes
-          if server_string =~ /\\x92/
-            Lich.log "Detected poorly encoded apostrophe: #{server_string.inspect}"
-            server_string.gsub!("\x92", "'")
-            Lich.log "Changed poorly encoded apostrophe to: #{server_string.inspect}"
-          end
-
           server_string
         end
 
+        # Repairs malformed XML tags in the server string.
+        #
+        # Fixes open-ended dynaStream/component tags, removes extraneous closing tags,
+        # and removes unclosed wound tags from empath appraisals.
+        #
+        # @param server_string [String] the server string, modified in place
+        # @return [String] the server string with XML tags repaired
+        # @api private
         def fix_xml_tags(server_string)
           # Fix open-ended XML tags
           if /^<(?<xmltag>dynaStream|component) id='.*'>[^<]*(?!<\/\k<xmltag>>)\r\n$/ =~ server_string
@@ -199,30 +376,119 @@ module Lich
       end
     end
 
-    # Class representing the game.
-    #
-    # This class manages the overall game state and interactions.
-    class Game
-      class << self
-        attr_reader :thread, :buffer, :_buffer, :game_instance
+    # Raised when a server fragment is structurally truncated (cut off
+    # mid-element) -- the stream has desynced from XML framing. Pre-Ox, strict
+    # REXML raised on these fragments and Game.process_xml_data's rescue logged
+    # the fragment and reset XMLData, so parser strictness doubled as desync
+    # detection. Ox is permissive: it parses truncated fragments without
+    # raising (auto-closing elements, fabricating empty attribute values) and
+    # only reports the damage through its optional error callback. That
+    # callback is now the only desync signal, so process_xml_data promotes
+    # truncation-class parse errors to this exception to keep the old
+    # recovery path (log + XMLData.reset).
+    class GameStreamDesyncError < StandardError; end
 
-        # Checks if the game has been autostarted.
-        # @return [Boolean] true if the game is autostarted, false otherwise.
+    # Ox error-callback messages that mean the fragment ended mid-token -- the
+    # only unambiguous truncation signal, since a complete line cannot end inside
+    # an open tag, attribute list, or quoted value. (In practice genuine
+    # truncation is an edge case: reads are newline-delimited via @socket.gets,
+    # Simu keeps each tag on one line, multi-line content is reassembled upstream
+    # by buffer_room_objs, and #4's tag_end guard keeps @active_tags balanced
+    # regardless. This is a backstop for a partial read at disconnect.)
+    #
+    # Ox also fires the callback for Simu's routine almost-XML -- bare text and
+    # multiple top-level elements ('text not terminated', 'multiple top level
+    # elements'), nested quotes ('no attribute value'), unescaped ampersands
+    # ('Invalid special character sequence'), missing </d> end tags ('Start End
+    # Mismatch: ... not closed') -- none of which match these patterns, so they
+    # stay tolerated. The message prefix matters: 'Unexpected Character: element
+    # not closed' (a start tag that never got its '>') is truncation, while the
+    # similarly worded 'Start End Mismatch: element ... not closed' (an element
+    # missing its end tag) is routine.
+    #
+    # 'attribute value not in quotes' is intentionally NOT here: it fires on a
+    # *complete* unquoted-attribute line (<a x=y>), so matching it false-resets a
+    # fully-parsed fragment. A truncated unquoted attr (<a x=y) still resets via
+    # 'attributes not terminated' / 'element not closed' below.
+    STREAM_DESYNC_ERRORS = [
+      /\ANot Terminated: attributes not terminated/,
+      /\ANot Terminated: quoted value not terminated/,
+      /\ANot Terminated: document not terminated/,
+      /\AUnexpected Character: element not closed/
+    ].freeze
+
+    # Ox's signature when a tag scatters into valueless attributes: the
+    # settingsInfo space-not-found bug, or a same-quote inside a quoted value
+    # (e.g. title='Tsetem's Items'), where the inner quote ends the value early.
+    # (A genuinely valueless attribute, <a foo>, reports the same thing, but the
+    # repairs leave it unchanged so no reparse happens.)
+    NO_ATTRIBUTE_VALUE_ERROR = /\AUnexpected Character: no attribute value/
+
+    # Base Game class with common functionality
+    class Game
+      # Raised when the game parser queue exceeds its capacity and cannot accept
+      # more server fragments without losing data.
+      class ServerQueueOverflow < StandardError; end
+
+      # Seconds to wait for readable game socket data before one read timeout.
+      READ_TIMEOUT_SECONDS = 100
+
+      # Consecutive read timeouts allowed before treating the game link as dead.
+      MAX_CONSECUTIVE_READ_TIMEOUTS = 3
+
+      # Sentinel returned when the game socket has no readable data before timeout.
+      READ_TIMEOUT = Object.new.freeze
+
+      # A full queue means the parser cannot preserve the game stream. Dropping
+      # records or blocking the socket reader would both make recovery unsafe.
+      SERVER_QUEUE_CAPACITY = 4_096
+
+      class << self
+        attr_reader :thread, :reader_thread, :server_queue, :buffer, :_buffer, :game_instance
+
+        # Returns whether the autostart sequence has completed.
+        #
+        # @return [Boolean] true if autostart scripts have been launched
+        # @api private
         def autostarted?
           @@autostarted
         end
 
-        # Checks if settings initialization is needed.
-        # @return [Boolean] true if settings initialization is required, false otherwise.
+        # Prefixes each line of a string with the frontend origin sentinel.
+        #
+        # @param string [String] the input string, possibly multiline
+        # @return [String] the string with each line prefixed with Frontend::ORIGIN_SENTINEL
+        # @api private
+        def prefix_origin_sentinel(string)
+          string.gsub(/^.+$/) { |line| "#{Frontend::ORIGIN_SENTINEL}#{line}" }
+        end
+
+        # Returns whether a new settings record needs to be initialized for the character.
+        #
+        # Set to true when the server sends a malformed settingsInfo tag (from first connection
+        # with a client that is not Wrayth/StormFront).
+        #
+        # @return [Boolean] true if gameloader's PostLoad should seed a valid client record
+        # @api private
         def settings_init_needed?
           @@settings_init_needed
         end
 
+        # Initializes or resets all socket, queue, and buffer state.
+        #
+        # Called at startup and after reconnects to clear stale data.
+        #
+        # @return [void]
+        # @api private
         def initialize_buffers
           @socket = nil
           @mutex = Mutex.new
           @last_recv = nil
           @thread = nil
+          @reader_thread = nil
+          @remote_eof = false
+          @server_queue = SizedQueue.new(SERVER_QUEUE_CAPACITY)
+          reset_server_queue_stats!
           @buffer = Lich::Common::SharedBuffer.new
           @_buffer = Lich::Common::SharedBuffer.new
           @_buffer.max_size = 1000
@@ -232,20 +498,32 @@ module Lich
           @room_number_after_ready = false
           @last_id_shown_room_window = 0
           @game_instance = nil
+          # strip_xml's multiline carry is a process-global; clear it here so a
+          # fragment left open before a reconnect/session reset does not bleed
+          # into the next session.
+          $strip_xml_multiline = {}
         end
 
-        # Sets the game instance based on the provided game type.
-        # @param game_type [String] the type of game to instantiate.
+        # Creates and assigns a game-specific instance based on the game type.
+        #
+        # @param game_type [String] the game identifier ("GS", "DR", or unknown)
         # @return [void]
+        # @api private
         def set_game_instance(game_type)
           @game_instance = GameInstanceFactory.create(game_type)
         end
 
-        # Opens a connection to the specified host and port.
-        # @param host [String] the hostname or IP address of the server.
-        # @param port [Integer] the port number to connect to.
-        # @return [TCPSocket] the opened socket.
+        # Opens the TCP connection to the game server and starts the socket's
+        # wrap and main reader threads.
+        #
+        # @param host [String] game server hostname
+        # @param port [Integer] game server port
+        # @return [TCPSocket] the connected, configured game socket
+        # @note Connection errors propagate to the caller. Use
+        #   {.open_with_timeout} to bound how long the connect may block.
+        # @see .open_with_timeout
         def open(host, port)
+          @remote_eof = false
           @socket = TCPSocket.open(host, port)
 
           # Configure socket with error handling
@@ -254,7 +532,7 @@ module Lich
             SocketConfigurator.configure(@socket,
                                          keepalive: {
                                            enable: true,
-                                           idle: 120,      # 2 minutes before first keepalive
+                                           idle: 30,       # 30s idle before first keepalive; defensive against L3/L4 idle reapers (best-effort, see SocketConfigurator)
                                            interval: 30    # 30 seconds between keepalive probes
                                          },
                                          linger: {
@@ -287,8 +565,44 @@ module Lich
           @socket
         end
 
-        # Starts a thread to manage wrapping operations.
+        # Connects to the game server on a background thread, enforcing a connect
+        # timeout that a bare {.open} cannot. Surfaces a stuck or failed connect
+        # instead of letting startup proceed with a dead socket.
+        #
+        # @param host [String] game server hostname
+        # @param port [Integer] game server port
+        # @param timeout [Integer, Float] seconds to wait for the connect to complete
         # @return [void]
+        # @raise [RuntimeError] if the connect does not complete within +timeout+
+        # @raise [StandardError] re-raises whatever {.open} raises
+        #   (e.g. Errno::ECONNREFUSED) so the caller's rescue runs
+        # @see .open
+        def open_with_timeout(host, port, timeout = 30)
+          connect_thread = Thread.new {
+            # report_on_exception off: a failed open is surfaced by the join below
+            # (which re-raises it), not by an auto-printed thread warning.
+            Thread.current.report_on_exception = false
+            self.open(host, port)
+          }
+          # join returns nil on timeout, the thread on success, and re-raises the
+          # thread's exception on failure -- so a Game.open that errors (e.g.
+          # connection refused) propagates to the caller's rescue instead of being
+          # silently swallowed (the old `if connect_thread.status` could not tell a
+          # thread that died with an exception, status nil, from a normal finish,
+          # status false).
+          if connect_thread.join(timeout).nil?
+            connect_thread.kill rescue nil
+            raise "error: timed out connecting to #{host}:#{port}"
+          end
+        end
+
+        # Starts the wrap thread that issues an initial "look" command after login.
+        #
+        # Also performs database vacuum if due. Sends "look" unless autostart has already
+        # run (or 6 seconds have elapsed with no server activity).
+        #
+        # @return [void]
+        # @api private
         def start_wrap_thread
           begin
             Lich.db_vacuum_if_due!(months: 6)
@@ -307,36 +621,147 @@ module Lich
           end
         end
 
-        # Checks if the socket is closed.
-        # @return [Boolean] true if the socket is closed, false otherwise.
+        # Returns whether the game socket is closed or nil.
+        #
+        # @return [Boolean] true if the socket is nil or closed
+        # @api private
         def closed?
           @socket.nil? || @socket.closed?
         end
 
-        # Closes the socket and any associated threads.
+        # @return [Boolean] whether the game server closed its side of the socket
+        def remote_eof?
+          @remote_eof == true
+        end
+
+        # Resets all queue and parser performance statistics to initial state.
+        #
+        # Called at startup and can be called during operation to clear accumulated metrics.
+        #
+        # @return [nil]
+        # @api private
+        def reset_server_queue_stats!
+          @server_queue_enqueued = 0
+          @server_queue_dequeued = 0
+          @server_queue_last_depth = @server_queue&.length.to_i
+          @server_queue_max_depth = @server_queue_last_depth
+          @server_queue_last_enqueue_at = nil
+          @server_queue_last_dequeue_at = nil
+          @server_queue_last_wait = nil
+          @server_queue_max_wait = 0.0
+          @server_queue_total_wait = 0.0
+          @server_reader_hook_last = nil
+          @server_reader_hook_max = 0.0
+          @server_reader_hook_total = 0.0
+          @server_reader_enqueue_last = nil
+          @server_reader_enqueue_max = 0.0
+          @server_reader_enqueue_total = 0.0
+          @server_reader_process_last = nil
+          @server_reader_process_max = 0.0
+          @server_reader_process_total = 0.0
+          @server_parser_last = nil
+          @server_parser_max = 0.0
+          @server_parser_total = 0.0
+          nil
+        end
+
+        # Returns a snapshot of queue and parser performance metrics.
+        #
+        # @param reset [Boolean] whether to reset statistics after returning them
+        # @return [Hash] a dict with keys: depth, last_depth, max_depth, enqueued, dequeued,
+        #   last_wait, max_wait, avg_wait (in seconds), plus corresponding _ms variants in
+        #   milliseconds, reader hook/enqueue/process stats (last/max/avg milliseconds),
+        #   parser stats, timestamps (last_enqueue_at, last_dequeue_at), and thread status
+        # @api private
+        def server_queue_stats(reset: false)
+          depth = @server_queue&.length.to_i
+          dequeued = @server_queue_dequeued.to_i
+          last_wait = @server_queue_last_wait
+          max_wait = @server_queue_max_wait.to_f
+          avg_wait = dequeued.positive? ? @server_queue_total_wait.to_f / dequeued : 0.0
+          enqueued = @server_queue_enqueued.to_i
+          hook_last = @server_reader_hook_last
+          hook_max = @server_reader_hook_max.to_f
+          hook_avg = enqueued.positive? ? @server_reader_hook_total.to_f / enqueued : 0.0
+          enqueue_last = @server_reader_enqueue_last
+          enqueue_max = @server_reader_enqueue_max.to_f
+          enqueue_avg = enqueued.positive? ? @server_reader_enqueue_total.to_f / enqueued : 0.0
+          process_last = @server_reader_process_last
+          process_max = @server_reader_process_max.to_f
+          process_avg = enqueued.positive? ? @server_reader_process_total.to_f / enqueued : 0.0
+          parser_last = @server_parser_last
+          parser_max = @server_parser_max.to_f
+          parser_avg = dequeued.positive? ? @server_parser_total.to_f / dequeued : 0.0
+          stats = {
+            depth: depth,
+            last_depth: @server_queue_last_depth.to_i,
+            max_depth: [@server_queue_max_depth.to_i, depth].max,
+            enqueued: enqueued,
+            dequeued: dequeued,
+            last_wait: last_wait,
+            max_wait: max_wait,
+            avg_wait: avg_wait,
+            last_wait_ms: last_wait ? (last_wait * 1000.0).round(3) : nil,
+            max_wait_ms: (max_wait * 1000.0).round(3),
+            avg_wait_ms: (avg_wait * 1000.0).round(3),
+            reader_hook_last_ms: hook_last ? (hook_last * 1000.0).round(3) : nil,
+            reader_hook_max_ms: (hook_max * 1000.0).round(3),
+            reader_hook_avg_ms: (hook_avg * 1000.0).round(3),
+            reader_enqueue_last_ms: enqueue_last ? (enqueue_last * 1000.0).round(3) : nil,
+            reader_enqueue_max_ms: (enqueue_max * 1000.0).round(3),
+            reader_enqueue_avg_ms: (enqueue_avg * 1000.0).round(3),
+            reader_process_last_ms: process_last ? (process_last * 1000.0).round(3) : nil,
+            reader_process_max_ms: (process_max * 1000.0).round(3),
+            reader_process_avg_ms: (process_avg * 1000.0).round(3),
+            parser_process_last_ms: parser_last ? (parser_last * 1000.0).round(3) : nil,
+            parser_process_max_ms: (parser_max * 1000.0).round(3),
+            parser_process_avg_ms: (parser_avg * 1000.0).round(3),
+            last_enqueue_at: @server_queue_last_enqueue_at,
+            last_dequeue_at: @server_queue_last_dequeue_at,
+            reader_status: @reader_thread&.status,
+            parser_status: @thread&.status
+          }
+          reset_server_queue_stats! if reset
+          stats
+        end
+
+        # Closes the game socket and kills the reader and parser threads.
+        #
         # @return [void]
+        # @api private
         def close
           if @socket
             @socket.close rescue nil
+            @reader_thread.kill rescue nil
             @thread.kill rescue nil
           end
         end
 
-        # Sends a string to the socket.
-        # @param str [String] the string to send.
-        # @return [void]
+        # Writes a string to the game server socket.
+        #
+        # Thread-safe via mutex. Silently absorbs fatal connection errors
+        # so callers (scripts) are not killed by a broken server link.
+        #
+        # @param str [String] the raw command to send upstream
+        # @return [true, nil] true when written; nil on connection error
         def _puts(str)
           @mutex.synchronize do
             @socket.puts(str)
           end
+          true
         rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ECONNABORTED, IOError => e
           Lich.log "error: _puts: #{e}\n\t#{e.backtrace.first}"
           nil
         end
 
-        # Sends a formatted string to the client.
-        # @param str [String] the string to send.
+        # Sends a command to the game server and logs it to the client buffer.
+        #
+        # Records the command in $_CLIENTBUFFER_, echoes to the user unless the script is silent,
+        # updates $_LASTUPSTREAM_, and forwards to the game via _puts.
+        #
+        # @param str [String] the command to send (without command prefix)
         # @return [void]
+        # @api private
         def puts(str)
           if Script.current&.file_name
             script_name = "#{Script.current.custom? ? 'custom/' : ''}#{Script.current&.name}"
@@ -354,57 +779,197 @@ module Lich
           $_LASTUPSTREAM_ = "[#{script_name}]#{$SEND_CHARACTER}#{str}"
         end
 
-        # Retrieves a line from the buffer.
-        # @return [String] the retrieved line.
+        # Retrieves the next line from the main game buffer.
+        #
+        # @return [String, nil] the next buffered server line, or nil when buffer is empty
+        # @api private
         def gets
           @buffer.gets
         end
 
+        # Retrieves the next line from the testing/debug buffer.
+        #
+        # @return [String, nil] the next buffered line from _buffer, or nil when empty
+        # @api private
         def _gets
           @_buffer.gets
         end
 
-        # Starts the main thread for handling server communication.
+        # Initializes the server queue and starts the socket reader and parser threads.
+        #
         # @return [void]
+        # @api private
         def start_main_thread
-          @thread = Thread.new do
+          @server_queue = SizedQueue.new(SERVER_QUEUE_CAPACITY)
+          reset_server_queue_stats!
+          start_socket_reader_thread
+          start_server_processor_thread
+        end
+
+        # Records metrics when a server string is added to the queue.
+        #
+        # Increments enqueue count, updates queue depth and max depth, and records the timestamp.
+        #
+        # @return [nil]
+        # @api private
+        def record_server_queue_enqueue
+          @server_queue_enqueued = @server_queue_enqueued.to_i + 1
+          depth = @server_queue&.length.to_i
+          @server_queue_last_depth = depth
+          @server_queue_max_depth = depth if depth > @server_queue_max_depth.to_i
+          @server_queue_last_enqueue_at = Time.now
+          nil
+        end
+
+        # Adds a server string to the processing queue with a monotonic timestamp.
+        #
+        # @param server_string [String] the server string to queue
+        # @param enqueued_monotonic_at [Numeric] the monotonic time when enqueued
+        # @return [void]
+        # @raise [ServerQueueOverflow] if the queue exceeds SERVER_QUEUE_CAPACITY
+        # @api private
+        def enqueue_server_string(server_string, enqueued_monotonic_at)
+          @server_queue.push([server_string, enqueued_monotonic_at], true)
+          record_server_queue_enqueue
+        rescue ThreadError
+          raise ServerQueueOverflow, "game parser queue exceeded #{SERVER_QUEUE_CAPACITY} records"
+        end
+
+        # Records performance metrics for socket read and hook processing.
+        #
+        # @param hook_time [Numeric] seconds spent running SocketReadHook
+        # @param enqueue_time [Numeric] seconds spent enqueueing to server_queue
+        # @param process_time [Numeric] total seconds for the read/hook/enqueue cycle
+        # @return [nil]
+        # @api private
+        def record_server_reader_timing(hook_time:, enqueue_time:, process_time:)
+          @server_reader_hook_last = hook_time
+          @server_reader_hook_total = @server_reader_hook_total.to_f + hook_time.to_f
+          @server_reader_hook_max = hook_time if hook_time.to_f > @server_reader_hook_max.to_f
+
+          @server_reader_enqueue_last = enqueue_time
+          @server_reader_enqueue_total = @server_reader_enqueue_total.to_f + enqueue_time.to_f
+          @server_reader_enqueue_max = enqueue_time if enqueue_time.to_f > @server_reader_enqueue_max.to_f
+
+          @server_reader_process_last = process_time
+          @server_reader_process_total = @server_reader_process_total.to_f + process_time.to_f
+          @server_reader_process_max = process_time if process_time.to_f > @server_reader_process_max.to_f
+          nil
+        end
+
+        # Records metrics when a server string is removed from the queue.
+        #
+        # Increments dequeue count, updates queue depth, and calculates queue wait time
+        # if a monotonic timestamp was provided.
+        #
+        # @param enqueued_monotonic_at [Numeric, nil] the monotonic timestamp when enqueued
+        # @return [nil]
+        # @api private
+        def record_server_queue_dequeue(enqueued_monotonic_at = nil)
+          @server_queue_dequeued = @server_queue_dequeued.to_i + 1
+          depth = @server_queue&.length.to_i
+          @server_queue_last_depth = depth
+          @server_queue_last_dequeue_at = Time.now
+          if enqueued_monotonic_at
+            wait = Process.clock_gettime(Process::CLOCK_MONOTONIC) - enqueued_monotonic_at.to_f
+            if wait >= 0.0
+              @server_queue_last_wait = wait
+              @server_queue_total_wait = @server_queue_total_wait.to_f + wait
+              @server_queue_max_wait = wait if wait > @server_queue_max_wait.to_f
+            end
+          end
+          nil
+        end
+
+        # Records performance metrics for XML parsing and processing.
+        #
+        # @param parse_time [Numeric] seconds spent parsing/processing the server string
+        # @return [nil]
+        # @api private
+        def record_server_parser_timing(parse_time)
+          @server_parser_last = parse_time
+          @server_parser_total = @server_parser_total.to_f + parse_time.to_f
+          @server_parser_max = parse_time if parse_time.to_f > @server_parser_max.to_f
+          nil
+        end
+
+        # Extracts a server string and its monotonic timestamp from a queue item.
+        #
+        # @param item [String, Array] either a server string or a 2-element array of [string, monotonic_time]
+        # @return [Array(String, Numeric, nil)] a 2-element array of [server_string, monotonic_time_or_nil]
+        # @api private
+        def unwrap_server_queue_item(item)
+          if item.is_a?(Array) && item.length == 2 && item[1].is_a?(Numeric)
+            item
+          else
+            [item, nil]
+          end
+        end
+
+        # Starts the background thread that reads lines from the game socket and enqueues them.
+        #
+        # Handles socket timeouts, connection errors, and stream desync detection. Records
+        # performance metrics and runs SocketReadHook callbacks on each line received.
+        #
+        # @return [void]
+        # @api private
+        def start_socket_reader_thread
+          @reader_thread = Thread.new do
             consecutive_timeouts = 0
-            max_consecutive_timeouts = 3 # Allow 3 timeouts before giving up
+            max_consecutive_timeouts = MAX_CONSECUTIVE_READ_TIMEOUTS
 
             begin
               while true
                 begin
-                  # Try to read from socket with timeout
-                  server_string = @socket.gets
+                  server_string = read_server_string
 
-                  # Successfully received data - reset timeout counter
+                  if server_string.equal?(READ_TIMEOUT)
+                    raise IO::TimeoutError, "no game data for #{READ_TIMEOUT_SECONDS} seconds"
+                  end
+
                   consecutive_timeouts = 0
 
                   # Break if socket closed (gets returns nil)
-                  break if server_string.nil?
-
-                  @last_recv = Time.now
-                  @_buffer.update(server_string) if defined?(TESTING) && TESTING
-
-                  begin
-                    process_server_string(server_string)
-                  rescue StandardError => e
-                    log_error("Error processing server string", e)
+                  if server_string.nil?
+                    @remote_eof = true
+                    record_shutdown_reason(:game_eof, source: :game_reader)
+                    break
                   end
-                rescue Errno::ETIMEDOUT, Errno::EWOULDBLOCK, IO::TimeoutError => timeout_error
-                  # Socket read timed out - this is expected if server is quiet
+
+                  reader_process_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                  received_at = Time.now
+                  monotonic_received_at = reader_process_started
+                  @last_recv = received_at
+                  @_buffer.update(server_string) if defined?(TESTING) && TESTING
+                  hook_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                  Lich::Common::SocketReadHook.run(
+                    server_string,
+                    received_at: received_at,
+                    monotonic_received_at: monotonic_received_at
+                  ) if defined?(Lich::Common::SocketReadHook)
+                  hook_finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                  enqueue_started = hook_finished
+                  enqueue_server_string(server_string, enqueue_started)
+                  enqueue_finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                  record_server_reader_timing(
+                    hook_time: hook_finished - hook_started,
+                    enqueue_time: enqueue_finished - enqueue_started,
+                    process_time: enqueue_finished - reader_process_started
+                  )
+                rescue Errno::ETIMEDOUT, Errno::EWOULDBLOCK, IO::TimeoutError
                   consecutive_timeouts += 1
 
-                  Lich.log "Socket read timeout #{consecutive_timeouts}/#{max_consecutive_timeouts} (no data for 30s)"
+                  shutdown_log.info("socket read timeout #{consecutive_timeouts}/#{max_consecutive_timeouts} (no game data for #{READ_TIMEOUT_SECONDS}s)")
 
                   if consecutive_timeouts >= max_consecutive_timeouts
-                    Lich.log "Too many consecutive timeouts, connection may be dead"
-                    raise timeout_error # Let the outer rescue handle it
+                    total_timeout = total_read_timeout_seconds(max_consecutive_timeouts)
+                    shutdown_log.warning("game connection timed out after #{max_consecutive_timeouts} consecutive read timeouts (#{total_timeout}s)")
+                    raise IO::TimeoutError, "no game data for #{total_timeout} seconds"
                   end
 
                   # Check if socket is still alive
                   if @socket.closed?
-                    Lich.log "Socket is closed, exiting thread"
+                    shutdown_log.info("game socket is closed; exiting server thread")
                     break
                   end
 
@@ -413,31 +978,92 @@ module Lich
                   retry
                 rescue Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED => conn_error
                   # Connection was reset/broken - these are fatal
-                  Lich.log "Connection error: #{conn_error.class} - #{conn_error.message}"
+                  shutdown_log.info("connection error: #{conn_error.class} - #{conn_error.message}")
                   raise conn_error
                 end
               end
             rescue StandardError => e
+              if intentional_shutdown_close_error?(e)
+                shutdown_log.info("server thread exiting after orderly user shutdown")
+                next
+              end
+
               # Handle any other errors
               should_continue = handle_thread_error(e)
-
               # Only retry if handle_thread_error says it's safe and socket is still open
-              if should_continue && !@socket.closed? && !$_CLIENT_.closed?
-                Lich.log "Retrying server thread after error..."
+              if should_continue && !@socket.closed? && $_CLIENT_.alive?
+                shutdown_log.debug("retrying server thread after error")
                 consecutive_timeouts = 0 # Reset counter on retry
                 sleep 1 # Brief pause before retry
                 retry
               else
-                Lich.log "Server thread exiting due to unrecoverable error"
+                reason = shutdown_reason_for_thread_exit(e)
+                record_shutdown_reason(reason, source: :game_reader, detail: e.class)
+                shutdown_log.info("server thread exiting due to #{reason}")
               end
+            ensure
+              @server_queue << nil if @server_queue && @thread&.alive?
             end
           end
+          @reader_thread.name = 'game socket reader' if @reader_thread.respond_to?(:name=)
+          @reader_thread.priority = 5
+        end
+
+        # Starts the background thread that dequeues server strings and processes them.
+        #
+        # Pops items from server_queue, parses XML, and runs downstream hooks.
+        #
+        # @return [void]
+        # @api private
+        def start_server_processor_thread
+          @thread = Thread.new do
+            begin
+              loop do
+                item = @server_queue.pop
+                break if item.nil?
+
+                server_string, enqueued_monotonic_at = unwrap_server_queue_item(item)
+                record_server_queue_dequeue(enqueued_monotonic_at)
+                parse_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                process_server_string(server_string)
+                record_server_parser_timing(Process.clock_gettime(Process::CLOCK_MONOTONIC) - parse_started)
+              end
+            rescue StandardError => e
+              log_error("Error processing server string", e)
+              record_shutdown_reason(:unrecoverable_game_thread_error, source: :game_parser, detail: e.class)
+              @socket.close rescue nil
+            end
+          end
+          @thread.name = 'game parser' if @thread.respond_to?(:name=)
           @thread.priority = 4
         end
 
-        # Processes the server string received from the socket.
-        # @param server_string [String] the string received from the server.
+        # Reads one game-server line after an explicit readiness wait.
+        #
+        # Ruby does not reliably surface SO_RCVTIMEO through TCPSocket#gets on
+        # every supported platform. Waiting with IO.select makes the reader's
+        # no-data timeout deterministic while preserving gets-based EOF handling.
+        #
+        # @param read_timeout [Numeric] seconds to wait for game socket data
+        # @return [String, nil, Object] a server line, nil for EOF, or READ_TIMEOUT
+        def read_server_string(read_timeout: READ_TIMEOUT_SECONDS)
+          return READ_TIMEOUT unless IO.select([@socket], nil, nil, read_timeout)
+
+          @socket.gets
+        end
+
+        # @param timeout_count [Integer] number of consecutive read waits
+        # @return [Integer] total elapsed no-data seconds represented by count
+        def total_read_timeout_seconds(timeout_count = MAX_CONSECUTIVE_READ_TIMEOUTS)
+          READ_TIMEOUT_SECONDS * timeout_count
+        end
+
+        # Main entry point for processing a server string: validates game state, cleans
+        # the string, parses XML, triggers downstream hooks, and manages autostart.
+        #
+        # @param server_string [String] the raw server string to process
         # @return [void]
+        # @api private
         def process_server_string(server_string)
           $cmd_prefix = String.new if server_string =~ /^\034GSw/
 
@@ -481,8 +1107,15 @@ module Lich
           process_downstream_hooks(server_string)
         end
 
-        # Handles the autostart process for the game.
+        # Executes the autostart sequence: checks for version updates, syncs script repos,
+        # and launches the autostart script.
+        #
+        # Runs once when the first <app char.../> tag is received. Version check and repo sync
+        # run in background threads to avoid blocking XML parsing. Sets @@autostarted to true
+        # when complete.
+        #
         # @return [void]
+        # @api private
         def handle_autostart
           if defined?(LICH_VERSION) && defined?(Lich.core_updated_with_lich_version) &&
              Gem::Version.new(LICH_VERSION) > Gem::Version.new(Lich.core_updated_with_lich_version)
@@ -517,8 +1150,14 @@ module Lich
           display_ruby_warning if defined?(RECOMMENDED_RUBY) && Gem::Version.new(RUBY_VERSION) < Gem::Version.new(RECOMMENDED_RUBY)
         end
 
-        # Displays a warning if the Ruby version is below the recommended version.
+        # Displays a formatted terminal table warning if the current Ruby version is below
+        # the recommended minimum.
+        #
+        # Called from handle_autostart if a RECOMMENDED_RUBY version is defined and the
+        # running version is older.
+        #
         # @return [void]
+        # @api private
         def display_ruby_warning
           ruby_warning = Terminal::Table.new
           ruby_warning.title = "Ruby Recommended Version Warning"
@@ -542,8 +1181,13 @@ module Lich
           end
         end
 
-        # Starts CLI scripts based on command line arguments.
+        # Launches scripts passed via the --start-scripts command-line argument.
+        #
+        # Parses comma-separated script names and calls Script.start on each. Sets @cli_scripts
+        # to true to prevent repeated launches. Logs the character login info.
+        #
         # @return [void]
+        # @api private
         def start_cli_scripts
           if (arg = ARGV.find { |a| a =~ /^\-\-start\-scripts=/ })
             arg.sub('--start-scripts=', '').split(',').each do |script_name|
@@ -554,76 +1198,120 @@ module Lich
           Lich.log("info: logged in as #{XMLData.game}:#{XMLData.name}")
         end
 
-        # Processes XML data received from the server.
-        # @param server_string [String] the XML data to process.
+        # Parses the server string as XML using Ox in SAX mode and updates XMLData.
+        #
+        # Handles stream desync detection (truncated fragments), repairs malformed attributes
+        # (nested quotes, settingsInfo bugs), and splits the parsed output into lines for
+        # downstream processing. Calls game-specific processing and fires Script hooks.
+        #
+        # @param server_string [String] the raw or partially pre-cleaned server string
         # @return [void]
+        # @api private
         def process_xml_data(server_string)
           begin
-            # Check for valid XML
-            REXML::Document.parse_stream("<root>#{server_string}</root>", XMLData)
-          rescue => e
-            case e.to_s
-            # Missing attribute equal: <s> - in dynamic dialogs with a single apostrophe for possessive 'Tsetem's Items'
-            when /nested single quotes|nested double quotes|Missing attribute equal: <[^>]+>|Invalid attribute name: <[^>]+>/
-              original_server_string = server_string.dup
-              server_string = XMLCleaner.clean_nested_quotes(server_string)
-              if original_server_string != server_string
-                retry
-              else
-                handle_xml_error(server_string, e)
-                XMLData.reset
-                return
-              end
-            when /invalid characters/
-              server_string = XMLCleaner.fix_invalid_characters(server_string)
-              retry
-            when /Missing end tag for 'd'/
-              server_string = XMLCleaner.fix_xml_tags(server_string)
-              retry
-            else
-              handle_xml_error(server_string, e)
-              XMLData.reset
-              return
-            end
+            # Ox is a permissive parser: it handles Simu's not-quite-XML stream
+            # without the clean/retry dance REXML required (nested quotes, missing
+            # 'd' end tags, etc. are tolerated rather than raised). XMLData itself
+            # implements the Ox::Sax interface, so Ox parses straight into it. No
+            # <root> wrapper needed: that was a REXML requirement (single root); Ox
+            # handles multiple top-level elements and bare text directly.
+            XMLData.sax_parse_errors.clear
+            # convert_special: false keeps Ox in bytes-land: it never decodes a
+            # numeric entity (e.g. &#8217;) into UTF-8. The five standard XML
+            # entities are decoded by XMLData#attr/#text instead. Values are left
+            # in Ox's native (ASCII-8BIT) encoding -- REXML effectively produced
+            # ASCII for this (high-byte-scrubbed) stream, so retagging to
+            # Windows-1252 was a divergence and caused entity corruption.
+            Ox.sax_parse(XMLData, server_string, convert_special: false, symbolize: false, skip: :skip_none)
+            check_stream_desync!(XMLData.sax_parse_errors)
+            repair_malformed_attributes_and_reparse(server_string)
+          rescue GameStreamDesyncError => e
+            # A truncated/desynced fragment. Ox never raises on malformed stream
+            # content -- it reports via the error callback, and check_stream_desync!
+            # promotes truncation-class errors to this exception. Log and reset
+            # rather than killing the server thread.
+            Lich.log "warning: stream desync (#{e.message}); resetting XMLData: #{server_string.inspect}"
+            XMLData.reset
+            return
           end
+
+          stripped_server = strip_xml(server_string, type: "main")
 
           # Process game-specific data using instance
           if @game_instance && Module.const_defined?(:GameLoader)
-            @game_instance.process_game_specific_data(server_string)
+            @game_instance.process_game_specific_data(server_string, stripped_server)
           end
 
           # Process downstream XML
           Script.new_downstream_xml(server_string) if defined?(Script)
 
           # Process stripped server string
-          stripped_server = strip_xml(server_string, type: 'main')
           stripped_server.split("\r\n").each do |line|
             @buffer.update(line) if defined?(TESTING) && TESTING
             Script.new_downstream(line) if defined?(Script) && !line.empty?
           end
         end
 
-        def handle_xml_error(server_string, error)
-          # Ignoring certain XML errors
-          unless error.to_s =~ /invalid byte sequence/
-            # Handle specific XML errors
-            if server_string =~ /<settingsInfo .*?space not found /
-              Lich.log "Invalid settingsInfo XML tags detected: #{server_string.inspect}"
-              server_string.sub!(/\s\bspace not found\b\s/, " client='1.0.1.28' ")
-              Lich.log "Invalid settingsInfo XML tags fixed to: #{server_string.inspect}"
-              @@settings_init_needed = true
-              return process_xml_data(server_string) # Return to retry with fixed string
-            end
-
-            $stdout.puts "error: server_thread: #{error}\n\t#{error.backtrace.join("\n\t")}"
-            Lich.log "Invalid XML detected - please report this: #{server_string.inspect}"
-            Lich.log "error: server_thread: #{error}\n\t#{error.backtrace.join("\n\t")}"
+        # Promote truncation-class Ox parse errors to GameStreamDesyncError so
+        # a desynced stream still hits the log + reset recovery path instead of
+        # being silently absorbed (see the GameStreamDesyncError comment).
+        # parse_errors is XMLData's collected Ox error-callback messages for
+        # the fragment just parsed.
+        def check_stream_desync!(parse_errors)
+          desync = parse_errors.find do |message|
+            STREAM_DESYNC_ERRORS.any? { |pattern| pattern.match?(message) }
           end
+          raise GameStreamDesyncError, desync if desync
         end
 
-        # Processes downstream hooks for the server string.
-        # @param server_string [String] the server string to process.
+        # Ox reports "no attribute value" for two repairable malformations that
+        # scatter a tag into junk attributes: the settingsInfo space-not-found
+        # server bug, and a same-quote inside a quoted value (Simu's dynamic
+        # dialogs, e.g. title='Tsetem's Items'). Both raised in REXML and were
+        # repaired in the rescue; Ox tolerates them, so drive the repair off its
+        # error report -- only the rare flagged line pays the cost. Apply the
+        # repairs; if any changed the line, drop the junk the first parse committed
+        # and parse once more, ignoring any errors on that pass so we never loop.
+        # Escaped &apos;/&quot; round-trip back to the literal char via
+        # XmlEntities.decode and the front-end's own entity decoding.
+        def repair_malformed_attributes_and_reparse(server_string)
+          return unless XMLData.sax_parse_errors.any? { |message| NO_ATTRIBUTE_VALUE_ERROR.match?(message) }
+
+          before = server_string.dup
+          fix_invalid_settings_info(server_string)
+          XMLCleaner.clean_nested_quotes(server_string)
+          return if server_string == before # nothing to repair (e.g. a genuine valueless attribute)
+
+          XMLData.reset
+          XMLData.sax_parse_errors.clear
+          Ox.sax_parse(XMLData, server_string, convert_special: false, symbolize: false, skip: :skip_none)
+        end
+
+        # The server sends a malformed <settingsInfo ... space not found .../> (an
+        # attribute with no '=') to characters that have never connected with the
+        # Wrayth/StormFront client. REXML raised on it (the rescue repaired it); Ox
+        # tolerates it and emits "no attribute value", so it is repaired from
+        # repair_malformed_attributes_and_reparse. @@settings_init_needed makes
+        # gameloader's PostLoad seed a valid client record (see settings_init_needed?
+        # and lib/common/gameloader.rb).
+        def fix_invalid_settings_info(server_string)
+          return unless server_string =~ /<settingsInfo .*?space not found /
+
+          Lich.log "Invalid settingsInfo XML tags detected: #{server_string.inspect}"
+          server_string.sub!(/\s\bspace not found\b\s/, " client='1.0.1.28' ")
+          Lich.log "Invalid settingsInfo XML tags fixed to: #{server_string.inspect}"
+          @@settings_init_needed = true
+        end
+
+        # Runs downstream hooks and sends the modified server string to connected clients.
+        #
+        # Processes room information, applies frontend-specific conversions (genie/frostbite
+        # room number formatting, GSL translation), calls game-specific room display methods,
+        # and sends to all connected detachable clients or the main client.
+        #
+        # @param server_string [String] the server string to process and transmit
         # @return [void]
+        # @api private
         def process_downstream_hooks(server_string)
           if (alt_string = DownstreamHook.run(server_string))
             process_room_information(alt_string)
@@ -647,12 +1335,22 @@ module Lich
             if Frontend.supports_gsl?
               alt_string = sf_to_wiz(alt_string)
             end
+            # Handle prefix origin sentinel if FE supports it
+            alt_string = prefix_origin_sentinel(alt_string) if Frontend.supports_sentinel?
 
             # Send to client
             send_to_client(alt_string)
           end
         end
 
+        # Detects and processes room-name style tags to trigger room display modifications.
+        #
+        # Sets @room_number_after_ready to true when a roomName style tag is detected,
+        # signaling that the next prompt should trigger game-instance room display processing.
+        #
+        # @param alt_string [String] the server string to examine
+        # @return [void]
+        # @api private
         def process_room_information(alt_string)
           if alt_string =~ /^(<pushStream id="familiar" ifClosedStyle="watching"\/>)?(?:<resource picture="\d+"\/>|<popBold\/>)?<style id="roomName"\s+\/>/
             if (Lich.display_lichid == true || Lich.display_uid == true || Lich.hide_uid_flag == true)
@@ -663,54 +1361,163 @@ module Lich
           end
         end
 
+        # Transmits a server string to all connected clients.
+        #
+        # Sends to detachable clients if any are registered and alive, otherwise sends to
+        # the main $_CLIENT_ connection.
+        #
+        # @param alt_string [String] the server string to send
+        # @return [void]
+        # @api private
         def send_to_client(alt_string)
-          if $_DETACHABLE_CLIENT_
-            begin
-              $_DETACHABLE_CLIENT_.write(alt_string)
-            rescue
-              $_DETACHABLE_CLIENT_.close rescue nil
-              $_DETACHABLE_CLIENT_ = nil
-              respond "--- Lich: error: client_thread: #{$!}"
-              respond $!.backtrace.first
-              Lich.log "error: client_thread: #{$!}\n\t#{$!.backtrace.join("\n\t")}"
-            end
+          detachable_clients = $_DETACHABLE_CLIENT_REGISTRY_&.snapshot || []
+          detachable_clients = [$_DETACHABLE_CLIENT_] if detachable_clients.empty? && $_DETACHABLE_CLIENT_
+          if !detachable_clients.empty?
+            detachable_clients.each { |client| client.write(alt_string) if client.alive? }
+          elsif $_CLIENT_
+            $_CLIENT_.write(alt_string)
+          end
+        end
+
+        # Evaluates a thread error to determine whether the server thread should retry.
+        #
+        # Logs recognized connection disruptions (timeouts, resets) at info level; logs
+        # other errors at error level with backtrace. Timeouts after max retries, connection
+        # errors, stream desync, and queue overflow are fatal (no retry). Unknown errors retry
+        # if the socket/client are still alive.
+        #
+        # @param error [StandardError] the error to evaluate
+        # @return [Boolean] true if a retry is safe, false if fatal
+        # @api private
+        def handle_thread_error(error)
+          if recognized_connection_disruption?(error)
+            shutdown_log.info("server_thread: #{connection_disruption_log_message(error)}")
+            shutdown_log.debug("server_thread backtrace: #{error.backtrace.join("\n\t")}") if error.backtrace
           else
-            begin
-              $_CLIENT_.write(alt_string)
-            rescue Errno::EPIPE, IOError => e
-              Lich.log "error: client_thread: #{e}\n\t#{e.backtrace.join("\n\t")}"
+            shutdown_log.error("server_thread: #{error}\n\t#{Array(error.backtrace).join("\n\t")}")
+          end
+          sleep 0.2
+
+          case error
+          when Errno::ETIMEDOUT, Errno::EWOULDBLOCK, IO::TimeoutError
+            # Timeout errors reach this outer handler only after the inner
+            # reader loop has exhausted its consecutive-timeout threshold.
+            shutdown_log.info("game timeout - will not retry")
+            return false
+          when Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED
+            # Connection errors are fatal
+            shutdown_log.info("connection error - will not retry")
+            return false
+          when GameStreamDesyncError
+            shutdown_log.info("game stream desync detected - will not retry")
+            return false
+          when ServerQueueOverflow
+            shutdown_log.info("game parser queue overflow - will not retry")
+            return false
+          else
+            # Check if socket/client are closed or if it's a known fatal error
+            if !$_CLIENT_.alive? || @socket.closed?
+              shutdown_log.info("client or socket closed - will not retry")
+              return false
+            elsif error.to_s =~ /invalid argument|A connection attempt failed|An existing connection was forcibly closed|An established connection was aborted by the software in your host machine./i
+              shutdown_log.info("fatal error pattern detected - will not retry")
+              return false
+            else
+              shutdown_log.debug("unknown server thread error - will attempt retry")
+              return true
             end
           end
         end
 
-        def handle_thread_error(error)
-          Lich.log "error: server_thread: #{error}\n\t#{error.backtrace.join("\n\t")}"
-          $stdout.puts "error: server_thread: #{error}\n\t#{error.backtrace.slice(0..10).join("\n\t")}"
-          sleep 0.2
-
-          # Determine if we should retry
+        # Maps an error to a shutdown reason symbol for shutdown coordination.
+        #
+        # @param error [StandardError] the error that caused thread exit
+        # @return [Symbol] one of :game_timeout, :connection_reset, :connection_pipe,
+        #   :connection_aborted, :game_stream_desync, or :unrecoverable_game_thread_error
+        # @api private
+        def shutdown_reason_for_thread_exit(error)
           case error
           when Errno::ETIMEDOUT, Errno::EWOULDBLOCK, IO::TimeoutError
-            # Timeout errors are potentially recoverable if we haven't seen too many
-            Lich.log "Timeout error detected - may attempt retry"
-            return true
-          when Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED
-            # Connection errors are fatal
-            Lich.log "Fatal connection error - will not retry"
-            return false
+            :game_timeout
+          when Errno::ECONNRESET
+            :connection_reset
+          when Errno::EPIPE
+            :connection_pipe
+          when Errno::ECONNABORTED
+            :connection_aborted
+          when GameStreamDesyncError
+            :game_stream_desync
+          when ServerQueueOverflow
+            :unrecoverable_game_thread_error
           else
-            # Check if socket/client are closed or if it's a known fatal error
-            if $_CLIENT_.closed? || @socket.closed?
-              Lich.log "Client or socket closed - will not retry"
-              return false
-            elsif error.to_s =~ /invalid argument|A connection attempt failed|An existing connection was forcibly closed|An established connection was aborted by the software in your host machine./i
-              Lich.log "Fatal error pattern detected - will not retry"
-              return false
-            else
-              Lich.log "Unknown error - will attempt retry"
-              return true
-            end
+            :unrecoverable_game_thread_error
           end
+        end
+
+        # Records the shutdown reason with ShutdownCoordinator for orderly exit handling.
+        #
+        # @param reason [Symbol] the shutdown reason (e.g., :game_timeout)
+        # @param source [Symbol] the source thread (e.g., :game_reader, :game_parser)
+        # @param detail [Class, nil] optional exception class for context
+        # @return [void]
+        # @api private
+        def record_shutdown_reason(reason, source:, detail: nil)
+          return unless defined?(Lich::Common::ShutdownCoordinator)
+
+          Lich::Common::ShutdownCoordinator.request(reason: reason, source: source, detail: detail)
+        rescue StandardError => e
+          shutdown_log.warning("failed to record shutdown reason #{reason.inspect}: #{e.class}: #{e.message}")
+        end
+
+        # Returns the logger for shutdown-related messages.
+        #
+        # @return [Lich::Common::ShutdownLog] the shutdown logger
+        # @api private
+        def shutdown_log
+          Lich::Common::ShutdownLog
+        end
+
+        # Detects whether an error is a normal consequence of orderly user shutdown.
+        #
+        # Returns true if the error is a stream-closed error (EBADF, "stream closed", etc.)
+        # and ShutdownCoordinator reports an orderly exit is in progress and the socket is closed.
+        #
+        # @param error [StandardError] the error to evaluate
+        # @return [Boolean] true if this is a normal shutdown error
+        # @api private
+        def intentional_shutdown_close_error?(error)
+          return false unless defined?(Lich::Common::ShutdownCoordinator)
+          return false unless Lich::Common::ShutdownCoordinator.orderly_user_exit?
+          return false unless @socket&.closed?
+
+          error.is_a?(Errno::EBADF) ||
+            error.to_s =~ /stream closed in another thread|closed stream|bad file descriptor/i
+        end
+
+        # Tests whether an error represents a known connection disruption.
+        #
+        # @param error [StandardError] the error to test
+        # @return [Boolean] true for timeouts, resets, aborts, or stream desync
+        # @api private
+        def recognized_connection_disruption?(error)
+          error.is_a?(Errno::ETIMEDOUT) ||
+            error.is_a?(Errno::EWOULDBLOCK) ||
+            error.is_a?(IO::TimeoutError) ||
+            error.is_a?(Errno::ECONNRESET) ||
+            error.is_a?(Errno::EPIPE) ||
+            error.is_a?(Errno::ECONNABORTED) ||
+            error.is_a?(GameStreamDesyncError)
+        end
+
+        # Formats a connection disruption error for logging.
+        #
+        # @param error [StandardError] the error to format
+        # @return [String] a log message with error class and first line of message
+        # @api private
+        def connection_disruption_log_message(error)
+          return "GameStreamDesyncError: #{error.message.lines.first&.strip}" if error.is_a?(GameStreamDesyncError)
+
+          "#{error.class}: #{error.message}"
         end
 
         protected
@@ -722,11 +1529,23 @@ module Lich
     end
   end
 
+  # Gemstone game module
   module Gemstone
     include Lich
 
+    # Base class for character status tracking
     class CharacterStatus
       class << self
+        # Sets the character's injury display mode (wounds, scars, or both).
+        #
+        # Sends the _injury command and waits up to 7.5 seconds for XMLData.injury_mode
+        # to reflect the change.
+        #
+        # @param mode [String] 'scar'/'scars', 'wound'/'wounds', or 'both' (default)
+        # @return [void]
+        # @raise [ArgumentError] if mode is not one of the recognized values
+        # @example
+        #   Lich::Gemstone::CharacterStatus.fix_injury_mode('scar')
         def fix_injury_mode(mode = 'both') # Default mode 'both' handles wounds (precedence) then scars
           case mode
           when 'scar', 'scars'
@@ -749,6 +1568,12 @@ module Lich
           end
         end
 
+        # Handles calls to unknown injury area methods on CharacterStatus.
+        #
+        # Returns a formatted error message listing valid areas.
+        #
+        # @return [nil] (the result of the Lich::Messaging._respond call)
+        # @api private
         def method_missing(_method_name = nil)
           result = Lich::Messaging.mono(Lich::Messaging.msg_format("bold", "#{self.name.split('::').last}: Invalid area, try one of these: arms, limbs, torso, #{XMLData.injuries.keys.join(', ')}"))
           # the _respond method used in Lich::Messaging returns nil upon success
@@ -757,6 +1582,7 @@ module Lich
       end
     end
 
+    # Gemstone-specific game instance
     class GameInstance < GameBase::GameInstance::Base
       def clean_serverstring(server_string)
         # The Rift, Scatter is broken...
@@ -809,15 +1635,32 @@ module Lich
         "https://gswiki.play.net/Lich:Software/Installation"
       end
 
-      def process_game_specific_data(server_string)
-        infomon_serverstring = server_string.dup
-        Infomon::XMLParser.parse(infomon_serverstring)
-        stripped_infomon_serverstring = strip_xml(infomon_serverstring, type: 'infomon')
-        stripped_infomon_serverstring.split("\r\n").each do |line|
+      # Parses GemStone XML and line data for Infomon (character status tracking).
+      #
+      # Passes raw server_string to Infomon::XMLParser and stripped lines to Infomon::Parser.
+      #
+      # @param server_string [String] the raw XML server string
+      # @param stripped_server [String, nil] the server string with XML removed
+      # @return [void]
+      # @api private
+      def process_game_specific_data(server_string, stripped_server = nil)
+        # Infomon's XML-level parse needs the raw string; its line parser reuses
+        # the text already stripped by process_xml_data (XMLParser.parse does not
+        # mutate, so no dup or second strip_xml is needed).
+        Infomon::XMLParser.parse(server_string)
+        stripped_server.split("\r\n").each do |line|
           Infomon::Parser.parse(line) unless line.empty?
         end
       end
 
+      # Injects Lich room ID and/or UID into the GemStone room-name line.
+      #
+      # Reads the GemStone room UID from the title, looks up the Lich room ID, and
+      # substitutes based on display settings (display_lichid, display_uid).
+      #
+      # @param alt_string [String] the room-name server string, modified in place
+      # @return [String] the modified string
+      # @api private
       def modify_room_display(alt_string)
         uid_from_string = alt_string.match(/] \((?<uid>\d+)\)/)
         if uid_from_string.nil?
@@ -837,43 +1680,24 @@ module Lich
         alt_string
       end
 
+      # Prepends the shared exit / StringProc lines, and mirrors the exits into
+      # the GemStone room window on frontends that host one (once per new room).
+      # @param alt_string [String] the server string being rewritten
+      # @return [String] the rewritten server string
       def process_room_display(alt_string)
-        if Lich.display_stringprocs == true
-          room_exits = []
-          Map.current.wayto.each do |key, value|
-            # Don't include cardinals / up/down/out (usually just climb/go)
-            if value.is_a?(StringProc)
-              if Map.current.timeto[key].is_a?(Numeric) || (Map.current.timeto[key].is_a?(StringProc) && Map.current.timeto[key].call.is_a?(Numeric))
-                room_exits << "<d cmd=';go2 #{key}'>#{Map[key].title.first.gsub(/\[|\]/, '')}#{Lich.display_lichid ? ('(' + Map[key].id.to_s + ')') : ''}</d>"
-              end
-            end
-          end
-          alt_string = "StringProcs: #{room_exits.join(', ')}\r\n#{alt_string}" unless room_exits.empty?
-        end
+        exits = room_exit_entries
+        alt_string = prepend_room_lines(alt_string, room_stringproc_entries, exits)
 
-        if Lich.display_exits == true
-          room_exits = []
-          Map.current.wayto.each do |_key, value|
-            # Don't include cardinals / up/down/out (usually just climb/go)
-            next if value.to_s =~ /^(?:o|d|u|n|ne|e|se|s|sw|w|nw|out|down|up|north|northeast|east|southeast|south|southwest|west|northwest)$/
-            unless value.is_a?(StringProc)
-              room_exits << "<d cmd='#{value.dump[1..-2]}'>#{value.dump[1..-2]}</d>"
-            end
-          end
-
-          unless room_exits.empty?
-            alt_string = "Room Exits: #{room_exits.join(', ')}\r\n#{alt_string}"
-            if %w[wrayth stormfront].include?(Frontend.client) && Map.current.id != Game.instance_variable_get(:@last_id_shown_room_window)
-              alt_string = "#{alt_string}<pushStream id='room' ifClosedStyle='watching'/>Room Exits: #{room_exits.join(', ')}\r\n<popStream/>\r\n"
-              Game.instance_variable_set(:@last_id_shown_room_window, Map.current.id)
-            end
-          end
+        if !exits.empty? && Frontend.supports_room_window? && Map.current.id != Game.instance_variable_get(:@last_id_shown_room_window)
+          alt_string = "#{alt_string}<pushStream id='room' ifClosedStyle='watching'/>Room Exits: #{exits.join(', ')}\r\n<popStream/>\r\n"
+          Game.instance_variable_set(:@last_id_shown_room_window, Map.current.id)
         end
 
         alt_string
       end
     end
 
+    # Game class for Gemstone
     class Game < GameBase::Game
       class << self
         def initialize
@@ -887,10 +1711,18 @@ module Lich
     end
   end
 
+  # DragonRealms game module
   module DragonRealms
     include Lich
 
+    # DragonRealms-specific game instance
     class GameInstance < GameBase::GameInstance::Base
+      # Cleans a DragonRealms server string: buffers split room components, removes
+      # superfluous tags, fixes encoding, and handles combat/atmospheric streams.
+      #
+      # @param server_string [String] the server string to clean
+      # @return [String, nil] the cleaned server string, or nil if buffering a split component
+      # @api private
       def clean_serverstring(server_string)
         # Buffer split room objs components (server sends "...wait N seconds." separately)
         should_skip, server_string = buffer_room_objs(server_string)
@@ -921,6 +1753,12 @@ module Lich
         server_string
       end
 
+      # Handles DragonRealms combat stream nesting: closes pushStream/combat with popStream
+      # when certain end tags are encountered.
+      #
+      # @param server_string [String] the server string, modified in place
+      # @return [String] the processed server string
+      # @api private
       def handle_combat_tags(server_string)
         if @combat_count > 0
           @end_combat_tags.each do |tag|
@@ -938,6 +1776,12 @@ module Lich
         server_string
       end
 
+      # Handles DragonRealms atmospheric stream state: prepends popStream when atmospherics
+      # flag is set, and manages broken familiar/pet-pig tags.
+      #
+      # @param server_string [String] the server string, modified in place
+      # @return [String] the processed server string
+      # @api private
       def handle_atmospherics(server_string)
         if @atmospherics
           @atmospherics = false
@@ -955,75 +1799,163 @@ module Lich
         server_string
       end
 
+      # Returns the DragonRealms Lich installation documentation URL.
+      #
+      # @return [String] the GitHub wiki URL for Lich installation
+      # @api private
       def get_documentation_url
         "https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich"
       end
 
-      def process_game_specific_data(server_string)
+      # Parses DragonRealms XML and line data for DRParser (dynamic data display).
+      #
+      # Passes raw server_string to DRParser for inline modifications.
+      #
+      # @param server_string [String] the raw XML server string, modified in place by the parser
+      # @return [void]
+      # @api private
+      def process_game_specific_data(server_string, _stripped_server = nil)
         # Parse directly to allow inline modifications (e.g., inline exp display)
         # The parser modifies server_string in place via line.replace()
         DRParser.parse(server_string)
       end
 
+      # Rewrites the room-name line (the "<style id=\"roomName\" />[Title]" chunk) on its way
+      # to the client. Two independent concerns:
+      #   1. When the player wants the room id/UID in the title (";display roomid title|both"),
+      #      inject Lich's configured id/UID before the closing bracket. The game-supplied
+      #      RealID (present only under the ShowRoomID flag) is preserved GemStone-style so
+      #      ";display lichid" alone reads "[Town Square - 1234] (230008)" - matching how
+      #      Lich::Gemstone::GameInstance#modify_room_display already behaves. It is stripped
+      #      only when Lich is rendering its own UID instead ({#suppress_game_realid?}), so a
+      #      ";display uid" title reads "[Town Square - 1234 - (u230008)]" with no duplicate.
+      #   2. Otherwise preserve the historical behavior of hiding the game's inline RealID when
+      #      the player asked to (";display uid" or ";display flaguid").
+      # Edits only this outbound client string; XMLData (and therefore scripts) are untouched,
+      # because process_xml_data has already parsed the inbound stream before this runs.
+      # @param alt_string [String] the outbound room-name server string, modified in place
+      # @return [String] the rewritten string
+      # @see #suppress_game_realid?
+      # @see Lich::Gemstone::GameInstance#modify_room_display
       def modify_room_display(alt_string)
-        if Lich.display_uid == true
-          alt_string.sub!(/] \((?:\d+|\*\*)\)/) { "]" }
-        elsif Lich.hide_uid_flag == true
+        if room_id_in_title?
+          alt_string.sub!(/] \((?:\d+|\*\*)\)/) { "]" } if suppress_game_realid?
+          room_number = room_number_display
+          alt_string.sub!(']') { " - #{room_number}]" } unless room_number.empty?
+        elsif suppress_game_realid?
           alt_string.sub!(/] \((?:\d+|\*\*)\)/) { "]" }
         end
 
         alt_string
       end
 
+      # Prepends the shared exit / StringProc lines, then renders the optional DragonRealms
+      # room id/UID. The "Room Number:" line below the room appears for the "line" and "both"
+      # placements (honoring the mono toggle). The room-window subtitle (room-window front-ends
+      # only) reflects Lich's id/UID for every placement, since the window title bar is itself a
+      # title surface. It also re-appends the game-supplied RealID ({#synthesized_realid_suffix})
+      # whenever the game displayed it (ShowRoomID ON) - independent of ";display roomid", which
+      # governs only where Lich's own id is placed, not whether the game's RealID is shown. So a
+      # ShowRoomID-on room shows the RealID in the window title under every placement, matching
+      # the game's own behavior and the RealID the game already leaves on the room-name line for
+      # the "line"/nil placements. The RealID is synthesized from the authoritative nav UID
+      # (XMLData.room_id) rather than copied from the inbound string, because the subtitle is
+      # rebuilt from the (UID-free) XMLData.room_title; for a complete arrival nav and the
+      # room-name literal agree, so the two surfaces read identically. The inline room-name
+      # injection for the "title"/"both" placements is handled separately in #modify_room_display.
+      # @param alt_string [String] the server string being rewritten
+      # @return [String] the rewritten server string
       def process_room_display(alt_string)
-        if Lich.display_stringprocs == true
-          room_exits = []
-          Map.current.wayto.each do |key, value|
-            # Don't include cardinals / up/down/out (usually just climb/go)
-            if value.is_a?(StringProc)
-              if Map.current.timeto[key].is_a?(Numeric) || (Map.current.timeto[key].is_a?(StringProc) && Map.current.timeto[key].call.is_a?(Numeric))
-                room_exits << "<d cmd=';go2 #{key}'>#{Map[key].title.first.gsub(/\[|\]/, '')}#{Lich.display_lichid ? ('(' + Map[key].id.to_s + ')') : ''}</d>"
-              end
-            end
-          end
-          alt_string = "StringProcs: #{room_exits.join(', ')}\r\n#{alt_string}" unless room_exits.empty?
-        end
+        alt_string = prepend_room_lines(alt_string, room_stringproc_entries, room_exit_entries)
 
-        if Lich.display_exits == true
-          room_exits = []
-          Map.current.wayto.each do |_key, value|
-            # Don't include cardinals / up/down/out (usually just climb/go)
-            next if value.to_s =~ /^(?:o|d|u|n|ne|e|se|s|sw|w|nw|out|down|up|north|northeast|east|southeast|south|southwest|west|northwest)$/
-            unless value.is_a?(StringProc)
-              room_exits << "<d cmd='#{value.dump[1..-2]}'>#{value.dump[1..-2]}</d>"
-            end
-          end
-
-          unless room_exits.empty?
-            alt_string = "Room Exits: #{room_exits.join(', ')}\r\n#{alt_string}"
-          end
-        end
-
-        # DR-specific room number display
-        room_number = ""
-        room_number += "#{Map.current.id}" if Lich.display_lichid
-        room_number += " - " if Lich.display_lichid && Lich.display_uid
-        room_number += "(#{XMLData.room_id == 0 ? "**" : "u#{XMLData.room_id}"})" if Lich.display_uid
-
+        room_number = room_number_display
         unless room_number.empty?
-          alt_string = "Room Number: #{room_number}\r\n#{alt_string}"
-          if %w[wrayth stormfront].include?(Frontend.client)
-            alt_string = "<streamWindow id='main' title='Story' subtitle=\" - [#{XMLData.room_title[2..-3]} - #{room_number}]\" location='center' target='drop'/>\r\n#{alt_string}"
-            alt_string = "<streamWindow id='room' title='Room' subtitle=\" - [#{XMLData.room_title[2..-3]} - #{room_number}]\" location='center' target='drop' ifClosed='' resident='true'/>#{alt_string}"
+          if room_id_in_line?
+            alt_string = "#{room_styled("Room Number: #{room_number}")}\r\n#{alt_string}"
+          end
+          if Frontend.supports_room_window?
+            subtitle = " - [#{XMLData.room_title[2..-3]} - #{room_number}]#{synthesized_realid_suffix}"
+            alt_string = "<streamWindow id='main' title='Story' subtitle=\"#{subtitle}\" location='center' target='drop'/>\r\n#{alt_string}"
+            alt_string = "<streamWindow id='room' title='Room' subtitle=\"#{subtitle}\" location='center' target='drop' ifClosed='' resident='true'/>#{alt_string}"
           end
         end
 
         alt_string
+      end
+
+      private
+
+      # Builds the DragonRealms room id / RealID string chosen via ";display lichid" and
+      # ";display uid", e.g. "1234 - (u230008)", "1234", or "(u230008)". The lich id is omitted
+      # (rather than raising) when the current room is unmapped, and the UID renders as "(**)"
+      # for a no-UID room (XMLData.room_id.zero?). Shared by #modify_room_display (title
+      # injection) and #process_room_display (below-room line and window subtitle) so the two
+      # never drift in format.
+      # @return [String] the formatted id/UID, or "" when there is nothing to show
+      def room_number_display
+        segments = []
+        if Lich.display_lichid
+          current = Map.current
+          segments << current.id.to_s if current
+        end
+        segments << (XMLData.room_id.zero? ? "(**)" : "(u#{XMLData.room_id})") if Lich.display_uid
+        segments.join(" - ")
+      end
+
+      # @return [Boolean] whether the id/UID is injected into the room-name (title) line;
+      #   true for the "title" and "both" placements
+      def room_id_in_title?
+        %w[title both].include?(Lich.display_roomid_location)
+      end
+
+      # @return [Boolean] whether the id/UID is shown as a "Room Number:" line below the room;
+      #   true for the "line" and "both" placements, and as the default before a game is
+      #   identified (display_roomid_location still nil)
+      def room_id_in_line?
+        location = Lich.display_roomid_location
+        location.nil? || %w[line both].include?(location)
+      end
+
+      # Whether Lich should strip the game-supplied inline RealID from the room name instead of
+      # preserving it. True when Lich renders its own UID ("(u230008)") via ";display uid" - so
+      # keeping the game RealID too would duplicate it - or when the player asked to hide it via
+      # ";display flaguid" (hide_uid_flag). When false, the game RealID is left intact so
+      # ";display lichid" reads "[Room - 1234] (230008)", matching GemStone.
+      # @return [Boolean]
+      # @see #modify_room_display
+      def suppress_game_realid?
+        Lich.display_uid == true || Lich.hide_uid_flag == true
+      end
+
+      # The RealID suffix to append to a reconstructed title (the room-window subtitle) so it
+      # shows the same game RealID #modify_room_display preserves on the room-name line. The
+      # subtitle is rebuilt from XMLData.room_title (which is always UID-free), so the marker is
+      # synthesized here from the authoritative nav UID (XMLData.room_id) rather than copied from
+      # the inbound string - <nav rm=.../> is the primary UID source for every game (see the nav
+      # handler in XMLParser), the same source GemStone derives its ";display uid" marker from.
+      # For a complete arrival nav and the room-name literal agree, so the two surfaces match;
+      # nav wins only in the late/absent/stale-subtitle edge case #1491 introduced it to handle,
+      # where it is the correct value. Empty unless the game actually displayed the RealID this
+      # arrival (ShowRoomID ON, tracked by {XMLData#show_room_id}) and Lich is preserving rather
+      # than replacing it ({#suppress_game_realid?}). Renders "(**)" for a ShowRoomID-on room
+      # that has no UID (room_id 0), mirroring the game's own no-UID marker.
+      # @return [String] " (230008)", " (**)", or "" (nothing to append)
+      # @see #process_room_display
+      # @see #suppress_game_realid?
+      def synthesized_realid_suffix
+        return '' if suppress_game_realid? || !XMLData.show_room_id
+
+        " (#{XMLData.room_id.zero? ? '**' : XMLData.room_id})"
       end
     end
 
+    # Game class for DragonRealms
     class Game < GameBase::Game
       class << self
+        # Initializes the DragonRealms game class: sets up buffers and the game instance.
+        #
+        # @return [void]
+        # @api private
         def initialize
           initialize_buffers
           set_game_instance('DR')

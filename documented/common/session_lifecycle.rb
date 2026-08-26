@@ -2,24 +2,32 @@
 
 require 'time'
 
+# Namespace for the Lich5 scripting engine and game integration.
 module Lich
-  # Provides common functionality for session lifecycle management.
-  #
-  # @see Lich::Common
+  # Namespace for shared utilities and internal infrastructure across Lich5.
   module Common
+    # Minimal lifecycle coordinator for session summary reporting.
+    # Registers a session, emits periodic heartbeats, and unregisters on clean shutdown.
     module SessionLifecycle
       REGISTRATION_DELAY_SECONDS = 5
 
       @heartbeat_thread = nil
       @running = false
       @started = false
+      @feature_enabled = false
       @mutex = Mutex.new
 
-      # Resolves the session name based on command line arguments or defaults.
+      # Resolves the reporting session name from launch/runtime context.
       #
-      # @param argv [Array<String>] command line arguments
-      # @param account_character [String, nil] optional account character name
-      # @return [String] the resolved session name
+      # Resolution order:
+      # 1) `--login <name>` CLI argument
+      # 2) account character provided by auth layer
+      # 3) `XMLData.name` when available after parser initialization
+      # 4) deterministic PID fallback (`pid-<pid>`)
+      #
+      # @param argv [Array<String>] process argument vector
+      # @param account_character [String, nil] resolved account character name
+      # @return [String] normalized session identifier used in session summary state
       def self.resolve_session_name(argv:, account_character: nil)
         if (login_idx = argv.index('--login')) && argv[login_idx + 1]
           argv[login_idx + 1].capitalize
@@ -32,11 +40,11 @@ module Lich
         end
       end
 
-      # Determines the role of the session based on command line arguments.
+      # Resolves the logical runtime role used for reporting.
       #
-      # @param argv [Array<String>] command line arguments
-      # @param detachable_client_port [Integer, nil] optional port for detachable clients
-      # @return [String] the resolved role
+      # @param argv [Array<String>] process argument vector
+      # @param detachable_client_port [Integer, nil] configured detachable client port
+      # @return [String] one of `headless`, `detachable`, or `session`
       def self.resolve_role(argv:, detachable_client_port:)
         return 'detachable' unless detachable_client_port.nil?
         return 'headless' if argv.include?('--without-frontend')
@@ -44,19 +52,22 @@ module Lich
         'session'
       end
 
-      # Starts the session lifecycle with the given parameters.
+      # Starts lifecycle tracking and heartbeat emission for the current process.
+      # Registration is intentionally deferred to allow XMLData game context to initialize.
       #
-      # @param session_name [String] the name of the session
-      # @param role [String] the role of the session
-      # @param heartbeat_interval [Integer] interval for heartbeat in seconds
-      # @param registration_delay [Integer] delay before registration in seconds
-      # @return [Boolean] true if the session started successfully, false otherwise
+      # @param session_name [String] resolved session identifier
+      # @param role [String] runtime role (`session`, `detachable`, `headless`)
+      # @param heartbeat_interval [Integer] heartbeat interval in seconds
+      # @param registration_delay [Integer] initial registration delay in seconds
+      # @return [Boolean] true when started, false when already started or failed
       def self.start(session_name:, role:, heartbeat_interval: SessionsSettings::HEARTBEAT_INTERVAL_SECONDS, registration_delay: REGISTRATION_DELAY_SECONDS)
-        return false unless SessionsSettings.enabled?
+        feature_enabled = SessionsSettings.enabled?
+        return false unless feature_enabled
 
         @mutex.synchronize do
           return false if @started
 
+          @feature_enabled = feature_enabled
           frontend = resolve_frontend
           started_epoch = Time.now.to_i
           started_iso = Time.at(started_epoch).utc.iso8601
@@ -112,19 +123,13 @@ module Lich
                   )
                 end
 
-                Lich.log(
-                  "debug: SessionLifecycle heartbeat tick " \
-                  "pid=#{Process.pid} session=#{session_name.inspect} role=#{role.inspect} " \
-                  "tick_epoch=#{Time.now.to_i}"
-                ) if Lich.respond_to?(:log)
-                SessionsSettings.heartbeat(
-                  pid: Process.pid,
-                  state: 'running',
-                  session_name: session_name,
-                  role: role,
-                  frontend: frontend,
-                  game_code: game_code
-                )
+                SessionsSettings.send(:heartbeat_admitted,
+                                      pid: Process.pid,
+                                      state: 'running',
+                                      session_name: session_name,
+                                      role: role,
+                                      frontend: frontend,
+                                      game_code: game_code)
               end
             rescue StandardError => e
               Lich.log("warning: SessionLifecycle heartbeat failed: #{e.class}: #{e.message}") if Lich.respond_to?(:log)
@@ -132,6 +137,7 @@ module Lich
           rescue StandardError
             @running = false
             @started = false
+            @feature_enabled = false
             @heartbeat_thread = nil
             raise
           end
@@ -142,16 +148,16 @@ module Lich
         false
       end
 
-      # Stops the session lifecycle, unregistering the session.
+      # Stops lifecycle tracking and unregisters the current process.
       #
-      # @return [Boolean] true if the session stopped successfully, false otherwise
+      # @return [Boolean] true when stop/unregister succeeded, false when not running or failed
       def self.stop
-        return false unless SessionsSettings.enabled?
-
         heartbeat_thread = nil
+        was_enabled = false
         @mutex.synchronize do
           return false unless @started
 
+          was_enabled = @feature_enabled
           @running = false
           heartbeat_thread = @heartbeat_thread
           @heartbeat_thread = nil
@@ -164,8 +170,9 @@ module Lich
 
         @mutex.synchronize do
           @heartbeat_thread = nil
-          SessionsSettings.unregister_session(pid: Process.pid)
+          SessionsSettings.send(:unregister_session_admitted, pid: Process.pid) if was_enabled
           @started = false
+          @feature_enabled = false
         end
         true
       rescue StandardError => e
@@ -173,40 +180,50 @@ module Lich
         false
       end
 
-      # Resolves the frontend context for the session.
+      # Resolves frontend identifier for session reporting.
       #
-      # @return [String, nil] the frontend identifier or nil if not set
+      # @return [String, nil] resolved frontend value or nil when unavailable
       def self.resolve_frontend
         return $frontend if defined?($frontend) && !$frontend.nil? && !$frontend.to_s.empty?
 
         nil
       end
 
-      # Resolves the game code from the XML data.
+      # Resolves game code from XML runtime state.
       #
-      # @return [String, nil] the game code or nil if not available
+      # @return [String, nil] game code when XML context is ready
       def self.resolve_game_code
         return XMLData.game if defined?(XMLData) && XMLData.respond_to?(:game) && !XMLData.game.to_s.empty?
 
         nil
       end
 
-      # Checks if the game context is ready for registration.
+      # Indicates whether XML runtime context is sufficient for registration.
       #
-      # @return [Boolean] true if the game context is ready, false otherwise
+      # @return [Boolean]
       def self.game_context_ready?
         !resolve_game_code.nil?
       end
 
-      # Attempts to register the session with the given parameters.
+      # Returns whether the current lifecycle was admitted while the feature
+      # flag was enabled. Stop uses this latched state instead of re-reading
+      # the backing feature flag, which may require a database query.
       #
-      # @param session_name [String] the name of the session
-      # @param role [String] the role of the session
-      # @param frontend [String] the frontend identifier
-      # @param started_epoch [Integer] the epoch time when the session started
-      # @param started_iso [String] the ISO 8601 formatted start time
-      # @param registration_delay [Integer] delay before registration in seconds
-      # @return [Boolean] true if registration was successful, false otherwise
+      # @return [Boolean]
+      def self.feature_enabled?
+        @mutex.synchronize { @feature_enabled }
+      end
+      private_class_method :feature_enabled?
+
+      # Performs deferred register attempt once game context is available.
+      #
+      # @param session_name [String]
+      # @param role [String]
+      # @param frontend [String, nil]
+      # @param started_epoch [Integer]
+      # @param started_iso [String]
+      # @param registration_delay [Integer]
+      # @return [Boolean] true when register call succeeds, false otherwise
       def self.attempt_register(session_name:, role:, frontend:, started_epoch:, started_iso:, registration_delay:)
         begin
           game_code = resolve_game_code
@@ -217,14 +234,13 @@ module Lich
             "pid=#{Process.pid} session=#{session_name.inspect} role=#{role.inspect} " \
             "attempt_epoch=#{Time.now.to_i}"
           ) if Lich.respond_to?(:log)
-          SessionsSettings.register_session(
-            pid: Process.pid,
-            session_name: session_name,
-            role: role,
-            state: 'running',
-            frontend: frontend,
-            game_code: game_code
-          )
+          SessionsSettings.send(:register_session_admitted,
+                                pid: Process.pid,
+                                session_name: session_name,
+                                role: role,
+                                state: 'running',
+                                frontend: frontend,
+                                game_code: game_code)
           Lich.log(
             "info: SessionLifecycle deferred register success " \
             "pid=#{Process.pid} session=#{session_name.inspect} role=#{role.inspect} " \

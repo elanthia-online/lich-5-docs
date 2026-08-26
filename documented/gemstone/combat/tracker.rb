@@ -2,9 +2,6 @@
 
 #
 # Combat Tracker - Main interface for combat event processing
-#
-# Integrates with Lich's game processing to track damage, wounds, and status effects
-# Combat Tracker - Main interface for combat event processing
 # Integrates with Lich's game processing to track damage, wounds, and status effects
 #
 
@@ -13,19 +10,33 @@ require_relative 'processor'
 require_relative 'async_processor'
 require_relative '../../common/db_store'
 
+# Namespace for Lich 5, a Ruby scripting engine for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV game integration.
   module Gemstone
+    # Namespace for combat event tracking and processing.
     module Combat
       # Combat tracking system
       #
       # Main interface for the combat tracking system. Integrates with Lich's
-      # Combat tracking system
+      # downstream hooks to process game output and track combat events.
       #
-      # Main interface for the combat tracking system. Integrates with Lich's
-      # game processing to track various combat-related events.
+      # Features:
+      # - Damage tracking and HP estimation
+      # - Wound/injury tracking by body part
+      # - Status effect tracking with auto-expiration
+      # - UCS (Unarmed Combat System) support
+      # - Async processing for performance
+      # - Automatic creature registry cleanup
       #
-      # @see Lich::Gemstone::Combat::Processor
-      # @see Lich::Gemstone::Combat::AsyncProcessor
+      # @example Enable tracking
+      #   Combat::Tracker.enable!
+      #   Combat::Tracker.configure(track_wounds: true, track_statuses: true)
+      #
+      # @example Get statistics
+      #   stats = Combat::Tracker.stats
+      #   respond "Active threads: #{stats[:active]}"
+      #
       module Tracker
         @enabled = false
         @settings = {}
@@ -35,11 +46,6 @@ module Lich
         @initialized = false
 
         # Default settings for combat tracking
-        # Default settings for combat tracking
-        #
-        # @example Default settings
-        #   DEFAULT_SETTINGS[:enabled] # => false
-        #   DEFAULT_SETTINGS[:track_damage] # => true
         DEFAULT_SETTINGS = {
           enabled: false,           # Disabled by default, user must enable
           track_damage: true,
@@ -57,15 +63,25 @@ module Lich
         class << self
           attr_reader :settings, :buffer
 
-          # Checks if combat tracking is enabled.
+          # Check if combat tracking is enabled
           #
-          # @return [Boolean] true if combat tracking is enabled, false otherwise
+          # Lazily initializes on first check if not already initialized.
+          #
+          # @return [Boolean] true if tracking is active
           def enabled?
+            # Before login data is available we can't load per-character
+            # settings; report disabled instead of sleeping on the caller's
+            # thread (the background init thread completes setup once ready).
+            return false unless @initialized || xmldata_ready?
+
             initialize! unless @initialized
             @enabled && @settings[:enabled]
           end
 
-          # Enables combat tracking.
+          # Enable combat tracking
+          #
+          # Initializes the processor, loads settings, and adds downstream hook.
+          # Persists enabled state to DB.
           #
           # @return [void]
           def enable!
@@ -81,7 +97,9 @@ module Lich
             respond "[Combat] Combat tracking enabled" if debug?
           end
 
-          # Disables combat tracking.
+          # Disable combat tracking
+          #
+          # Shuts down the processor, removes hooks, and persists disabled state.
           #
           # @return [void]
           def disable!
@@ -97,14 +115,14 @@ module Lich
             respond "[Combat] Combat tracking disabled" if debug?
           end
 
-          # Checks if debug mode is enabled.
+          # Check if debug mode is enabled
           #
-          # @return [Boolean] true if debug mode is enabled, false otherwise
+          # @return [Boolean] true if debug logging is active
           def debug?
             @settings[:debug] || $combat_debug
           end
 
-          # Enables debug mode for combat tracking.
+          # Enable debug logging
           #
           # @return [void]
           def enable_debug!
@@ -112,7 +130,7 @@ module Lich
             respond "[Combat] Debug mode enabled"
           end
 
-          # Disables debug mode for combat tracking.
+          # Disable debug logging
           #
           # @return [void]
           def disable_debug!
@@ -120,26 +138,29 @@ module Lich
             respond "[Combat] Debug mode disabled"
           end
 
-          # Sets the fallback maximum HP value.
+          # Set fallback HP value for creatures without templates
           #
-          # @param hp_value [Integer] the fallback maximum HP value
+          # @param hp_value [Integer] Default max HP value
           # @return [void]
           def set_fallback_hp(hp_value)
             configure(fallback_max_hp: hp_value.to_i)
             respond "[Combat] Fallback max HP set to #{hp_value}"
           end
 
-          # Retrieves the fallback maximum HP value.
+          # Retrieves the fallback maximum HP value used for creatures without template data.
           #
-          # @return [Integer] the fallback maximum HP value
+          # @return [Integer] the configured fallback max HP (default 350)
           def fallback_hp
             initialize! unless @initialized
             @settings[:fallback_max_hp]
           end
 
-          # Processes a chunk of combat data.
+          # Process a chunk of game lines
           #
-          # @param chunk [Array<String>] the chunk of combat data to process
+          # Filters for combat-relevant lines and processes them.
+          # Triggers periodic cleanup of old creature instances.
+          #
+          # @param chunk [Array<String>] Game lines to process
           # @return [void]
           def process(chunk)
             return unless enabled?
@@ -148,7 +169,7 @@ module Lich
             # Quick filter - only process if combat-related content present
             return unless chunk.any? { |line| combat_relevant?(line) }
 
-            if @settings[:max_threads] > 1
+            if @async_processor
               @async_processor.process_async(chunk)
             else
               Processor.process(chunk)
@@ -162,28 +183,52 @@ module Lich
             end
           end
 
-          # Determines if a line of text is relevant to combat.
+          # Single compiled filter for combat-relevant content. One regex scan
+          # replaces ~11 include? calls plus a regex per line; alternation of
+          # literals compiles to an efficient multi-substring search.
+          COMBAT_RELEVANT_PATTERN = Regexp.union(
+            'points of damage',
+            '<pushBold/>',              # Creatures
+            '**',                       # Flares
+            'AS:',                      # Attack rolls
+            'swing', 'thrust', 'cast', 'gesture',
+            'positioning against',      # UCS position
+            'vulnerable to a followup', # UCS tierup
+            'crimson mist'              # UCS smite
+          ).freeze
+
+          # Regex pattern matching combat resolution outcomes: hit, miss, parry, block, dodge.
           #
-          # @param line [String] the line of text to check
-          # @return [Boolean] true if the line is combat relevant, false otherwise
+          # Case-insensitive word-boundary match used to identify combat resolution lines in game output.
+          #
+          # @example A matching line from game output
+          #   "You hit the ogre!" or "The troll parries your attack."
+          # @see COMBAT_RELEVANT_PATTERN
+          COMBAT_RESOLUTION_PATTERN = /\b(?:hit|miss|parr|block|dodge)\b/i.freeze
+
+          # Check if line contains combat-relevant content
+          #
+          # Quick filter to avoid processing non-combat lines.
+          #
+          # @param line [String] Game line to check
+          # @return [Boolean] true if line may contain combat events
           def combat_relevant?(line)
-            line.include?('swing') ||
-              line.include?('thrust') ||
-              line.include?('cast') ||
-              line.include?('gesture') ||
-              line.include?('points of damage') ||
-              line.include?('**') || # Flares
-              line.include?('<pushBold/>') || # Creatures
-              line.include?('AS:') || # Attack rolls
-              line.include?('positioning against') || # UCS position
-              line.include?('vulnerable to a followup') || # UCS tierup
-              line.include?('crimson mist') || # UCS smite
-              line.match?(/\b(?:hit|miss|parr|block|dodge)\b/i)
+            COMBAT_RELEVANT_PATTERN.match?(line) || COMBAT_RESOLUTION_PATTERN.match?(line)
           end
 
-          # Configures the combat tracker with new settings.
+          # Update tracker settings
           #
-          # @param new_settings [Hash] the new settings to apply
+          # Merges new settings with existing ones and persists to Lich settings.
+          # Reinitializes processor if thread count changes.
+          #
+          # @param new_settings [Hash] Settings to update
+          # @option new_settings [Boolean] :enabled Enable/disable tracking
+          # @option new_settings [Boolean] :track_damage Track damage
+          # @option new_settings [Boolean] :track_wounds Track wounds/injuries
+          # @option new_settings [Boolean] :track_statuses Track status effects
+          # @option new_settings [Boolean] :track_ucs Track UCS data
+          # @option new_settings [Integer] :max_threads Thread pool size
+          # @option new_settings [Boolean] :debug Enable debug logging
           # @return [void]
           def configure(new_settings = {})
             initialize! unless @initialized
@@ -201,9 +246,9 @@ module Lich
             respond "[Combat] Settings updated: #{@settings}" if debug?
           end
 
-          # Retrieves the current statistics of the combat tracker.
+          # Get processing statistics
           #
-          # @return [Hash] a hash containing the current stats
+          # @return [Hash] Stats including :enabled, :buffer_size, :settings, :active, :total
           def stats
             return { enabled: false } unless enabled?
 
@@ -222,9 +267,6 @@ module Lich
 
           private
 
-          # Cleans up old creature instances from the tracker.
-          #
-          # @return [void]
           def cleanup_creatures
             return unless defined?(Creature)
 
@@ -238,9 +280,6 @@ module Lich
             respond "[Combat] Error during creature cleanup: #{e.message}" if debug?
           end
 
-          # Loads settings from the database store.
-          #
-          # @return [void]
           def load_settings
             # Load from DB_Store with per-character scope
             scope = "#{XMLData.game}:#{XMLData.name}"
@@ -248,35 +287,26 @@ module Lich
             @settings = DEFAULT_SETTINGS.merge(stored_settings)
           end
 
-          # Saves current settings to the database store.
-          #
-          # @return [void]
           def save_settings
             # Save current settings to DB_Store with per-character scope
             scope = "#{XMLData.game}:#{XMLData.name}"
             Lich::Common::DB_Store.save(scope, 'lich_combat_tracker', @settings)
           end
 
-          # Initializes the async processor if applicable.
-          #
-          # @return [void]
           def initialize_processor
-            return unless @settings[:max_threads] > 1
+            # max_threads <= 0 means process inline on the hook thread
+            # (debugging aid); otherwise use the ordered async worker so
+            # parsing never delays the game stream.
+            return unless @settings[:max_threads] > 0
             @async_processor = AsyncProcessor.new(@settings[:max_threads])
           end
 
-          # Shuts down the async processor if it is running.
-          #
-          # @return [void]
           def shutdown_processor
             return unless @async_processor
             @async_processor.shutdown
             @async_processor = nil
           end
 
-          # Adds a downstream hook for processing combat data.
-          #
-          # @return [void]
           def add_downstream_hook
             @hook_id = 'Combat::Tracker::downstream'
 
@@ -287,8 +317,10 @@ module Lich
               if server_string.include?('<prompt time=')
                 chunk = @buffer.slice!(0, @buffer.size)
 
-                # Check if THIS chunk contains creatures (no persistent state)
-                if chunk.any? { |line| line.match?(/<pushBold\/>.+?<a exist="[^"]+"[^>]*>.+?<\/a><popBold\/>/) }
+                # Check if THIS chunk contains creatures (no persistent state).
+                # Substring checks are equivalent to the old backtracking regex
+                # for gating purposes and far cheaper per line.
+                if chunk.any? { |line| line.include?('<pushBold/>') && line.include?('<a exist=') }
                   process(chunk) unless chunk.empty?
                   respond "[Combat] Processed chunk with creatures (#{chunk.size} lines)" if debug?
                 else
@@ -304,25 +336,30 @@ module Lich
               server_string
             end
 
-            DownstreamHook.add(@hook_id, segment_buffer)
+            DownstreamHook.add(@hook_id, segment_buffer, persist: true) # tracker manages its own removal
           end
 
-          # Removes the downstream hook for processing combat data.
-          #
-          # @return [void]
           def remove_downstream_hook
             DownstreamHook.remove(@hook_id) if @hook_id
             @hook_id = nil
           end
 
-          # Initializes the combat tracker, loading settings and setting up hooks.
+          # Initialize tracker from saved settings
+          #
+          # Reads settings from DB and auto-enables if previously enabled.
+          # Called lazily on first access when XMLData is available.
           #
           # @return [void]
+          # True once XMLData has game and character name (settings scope)
+          def xmldata_ready?
+            !XMLData.game.nil? && !XMLData.game.empty? && !XMLData.name.nil? && !XMLData.name.empty?
+          end
+
           def initialize!
             return if @initialized
 
             # Wait until XMLData is ready (avoid wrong scope)
-            sleep 0.1 until !XMLData.game.nil? && !XMLData.game.empty? && !XMLData.name.nil? && !XMLData.name.empty?
+            sleep 0.1 until xmldata_ready?
 
             @initialized = true
             load_settings

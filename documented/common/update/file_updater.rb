@@ -8,31 +8,28 @@
   for script repository files.
 =end
 
-# Provides utility functions for the Lich5 project.
-#
-# @see Lich::Util for additional utility methods.
 module Lich
   module Util
     module Update
-      # Handles the updating of files from repositories.
+      # Handles updates for individual scripts, libraries, and data files.
       #
-      # This class is responsible for managing updates to scripts, libraries,
-      # and data files, including handling repository-specific updates.
+      # Supports both repo-specific updates (via "repo_key:filename" syntax with SHA-based
+      # skip-if-current checks) and legacy auto-detected updates. Transparently delegates to
+      # the appropriate remote repository based on file type and version channel.
       class FileUpdater
-        # Initializes a new FileUpdater instance.
-        # @param client [Object] the client used to fetch data from repositories
-        # @param resolver [Object] the resolver for handling versioning
+        # @param client [GitHubClient] GitHub API client instance
+        # @param resolver [ChannelResolver] channel resolver instance
         def initialize(client, resolver)
           @client = client
           @resolver = resolver
         end
 
-        # Updates a file from the specified repository.
-        # @param type [String] the type of file to update (e.g., "script", "data")
-        # @param repo_key [String] the key identifying the repository
-        # @param filename [String] the name of the file to update
+        # Updates a file from a specific repository.
+        #
+        # @param type [String] 'script' or 'data'
+        # @param repo_key [String] repository key from SCRIPT_REPOS
+        # @param filename [String] file name to update
         # @return [void]
-        # @raise [StandardError] if the file cannot be updated
         def update_file_from_repo(type, repo_key, filename)
           config = SCRIPT_REPOS[repo_key]
           unless config
@@ -42,6 +39,11 @@ module Lich
           unless config
             all_keys = (SCRIPT_REPOS.keys + CustomRepos.all.keys).join(', ')
             respond "[lich5-update: Unknown repository '#{repo_key}'. Known: #{all_keys}]"
+            return
+          end
+
+          if config[:custom] && type == "data"
+            respond "[lich5-update: Data file downloads are not supported for custom repos. Only --script= is available.]"
             return
           end
 
@@ -106,12 +108,12 @@ module Lich
           end
         end
 
-        # Updates a specified file based on its type and version.
-        # @param type [String] the type of file to update (e.g., "script", "library", "data")
-        # @param rf [String] the requested file name
-        # @param version [String] the version channel to use (default: 'production')
+        # Updates a file using legacy auto-detection logic.
+        #
+        # @param type [String] 'script', 'library', or 'data'
+        # @param rf [String] requested filename
+        # @param version [String] channel ('production' or 'beta')
         # @return [void]
-        # @raise [StandardError] if the file cannot be updated
         def update_file(type, rf, version = 'production')
           if version =~ /^(?:staging|master)$/i
             respond 'Requested channel %s mapped to main (stable).' % [version]
@@ -200,10 +202,10 @@ module Lich
           end
         end
 
-        # Updates core data and scripts based on the game version.
-        # @param version [String] the version to use for updates (default: LICH_VERSION)
+        # Updates core data files (effect-list.xml) after version upgrade.
+        #
+        # @param version [String] version string (default: LICH_VERSION)
         # @return [void]
-        # @raise [StandardError] if the game type is invalid
         def update_core_data_and_scripts(version = LICH_VERSION)
           if XMLData.game !~ /^GS|^DR/
             respond "invalid game type, unsure what scripts to update via Update.update_core_scripts"

@@ -2,12 +2,15 @@
 
 require_relative 'eaccess'
 
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for common shared utilities.
   module Common
+    # Authentication and retry logic for connecting to the game server.
+    # Handles automatic retry with exponential backoff for transient SSL and network errors,
+    # while immediately failing on fatal authentication errors (bad credentials, unknown account, etc.).
     module Authentication
-      # Exception raised for fatal authentication errors.
-      #
-      # @see EAccess::AuthenticationError
+      # Fatal auth failure - should not be retried
       class FatalAuthError < StandardError; end
 
       # Retry configuration for transient SSL/network errors
@@ -21,34 +24,38 @@ module Lich
       # Known fatal error codes that should not be retried
       # REJECT = bad credentials, NORECORD = account not found, INVALID = invalid request
       # PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account
-      FATAL_ERROR_CODES = %w[REJECT NORECORD INVALID PASSWORD CHARACTER_NOT_FOUND].freeze
+      # GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the instance
+      FATAL_ERROR_CODES = %w[REJECT NORECORD INVALID PASSWORD CHARACTER_NOT_FOUND GENERATOR_NOT_AVAILABLE].freeze
 
-      # Authenticates a user with the provided credentials.
+      # Authenticates a user with the game server
+      # Includes automatic retry with exponential backoff for transient errors
       #
-      # @param account [String] the account name
-      # @param password [String] the account password
-      # @param character [String, nil] optional character name for authentication
-      # @param game_code [String, nil] optional game code for authentication
-      # @param legacy [Boolean] whether to use legacy authentication method
-      # @return [Boolean] true if authentication is successful
-      # @raise FatalAuthError if a fatal authentication error occurs
-      def self.authenticate(account:, password:, character: nil, game_code: nil, legacy: false)
+      # @param account [String] User account name
+      # @param password [String] User password
+      # @param character [String, nil] Character name (optional)
+      # @param game_code [String, nil] Game code (optional)
+      # @param legacy [Boolean] Whether to use legacy authentication
+      # @param generator [Boolean] Whether to enter the character generator instead of selecting a character
+      # @return [Hash, Array] Authentication data containing connection information
+      # @raise [StandardError] Re-raises the last error after all retries exhausted
+      def self.authenticate(account:, password:, character: nil, game_code: nil, legacy: false, generator: false)
         with_retry do
-          if character && game_code
-            EAccess.auth(
+          if game_code && (character || generator)
+            EAccess.auth_with_timeout(
               account: account,
               password: password,
               character: character,
-              game_code: game_code
+              game_code: game_code,
+              generator: generator
             )
           elsif legacy
-            EAccess.auth(
+            EAccess.auth_with_timeout(
               account: account,
               password: password,
               legacy: true
             )
           else
-            EAccess.auth(
+            EAccess.auth_with_timeout(
               account: account,
               password: password
             )
@@ -56,12 +63,12 @@ module Lich
         end
       end
 
-      # Retries the given block of code for transient authentication errors.
+      # Executes a block with retry logic for transient errors
       #
-      # @yield block of code to execute
-      # @return [Object] the result of the block if successful
-      # @raise FatalAuthError if a fatal authentication error occurs
-      # @raise StandardError if all retries are exhausted
+      # @yield The block to execute with retry
+      # @return [Object] The result of the block
+      # @raise [FatalAuthError] For fatal auth failures (bad credentials, etc.)
+      # @raise [StandardError] Re-raises the last error after all retries exhausted
       def self.with_retry
         last_error = nil
 

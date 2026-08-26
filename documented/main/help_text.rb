@@ -1,25 +1,20 @@
+# frozen_string_literal: true
 
-# Provides the main functionality for the Lich application.
-#
-# @see Lich::Main
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for Lich's command-line interface and main entry point.
   module Main
-    # Contains help text and related methods for the Lich application.
-    #
-    # This module provides various help topics that can be rendered based on user input.
+    # Renders user-facing CLI help text by topic.
     module HelpText
-      # A list of available help topics.
+      # Valid help topic names.
       #
-      # @example Available topics
-      #   HELP_TOPICS #=> ["login", "accounts", "automation", "paths", "advanced"]
+      # @see .render
       HELP_TOPICS = %w[login accounts automation paths advanced].freeze
 
-      # Renders help text for a given topic.
+      # Returns formatted help text for the requested topic.
       #
-      # @param topic [String, nil] the help topic to render; if nil, defaults to general help
-      # @return [String] the rendered help text
-      # @example Render help for login
-      #   HelpText.render("login")
+      # @param topic [String, nil] optional topic name
+      # @return [String] rendered help output
       def self.render(topic = nil)
         normalized_topic = normalize_topic(topic)
 
@@ -34,11 +29,11 @@ module Lich
         end
       end
 
-      # Extracts the help topic from command-line arguments.
+      # Resolves the topic token following `--help`, if any.
       #
-      # @param argv [Array<String>] the command-line arguments
-      # @param help_arg [String] the help argument to parse
-      # @return [String, nil] the extracted topic or nil if not found
+      # @param argv [Array<String>] command line arguments
+      # @param help_arg [String] the matched help flag
+      # @return [String, nil] requested topic name
       def self.topic_from_argv(argv, help_arg)
         return help_arg.split('=', 2).last if help_arg.start_with?('--help=')
 
@@ -51,10 +46,10 @@ module Lich
         topic
       end
 
-      # Normalizes the topic string to a standard format.
+      # Normalizes user-facing aliases for help topic names.
       #
-      # @param topic [String, nil] the topic to normalize
-      # @return [String, nil] the normalized topic or nil if not recognized
+      # @param topic [String, nil]
+      # @return [String, nil]
       def self.normalize_topic(topic)
         case topic.to_s.downcase
         when '', 'overview' then nil
@@ -68,9 +63,10 @@ module Lich
         end
       end
 
-      # Provides the default help text when no specific topic is requested.
+      # Renders the default help text with common commands and available topics.
       #
-      # @return [String] the default help text
+      # @return [String] formatted help output
+      # @api private
       def self.default_help
         <<~TEXT
           Lich 5
@@ -96,9 +92,10 @@ module Lich
         TEXT
       end
 
-      # Provides help text specific to the login command.
+      # Renders help text for the login topic, including game/frontend/launch options.
       #
-      # @return [String] the help text for login
+      # @return [String] formatted help output
+      # @api private
       def self.login_help
         <<~TEXT
           Lich Help: login
@@ -110,6 +107,7 @@ module Lich
             --login CHARACTER       Login using a saved entry
             --headless PORT         Run without a frontend and expose a detachable client on PORT
             --headless auto         Run without a frontend and let the OS assign a detachable port
+            --headless HOST:PORT    Bind the detachable client to HOST (tailscale, lan, any, IP, or hostname)
             --start-scripts=LIST    Start scripts after login (comma-separated)
             --save                  Save successful CLI login details to entry.yaml
             --reconnect             Reconnect automatically if the session drops
@@ -129,10 +127,13 @@ module Lich
             --avalon
             --frostbite
             --genie
+            --saga
+              Native saved Saga entries use Saga-managed Via Lich login and
+              require the matching account credentials to be saved in Saga.
 
           Advanced launch:
             --custom-launch=NAME
-            --detachable-client=PORT
+            --detachable-client=PORT|auto|HOST:PORT
             --dark-mode=true|false
             --game=HOST:PORT
 
@@ -142,13 +143,15 @@ module Lich
             lich --login Mychar --frostbite
             lich --login Mychar --headless 8001
             lich --login Mychar --headless auto
+            lich --login Mychar --headless tailscale:8001
             lich --login Mychar --start-scripts=repository,go2
         TEXT
       end
 
-      # Provides help text specific to account management commands.
+      # Renders help text for the accounts topic, including password and encryption management.
       #
-      # @return [String] the help text for accounts
+      # @return [String] formatted help output
+      # @api private
       def self.accounts_help
         <<~TEXT
           Lich Help: accounts
@@ -177,9 +180,10 @@ module Lich
         TEXT
       end
 
-      # Provides help text specific to automation commands.
+      # Renders help text for the automation topic, including session inspection commands.
       #
-      # @return [String] the help text for automation
+      # @return [String] formatted help output
+      # @api private
       def self.automation_help
         <<~TEXT
           Lich Help: automation
@@ -197,9 +201,10 @@ module Lich
         TEXT
       end
 
-      # Provides help text specific to path options.
+      # Renders help text for the paths topic, including directory and file options.
       #
-      # @return [String] the help text for paths
+      # @return [String] formatted help output
+      # @api private
       def self.paths_help
         <<~TEXT
           Lich Help: paths
@@ -212,6 +217,10 @@ module Lich
             --script-dir=PATH
             --data-dir=PATH
             --temp-dir=PATH
+            --map-dir=PATH
+            --log-dir=PATH
+            --backup-dir=PATH
+            --lib-dir=PATH
             --hosts-dir=PATH
             --hosts-file=PATH
 
@@ -221,24 +230,41 @@ module Lich
         TEXT
       end
 
-      # Provides help text for advanced options and compatibility flags.
+      # Renders help text for the advanced topic, including GUI, networking, and compatibility options.
       #
-      # @return [String] the help text for advanced options
+      # @return [String] formatted help output
+      # @api private
       def self.advanced_help
         <<~TEXT
           Lich Help: advanced
 
           Compatibility / advanced options:
             --gui
-            --no-gui
+            --no-gui, --no-gtk  Run without the GTK GUI (aliases)
             --without-frontend
-            --detachable-client=PORT
+            --detachable-client=PORT|auto|HOST:PORT
+            --pipe
             --frontend=NAME
             --frontend-command=CMD
             --game=HOST:PORT
+            --bind-address=HOST
 
           Notes:
+            The GTK GUI starts by default. To suppress it, pass --no-gui or --no-gtk,
+            including when using --headless.
             Prefer --headless PORT or --headless auto for new headless launches.
+            --pipe uses stdin/stdout as the client transport instead of a front-end socket.
+            --bind-address=HOST sets the local address Lich binds its listen sockets to
+            (the frontend, --game proxy, and detachable-client listeners).
+            Defaults to 127.0.0.1.
+            HOST -- in --bind-address, --headless, and --detachable-client alike -- may
+            be an IP, a hostname, a keyword, or (with a port) a bracketed IPv6 literal
+            such as [::1]:PORT. Keywords: tailscale (this machine's Tailscale address),
+            lan (its private LAN address), or any (0.0.0.0). Lich's listen sockets are
+            unauthenticated - anyone who can reach one controls the session - so
+            prefer tailscale over lan or any.
+            Multiple frontends may attach to one detachable port. Each receives game
+            output, and commands from all attached frontends are processed serially.
             Compatibility flags remain supported but are intentionally omitted from the default help screen.
         TEXT
       end

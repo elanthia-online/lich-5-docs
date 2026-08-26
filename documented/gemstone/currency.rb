@@ -1,80 +1,113 @@
+# Top-level namespace for Lich 5, a Ruby scripting engine for GemStone IV and
+# DragonRealms.
 module Lich
+  # Namespace for GemStone IV scripting APIs.
   module Gemstone
+    # Access to the player\'s current currency and scrip balances.
+    #
+    # All methods query the live character data maintained by the Lich engine.
+    # Returns are [Integer] or [nil] if the data is not yet available.
     module Currency
-      # Retrieves the amount of silver currency.
-      # @return [Integer] the amount of silver
+      # Returns the player\'s current silver balance.
+      #
+      # @return [Integer, nil] silver amount, or nil if not yet available
+      # @example
+      #   Lich::Gemstone::Currency.silver #=> 5000
       def self.silver
         Lich::Gemstone::Infomon.get('currency.silver')
       end
 
-      # Retrieves the silver container information.
-      # @return [String] the silver container details
+      # Returns the item noun of the container holding the player\'s silver.
+      #
+      # @return [String, nil] container noun (e.g. "pouch", "sack"), or nil if not yet available
       def self.silver_container
         Lich::Gemstone::Infomon.get('currency.silver_container')
       end
 
-      # Retrieves the amount of redsteel marks currency.
-      # @return [Integer] the amount of redsteel marks
+      # Returns the player\'s current Redsteel Marks balance.
+      #
+      # @return [Integer, nil] Redsteel Marks amount, or nil if not yet available
+      # @example
+      #   Lich::Gemstone::Currency.redsteel_marks #=> 42
       def self.redsteel_marks
         Lich::Gemstone::Infomon.get('currency.redsteel_marks')
       end
 
-      # Retrieves the amount of tickets currency.
-      # @return [Integer] the amount of tickets
+      # Returns the player\'s current Tickets balance.
+      #
+      # @return [Integer, nil] Tickets amount, or nil if not yet available
       def self.tickets
         Lich::Gemstone::Infomon.get('currency.tickets')
       end
 
-      # Retrieves the amount of blackscrip currency.
-      # @return [Integer] the amount of blackscrip
+      # Returns the player\'s current Blackscrip balance.
+      #
+      # @return [Integer, nil] Blackscrip amount, or nil if not yet available
       def self.blackscrip
         Lich::Gemstone::Infomon.get('currency.blackscrip')
       end
 
-      # Retrieves the amount of bloodscrip currency.
-      # @return [Integer] the amount of bloodscrip
+      # Returns the player\'s current Bloodscrip balance.
+      #
+      # @return [Integer, nil] Bloodscrip amount, or nil if not yet available
       def self.bloodscrip
         Lich::Gemstone::Infomon.get('currency.bloodscrip')
       end
 
-      # Retrieves the amount of ethereal scrip currency.
-      # @return [Integer] the amount of ethereal scrip
+      # Returns the player\'s current Ethereal Scrip balance.
+      #
+      # @return [Integer, nil] Ethereal Scrip amount, or nil if not yet available
       def self.ethereal_scrip
         Lich::Gemstone::Infomon.get('currency.ethereal_scrip')
       end
 
-      # Retrieves the amount of raikhen currency.
-      # @return [Integer] the amount of raikhen
+      # Returns the player\'s current Raikhen balance.
+      #
+      # @return [Integer, nil] Raikhen amount, or nil if not yet available
       def self.raikhen
         Lich::Gemstone::Infomon.get('currency.raikhen')
       end
 
-      # Retrieves the amount of elans currency.
-      # @return [Integer] the amount of elans
+      # Returns the player\'s current Elans balance.
+      #
+      # @return [Integer, nil] Elans amount, or nil if not yet available
       def self.elans
         Lich::Gemstone::Infomon.get('currency.elans')
       end
 
-      # Retrieves the amount of soul shards currency.
-      # @return [Integer] the amount of soul shards
+      # Returns the player\'s current Soul Shards balance.
+      #
+      # @return [Integer, nil] Soul Shards amount, or nil if not yet available
       def self.soul_shards
         Lich::Gemstone::Infomon.get('currency.soul_shards')
       end
 
-      # Retrieves the amount of gold currency.
-      # @return [Integer] the amount of gold
+      # Returns the player\'s current Aevit balance.
+      #
+      # @return [Integer, nil] Aevit amount, or nil if not yet available
+      def self.aevit
+        Lich::Gemstone::Infomon.get('currency.aevit')
+      end
+
+      # Returns the player\'s current gold balance.
+      #
+      # @return [Integer, nil] gold amount, or nil if not yet available
+      # @example
+      #   Lich::Gemstone::Currency.gold #=> 15000
       def self.gold
         Lich::Gemstone::Infomon.get('currency.gold')
       end
 
-      # Retrieves the amount of gigas artifact fragments currency.
-      # @return [Integer] the amount of gigas artifact fragments
+      # Returns the player\'s current Gigas Artifact Fragments balance.
+      #
+      # @return [Integer, nil] Gigas Artifact Fragments amount, or nil if not yet available
       def self.gigas_artifact_fragments
         Lich::Gemstone::Infomon.get('currency.gigas_artifact_fragments')
       end
 
-      # Retrieves the amount of gemstone dust currency.
-      # @return [Integer] the amount of gemstone dust
+      # Returns the player\'s current Gemstone Dust balance.
+      #
+      # @return [Integer, nil] Gemstone Dust amount, or nil if not yet available
       def self.gemstone_dust
         Lich::Gemstone::Infomon.get('currency.gemstone_dust')
       end

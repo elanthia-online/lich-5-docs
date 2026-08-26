@@ -5,11 +5,15 @@ require_relative 'master_password_manager'
 module Lich
   module Common
     module GUI
+      # Provides UI for handling entry.dat to entry.yaml conversion
+      # This module detects when entry.yaml is missing but entry.dat exists
+      # and provides a UI for conversion with encryption mode selection
       module ConversionUI
-        # Determines if data conversion is needed based on the presence of files.
+        # Checks if conversion is needed
+        # Determines if the legacy data format needs to be converted to the new YAML format
         #
-        # @param data_dir [String] the directory containing the data files
-        # @return [Boolean] true if conversion is needed, false otherwise
+        # @param data_dir [String] Directory containing entry data
+        # @return [Boolean] True if conversion is needed (entry.dat exists but entry.yaml doesn't)
         def self.conversion_needed?(data_dir)
           dat_file = File.join(data_dir, "entry.dat")
           yml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(data_dir)
@@ -18,11 +22,13 @@ module Lich
           File.exist?(dat_file) && !File.exist?(yml_file)
         end
 
-        # Displays a dialog for data conversion with options for encryption mode.
+        # Creates a conversion dialog with encryption mode selection
+        # Displays a UI for converting legacy data format to the new YAML format
+        # with radio buttons for selecting encryption mode
         #
-        # @param parent [Gtk::Window] the parent window for the dialog
-        # @param data_dir [String] the directory containing the data files
-        # @param on_conversion_complete [Proc] callback to execute when conversion is complete
+        # @param parent [Gtk::Window] Parent window
+        # @param data_dir [String] Directory containing entry data
+        # @param on_conversion_complete [Proc] Callback to execute when conversion is complete
         # @return [void]
         def self.show_conversion_dialog(parent, data_dir, on_conversion_complete)
           has_keychain = MasterPasswordManager.keychain_available?
@@ -276,7 +282,7 @@ module Lich
               dlg.destroy
               Gtk.queue do
                 @done = true
-                Gtk.main_quit
+                Lich::Common.quit_gtk_main_loop
               end
             end
           end

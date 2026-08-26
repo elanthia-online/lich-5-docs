@@ -1,14 +1,22 @@
 # frozen_string_literal: true
 
-require 'rbconfig'
 require_relative 'authentication/login_helpers'
+require_relative 'ruby_executable'
 
-# Provides common functionality for the Lich application.
-#
-# @see Lich::Common::SessionLauncher
+# Namespace for the Lich game scripting engine.
 module Lich
+  # Namespace for shared Lich utilities and infrastructure.
   module Common
+    # Launches independent child Lich sessions using prepared launch_data
+    # mapped to CLI-style argv.
     module SessionLauncher
+      # Configuration for optional directory path CLI flags that may be passed to child launches.
+      # Each entry maps a CLI option name to a context key, launcher constant name, and priority.
+      # Used by {.optional_spawn_flags} to emit --home, --data, --scripts, etc. flags only when
+      # the child process directory would differ from defaults.
+      #
+      # @see .optional_spawn_flags
+      # @api private
       OPTIONAL_PATH_FLAGS = [
         { option: 'home', key: :home_dir, constant: :LICH_DIR },
         { option: 'data', key: :data_dir, constant: :DATA_DIR },
@@ -21,14 +29,16 @@ module Lich
       ].freeze
 
       class << self
-        # Launches a new session process with the given launch data.
+        # Launches a detached child Lich process from prebuilt launch data.
         #
-        # @param launch_data [Array] an array of data required to launch the session
-        # @param launch_context [Hash, nil] optional context for the launch
-        # @return [Hash] result of the launch operation, including success status and process ID
-        # @raise [ArgumentError] if launch_data is not a non-empty array
-        # @example Launch a session
-        #   result = Lich::Common::SessionLauncher.launch(['--option', 'value'])
+        # @param launch_data [Array<String>] Launch lines from Authentication::LaunchData.prepare
+        # @param launch_context [Hash, nil] Optional context keys:
+        #   :char_name, :game_code, :frontend, :custom_launch, :dark_mode
+        #   and optional directory overrides (:home_dir, :data_dir, :script_dir,
+        #   :temp_dir, :map_dir, :log_dir, :backup_dir, :lib_dir).
+        # @return [Hash] Structured result:
+        #   - success: { ok: true, pid: Integer }
+        #   - failure: { ok: false, error: String }
         def launch(launch_data, launch_context: nil)
           unless launch_data.is_a?(Array) && launch_data.any?
             return { ok: false, error: 'launch_data must be a non-empty Array' }
@@ -42,11 +52,11 @@ module Lich
 
         private
 
-        # Spawns a new process for the session using the provided launch data.
+        # Spawns a detached child process using the same CLI footprint as direct login.
         #
-        # @param launch_data [Array] an array of data required to spawn the process
-        # @param launch_context [Hash, nil] optional context for the launch
-        # @return [Integer] the process ID of the spawned process
+        # @param launch_data [Array<String>]
+        # @param launch_context [Hash, nil]
+        # @return [Integer] Child PID
         def spawn_process(launch_data, launch_context: nil)
           ruby_bin = ruby_binary
           entrypoint = File.expand_path($PROGRAM_NAME)
@@ -60,10 +70,11 @@ module Lich
           pid
         end
 
-        # Resolves the working directory based on the provided context.
+        # Resolves child process working directory.
+        # Priority: explicit per-launch :home_dir, then global LICH_DIR, then cwd.
         #
-        # @param context [Hash] the context containing potential directory overrides
-        # @return [String] the resolved working directory path
+        # @param context [Hash]
+        # @return [String]
         def resolve_working_dir(context)
           home_dir = context[:home_dir]
           return File.expand_path(home_dir) unless home_dir.to_s.empty?
@@ -71,13 +82,6 @@ module Lich
           defined?(LICH_DIR) ? LICH_DIR : Dir.pwd
         end
 
-        # Builds the arguments for spawning the session process.
-        #
-        # @param entrypoint [String] the entry point for the session
-        # @param launch_map [Hash] parsed launch data
-        # @param launch_context [Hash, nil] optional context for the launch
-        # @return [Array<String>] the arguments to be passed to the spawn command
-        # @raise [ArgumentError] if the character name is missing
         def build_spawn_args(entrypoint, launch_map, launch_context)
           context = launch_context || {}
           character = context[:char_name] || launch_map['CHARACTER'] || launch_map['NAME']
@@ -98,10 +102,12 @@ module Lich
           args
         end
 
-        # Constructs optional flags for the spawn command based on the context.
+        # Builds optional CLI flags for child launches.
+        # Emits path flags only when explicitly overridden to a non-default value.
+        # This keeps child ARGV concise and avoids passing parent default directories.
         #
-        # @param context [Hash] the context containing potential flag values
-        # @return [Array<String>] an array of optional flags for the spawn command
+        # @param context [Hash] Optional launch context from GUI callbacks.
+        # @return [Array<String>] Optional flags (possibly empty).
         def optional_spawn_flags(context)
           flags = []
 
@@ -118,10 +124,6 @@ module Lich
           flags
         end
 
-        # Parses the launch data from an array of strings into a hash.
-        #
-        # @param launch_data [Array] the raw launch data strings
-        # @return [Hash] a hash mapping keys to values parsed from the launch data
         def parse_launch_data(launch_data)
           launch_data.each_with_object({}) do |line, data|
             next unless line.include?('=')
@@ -131,24 +133,22 @@ module Lich
           end
         end
 
-        # Determines the frontend type based on the launch map.
-        #
-        # @param launch_map [Hash] the parsed launch data
-        # @return [String, nil] the frontend type or nil if not found
         def frontend_from_launch(launch_map)
           case launch_map['GAME'].to_s.upcase
           when 'STORM' then 'stormfront'
           when 'WIZ' then 'wizard'
           when 'AVALON' then 'avalon'
+          when 'SAGA' then 'saga'
           when 'SUKS' then 'suks'
           else nil
           end
         end
 
-        # Resolves the dark mode setting from the context.
+        # Resolves dark mode for the child process.
+        # Priority: launch context override, then persisted global setting.
         #
-        # @param context [Hash] the context containing dark mode information
-        # @return [Boolean, nil] the dark mode setting or nil if not applicable
+        # @param context [Hash]
+        # @return [Boolean, nil]
         def resolve_dark_mode(context)
           return context[:dark_mode] if context.key?(:dark_mode)
           return nil unless Lich.respond_to?(:track_dark_mode)
@@ -156,11 +156,11 @@ module Lich
           Lich.track_dark_mode
         end
 
-        # Retrieves the overridden path value from the context for a specific path flag.
+        # Returns an explicit per-launch path override when it differs from default.
         #
-        # @param context [Hash] the context containing potential path values
-        # @param path_flag [Hash] the path flag definition
-        # @return [String, nil] the overridden path value or nil if not applicable
+        # @param context [Hash]
+        # @param path_flag [Hash]
+        # @return [String, nil]
         def overridden_path_value(context, path_flag)
           context_key = path_flag[:key]
           constant_name = path_flag[:constant]
@@ -176,12 +176,12 @@ module Lich
           value
         end
 
-        # Determines the default path value for a given option name and constant name.
+        # Resolves the path value that the child would derive without an explicit flag.
         #
-        # @param option_name [String] the name of the option to resolve
-        # @param constant_name [Symbol] the constant name to use for default resolution
-        # @param context [Hash] the context containing potential directory overrides
-        # @return [String, nil] the default path value or nil if not applicable
+        # @param option_name [String]
+        # @param constant_name [Symbol]
+        # @param context [Hash]
+        # @return [String, nil]
         def default_path_value(option_name, constant_name, context)
           if option_name == 'home'
             return Object.const_defined?(:LICH_DIR) ? File.expand_path(Object.const_get(:LICH_DIR).to_s) : nil
@@ -197,22 +197,9 @@ module Lich
           File.expand_path(Object.const_get(constant_name).to_s)
         end
 
-        # Retrieves the appropriate Ruby binary for the current platform.
-        #
-        # @return [String] the path to the Ruby binary
+        # Uses the shared, existence-checked Ruby executable selection.
         def ruby_binary
-          if windows?
-            RbConfig.ruby.sub(/ruby(?:\.exe)?$/i, 'rubyw.exe')
-          else
-            RbConfig.ruby
-          end
-        end
-
-        # Checks if the current platform is Windows.
-        #
-        # @return [Boolean] true if the platform is Windows, false otherwise
-        def windows?
-          RUBY_PLATFORM =~ /mingw|mswin|cygwin/i
+          Lich::Common::RubyExecutable.resolve
         end
       end
     end

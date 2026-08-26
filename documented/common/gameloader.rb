@@ -1,12 +1,18 @@
+# handles instances of modules that are game dependent
 
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for shared code across all supported games.
   module Common
-    # Provides methods to load game-specific resources and configurations.
+    # Loads game-specific and common modules based on the running game.
     #
-    # @see Lich::Common
+    # Call .load! to initialize the Lich runtime with all required dependencies
+    # for GemStone IV or DragonRealms.
     module GameLoader
-      # Loads common dependencies required before starting the game.
+      # Loads shared modules required by all games.
+      #
       # @return [void]
+      # @api private
       def self.common_before
         require File.join(LIB_DIR, 'common', 'account.rb')
         require File.join(LIB_DIR, 'common', 'log.rb')
@@ -16,8 +22,13 @@ module Lich
         require File.join(LIB_DIR, 'common', 'hmr.rb')
       end
 
-      # Loads resources specific to the GemStone game.
+      # Loads all modules and dependencies for GemStone IV.
+      #
+      # Initializes character attributes, game-specific features (bounties, society,
+      # combat tracking, etc.), and enables active spell and infomon watchers.
+      #
       # @return [void]
+      # @api private
       def self.gemstone
         self.common_before
         require File.join(LIB_DIR, 'gemstone', 'sk.rb')
@@ -57,8 +68,13 @@ module Lich
         self.common_after
       end
 
-      # Loads resources specific to the Dragon Realms game.
+      # Loads all modules and dependencies for DragonRealms.
+      #
+      # Initializes character attributes, game-specific features (infomon, creatures,
+      # settings), and enables the infomon watcher.
+      #
       # @return [void]
+      # @api private
       def self.dragon_realms
         self.common_before
         require File.join(LIB_DIR, 'common', 'map', 'map_dr.rb')
@@ -66,18 +82,25 @@ module Lich
         require File.join(LIB_DIR, 'dragonrealms', 'dependency', 'settings_config.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'drinfomon.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'commons.rb')
+        require File.join(LIB_DIR, 'dragonrealms', 'creature.rb')
         DRInfomon.watch!
         self.common_after
       end
 
-      # Loads post-game initialization tasks and settings.
+      # Registers post-load hooks to initialize game settings.
+      #
+      # Seeds a valid client record on the game server when the character has never
+      # logged in with the Wrayth client, ensuring properly formatted settingsInfo
+      # on future connections.
+      #
       # @return [void]
+      # @api private
       def self.common_after
         require File.join(LIB_DIR, 'common', 'postload.rb')
         PostLoad.register("settings_init") do
           # When the game server sends malformed <settingsInfo  space not found ...> XML,
           # it means this character has never logged in with the Wrayth client.
-          # The reactive fix in handle_xml_error patches the XML and sets the flag.
+          # Game.fix_invalid_settings_info patches the XML and sets the flag.
           # Here we send a dummy <db> command to seed a valid client record so
           # the server sends properly formatted settingsInfo on future connects.
           if GameBase::Game.settings_init_needed?
@@ -87,8 +110,13 @@ module Lich
         PostLoad.watch!
       end
 
-      # Loads the appropriate game based on the current game data.
+      # Loads game-specific modules and initializes the Lich runtime.
+      #
+      # Blocks until the game is identified from the XML data stream, then delegates
+      # to either .gemstone or .dragon_realms.
+      #
       # @return [void]
+      # @api private
       def self.load!
         sleep 0.1 while XMLData.game.nil? or XMLData.game.empty?
         return self.dragon_realms if XMLData.game =~ /DR/

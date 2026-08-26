@@ -2,23 +2,24 @@
 
 require_relative 'account_manager'
 require_relative 'favorites_manager'
+require_relative 'frontend_selector'
 require_relative 'theme_utils'
 require_relative 'master_password_change'
 require_relative 'encryption_mode_change'
 
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for common Lich utilities and shared components.
   module Common
+    # Namespace for GUI-related components in Lich.
     module GUI
-      # Provides a user interface for managing accounts.
-      #
-      # This class handles the creation and management of the account management window,
-      # including adding, removing, and modifying accounts and characters.
-      #
-      # @see Lich::Common::GUI for related GUI components.
+      # Provides a user interface for managing accounts and characters
+      # Implements the account management feature for the Lich GUI login system
+      # Enhanced with data change notification capability for cross-tab synchronization
       class AccountManagerUI
-        # Creates and displays the account management window.
+        # Creates and displays the account management window
         #
-        # @param data_dir [String] the directory where account data is stored
+        # @param data_dir [String] Directory containing account data
         # @return [void]
         def self.create_management_window(data_dir)
           # Create instance with data directory
@@ -28,6 +29,10 @@ module Lich
           manager.show_management_window
         end
 
+        # Initializes a new AccountManagerUI instance
+        #
+        # @param data_dir [String] Directory containing account data
+        # @return [AccountManagerUI] New instance
         def initialize(data_dir)
           @data_dir = data_dir
           @msgbox = ->(message) { show_message_dialog(message) }
@@ -37,24 +42,27 @@ module Lich
           @tab_indices = {}
         end
 
-        # Sets a callback to be invoked when account data changes.
+        # Sets the data change callback for cross-tab communication
+        # Allows other tabs to be notified when data changes occur
         #
-        # @param callback [Proc] the callback to invoke on data changes
+        # @param callback [Proc] Callback to execute when data changes
         # @return [void]
         def set_data_change_callback(callback)
           @data_change_callback = callback
         end
 
-        # Registers the instance for notifications from the tab communicator.
+        # Stores tab communicator for later registration when tab is selected
+        # Defers callback registration until @notebook exists
         #
-        # @param tab_communicator [Object] the communicator for tab notifications
+        # @param tab_communicator [TabCommunicator] Tab communicator instance
         # @return [void]
         def register_for_notifications(tab_communicator)
           @tab_communicator = tab_communicator
           @accounts_store = nil # Will be set when accounts tab is created
         end
 
-        # Registers a callback to handle incoming notifications about account changes.
+        # Registers the data change callback with the tab communicator
+        # Called when the accounts tab is selected to ensure @notebook exists
         #
         # @return [void]
         def register_notification_callback
@@ -88,7 +96,8 @@ module Lich
           })
         end
 
-        # Refreshes the display of accounts in the UI.
+        # Refreshes the accounts display to reflect data changes
+        # Reloads and repopulates the accounts tree view
         #
         # @return [void]
         def refresh_accounts_display
@@ -105,10 +114,10 @@ module Lich
           end
         end
 
-        # Creates the accounts tab in the management window.
+        # Creates the accounts tab
         #
-        # @param notebook [Gtk::Notebook] the notebook to add the tab to
-        # @param insert_at_position [Integer, nil] optional position to insert the tab
+        # @param notebook [Gtk::Notebook] Notebook to add tab to
+        # @param insert_at_position [Integer, nil] Position to insert tab (default: append)
         # @return [void]
         def create_accounts_tab(notebook, insert_at_position = nil)
           # Store notebook reference for use in callbacks
@@ -119,7 +128,7 @@ module Lich
           accounts_box.border_width = 10
 
           # Create accounts treeview with favorites support
-          accounts_store = Gtk::TreeStore.new(String, String, String, String, String, String) # Added favorites column
+          accounts_store = Gtk::TreeStore.new(String, String, String, String, String, String, String)
           @accounts_store = accounts_store # Store reference for refresh operations
           accounts_view = Gtk::TreeView.new(accounts_store)
 
@@ -253,6 +262,7 @@ module Lich
               _game_name = iter[2] # Game name is in column 2, not character
               frontend_display = iter[3] # Frontend display name
               game_code = iter[4] # Game code is in hidden column 4
+              custom_launch = iter[6] # Custom launch is in hidden column 6
 
               if character.nil? || character.empty?
                 # This is an account node
@@ -307,7 +317,7 @@ module Lich
                              end
 
                   # Remove character with frontend precision
-                  if AccountManager.remove_character(@data_dir, account, character, game_code, frontend)
+                  if AccountManager.remove_character(@data_dir, account, character, game_code, frontend, custom_launch)
                     @msgbox.call("Character removed successfully.")
                     populate_accounts_view(accounts_store)
                     # Notify other tabs of data change
@@ -315,7 +325,8 @@ module Lich
                       account: account,
                       character: character,
                       game_code: game_code,
-                      frontend: frontend
+                      frontend: frontend,
+                      custom_launch: custom_launch
                     })
                   else
                     @msgbox.call("Failed to remove character.")
@@ -349,9 +360,9 @@ module Lich
           populate_accounts_view(accounts_store)
         end
 
-        # Creates the add character tab in the management window.
+        # Creates the add character tab
         #
-        # @param notebook [Gtk::Notebook] the notebook to add the tab to
+        # @param notebook [Gtk::Notebook] Notebook to add tab to
         # @return [void]
         def create_add_character_tab(notebook)
           # Create tab content
@@ -391,16 +402,8 @@ module Lich
           frontend_box = Gtk::Box.new(:horizontal, 5)
           frontend_box.pack_start(Gtk::Label.new("Frontend:"), expand: false, fill: false, padding: 0)
 
-          frontend_radio_box = Gtk::Box.new(:horizontal, 5)
-          stormfront_option = Gtk::RadioButton.new(label: 'Wrayth')
-          wizard_option = Gtk::RadioButton.new(label: 'Wizard', member: stormfront_option)
-          avalon_option = Gtk::RadioButton.new(label: 'Avalon', member: stormfront_option)
-
-          frontend_radio_box.pack_start(stormfront_option, expand: false, fill: false, padding: 0)
-          frontend_radio_box.pack_start(wizard_option, expand: false, fill: false, padding: 0)
-          frontend_radio_box.pack_start(avalon_option, expand: false, fill: false, padding: 0) if RUBY_PLATFORM =~ /darwin/i
-
-          frontend_box.pack_start(frontend_radio_box, expand: true, fill: true, padding: 0)
+          frontend_selector = FrontendSelector.new(refresh: false)
+          frontend_box.pack_start(frontend_selector.widget, expand: true, fill: true, padding: 0)
 
           add_box.pack_start(frontend_box, expand: false, fill: false, padding: 0)
 
@@ -449,9 +452,7 @@ module Lich
             refresh_button,
             char_name_entry,
             game_combo,
-            stormfront_option,
-            wizard_option,
-            avalon_option,
+            frontend_selector,
             custom_launch_entry,
             custom_launch_dir_entry,
             notebook
@@ -461,9 +462,9 @@ module Lich
           populate_account_combo(account_combo)
         end
 
-        # Creates the add account tab in the management window.
+        # Creates the add account tab
         #
-        # @param notebook [Gtk::Notebook] the notebook to add the tab to
+        # @param notebook [Gtk::Notebook] Notebook to add tab to
         # @return [void]
         def create_add_account_tab(notebook)
           # Create tab content
@@ -629,9 +630,10 @@ module Lich
           }
         end
 
-        # Creates the encryption management tab in the management window.
+        # Creates the encryption management tab for managing encryption-related settings
+        # Provides buttons for changing encryption password and encryption mode
         #
-        # @param notebook [Gtk::Notebook] the notebook to add the tab to
+        # @param notebook [Gtk::Notebook] The notebook to add the tab to
         # @return [void]
         def create_encryption_management_tab(notebook)
           # Create encryption management content
@@ -750,10 +752,11 @@ module Lich
 
         private
 
-        # Notifies registered callbacks of data changes.
+        # Notifies other tabs of data changes
+        # Triggers the data change callback if one is registered
         #
-        # @param change_type [Symbol] the type of change that occurred
-        # @param data [Hash] additional data related to the change
+        # @param change_type [Symbol] Type of change that occurred
+        # @param data [Hash] Additional data about the change
         # @return [void]
         def notify_data_changed(change_type = :general, data = {})
           if @data_change_callback
@@ -765,21 +768,20 @@ module Lich
           end
         end
 
-        # Sets up event handlers for the add character tab.
+        # Sets up the add character handlers with data change notification
+        # Configures event handlers for the add character functionality
         #
-        # @param add_button [Gtk::Button] the button to add a character
-        # @param account_combo [Gtk::ComboBoxText] the combo box for account selection
-        # @param refresh_button [Gtk::Button] the button to refresh accounts
-        # @param char_name_entry [Gtk::Entry] the entry for character name
-        # @param game_combo [Gtk::ComboBoxText] the combo box for game selection
-        # @param stormfront_option [Gtk::RadioButton] the stormfront option
-        # @param wizard_option [Gtk::RadioButton] the wizard option
-        # @param avalon_option [Gtk::RadioButton] the avalon option
-        # @param custom_launch_entry [Gtk::Entry] the entry for custom launch options
-        # @param custom_launch_dir_entry [Gtk::Entry] the entry for custom launch directory
-        # @param notebook [Gtk::Notebook] the notebook to switch tabs
+        # @param add_button [Gtk::Button] Add character button
+        # @param account_combo [Gtk::ComboBoxText] Account selection combo
+        # @param refresh_button [Gtk::Button] Refresh button
+        # @param char_name_entry [Gtk::Entry] Character name entry
+        # @param game_combo [Gtk::ComboBoxText] Game selection combo
+        # @param frontend_selector [FrontendSelector] shared frontend selector
+        # @param custom_launch_entry [Gtk::Entry] Custom launch entry
+        # @param custom_launch_dir_entry [Gtk::Entry] Custom launch directory entry
+        # @param notebook [Gtk::Notebook] Parent notebook
         # @return [void]
-        def setup_add_character_handlers(add_button, account_combo, refresh_button, char_name_entry, game_combo, _stormfront_option, wizard_option, avalon_option, custom_launch_entry, custom_launch_dir_entry, notebook)
+        def setup_add_character_handlers(add_button, account_combo, refresh_button, char_name_entry, game_combo, frontend_selector, custom_launch_entry, custom_launch_dir_entry, notebook)
           # Set up refresh button handler
           refresh_button.signal_connect('clicked') do
             populate_account_combo(account_combo)
@@ -808,14 +810,11 @@ module Lich
               next
             end
 
-            # Determine frontend
-            frontend = if wizard_option.active?
-                         'wizard'
-                       elsif avalon_option.active?
-                         'avalon'
-                       else
-                         'stormfront'
-                       end
+            frontend = frontend_selector.selected_id
+            if frontend.nil?
+              @msgbox.call('No supported frontend is available.')
+              next
+            end
 
             # Get game code from game text
             game_code = GameSelection.get_selected_game_code(game_combo)
@@ -861,11 +860,12 @@ module Lich
           end
         end
 
-        # Sets up the handler for the favorites column in the accounts view.
+        # Sets up the favorites column click handler with data change notification
+        # Configures click handling for the favorites column in the accounts view
         #
-        # @param accounts_view [Gtk::TreeView] the tree view displaying accounts
-        # @param favorites_col [Gtk::TreeViewColumn] the favorites column
-        # @param data_dir [String] the directory where account data is stored
+        # @param accounts_view [Gtk::TreeView] Accounts tree view
+        # @param favorites_col [Gtk::TreeViewColumn] Favorites column
+        # @param data_dir [String] Data directory
         # @return [void]
         def setup_favorites_column_handler(accounts_view, favorites_col, data_dir)
           accounts_view.signal_connect('button-press-event') do |_widget, event|
@@ -878,6 +878,7 @@ module Lich
                   character = iter[1]
                   game_code = iter[4]
                   frontend_display = iter[3]
+                  custom_launch = iter[6]
 
                   # Convert display name back to internal frontend format
                   frontend = case frontend_display.downcase
@@ -892,14 +893,19 @@ module Lich
                              end
 
                   # Toggle favorite status with frontend precision
-                  new_status = FavoritesManager.toggle_favorite(data_dir, account, character, game_code, frontend)
+                  new_status = FavoritesManager.toggle_favorite(
+                    data_dir, account, character, game_code, frontend, custom_launch
+                  )
+                  # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
                   iter[5] = new_status ? '★' : '☆'
+                  # rubocop:enable Custom/AsciiOnlySource
 
                   # Notify other tabs of data change
                   notify_data_changed(:favorite_toggled, {
                     account: account,
                     character: character,
                     game_code: game_code,
+                    custom_launch: custom_launch,
                     is_favorite: new_status
                   })
                 end
@@ -909,10 +915,10 @@ module Lich
           end
         end
 
-        # Checks if an account already exists in the data store.
+        # Checks if an account already exists in the YAML structure
         #
-        # @param username [String] the username to check
-        # @return [Boolean] true if the account exists, false otherwise
+        # @param username [String] Account username to check
+        # @return [Boolean] True if account exists
         def account_already_exists?(username)
           yaml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(@data_dir)
           return false unless File.exist?(yaml_file)
@@ -928,9 +934,9 @@ module Lich
           end
         end
 
-        # Displays a dialog for selecting a frontend.
+        # Shows a frontend selection dialog similar to manual login
         #
-        # @return [String, nil] the selected frontend or nil if cancelled
+        # @return [String, nil] Selected frontend or nil if cancelled
         def show_frontend_selection_dialog
           # Create dialog
           dialog = Gtk::Dialog.new(
@@ -951,49 +957,27 @@ module Lich
           label = Gtk::Label.new("Select the frontend to use for all characters:")
           content_area.pack_start(label, expand: false, fill: false, padding: 10)
 
-          # Create frontend selection radio buttons (similar to manual login)
-          stormfront_option = Gtk::RadioButton.new(label: 'Wrayth')
-          wizard_option = Gtk::RadioButton.new(label: 'Wizard', member: stormfront_option)
-          avalon_option = Gtk::RadioButton.new(label: 'Avalon', member: stormfront_option)
-
-          # Set Wrayth (stormfront) as default
-          stormfront_option.active = true
-
-          # Create radio button container
-          frontend_box = Gtk::Box.new(:vertical, 5)
-          frontend_box.pack_start(stormfront_option, expand: false, fill: false, padding: 0)
-          frontend_box.pack_start(wizard_option, expand: false, fill: false, padding: 0)
-
-          # Only show Avalon on macOS (consistent with manual login)
-          if RUBY_PLATFORM =~ /darwin/i
-            frontend_box.pack_start(avalon_option, expand: false, fill: false, padding: 0)
-          end
-
-          content_area.pack_start(frontend_box, expand: false, fill: false, padding: 10)
+          frontend_selector = FrontendSelector.new(refresh: false)
+          content_area.pack_start(frontend_selector.widget, expand: false, fill: false, padding: 10)
 
           # Show dialog and get response
           dialog.show_all
           response = dialog.run
 
           # Determine selected frontend
-          selected_frontend = nil
-          if response == Gtk::ResponseType::OK
-            if wizard_option.active?
-              selected_frontend = 'wizard'
-            elsif avalon_option.active?
-              selected_frontend = 'avalon'
-            else
-              selected_frontend = 'stormfront' # Default/Wrayth
-            end
-          end
+          selected_frontend = response == Gtk::ResponseType::OK ? frontend_selector.selected_id : nil
 
           dialog.destroy
+          if response == Gtk::ResponseType::OK && selected_frontend.nil?
+            @msgbox.call('No supported frontend is available.')
+          end
           selected_frontend
         end
 
-        # Sets up persistence for the sort state of the accounts view.
+        # Sets up sort state persistence for the account management treeview
+        # Saves and restores user's sort column and direction preferences
         #
-        # @param store [Gtk::TreeStore] the store to persist sort state for
+        # @param store [Gtk::TreeStore] Tree store to set up persistence for
         # @return [void]
         def setup_sort_state_persistence(store)
           # Load saved sort state
@@ -1016,6 +1000,10 @@ module Lich
           end
         end
 
+        # Converts a symbol to GTK sort type constant
+        #
+        # @param symbol [Symbol] Sort order symbol (:ascending or :descending)
+        # @return [Gtk::SortType, nil] GTK sort type constant or nil if invalid
         def symbol_to_gtk_sort_type(symbol)
           case symbol
           when :ascending
@@ -1027,6 +1015,10 @@ module Lich
           end
         end
 
+        # Converts a GTK sort type constant to symbol
+        #
+        # @param gtk_type [Gtk::SortType] GTK sort type constant
+        # @return [Symbol, nil] Sort order symbol or nil if invalid
         def gtk_sort_type_to_symbol(gtk_type)
           case gtk_type
           when Gtk::SortType::ASCENDING
@@ -1038,6 +1030,9 @@ module Lich
           end
         end
 
+        # Loads the saved sort state from user preferences
+        #
+        # @return [Hash] Hash containing :column and :order keys
         def load_sort_state
           begin
             settings_file = File.join(@data_dir, 'account_manager_sort.yml')
@@ -1052,6 +1047,11 @@ module Lich
           end
         end
 
+        # Saves the current sort state to user preferences
+        #
+        # @param column_id [Integer] Sort column ID
+        # @param order [Symbol] Sort order symbol (:ascending or :descending)
+        # @return [void]
         def save_sort_state(column_id, order)
           begin
             settings_file = File.join(@data_dir, 'account_manager_sort.yml')
@@ -1068,9 +1068,10 @@ module Lich
           end
         end
 
-        # Sets up sorting for the accounts view that is aware of account and character hierarchy.
+        # Sets up account-aware sorting that maintains account grouping
+        # Characters are sorted within their account groups, but accounts remain grouped
         #
-        # @param store [Gtk::TreeStore] the store to set up sorting for
+        # @param store [Gtk::TreeStore] Tree store to set up sorting for
         # @return [void]
         def setup_account_aware_sorting(store)
           # Character column sorting (column 1)
@@ -1089,6 +1090,15 @@ module Lich
           end
         end
 
+        # Custom sort comparison that maintains account grouping
+        # Account nodes always sort before character nodes
+        # Character nodes sort within their account group by the specified column
+        #
+        # @param model [Gtk::TreeModel] Tree model
+        # @param a [Gtk::TreeIter] First iterator
+        # @param b [Gtk::TreeIter] Second iterator
+        # @param sort_column [Integer] Column to sort by
+        # @return [Integer] Sort comparison result (-1, 0, 1)
         def account_aware_sort_compare(model, a, b, sort_column)
           # Check if either is an account node (has no parent)
           a_is_account = model.iter_parent(a).nil?
@@ -1122,6 +1132,10 @@ module Lich
           a_value.downcase <=> b_value.downcase
         end
 
+        # Helper method to find a TreeView widget within a container
+        #
+        # @param container [Gtk::Container] Container to search
+        # @return [Gtk::TreeView, nil] Found TreeView or nil
         def find_treeview_in_container(container)
           return nil unless container.is_a?(Gtk::Container)
 
@@ -1137,6 +1151,10 @@ module Lich
           nil
         end
 
+        # Populates the accounts view with data from the YAML file
+        #
+        # @param store [Gtk::TreeStore] Tree store to populate
+        # @return [void]
         def populate_accounts_view(store)
           store.clear
 
@@ -1161,14 +1179,23 @@ module Lich
                 char_iter[3] = character[:frontend].capitalize == 'Stormfront' ? 'Wrayth' : character[:frontend].capitalize
               end
               char_iter[4] = character[:game_code] # Store game_code in hidden column
+              char_iter[6] = character[:custom_launch] # Store custom launch in hidden column
 
               # Add favorites information with frontend precision
-              is_favorite = FavoritesManager.is_favorite?(@data_dir, account, character[:char_name], character[:game_code], character[:frontend])
+              is_favorite = FavoritesManager.is_favorite?(
+                @data_dir, account, character[:char_name], character[:game_code], character[:frontend], character[:custom_launch]
+              )
+              # rubocop:disable Custom/AsciiOnlySource -- GTK displays Unicode favorite markers correctly.
               char_iter[5] = is_favorite ? '★' : '☆'
+              # rubocop:enable Custom/AsciiOnlySource
             end
           end
         end
 
+        # Populates the account combo box with account names
+        #
+        # @param combo [Gtk::ComboBoxText] Combo box to populate
+        # @return [void]
         def populate_account_combo(combo)
           combo.remove_all
 
@@ -1184,6 +1211,12 @@ module Lich
           combo.active = 0 if accounts_data.any?
         end
 
+        # Updates the state of the change encryption password button
+        # Button is hidden unless Enhanced encryption mode is active and keychain available
+        # Disabled if Enhanced mode but no master password in keychain
+        #
+        # @param button [Gtk::Button] The change encryption password button
+        # @return [void]
         def update_encryption_password_button_state(button)
           # Hide button if OS keychain not available (feature unavailable)
           has_keychain = MasterPasswordManager.keychain_available?
@@ -1220,6 +1253,10 @@ module Lich
           button.sensitive = false
         end
 
+        # Updates the state of the change encryption mode button
+        # Button is always visible but only sensitive when accounts exist
+        #
+        # @return [void]
         def update_change_encryption_mode_button_state
           # Button is always visible
           @change_encryption_mode_button.visible = true
@@ -1243,6 +1280,10 @@ module Lich
           end
         end
 
+        # Shows a message dialog
+        #
+        # @param message [String] Message to display
+        # @return [void]
         def show_message_dialog(message)
           dialog = Gtk::MessageDialog.new(
             parent: @window,
@@ -1255,7 +1296,7 @@ module Lich
           dialog.destroy
         end
 
-        # Displays the account management window.
+        # Shows the management window
         #
         # @return [void]
         def show_management_window

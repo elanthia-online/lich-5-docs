@@ -1,27 +1,27 @@
+# frozen_string_literal: true
 
+require_relative '../custom_substitutions'
+
+# Namespace for the Lich scripting engine.
 module Lich
+  # Namespace for DragonRealms-specific functionality.
   module DragonRealms
+    # Namespace for DragonRealms common utilities and helpers.
+    #
+    # DRC (DragonRealms Common) provides shared methods for game interaction,
+    # item management, combat, music, and character state across Lich scripts.
     module DRC
       $pause_all_lock ||= Mutex.new
       $safe_pause_lock ||= Mutex.new
 
       module_function
 
-      # Constants used for various patterns and messages in the DRC module.
-      # ── Constants ────────────────────────────────────────────────────────
+      # -- Constants --------------------------------------------------------
 
       # Pattern for XML tags
-      # Pattern for XML tags.
-      #
-      # @example Match example
-      #   "<tag>content</tag>" =~ XML_TAG_PATTERN
       XML_TAG_PATTERN = /<[^>]+>/.freeze
 
       # Pattern for game wait/roundtime responses in bput
-      # Pattern for game wait/roundtime responses in bput.
-      #
-      # @example Match example
-      #   "Wait 5 seconds" =~ WAIT_RESPONSE_PATTERN
       WAIT_RESPONSE_PATTERN = /(?:\.\.\.wait |Wait |\.\.\. wait )(?<seconds>[0-9]+)/.freeze
 
       # Collect command response messages
@@ -46,10 +46,6 @@ module Lich
       ].freeze
 
       # Retreat command response patterns
-      # Retreat command response patterns.
-      #
-      # @example Match example
-      #   "You retreat from combat" =~ RETREAT_ESCAPE_MESSAGES[1]
       RETREAT_ESCAPE_MESSAGES = [
         /You are already as far away as you can get/,
         /You retreat from combat/,
@@ -58,6 +54,13 @@ module Lich
         /There's no place to retreat to/
       ].freeze
 
+      # Response patterns indicating the game reacted to a retreat or movement command.
+      #
+      # Used by {#retreat} to detect whether the character moved during combat or
+      # attempted to move. Matches indicate the game acknowledged the action, though
+      # not necessarily that the character successfully retreated.
+      #
+      # @return [Array<Regexp>]
       RETREAT_MESSAGES = [
         /retreat/,
         /sneak/,
@@ -70,11 +73,18 @@ module Lich
       ].freeze
 
       # Assess teach parsing patterns
-      # Assess teach parsing patterns.
-      #
-      # @example Match example
-      #   "John is teaching a class on Swordsmanship which is still open to new students" =~ ASSESS_TEACH_TEACHER_PATTERN
       ASSESS_TEACH_TEACHER_PATTERN = /(?<teacher>.*) is teaching a class on (?<skill>.*) which is still open to new students/.freeze
+      # Pattern extracting the filtered skill name from assess teach output.
+      #
+      # Matches lines showing a teacher's skill with a comparison clause,
+      # capturing the skill name in the `filtered_skill` group.
+      #
+      # @return [Regexp]
+      # @example
+      #   "arcane magic (compared to what you already know) elemental magic".match(ASSESS_TEACH_SKILL_FILTER_PATTERN)[:filtered_skill]
+      #   #=> "elemental magic"
+      # @see #assess_teach
+      # @see ASSESS_TEACH_TEACHER_PATTERN
       ASSESS_TEACH_SKILL_FILTER_PATTERN = /.* \(compared to what you already know\) (?<filtered_skill>.*)/.freeze
 
       # Common ranged weapon nouns
@@ -89,16 +99,30 @@ module Lich
       # https://regex101.com/r/4lGY6u/13
       FLAVOR_TEXT_PATTERN = /\s?\b(?:(?:colorfully and )?(?:artfully|artistically|attractively|beautifully|bl?ack-|cleverly|clumsily|crudely|deeply|delicately|edged|elaborately|faintly|flamboyantly|front-|fully|gracefully|heavily|held|intricately|lavishly|masterfully|plentifully|prominantly|roughly|securely|sewn|shabbily|shadow-|simply|somberly|skillfully|sloppily|starkly|stitched|tied and|tightly|well-)\s?)?(?:accented|accentuated|acid-etched|adorned|affixed|appliqued|assembled|attached|augmented|awash|backed|back-laced|balanced|banded|batiked|beaded|bearded|bearing|bedazzled|bedecked|bejeweled|beset|bestrewn|blazoned|bordered|bound|braided|branded|brocaded|bristling|brushed|buckled|burned|buttoned|caked|camouflaged|capped|carved|caught|centered|chased|chiseled|cinched|circled|clasped|cloaked|closed|coated|cobbled together|coiled|colored|composed|concealed|connected|constructed|countoured|covered|crafted|crested|crisscrossed|crowded|crowned|cuffed|cut|dangling|dappled|decked|decorated|deformed|depicting|designed|detailed|discolored|displaying|divided|done|dotted|draped|drawn|dressed|drizzled|dusted|edged|elaborately|embedded|embell?ished|emblazed|emblazoned|embossed|embroidered(?: all over| painstakingly)?|enameled(?: across)?|encircled|encrusted|engraved|engulfed|enhanced|entwined|equipped|etched|fashioned(?: so)?|fastened|feathered|featuring|festooned|fettered|filed|filled|firestained|fit|fitted|fixed|flecked|fletched|forged|formed|framed|fringed|frosted|full|gathered|gleaming|glimmering|glittering|goldworked|growing|gypsy-set|hafted|hand-tooled|hanging|heavily(?:-beaded| covered)?|held fast|hemmed|hewn|hideously|highlighted|hilted|honed|hung|impressed|incised|ingeniously repurposed|inscribed|inlaid|inset|interlaced|interspersed|interwoven|jeweled|joined|laced(?: up)?|lacquered|laden|layered|limned|lined|linked|looped|knotted|made|marbled|marked|marred|meshed|mosaicked|mottled|mounted|oiled|oozing|outlined|ornamented|overlai(?:d|n)|padded|painted|paired|patched|pattern-welded|patterned|pinned|plumed|polished|printed|reinforced|reminiscent|rendered|revealing|riddled|ridged|rimed|ringed|riveted|sashed|scarred|scattered|scorched|sculpted|sealed|seamed|secured|securely|set|sewn|shaped|shimmering|shod|shot|shrouded|side-laced|slashed|slung|smeared|smudged|spangled|speckled|spiraled|splatter-dyed|splattered|spotted|sprinkled|stacked|surmounted|surrounded|suspended|stained|stamped|starred|stenciled|stippled|stitched(?: together)?|strapped|streaked|strengthened|strewn|striated|striped|strung|studded|swathed|swirled|tailored|tangled|tapered|tethered|textured|threaded|tied|tightly|tinged|tinted|tipped|tooled|topped|traced|trimmed|twined|veined|vivified|washed|webbed|weighted|whorled|worked|worn|woven|wrapped|wreathed|wrought)?\b ["]?\b(?:a hand-tooled|across|along|an|around|atop|bearing|belted|bright streaks|dangling|designed|detailing|down (?:each leg|one side)|dyed (?:a|and|deep|of|in|night|rust|shimmering|the|to|with)|engravings|entitled|errant pieces|featuring|flaunting|frescoed|from|Gnomish Pride|(?:encased |quartered )?in(?: the)?|into|labeled|leading|like|lining|matching|(?<!stick|slice|chunk|flask|hunk|series|set|pair|piece) of|on|out|overlayed gleaming silver|resembling|shades of color|sporting|surrounding|that|the|through|tinged somber black|titled|to|upon|WAR MONGER|with|within|\b(?:at|bearing|(?:accented |held |secured )?by|carrying|clutching|colored|cradling|dangling|depicting|(?:prominently )?displaying|embossed|etched|featuring|for(?:ming)?|holding|(?<!slice |chunk |flask |hunk |series |set |pair |piece )of|over|patterned|striped|suspending|textured|that)\b \b(?:a (?:band|beaded|brass|cascade|cluster|coral|crown|dead|.+ (?:ingot|boulder|stone|rock|nugget)|fierce|fanged|fringe|glowing|golden|grinning|howling|large|lotus|mosaic|pair|poorly|rainbow|roaring|row|silver(?:y|weave)?|small|snarling|spray|tailored|thick|tiny|trio|turquoise|yellowed)|(?:squared )?agonite (?:links|decorated)|alternating|an|(?:purple |blue )?and|ash|beaded fringe|blackened (?:steel(?: accents| bearing| with|$)|ironwood)|blue (?:gold|steel)|burnished golden|cascading layers|carved ivory|chain-lined|chitinous|(?:deep red|dull black|pale blue) cloth|cloudberry blossoms|colorful tightly|cotton candy|crimson steel|crisscrossed|curious design|curved|crystaline charm|dark (?:blue|green|grey|metals|windsteel) (?:and|exuding|glaes|hues|khor'vela|muracite|pennon|with)|dark supple|deepest|deeply blending|delicate|dusky (?:dreamweave|green-grey)|ebonwood$|emblazoned|enamel?led (?:steel|bronze)|etched|fine(?:-grained| black| crushed)|finely wrought|flame-kissed|forest|fused-together|fuzzy grey|gauze atop|gilded steel|glass eyeballs|glistening green|golden oak|grey fur|hammered|haralun|has|heavy (?:grey|pearl|silver)|horn|Ilithi cedar|inky black|interlocking silver|interwoven|iridescent|jagged interlocking plates|(?:soft dark|supple|thick|woven) (?:bolts|leather)|lightweight|long swaths|lustrous|kertig ravens|made|metal cogs|mirror-finished|mottled|multiple woods|naphtha|oak|oblong sanguine|one|onyx buttons|opposing images|overlapping|pale cerulean|pallid links|pastel-hued|pins|pitted (?:black iron|steel)|plush velvet|polished (?:bronze|hemlock|steel)|raccoon tails|ram's horns|rat pelts|raw|red and blue|rich (?:purple|golden)|riveted bindings|roughened|rowan|sanguine thornweave|scattered star|scorch marks|sculpted|shadows|shark cartilage|shifting (?:celadon|shades)|shipboard|(?:braided |cobalt |deep black |desert-tan |dusky red Taisidon |ebony |exquisite spider|fine leaf-green |flowing night|glimmering ebony |heavy |marigold |pale gold marquisette and virid |rich copper |spiral-braided |steel|unadorned black Musparan )?silk(?:cress)?|(?:coiled |shimmering )?silver(?:steel| and |y)?|sirese blue spun glitter|six crossed|slender|small bones|smoothly interlocking|snow leopard|soft brushed|somber black|sprawled|sun-bleached|steel links|stones|strips of|sunny yellow|teardrop plates|telothian|the|tiny (?:golden|indurium|scales|skull)|tightly braided|tomiek|torn|twists|two|undyed|vibrant multicolored|viscous|waves of|weighted|well-cured|white ironwood|windstorm gossamer|wintry faeweave|woven diamondwood))\b.*/.freeze
 
+      # Game responses to STAND that mean standing cannot currently succeed,
+      # so fix_standing must stop instead of looping forever (issue #3668).
+      # These are already in the STAND match list, but matching one does not
+      # change posture, so without this guard the loop spams STAND endlessly
+      # (e.g. while unconscious, plummeting, held, or overburdened).
+      CANNOT_STAND_PATTERN = /unconscious|plummeting to your death|prevents you from standing|don't seem to be able to move|overburdened and cannot|weight of all your possessions|no room to do much of anything/.freeze
 
-      # Strips XML tags from the given lines.
-      #
-      # @param lines [Array<String>] lines of text to process.
-      # @return [Array<String>] lines without XML tags.
+      # -- Shared Utility Methods ------------------------------------------
+
+      # Strips XML tags and decodes common HTML entities from game output lines.
+      # @param lines [Array<String>] Array of raw game output lines
+      # @return [Array<String>] Array of non-empty, trimmed strings with XML removed
       def strip_xml(lines)
         lines.map { |line| line.gsub(XML_TAG_PATTERN, '').gsub('&gt;', '>').gsub('&lt;', '<').strip }
              .reject(&:empty?)
       end
 
+      # Like `fput` but better because will wait for RT
+      # before performing command and do smart retries.
+      # Will wait for matching text up to 15 seconds then timeout.
+      # Also recovers from some limited failures wherein we want to
+      # simply fix the issue and retry the bput, like when we're prone
+      # and need to be standing. Complex handling should be done within
+      # the calling script.
       def bput(message, *matches)
         options = (matches.shift if matches.first.is_a?(Hash)) || {}
         options['timeout'] ||= 15
@@ -132,7 +156,7 @@ module Lich
 
           case response
           when /^For some strange reason you are unable to do that\.  The world somehow seems frozen in place/
-            # Zadraes — 13:32 It's a "You're in an area actively being updated" message
+            # Zadraes - 13:32 It's a "You're in an area actively being updated" message
             pause 1
             put message
             timer = Time.now
@@ -206,10 +230,17 @@ module Lich
         ''
       end
 
-      # Verifies the existence of scripts by their names.
+      # Checks that each script name in the list exists as a loadable script.
       #
-      # @param script_names [Array<String>, String] names of scripts to verify.
-      # @return [Boolean] true if all scripts exist, false otherwise.
+      # Sends a message to bold output for each missing script. Does not raise
+      # or stop execution; the caller must check the return value to decide
+      # whether to proceed.
+      #
+      # @param script_names [String, Array<String>] one script name or an array of names
+      # @return [Boolean] true if all scripts exist, false if any are missing
+      # @example
+      #   DRC.verify_script(['hunting', 'mining']) #=> true (if both exist)
+      #   DRC.verify_script('invalid-name') #=> false
       def verify_script(script_names)
         script_names = [script_names] unless script_names.is_a?(Array)
         state = true
@@ -222,12 +253,17 @@ module Lich
         state
       end
 
-      # Waits for a script to complete execution.
+      # Starts a script with the given arguments and blocks until it completes.
       #
-      # @param name [String] name of the script to wait for.
-      # @param args [Array<String>] arguments to pass to the script.
-      # @param flags [Hash] additional options for script execution.
-      # @return [String, nil] the script handle if it started successfully, nil otherwise.
+      # Verifies the script exists before starting. Waits 2 seconds after starting,
+      # then polls {Script.running} until the script is no longer in the list.
+      #
+      # @param name [String] the script name
+      # @param args [Array] command-line arguments to pass to the script; strings with spaces are auto-quoted
+      # @param flags [Hash] start flags (e.g., no-pause, quiet)
+      # @return [Object] the script handle, or nil if verification failed
+      # @example
+      #   DRC.wait_for_script_to_complete('hunting', ['ogre'])
       def wait_for_script_to_complete(name, args = [], flags = {})
         verify_script(name)
         script_handle = start_script(name, args.map { |arg| arg.to_s =~ /\s/ ? "\"#{arg}\"" : arg }, flags)
@@ -238,9 +274,15 @@ module Lich
         script_handle
       end
 
-      # Checks if the player can see the sky based on their location.
+      # Checks whether the character can see the sky at the current location.
       #
-      # @return [Boolean] true if the sky is visible, false otherwise.
+      # Issues the WEATHER command and interprets the response: characters indoors
+      # without sky access return false; outdoor locations and indoors with visible
+      # sky (windows, skylights) return true.
+      #
+      # @return [Boolean] true if sky is visible, false if indoors with no sky view
+      # @example
+      #   DRC.can_see_sky? #=> true (in an outdoor area or room with skylight)
       def can_see_sky?
         # If you are indoors and not able to see the sky.
         inside_no_sky = "That's a bit hard to do while inside."
@@ -252,11 +294,18 @@ module Lich
         bput("weather", inside_no_sky, inside_yes_sky, outside) != inside_no_sky
       end
 
-      # Attempts to forage for an item a specified number of times.
+      # Attempts to forage for an item, retrying up to the specified number of times.
       #
-      # @param item [String] the item to forage for.
-      # @param tries [Integer] number of attempts to make.
-      # @return [Boolean] true if foraging was successful, false otherwise.
+      # Compares hand contents before and after each forage attempt to confirm success.
+      # Handles cluttered rooms by attempting to kick piles, and handles full hands by
+      # stowing the right hand. Returns false if the room is too cluttered to recover,
+      # if foraging efforts are futile, or if stowing fails.
+      #
+      # @param item [String] the item to forage for
+      # @param tries [Integer] maximum number of forage attempts (default: 5)
+      # @return [Boolean] true if an item was foraged, false if unsuccessful
+      # @example
+      #   DRC.forage?('herb') #=> true (if item was found)
       def forage?(item, tries = 5)
         snapshot = "#{right_hand}#{left_hand}"
         while snapshot == "#{right_hand}#{left_hand}"
@@ -278,11 +327,17 @@ module Lich
         true
       end
 
-      # Collects an item, optionally practicing the action.
+      # Attempts to collect an item, optionally in practice mode.
       #
-      # @param item [String] the item to collect.
-      # @param practice [Boolean] whether to practice the collection.
+      # Issues the COLLECT command with optional 'practice' flag. If the room is
+      # too cluttered, attempts to kick piles and retry. Waits for roundtime
+      # before returning.
+      #
+      # @param item [String] the item to collect
+      # @param practice [Boolean] whether to collect in practice mode (default: true)
       # @return [void]
+      # @example
+      #   DRC.collect('stone')
       def collect(item, practice = true)
         practicing = "practice" if practice
 
@@ -295,17 +350,40 @@ module Lich
         waitrt?
       end
 
+      # Attempts to kick a pile out of the way.
+      #
+      # Verifies standing, then checks for a pile in the room using {DRRoom.room_objs}.
+      # Returns true only if the character successfully moved the pile by running and
+      # kicking; other kick responses (item not found, futile kick) return false.
+      #
+      # @param item [String] the pile or object to kick (default: 'pile')
+      # @return [Boolean] true if kicked with a running attack, false otherwise
+      # @example
+      #   DRC.kick_pile? #=> true (if pile was kicked successfully)
       def kick_pile?(item = 'pile')
         fix_standing
         return unless DRRoom.room_objs.any? { |room_obj| room_obj.match?(/pile/) }
         bput("kick #{item}", 'I could not find', 'take a step back and run up to', 'Now what did the .* ever do to you', 'You lean back and kick your feet,') == 'take a step back and run up to'
       end
 
-      # Rummages through a container for a specified parameter.
+      # Rummages a container for items matching a category and returns parsed results.
       #
-      # @param parameter [String] the type of item to search for.
-      # @param container [String] the container to rummage through.
-      # @return [Array<String>] list of items found.
+      # Issues RUMMAGE /PARAMETER MY CONTAINER and parses the item list. The parameter
+      # determines how results are parsed: 'B' for boxes (adjective+noun via
+      # {#box_list_to_adj_and_noun}), 'SC' for scrolls (via
+      # {#scroll_list_to_adj_and_noun}), or any other value for generic nouns (via
+      # {#list_to_nouns}). Handles invisibility by releasing it and retrying.
+      # Returns an empty array if the container is closed, empty, doesn't exist, or
+      # the action is futile.
+      #
+      # @param parameter [String] search category: 'B' for boxes, 'SC' for scrolls, or other
+      # @param container [String] the container name (without 'my')
+      # @return [Array<String>] parsed item names, or an empty array if nothing found
+      # @example
+      #   DRC.rummage('S', 'backpack') #=> ["silk scroll", "parchment"]
+      # @see #box_list_to_adj_and_noun
+      # @see #scroll_list_to_adj_and_noun
+      # @see #list_to_nouns
       def rummage(parameter, container)
         result = DRC.bput("rummage /#{parameter} my #{container}", 'but there is nothing in there like that\.', 'looking for .* and see .*', 'While it\'s closed', 'I don\'t know what you are referring to', 'You feel about', 'That would accomplish nothing')
 
@@ -328,57 +406,157 @@ module Lich
         end
       end
 
+      # Returns skins from a rummage of the container.
+      #
+      # Convenience method that calls {#rummage} with the 'S' parameter.
+      #
+      # @param container [String] the container name
+      # @return [Array<String>] list of skin nouns
+      # @see #rummage
       def get_skins(container)
         rummage('S', container)
       end
 
+      # Returns gems from a rummage of the container.
+      #
+      # Convenience method that calls {#rummage} with the 'G' parameter.
+      #
+      # @param container [String] the container name
+      # @return [Array<String>] list of gem nouns
+      # @see #rummage
       def get_gems(container)
         rummage('G', container)
       end
 
+      # Returns materials from a rummage of the container.
+      #
+      # Convenience method that calls {#rummage} with the 'M' parameter.
+      #
+      # @param container [String] the container name
+      # @return [Array<String>] list of material nouns
+      # @see #rummage
       def get_materials(container)
         rummage('M', container)
       end
 
+      # Take a game formatted list "an arrow, silver coins and a deobar strongbox"
+      # And return an array ["an arrow", "silver coins", "a deobar strongbox"]
+      # is this ever useful compared to the list_to_nouns?
       def list_to_array(list)
         list.strip.split(/(?:,|(?:, |\s)?and\s?)(?:\s?<pushBold\/>\s?)?(?=\s\ba\b|\s\ban\b|\s\bsome\b|\s\bthe\b)/i).reject(&:empty?)
       end
 
+      # Post-match box name rewrites (applied via gsub after a box is matched).
+      # "ironwood" -> "iron" because the game parser wants the shortened noun.
+      # Players extend this via the +custom_box_substitutions+ setting; see
+      # {box_list_to_adj_and_noun}.
+      #
+      # @return [Array<Array(String, String)>] ordered [from, to] literal pairs
+      DEFAULT_BOX_SUBSTITUTIONS = [%w[ironwood iron]].freeze
+
+      # Take a game formatted list of boxes "a reinforced wooden strongbox and a
+      # plain ironwood crate" and return ["wooden strongbox", "iron crate"].
+      #
+      # The recognized wood and container words are {BOX_WOODS} and
+      # {BOX_CONTAINERS} merged with the player's +custom_box_woods+ /
+      # +custom_box_containers+ settings, so a player can teach Lich about a box
+      # material or container it does not yet know without a Lich release. The
+      # global +$box_regex+ (built from the same defaults) is left untouched for
+      # third-party scripts. Post-match rewrites come from
+      # {DEFAULT_BOX_SUBSTITUTIONS} merged with +custom_box_substitutions+.
+      #
+      # @param list [String] game-formatted box list (e.g. from rummage /B)
+      # @return [Array<String>] gettable box adjective+noun names
+      # @example
+      #   box_list_to_adj_and_noun('an ironwood crate') #=> ['iron crate']
+      # @see CustomSubstitutions.resolve
+      # @see #scroll_list_to_adj_and_noun
       def box_list_to_adj_and_noun(list)
+        woods = CustomSubstitutions.resolve(:custom_box_woods, BOX_WOODS, type: :names)
+        containers = CustomSubstitutions.resolve(:custom_box_containers, BOX_CONTAINERS, type: :names)
+        substitutions = CustomSubstitutions.resolve(:custom_box_substitutions, DEFAULT_BOX_SUBSTITUTIONS, type: :pairs)
+        box_regex = /((?:#{woods.map { |wood| Regexp.escape(wood) }.join('|')}) (?:#{containers.map { |container| Regexp.escape(container) }.join('|')}))/
         list.strip
-            .split($box_regex)
+            .split(box_regex)
             .reject(&:empty?)
-            .select { |item| item =~ $box_regex }
-            .map { |box| box.gsub('ironwood', 'iron') } # make all ironwood into iron because "the parser"
+            .select { |item| item =~ box_regex }
+            .map { |box| substitutions.reduce(box) { |current, (from, to)| current.gsub(from, to) } }
       end
 
+      # Item-specific scroll rewrites applied *before* {SCROLL_KEYWORD_COLLAPSE}.
+      # These full game descriptions contain keywords the collapse would
+      # otherwise mangle (e.g. "icy blue vellum scroll" -> "icy scroll", not
+      # "icy blue vellum"), or must be caught before the collapse can run.
+      # Order matters and is preserved. Players extend this list via the
+      # +custom_scroll_substitutions+ setting; see
+      # {scroll_list_to_adj_and_noun}.
+      #
+      # @return [Array<Array(String, String)>] ordered [from, to] literal pairs
+      DEFAULT_SCROLL_SUBSTITUTIONS_PRE = [
+        ['large midnight-blue scale torn with symbols', 'midnight-blue scale'],
+        ['icy blue vellum scroll', 'icy scroll'],
+        ['green vellum scroll', 'green scroll'],
+        ['fetid antelope vellum', 'antelope vellum'],
+        ['papyrus roll', 'papyrus.roll'],
+        ['pallid red scroll', 'pallid scroll']
+      ].freeze
+
+      # Adjective-pair scroll rewrites applied *after* {SCROLL_KEYWORD_COLLAPSE},
+      # reducing already-collapsed forms (e.g. "stormy grey" -> "stormy"). Order
+      # matters and is preserved. Not player-extensible (these operate on the
+      # collapsed noun, not the raw description).
+      #
+      # @return [Array<Array(String, String)>] ordered [from, to] literal pairs
+      DEFAULT_SCROLL_SUBSTITUTIONS_POST = [
+        ['crumpled paper', 'crumpled'],
+        ['pale ricepaper', 'pale'],
+        ['stormy grey', 'stormy'],
+        ['mossy green', 'mossy'],
+        ['dark purple', 'dark'],
+        ['vibrant red', 'vibrant'],
+        ['bright green', 'bright'],
+        ['icy blue', 'blue'],
+        ['pearl-white silk', 'silk'],
+        ['ghostly white', 'white'],
+        ['crinkled violet', 'crinkled'],
+        ['drawing paper', 'drawing']
+      ].freeze
+
+      # Structural collapse: reduce "<adj> <keyword> <flavor...>" to "<adj>
+      # <keyword>" by keeping the noun keyword and dropping trailing flavor.
+      # Sandwiched between the pre and post substitution passes.
+      #
+      # @return [Regexp]
+      SCROLL_KEYWORD_COLLAPSE = /\s(bark|leaf|ostracon|papyrus|parchment|roll|scroll|tablet|vellum|manuscript)\s.*/.freeze
+
+      # Converts a game rummage scroll list into gettable adjective+noun forms.
+      #
+      # Pipeline per entry: strip the leading article, strip "labeled with...",
+      # apply the pre-collapse literal substitutions ({DEFAULT_SCROLL_SUBSTITUTIONS_PRE}
+      # merged with the player's +custom_scroll_substitutions+), apply the
+      # {SCROLL_KEYWORD_COLLAPSE}, then apply the post-collapse substitutions
+      # ({DEFAULT_SCROLL_SUBSTITUTIONS_POST}).
+      #
+      # @param list [String] game-formatted scroll list (e.g. from rummage /SC)
+      # @return [Array<String>] gettable scroll names
+      # @example
+      #   scroll_list_to_adj_and_noun(' an icy blue parchment') #=> ['blue parchment']
+      # @see CustomSubstitutions.resolve
+      # @see #box_list_to_adj_and_noun
       def scroll_list_to_adj_and_noun(list)
-        list_to_array(list).map { |entry|
-          entry
-            .sub(/(an|some|a(?: piece of)?)\s/, '')
-            .sub(/\slabeled with.*/, '')
-            .sub(/icy blue vellum scroll/, 'icy scroll')
-            .sub(/green vellum scroll/, 'green scroll')
-            .sub(/fetid antelope vellum/, 'antelope vellum')
-            .sub(/papyrus roll/, 'papyrus.roll')
-            .sub(/pallid red scroll/, 'pallid scroll')
-            .sub(/\s(bark|leaf|ostracon|papyrus|parchment|roll|scroll|tablet|vellum|manuscript)\s.*/, ' \1')
-            .sub(/crumpled paper/, 'crumpled')
-            .sub(/pale ricepaper/, 'pale')
-            .sub(/stormy grey/, 'stormy')
-            .sub(/mossy green/, 'mossy')
-            .sub(/dark purple/, 'dark')
-            .sub(/vibrant red/, 'vibrant')
-            .sub(/bright green/, 'bright')
-            .sub(/icy blue/, 'blue')
-            .sub(/pearl-white silk/, 'silk')
-            .sub(/ghostly white/, 'white')
-            .sub(/crinkled violet/, 'crinkled')
-            .sub(/drawing paper/, 'drawing')
-            .strip
-        }
+        pre_substitutions = CustomSubstitutions.resolve(:custom_scroll_substitutions, DEFAULT_SCROLL_SUBSTITUTIONS_PRE, type: :pairs)
+        list_to_array(list).map do |entry|
+          without_article = entry
+                            .sub(/(an|some|a(?: piece of)?)\s/, '')
+                            .sub(/\slabeled with.*/, '')
+          with_pre = pre_substitutions.reduce(without_article) { |text, (from, to)| text.sub(from, to) }
+          collapsed = with_pre.sub(SCROLL_KEYWORD_COLLAPSE, ' \1')
+          DEFAULT_SCROLL_SUBSTITUTIONS_POST.reduce(collapsed) { |text, (from, to)| text.sub(from, to) }.strip
+        end
       end
 
+      # Take a game formatted list "an arrow, silver coins and a deobar strongbox"
+      # And return an array of nouns ["arrow", "coins", "strongbox"]
       def list_to_nouns(list)
         list_to_array(list)
           .map { |long_name| get_noun(long_name) }
@@ -386,20 +564,71 @@ module Lich
           .reject { |noun| noun == '' }
       end
 
+      # Extracts the gettable noun from an item's long name.
+      #
+      # Removes flavor text using {#remove_flavor_text}, then scans for the last
+      # sequence of alphanumeric characters and hyphens/apostrophes (typically the noun).
+      # Returns nil or an empty string if no noun is found.
+      #
+      # @param long_name [String] the full item name (e.g., "a blue gem-studded sword")
+      # @return [String, nil] the extracted noun, or nil if not found
+      # @example
+      #   DRC.get_noun("a blue gem-studded sword") #=> "sword"
+      # @see #remove_flavor_text
       def get_noun(long_name)
         remove_flavor_text(long_name).strip.scan(/[a-z\-']+$/i).first
       end
 
+      # Strips descriptive flavor text ("... adorned with ...") from an item
+      # name, leaving the gettable noun phrase.
+      #
+      # Applies the built-in {FLAVOR_TEXT_PATTERN} first, then any player-defined
+      # +custom_flavor_text_patterns+ (regular expressions) for flavor the
+      # built-in pattern misses -- letting a player strip a new flavor phrasing
+      # without a Lich release. User patterns are compiled with a per-pattern
+      # timeout and validated/guarded by {CustomSubstitutions}; an invalid or
+      # runaway pattern is reported and skipped, never raising here.
+      #
+      # @param item [String] the item long name
+      # @return [String] the item name with flavor text removed
+      # @example
+      #   remove_flavor_text('a sword adorned with rubies of deep crimson') #=> 'a sword'
+      # @see CustomSubstitutions.resolve
+      # @see CustomSubstitutions.apply_regexes
       def remove_flavor_text(item)
-        item.sub(FLAVOR_TEXT_PATTERN, '')
+        custom_patterns = CustomSubstitutions.resolve(:custom_flavor_text_patterns, [], type: :regexes)
+        CustomSubstitutions.apply_regexes(item.sub(FLAVOR_TEXT_PATTERN, ''), custom_patterns)
       end
 
-      # Represents an item in the game.
-      #
-      # @see DRC#ranged_weapon? to check if the item is a ranged weapon.
+      # Items class. Name is the noun of the object. Leather/metal boolean. Is the item worn (defaults to true). Does it hinder lockpicking? (false)
+      # Item.new(name:'gloves', leather:true, worn:true, hinders_locks:true, adjective:'ring', bound:true)
       class Item
         attr_reader :name, :leather, :worn, :hinders_lockpicking, :container, :swappable, :tie_to, :adjective, :bound, :wield, :transforms_to, :transform_verb, :transform_text, :lodges, :skip_repair, :ranged, :needs_unloading
 
+        # Initializes a new Item instance with equipment properties.
+        #
+        # Auto-detects ranged weapons by noun if `ranged` is not explicitly set,
+        # checking against {COMMON_RANGED_WEAPONS_PATTERN} and
+        # {RACIAL_RANGED_WEAPONS_PATTERN}. If `ranged` is auto-detected as true,
+        # `needs_unloading` defaults to true unless explicitly set.
+        #
+        # @param name [String, nil] the gettable noun of the item
+        # @param leather [Boolean, nil] whether the item is made of leather
+        # @param worn [Boolean] whether the item should be worn by default (default: false)
+        # @param hinders_locks [Boolean, nil] whether the item hinders lockpicking
+        # @param container [String, nil] the name of a container this item is stored in
+        # @param swappable [Boolean] whether the item can be swapped with another in hand (default: false)
+        # @param tie_to [String, nil] an item to tie this item to
+        # @param adjective [String, nil] optional adjective to disambiguate the noun
+        # @param bound [Boolean] whether the item is bound to the character (default: false)
+        # @param wield [Boolean] whether to wield the item instead of wearing it (default: false)
+        # @param transforms_to [String, nil] noun the item becomes after transformation
+        # @param transform_text [String, nil] game output confirming the transformation
+        # @param transform_verb [String, nil] verb to trigger the transformation
+        # @param lodges [Boolean] whether the item can lodge in the character (default: true)
+        # @param skip_repair [Boolean] whether to skip repairing this item (default: false)
+        # @param ranged [Boolean, nil] whether this is a ranged weapon; auto-detected if nil
+        # @param needs_unloading [Boolean, nil] whether the item needs to be unloaded; defaults to `ranged` if nil
         def initialize(name: nil, leather: nil, worn: false, hinders_locks: nil, container: nil, swappable: false, tie_to: nil, adjective: nil, bound: false, wield: false, transforms_to: nil, transform_text: nil, transform_verb: nil, lodges: true, skip_repair: false, ranged: nil, needs_unloading: nil)
           @name = name
           @leather = leather
@@ -420,20 +649,44 @@ module Lich
           @needs_unloading = needs_unloading.nil? ? @ranged : needs_unloading
         end
 
-        # Returns the short name of the item, including its adjective if present.
-        # @return [String] the short name of the item.
+        # Returns a short gettable name combining the adjective and noun.
+        #
+        # If an adjective is set, returns "adjective.noun"; otherwise returns the noun alone.
+        # Used for unambiguous item targeting in game commands.
+        #
+        # @return [String] the short item name
+        # @example
+        #   item = DRC::Item.new(name: 'sword', adjective: 'blue')
+        #   item.short_name #=> "blue.sword"
         def short_name
           @adjective ? "#{@adjective}.#{@name}" : @name
         end
 
+        # Returns a regex pattern matching the item in game output.
+        #
+        # If an adjective is set, matches "adjective...noun" (word boundary, any chars,
+        # word-boundary noun); otherwise matches just the noun. Case-insensitive.
+        #
+        # @return [Regexp] a pattern to match the item in text
+        # @example
+        #   item = DRC::Item.new(name: 'sword', adjective: 'blue')
+        #   item.short_regex.match?("the blue ornate sword") #=> true
         def short_regex
           @adjective ? /\b#{@adjective}.*\b#{@name}/i : /\b#{@name}/i
         end
 
-        # Checks if the given noun is a ranged weapon.
+        # Checks whether a noun represents a ranged weapon.
         #
-        # @param noun [String] the noun to check.
-        # @return [Boolean] true if the noun is a ranged weapon, false otherwise.
+        # Returns true if the noun matches {COMMON_RANGED_WEAPONS_PATTERN} (bow, crossbow,
+        # sling, etc.) or {RACIAL_RANGED_WEAPONS_PATTERN} (Gamgweth names like jranoki,
+        # uku'uan). Case-insensitive. Returns false if noun is nil.
+        #
+        # @param noun [String, nil] the item noun
+        # @return [Boolean] true if the noun is a known ranged weapon
+        # @example
+        #   item = DRC::Item.new(name: 'bow')
+        #   item.ranged_weapon?('bow') #=> true
+        #   item.ranged_weapon?('sword') #=> false
         def ranged_weapon?(noun)
           return false if noun.nil?
 
@@ -443,6 +696,8 @@ module Lich
           false
         end
 
+        # Convenience method to parse the text of an item as shown when in your hands, with or without an adjective,
+        # into an Item class instance. Originally designed to support DRCI and equipmanager methods.
         def self.from_text(text)
           return nil if text.nil? || text.to_s.strip.empty?
 
@@ -459,10 +714,12 @@ module Lich
         end
       end
 
-      # Extracts the town name from the given text.
-      #
-      # @param text [String] the text to search for a town name.
-      # @return [String, nil] the town name if found, nil otherwise.
+      # Looks up the canonical name of the town based on the given text.
+      # Utility to help identify the canonical town name based on arbitrary text.
+      # For example, "Theren" for "Therenborough" and "Haven" for "Riverhaven".
+      # It also handles missing apostrophes and the occasional space between names
+      # like "merkresh" or "Mer'Kresh" or "ainghazal" or "Ain Ghazal".
+      # Returns nil if unable to find a match.
       def get_town_name(text)
         towns = $HOMETOWN_REGEX_MAP.select { |_town, regex| regex =~ text }.keys
         if towns.length > 1
@@ -473,25 +730,40 @@ module Lich
         towns.first
       end
 
+      # windows only I believe.
       def beep
         echo("\a")
       end
 
-      # Ensures the player is standing.
+      # Issues STAND until the character is standing, giving up when the game
+      # reports a state from which standing cannot currently succeed. Without
+      # the CANNOT_STAND_PATTERN guard these states loop forever spamming
+      # STAND, because matching the message never makes standing? true
+      # (issue #3668: safe-room spamming STAND while unconscious).
       # @return [void]
       def fix_standing
         loop do
           break if standing?
 
-          bput('stand', 'You stand', 'You are so unbalanced', 'As you stand', 'You are already', 'weight of all your possessions', 'You are overburdened and cannot', 'You\'re unconscious', 'You swim back up into a vertical position', "You don't seem to be able to move to do that", 'prevents you from standing', 'You\'re plummeting to your death', 'There\'s no room to do much of anything here')
+          result = bput('stand', 'You stand', 'You are so unbalanced', 'As you stand', 'You are already', 'weight of all your possessions', 'You are overburdened and cannot', 'You\'re unconscious', 'You swim back up into a vertical position', "You don't seem to be able to move to do that", 'prevents you from standing', 'You\'re plummeting to your death', 'There\'s no room to do much of anything here')
+          break if result =~ CANNOT_STAND_PATTERN
         end
       end
 
-      # Listens to a teacher's class if possible.
+      # Attempts to listen to a teacher, checking skill appropriateness for the character.
       #
-      # @param teacher [String] the name of the teacher.
-      # @param observe_flag [Boolean] whether to observe the class.
-      # @return [Boolean] true if successfully listening, false otherwise.
+      # Listens to a teacher for the skill they are teaching. For Barbarians and Thieves,
+      # blocks listening to certain magic schools and combat skills; for Barbarians only,
+      # also blocks Utility. Returns true if listening succeeded (either newly started or
+      # already listening), or if the skill was inappropriate so the listener disengaged.
+      # Returns false if the teacher was not found, is not teaching, has left, or teaching
+      # is incompatible with the character's class.
+      #
+      # @param teacher [String] the teacher's name
+      # @param observe_flag [Boolean] whether to use 'observe' instead of plain listen (default: false)
+      # @return [Boolean] true if listening is/was active and appropriate, false otherwise
+      # @example
+      #   DRC.listen?("Master Trainer") #=> true
       def listen?(teacher, observe_flag = false)
         return false if teacher.nil?
         return false if teacher.empty?
@@ -516,8 +788,16 @@ module Lich
         false
       end
 
-      # Assesses the teaching status of classes.
-      # @return [Hash] a hash of teachers and their skills.
+      # Parses the ASSESS TEACH command output and returns active teachers and their skills.
+      #
+      # Issues ASSESS TEACH and collects lines until roundtime. Filters out lines indicating
+      # no one is teaching or the character is teaching. Returns a hash mapping teacher
+      # names to their skill (filtered to the comparison skill if present).
+      #
+      # @return [Hash<String, String>] teacher name => skill being taught, or {} if no teachers
+      # @example
+      #   DRC.assess_teach #=> { "Master Trainer" => "melee", "Sage" => "scholarship" }
+      # @see #parse_assess_teach_lines
       def assess_teach
         lines = Lich::Util.issue_command(
           'assess teach',
@@ -534,6 +814,7 @@ module Lich
         parse_assess_teach_lines(lines.map(&:strip).reject(&:empty?))
       end
 
+      # Pure parsing method for assess teach output (unit-testable)
       def parse_assess_teach_lines(lines)
         lines.each_with_object({}) do |line, hash|
           match = line.match(ASSESS_TEACH_TEACHER_PATTERN)
@@ -547,10 +828,17 @@ module Lich
         end
       end
 
-      # Attempts to hide the player.
+      # Attempts to hide, with fallback handling for common errors.
       #
-      # @param hide_type [String] the type of hiding action to perform.
-      # @return [Boolean] true if successfully hidden, false otherwise.
+      # Issues the hide command (HIDE, STALK, or custom). Handles cases where the character
+      # is playing music (stops it first), is stalking (stops stalking first), or needs
+      # more time. Stops after {hiding?} returns true. Does not throw; returns the result
+      # of {hiding?} even if the command failed.
+      #
+      # @param hide_type [String] the hide command variant (default: 'hide')
+      # @return [Boolean] true if the character is hiding after the attempt
+      # @example
+      #   DRC.hide? #=> true (if successfully hidden)
       def hide?(hide_type = 'hide')
         unless hiding?
           case bput(hide_type, 'Roundtime', 'too busy performing', 'can\'t see any place to hide yourself', 'Stalk what', 'You\'re already stalking', 'Stalking is an inherently stealthy', 'You haven\'t had enough time', 'You search but find no place to hide')
@@ -570,6 +858,17 @@ module Lich
         hiding?
       end
 
+      # Simplifies item names by dropping middle descriptive text, keeping only first and last words.
+      #
+      # Handles the game's verbose item naming by reducing multi-word names to a gettable
+      # form. Special case: removes ' and chain' from 'ball and chain'. Returns the string
+      # unchanged if it has 2 or fewer words, or if no match-and-last pattern is found.
+      #
+      # @param string [String] the item name
+      # @return [String] the simplified name
+      # @example
+      #   DRC.fix_dr_bullshit("a gleaming dark iron sword") #=> "a sword"
+      # @api private
       def fix_dr_bullshit(string)
         return string if string.split.length <= 2
 
@@ -581,22 +880,50 @@ module Lich
         "#{match[:first]} #{match[:last]}"
       end
 
+      # Returns the name of the item in the character's left hand, or nil if empty.
+      #
+      # Applies {#fix_dr_bullshit} to the game's item name to simplify verbose descriptions.
+      #
+      # @return [String, nil] the item name, or nil if hand is empty
+      # @example
+      #   DRC.left_hand #=> "sword" (or nil)
       def left_hand
         GameObj.left_hand.name == 'Empty' ? nil : fix_dr_bullshit(GameObj.left_hand.name)
       end
 
+      # Returns the name of the item in the character's right hand, or nil if empty.
+      #
+      # Applies {#fix_dr_bullshit} to the game's item name to simplify verbose descriptions.
+      #
+      # @return [String, nil] the item name, or nil if hand is empty
+      # @example
+      #   DRC.right_hand #=> "shield" (or nil)
       def right_hand
         GameObj.right_hand.name == 'Empty' ? nil : fix_dr_bullshit(GameObj.right_hand.name)
       end
 
+      # Returns the noun of the item in the character's left hand, or nil if empty.
+      #
+      # @return [String, nil] the item noun, or nil if hand is empty
       def left_hand_noun
         GameObj.left_hand == 'Empty' ? nil : GameObj.left_hand.noun
       end
 
+      # Returns the noun of the item in the character's right hand, or nil if empty.
+      #
+      # @return [String, nil] the item noun, or nil if hand is empty
       def right_hand_noun
         GameObj.right_hand == 'Empty' ? nil : GameObj.right_hand.noun
       end
 
+      # Releases all active invisibility spells and Khri silence/Vanish meditations.
+      #
+      # Queries active spells for invisibility properties and releases each one by abbreviation.
+      # Also handles Khri silence and Vanish (Thief only) via their specific commands.
+      # Does not throw if meditations are not active or if the character is not invisible.
+      #
+      # @return [void]
+      # @api private
       def release_invisibility
         get_data('spells')
           .spell_data
@@ -610,6 +937,16 @@ module Lich
         bput('khri stop vanish', /^You would need to start Vanish/, /^Your control over the limited subversion of reality falters/, /^You are not trained in the Vanish meditation/) if (DRStats.guild == "Thief" && invisible?)
       end
 
+      # Checks the character's current encumbrance level.
+      #
+      # If `refresh` is true, issues the ENCUMBRANCE command and parses the result;
+      # otherwise uses the cached {DRStats.encumbrance} value. Returns the encumbrance
+      # level (e.g., 'lightly', 'heavily') mapped via `$ENC_MAP` to a game constant.
+      #
+      # @param refresh [Boolean] whether to re-issue the command (default: true)
+      # @return [Object] the encumbrance level constant
+      # @example
+      #   DRC.check_encumbrance #=> (queries game and returns current level)
       def check_encumbrance(refresh = true)
         encumbrance = DRStats.encumbrance
         if refresh
@@ -621,6 +958,17 @@ module Lich
         $ENC_MAP[encumbrance]
       end
 
+      # Retreats from combat if there are hostiles in the room (excluding ignored NPCs).
+      #
+      # Returns immediately if no hostiles are present. Otherwise, loops calling RETREAT
+      # until either the character successfully escapes (detected by
+      # {RETREAT_ESCAPE_MESSAGES}) or encounters an error (handled by calling
+      # {#fix_standing}). Halts the loop once escape is confirmed.
+      #
+      # @param ignored_npcs [Array<String>] NPCs to exclude from hostility check (default: [])
+      # @return [Boolean] true if successfully retreated, nil/false otherwise
+      # @example
+      #   DRC.retreat(['mentor']) #=> true (if escaped without counting mentor as hostile)
       def retreat(ignored_npcs = [])
         return if (DRRoom.npcs - ignored_npcs).empty?
 
@@ -634,10 +982,17 @@ module Lich
         end
       end
 
-      # Converts a text representation of a number into an integer.
+      # Converts spoken number words to an integer.
       #
-      # @param text_num [String] the text to convert.
-      # @return [Integer, nil] the numeric value if conversion is successful, nil otherwise.
+      # Parses a text string like 'one hundred twenty-three' into its numeric value.
+      # Handles multipliers (hundred, thousand) and hyphens/spaces as separators.
+      # Returns nil and logs a message if an unknown word is encountered.
+      #
+      # @param text_num [String] the spoken number (e.g., "fifty", "two hundred thirty-five")
+      # @return [Integer, nil] the numeric value, or nil if an unknown word is found
+      # @example
+      #   DRC.text2num("twenty-five") #=> 25
+      #   DRC.text2num("one hundred") #=> 100
       def text2num(text_num)
         text_num = text_num.tr('-', ' ')
         split_words = text_num.split(' ')
@@ -647,6 +1002,8 @@ module Lich
           x = $NUM_MAP.fetch(word, nil)
           if word.eql?('hundred') && (g != 0)
             g *= 100
+          elsif word.eql?('thousand') && (g != 0)
+            g *= 1000
           elsif x.nil?
             Lich::Messaging.msg("bold", "DRC: Unknown number word '#{word}' in '#{text_num}'")
             return nil
@@ -658,15 +1015,28 @@ module Lich
         g
       end
 
-      # Plays a song using the specified settings and song list.
+      # Plays a song with smart retry logic and instrument maintenance.
       #
-      # @param settings [OpenStruct] the settings for playing the song.
-      # @param song_list [Array<Array<String>>] list of songs to choose from.
-      # @param worn [Boolean] whether the instrument is worn.
-      # @param skip_clean [Boolean] whether to skip cleaning the instrument.
-      # @param climbing [Boolean] whether the song is for climbing.
-      # @param skip_tuning [Boolean] whether to skip tuning the instrument.
-      # @return [Boolean] true if the song was played successfully, false otherwise.
+      # Attempts to play songs from `song_list` (an array of [song_name, next_song] tuples).
+      # Tracks state in {UserVars.song} and {UserVars.climbing_song} per instrument. Detects
+      # instrument changes and resets song state. Handles errors by: tuning if out of tune,
+      # cleaning if dirty (if rank >= 20), waking/standing/stopping other actions, getting/wearing
+      # the instrument if needed, or returning false for unrecoverable states. On success,
+      # advances to the next song in the list unless at the end. Skips cleaning/tuning if
+      # the respective flag is true or if rank < 20.
+      #
+      # @param settings [OpenStruct] settings with `instrument`, `worn_instrument`, and `cleaning_cloth`
+      # @param song_list [Hash, Array] list of songs as [[name, next], [next, next2], ...]
+      # @param worn [Boolean] whether the instrument is worn (vs. held); get/wear/remove as needed (default: true)
+      # @param skip_clean [Boolean] skip the cleaning phase if dirty (default: false)
+      # @param climbing [Boolean] use climbing song state instead of regular song (default: false)
+      # @param skip_tuning [Boolean] skip the tuning phase if out of tune (default: false)
+      # @return [Boolean] true if the song started successfully or an error was unrecoverable, false if the character cannot play
+      # @example
+      #   DRC.play_song?(settings, [["waltz", "foxtrot"], ["foxtrot", "waltz"]]) #=> true (if waltz plays)
+      # @see #stop_playing
+      # @see #clean_instrument
+      # @see #tune_instrument
       def play_song?(settings, song_list, worn = true, skip_clean = false, climbing = false, skip_tuning = false)
         instrument = worn ? settings.worn_instrument : settings.instrument
 
@@ -746,15 +1116,29 @@ module Lich
         end
       end
 
+      # Stops the current song.
+      #
+      # Issues STOP PLAY and waits for a response. Handles the case where the character
+      # is not playing.
+      #
+      # @return [void]
       def stop_playing
         bput('stop play', 'You stop playing your song', 'In the name of', "But you're not performing")
       end
 
-      # Cleans the specified instrument.
+      # Cleans an instrument using a chamois cloth via repeated wipe and wring cycles.
       #
-      # @param settings [OpenStruct] the settings for cleaning the instrument.
-      # @param worn [Boolean] whether the instrument is worn.
-      # @return [Boolean] true if the instrument was cleaned successfully, false otherwise.
+      # Gets the cloth and instrument (removing it first if worn). Loops wiping and wringing
+      # until the cloth is dry. Then loops cleaning until the instrument is no longer dirty.
+      # Re-wears the instrument if it was worn. Returns false if the cloth or instrument
+      # cannot be retrieved, and sends a beep alert. Re-stands if needed.
+      #
+      # @param settings [OpenStruct] settings with `cleaning_cloth`, `instrument`, and `worn_instrument`
+      # @param worn [Boolean] whether the instrument is worn (default: true)
+      # @return [Boolean] true if cleaning succeeded, false if cloth/instrument could not be obtained
+      # @example
+      #   DRC.clean_instrument(settings) #=> true
+      # @see #stop_playing
       def clean_instrument(settings, worn = true)
         cloth = settings.cleaning_cloth
         instrument = worn ? settings.worn_instrument : settings.instrument
@@ -809,10 +1193,17 @@ module Lich
         true
       end
 
-      # Tunes the specified instrument.
+      # Tunes an instrument by iteratively adjusting flat/sharp until in tune.
       #
-      # @param settings [OpenStruct] the settings for tuning the instrument.
-      # @return [Boolean] true if the instrument was tuned successfully, false otherwise.
+      # Stops any playing, verifies the instrument is in hand, and removes/gets it if needed.
+      # Delegates to {#do_tune} for the actual tuning loop. Re-wears the instrument if it
+      # was worn. Returns false if the instrument cannot be obtained or both hands are not free.
+      #
+      # @param settings [OpenStruct] settings with `instrument` and `worn_instrument`
+      # @return [Boolean] true if tuning succeeded, false if the instrument is not available or both hands are full
+      # @example
+      #   DRC.tune_instrument(settings) #=> true
+      # @see #do_tune
       def tune_instrument(settings)
         instrument = settings.worn_instrument || settings.instrument
 
@@ -848,11 +1239,19 @@ module Lich
         true
       end
 
-      # Performs the tuning action on the specified instrument.
+      # Recursively tunes an instrument by comparing game feedback and adjusting sharp/flat.
       #
-      # @param instrument [String] the instrument to tune.
-      # @param tuning [String] the type of tuning to perform.
-      # @return [Boolean] true if the tuning was successful, false otherwise.
+      # Issues TUNE MY INSTRUMENT [TUNING] and reads the response. If tuned, returns true.
+      # If flat, recursively calls with "sharp"; if sharp, calls with "flat". If the
+      # character must stand first, calls {#fix_standing} and retries. Returns false if
+      # the instrument is not in hand.
+      #
+      # @param instrument [String] the instrument name
+      # @param tuning [String] optional tuning direction ("sharp" or "flat") (default: "")
+      # @return [Boolean] true if in tune, false if not in hand
+      # @example
+      #   DRC.do_tune("lute") #=> true (if successfully tuned)
+      # @api private
       def do_tune(instrument, tuning = "")
         unless instrument && DRCI.in_hands?(instrument)
           Lich::Messaging.msg("bold", "DRC: No instrument found in hands. Not trying to tune.")
@@ -878,8 +1277,14 @@ module Lich
         end
       end
 
-      # Pauses all scripts that can be paused.
-      # @return [Boolean] true if all scripts were paused, false otherwise.
+      # Pauses all other scripts (except the current one) and locks the pause state.
+      #
+      # Acquires `$pause_all_lock`. Already-paused scripts are tracked in
+      # `@pause_all_no_unpause` so they are not unpaused by {#unpause_all}.
+      # Waits 1 second before returning. Returns false if the lock is already held.
+      #
+      # @return [Boolean] true if all other scripts were paused, false if lock could not be acquired
+      # @see #unpause_all
       def pause_all
         return false unless $pause_all_lock.try_lock
 
@@ -900,8 +1305,12 @@ module Lich
         true
       end
 
-      # Unpauses all previously paused scripts.
-      # @return [Boolean] true if all scripts were unpaused, false otherwise.
+      # Unpauses scripts that were paused by {#pause_all}, excluding those already paused before.
+      #
+      # Releases `$pause_all_lock` after unpausing. Returns false if the lock is not held.
+      #
+      # @return [Boolean] true if unpausing succeeded, false if lock is not held
+      # @see #pause_all
       def unpause_all
         return false unless $pause_all_lock.owned?
 
@@ -917,8 +1326,18 @@ module Lich
         true
       end
 
-      # Pauses all scripts except the current one to allow it to run.
-      # @return [Array<String>] list of paused script names.
+      # Pauses all other unpaused scripts and returns their names for later resumption.
+      #
+      # Does not use a lock. Sends a message to plain output listing paused scripts.
+      # Complementary to {#unpause_all_list}; the caller is responsible for tracking
+      # the returned list and passing it to unpause.
+      #
+      # @return [Array<String>] names of paused scripts
+      # @example
+      #   paused = DRC.smart_pause_all
+      #   # ... do work ...
+      #   DRC.unpause_all_list(paused)
+      # @see #unpause_all_list
       def smart_pause_all
         paused_script_list = []
         Script.running.find_all { |s| !s.paused? && !s.no_pause_all && s.name != Script.self.name }.each do |s|
@@ -929,10 +1348,16 @@ module Lich
         return paused_script_list
       end
 
-      # Unpauses a list of specified scripts.
+      # Unpauses the specified scripts and sends a completion message.
       #
-      # @param scripts_to_unpause [Array<String>] names of scripts to unpause.
+      # Unpauses only scripts in `scripts_to_unpause` (allowing caller control).
+      # Sends different messages depending on whether any scripts are being unpaused.
+      #
+      # @param scripts_to_unpause [Array<String>] script names to unpause
       # @return [void]
+      # @example
+      #   DRC.unpause_all_list(["hunting", "mining"])
+      # @see #smart_pause_all
       def unpause_all_list(scripts_to_unpause)
         if scripts_to_unpause.empty?
           Lich::Messaging.msg("plain", "DRC: #{Script.self.name} has finished.")
@@ -942,10 +1367,29 @@ module Lich
         end
       end
 
-      # Safely pauses all scripts that can be paused.
-      # @return [Array<String>] list of paused script names.
+      # Safely pauses all other scripts while protecting the caller from deadlock.
+      #
+      # Acquires `$safe_pause_lock` and sets the lock holder's `ignore_pause` flag
+      # so it cannot be paused (preventing deadlock if another script tries to pause
+      # the lock holder). Complementary to {#safe_unpause_list}, which restores
+      # the flag and releases the lock. Returns false if the lock is already held.
+      #
+      # @return [Array<String>, false] names of paused scripts, or false if lock could not be acquired
+      # @see #safe_unpause_list
       def safe_pause_list
         return false unless $safe_pause_lock.try_lock
+
+        # Pausing is cooperative: a paused script is a live thread that keeps
+        # every mutex it holds (Ruby frees a mutex on thread death, not on
+        # pause). So a script that gets pause_script'd while holding
+        # $safe_pause_lock never releases it, and every peer spins forever on
+        # try_lock -> false. Make the lock-holder immune to pause for as long as
+        # it owns the lock, so this deadlock cannot form. Save the prior value
+        # (and the holder itself) so we restore exactly what was there for a
+        # caller that was already ignoring pauses, e.g. mid-travel.
+        @safe_pause_holder = Script.self
+        @safe_pause_prev_ignore_pause = @safe_pause_holder&.ignore_pause
+        @safe_pause_holder&.ignore_pause = true
 
         paused_script_list = []
         Script.running.find_all { |s| !s.paused? && !s.no_pause_all && s.name != Script.self.name }.each do |s|
@@ -956,10 +1400,16 @@ module Lich
         return paused_script_list
       end
 
-      # Safely unpauses a list of specified scripts.
+      # Safely unpauses the specified scripts and releases the pause lock.
       #
-      # @param scripts_to_unpause [Array<String>] names of scripts to unpause.
-      # @return [void]
+      # Unpauses only scripts in `scripts_to_unpause`. Restores the lock holder's
+      # prior `ignore_pause` state before releasing `$safe_pause_lock` to prevent
+      # leaving the script permanently unpausable. Sends completion messages.
+      # Returns false if the lock is not held.
+      #
+      # @param scripts_to_unpause [Array<String>] script names to unpause
+      # @return [Boolean] true if unpausing succeeded, false if lock is not held
+      # @see #safe_pause_list
       def safe_unpause_list(scripts_to_unpause)
         return false unless $safe_pause_lock.owned?
 
@@ -969,13 +1419,25 @@ module Lich
           Lich::Messaging.msg("plain", "DRC: Unpausing #{scripts_to_unpause}, #{Script.self.name} has finished.")
           Script.running.find_all { |s| s.paused? && !s.no_pause_all && scripts_to_unpause.include?(s.name) }.each(&:unpause)
         end
+        # Restore the holder's pre-lock pause immunity before releasing the lock,
+        # so we never leave a script permanently unpausable.
+        @safe_pause_holder&.ignore_pause = @safe_pause_prev_ignore_pause
+        @safe_pause_holder = nil
+        @safe_pause_prev_ignore_pause = nil
         $safe_pause_lock.unlock
       end
 
-      # Sets the player's stance based on the specified skill.
+      # Sets the combat stance distribution (evasion/parry/shield) by skill focus.
       #
-      # @param skill [String] the skill to set the stance for.
+      # Calculates stance points based on guild and Defending skill rank. Paladins use
+      # a divisor of 50, Barbarians/Rangers/Traders/Commoners use 60, others use 70.
+      # Distributes 80 + (Defending rank / divisor) points: 100 to the chosen skill,
+      # remaining to secondary, and overflow (if any) to tertiary.
+      #
+      # @param skill [String] the skill to focus: 'evasion', 'parry', or 'shield'
       # @return [void]
+      # @example
+      #   DRC.set_stance('parry') #=> (issues STANCE SET with parry-favoring distribution)
       def set_stance(skill)
         div = if DRStats.guild == 'Paladin'
                 50
@@ -1003,23 +1465,15 @@ module Lich
         DRC.bput("stance set #{stance}", /Setting your/)
       end
 
-      # Logs atmospheric text to the window.
-      #
-      # @param text [String] the text to log.
-      # @param make_bold [Boolean] whether to make the text bold.
-      # @return [void]
+      # Sends a message to the atmospherics window.
+      # By default the message is bold.
+      # DEPRECATED in favor of log_window
       def atmo(text, make_bold = true)
         log_window(text, "atmospherics", make_bold)
       end
 
-      # Logs text to a specified window.
-      #
-      # @param text [String] the text to log.
-      # @param window_name [String] the name of the window.
-      # @param make_bold [Boolean] whether to make the text bold.
-      # @param create_window [Boolean] whether to create the window if it doesn't exist.
-      # @param pre_clear_window [Boolean] whether to clear the window before logging.
-      # @return [void]
+      # Sends a message to the specified window. Replaces the deprecated atmo method.
+      # By default the message is bold. Creates window upon request. Pre-clears window upon request.
       def log_window(text, window_name, make_bold = true, create_window = false, pre_clear_window = false)
         if create_window
           _respond("<streamWindow id=\"#{window_name}\" title=\"#{window_name}\" location=\"center\" save=\"true\" />")
@@ -1036,21 +1490,18 @@ module Lich
         )
       end
 
-      # Wraps text in bold formatting.
-      #
-      # @param text [String] the text to format.
-      # @return [String] the formatted bold text.
+      # Helper function to wrap text in the necessary markup
+      # to make it render as bold in a frontend client.
+      # Used by `atmo` and `log_window` methods.
       def bold(text)
         prefix = Frontend.supports_gsl? ? "\034GSL\r\n " : "<pushBold\/>"
         suffix = Frontend.supports_gsl? ? "\034GSM\r\n " : "<popBold\/>"
         "#{prefix}#{text}#{suffix}"
       end
 
-      # Sends a message to the player.
-      #
-      # @param text [String] the message to send.
-      # @param make_bold [Boolean] whether to send the message in bold.
-      # @return [void]
+      # Sends a message to the game window.
+      # By default the message is bold.
+      # Delegates to Lich::Messaging.msg for consistent multi-frontend support.
       def message(text, make_bold = true)
         Lich::Messaging.msg(make_bold ? "bold" : "plain", text, encode: false)
       end
