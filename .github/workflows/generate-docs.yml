@@ -205,6 +205,10 @@ jobs:
         id: pr
         uses: peter-evans/create-pull-request@v7
         with:
+          # PR_TOKEN: PAT with contents+pull-requests+workflows write.
+          # The default GITHUB_TOKEN cannot push anything GitHub judges to
+          # touch .github/workflows/.
+          token: ${{ secrets.PR_TOKEN || github.token }}
           add-paths: |
             documented/**
             output/latest/manifest.json
