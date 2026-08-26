@@ -58,19 +58,19 @@ Pull lich-5 → diff via manifest → coverage-check changed files
 ```bash
 # Incremental build (skip unchanged files)
 python scripts/generate_docs.py /path/to/lich-5/lib \
-  --provider openai \
+  --provider anthropic \
   --output-structure mirror
 
 # Full rebuild (reprocess all files)
 python scripts/generate_docs.py /path/to/lich-5/lib \
-  --provider openai \
+  --provider anthropic \
   --output-structure mirror \
   --force-rebuild
 
 # Single file (for testing)
 python scripts/generate_docs.py \
   --file /path/to/lich-5/lib/gemstone/psms/feat.rb \
-  --provider openai \
+  --provider anthropic \
   --output-structure mirror
 ```
 
@@ -109,7 +109,7 @@ Fails the run — with no PR opened — if the provider preflight fails or too
 many files error.
 
 **Inputs:**
-- `provider`: LLM provider (openai, anthropic, gemini, mock)
+- `provider`: LLM provider (anthropic, openai, gemini, mock; default: anthropic)
 - `source_repo`: Source repository (default: `elanthia-online/lich-5`)
 - `source_branch`: Branch to document (default: `main`)
 
@@ -202,8 +202,8 @@ lich-5-docs/
 ### Environment Variables
 
 ```bash
-# LLM Provider (openai, anthropic, gemini)
-LLM_PROVIDER=openai
+# LLM Provider (anthropic, openai, gemini)
+LLM_PROVIDER=anthropic
 
 # API Keys (only one required based on provider)
 OPENAI_API_KEY=sk-...
@@ -215,8 +215,8 @@ GEMINI_API_KEY=...
 
 The system supports three LLM providers (models configured in `config.yaml`):
 
+- **Anthropic** (default): Uses `claude-haiku-4-5` model ($1/$5 per 1M tokens, see [Anthropic pricing](https://www.anthropic.com/pricing))
 - **OpenAI**: Uses `gpt-4o-mini` model (paid, see [OpenAI pricing](https://openai.com/api/pricing/))
-- **Anthropic**: Uses `claude-haiku-4-5` model ($1/$5 per 1M tokens, see [Anthropic pricing](https://www.anthropic.com/pricing))
 - **Gemini**: Uses `gemini-2.5-flash` model (free tier available, see [Google AI pricing](https://ai.google.dev/pricing))
 
 Because generation is coverage-based, incremental runs against an

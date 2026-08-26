@@ -99,7 +99,7 @@ pip install -r requirements.txt
 gem install yard                     # for validation + HTML build
 
 # Everyday incremental run (gap-fill only; $0 when everything is documented)
-python scripts/generate_docs.py /path/to/lich-5/lib --provider openai --output-structure mirror
+python scripts/generate_docs.py /path/to/lich-5/lib --provider anthropic --output-structure mirror
 
 # Coverage report
 python src/yard_coverage.py --dir /path/to/lich-5/lib --uncovered
@@ -116,8 +116,8 @@ python -m pytest tests/
 
 ## Provider Costs & Models (config.yaml)
 
-- **openai** `gpt-4o-mini` — default
-- **anthropic** `claude-haiku-4-5` — $1/$5 per 1M tokens (claude-3-haiku retired Apr 2026)
+- **anthropic** `claude-haiku-4-5` — **default**; $1/$5 per 1M tokens (claude-3-haiku retired Apr 2026)
+- **openai** `gpt-4o-mini`
 - **gemini** `gemini-2.5-flash` — verify ID before use; severe rate limits
 - **mock** — free; returns schema-valid JSON; used for pipeline testing
 

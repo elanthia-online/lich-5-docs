@@ -63,7 +63,7 @@ class ProviderFactory:
 
         Args:
             provider_name: Name of provider ('gemini', 'openai', 'mock', 'anthropic')
-                          If None, uses LLM_PROVIDER env var or defaults to 'openai'
+                          If None, uses LLM_PROVIDER env var or defaults to 'anthropic'
             config: Optional configuration dict to override defaults
 
         Returns:
@@ -74,7 +74,7 @@ class ProviderFactory:
         """
         # Determine provider
         if provider_name is None:
-            provider_name = os.environ.get('LLM_PROVIDER', 'openai').lower()
+            provider_name = os.environ.get('LLM_PROVIDER', 'anthropic').lower()
 
         logger.info(f"Initializing {provider_name} provider")
 
@@ -179,7 +179,7 @@ class ProviderFactory:
                     "note": "For testing pipeline without API calls"
                 }
             },
-            "current_provider": os.environ.get('LLM_PROVIDER', 'openai'),
+            "current_provider": os.environ.get('LLM_PROVIDER', 'anthropic'),
             "env_var": "LLM_PROVIDER"
         }
 
@@ -195,7 +195,7 @@ class ProviderFactory:
             Validation results
         """
         if provider_name is None:
-            provider_name = os.environ.get('LLM_PROVIDER', 'openai').lower()
+            provider_name = os.environ.get('LLM_PROVIDER', 'anthropic').lower()
 
         results = {
             "provider": provider_name,
@@ -240,7 +240,7 @@ def get_provider(provider_name: Optional[str] = None) -> LLMProvider:
     Quick helper to get a provider instance
 
     Args:
-        provider_name: Optional provider name (defaults to env var or 'gemini')
+        provider_name: Optional provider name (defaults to env var or 'anthropic')
 
     Returns:
         LLMProvider instance

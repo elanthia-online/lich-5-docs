@@ -60,7 +60,7 @@ class Lich5DocumentationGenerator:
         Initialize the documentation generator
 
         Args:
-            provider_name: LLM provider to use (defaults to env var or 'openai')
+            provider_name: LLM provider to use (defaults to env var or 'anthropic')
             output_dir: Output directory for documentation (defaults to 'output/latest')
             incremental: Enable incremental processing (skip already documented files)
             force_rebuild: Force reprocessing of all files even if already documented
@@ -71,7 +71,7 @@ class Lich5DocumentationGenerator:
                               from scratch. Default (False) preserves existing docs and
                               only fills gaps found by the coverage checker.
         """
-        self.provider_name = provider_name or os.environ.get('LLM_PROVIDER', 'openai')
+        self.provider_name = provider_name or os.environ.get('LLM_PROVIDER', 'anthropic')
         self.incremental = incremental and not force_rebuild
         self.force_rebuild = force_rebuild
         self.force_regenerate = force_regenerate
@@ -1512,7 +1512,7 @@ def main():
     parser.add_argument(
         '--provider',
         choices=['gemini', 'openai', 'mock', 'anthropic'],
-        help='LLM provider to use (defaults to env var or openai)'
+        help='LLM provider to use (defaults to env var or anthropic)'
     )
     parser.add_argument(
         '--output',
@@ -1582,7 +1582,7 @@ def main():
         parser.error("Either input directory or --file must be specified")
 
     # Validate environment
-    provider = args.provider or os.environ.get('LLM_PROVIDER', 'openai')
+    provider = args.provider or os.environ.get('LLM_PROVIDER', 'anthropic')
     validation = ProviderFactory.validate_environment(provider)
 
     if not validation['valid']:
