@@ -104,19 +104,13 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents an item in the game.</p>
+    <p>Items class. Name is the noun of the object. Leather/metal boolean. Is the item worn (defaults to true). Does it hinder lockpicking? (false)
+Item.new(name:'gloves', leather:true, worn:true, hinders_locks:true, adjective:'ring', bound:true)</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li>to check if the item is a ranged weapon.</li>
-    
-  </ul>
 
 </div>
 
@@ -614,7 +608,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Convenience method to parse the text of an item as shown when in your hands, with or without an adjective, into an Item class instance.</p></div></span>
   
 </li>
 
@@ -648,7 +642,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>A new instance of Item.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a new Item instance with equipment properties.</p></div></span>
   
 </li>
 
@@ -670,7 +664,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the given noun is a ranged weapon.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a noun represents a ranged weapon.</p></div></span>
   
 </li>
 
@@ -692,7 +686,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the short name of the item, including its adjective if present.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns a short gettable name combining the adjective and noun.</p></div></span>
   
 </li>
 
@@ -700,7 +694,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#short_regex-instance_method" title="#short_regex (instance method)">#<strong>short_regex</strong>  &#x21d2; Object </a>
+      <a href="#short_regex-instance_method" title="#short_regex (instance method)">#<strong>short_regex</strong>  &#x21d2; Regexp </a>
     
 
     
@@ -714,7 +708,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns a regex pattern matching the item in game output.</p></div></span>
   
 </li>
 
@@ -737,12 +731,292 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a new instance of Item.</p>
+    <p>Initializes a new Item instance with equipment properties.</p>
+<p>Auto-detects ranged weapons by noun if <code>ranged</code> is not explicitly set,
+checking against <span class='object_link'><a href="../DRC.html#COMMON_RANGED_WEAPONS_PATTERN-constant" title="Lich::DragonRealms::DRC::COMMON_RANGED_WEAPONS_PATTERN (constant)">COMMON_RANGED_WEAPONS_PATTERN</a></span> and
+<span class='object_link'><a href="../DRC.html#RACIAL_RANGED_WEAPONS_PATTERN-constant" title="Lich::DragonRealms::DRC::RACIAL_RANGED_WEAPONS_PATTERN (constant)">RACIAL_RANGED_WEAPONS_PATTERN</a></span>. If <code>ranged</code> is auto-detected as true,
+<code>needs_unloading</code> defaults to true unless explicitly set.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the gettable noun of the item</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>leather</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item is made of leather</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>worn</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item should be worn by default (default: false)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>hinders_locks</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item hinders lockpicking</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>container</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the name of a container this item is stored in</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>swappable</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item can be swapped with another in hand (default: false)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>tie_to</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>an item to tie this item to</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>adjective</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>optional adjective to disambiguate the noun</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>bound</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item is bound to the character (default: false)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>wield</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to wield the item instead of wearing it (default: false)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>transforms_to</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>noun the item becomes after transformation</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>transform_text</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>game output confirming the transformation</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>transform_verb</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>verb to trigger the transformation</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>lodges</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item can lodge in the character (default: true)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>skip_repair</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to skip repairing this item (default: false)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>ranged</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether this is a ranged weapon; auto-detected if nil</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>needs_unloading</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the item needs to be unloaded; defaults to <code>ranged</code> if nil</p></div>
+      
+    </li>
+  
+</ul>
+
 
 </div><table class="source_code">
   <tr>
@@ -750,28 +1024,28 @@
       <pre class="lines">
 
 
-403
-404
-405
-406
-407
-408
-409
-410
-411
-412
-413
-414
-415
-416
-417
-418
-419
-420
-421</pre>
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 403</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 632</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>leather:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>worn:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>hinders_locks:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>container:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>swappable:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>tie_to:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>adjective:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>bound:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>wield:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>transforms_to:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>transform_text:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>transform_verb:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>lodges:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>skip_repair:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>ranged:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>needs_unloading:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span>
@@ -828,12 +1102,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_adjective'>adjective</span>
   <span class='ivar'>@adjective</span>
@@ -869,12 +1143,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bound'>bound</span>
   <span class='ivar'>@bound</span>
@@ -910,12 +1184,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_container'>container</span>
   <span class='ivar'>@container</span>
@@ -951,12 +1225,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_hinders_lockpicking'>hinders_lockpicking</span>
   <span class='ivar'>@hinders_lockpicking</span>
@@ -992,12 +1266,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_leather'>leather</span>
   <span class='ivar'>@leather</span>
@@ -1033,12 +1307,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lodges'>lodges</span>
   <span class='ivar'>@lodges</span>
@@ -1074,12 +1348,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -1115,12 +1389,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_needs_unloading'>needs_unloading</span>
   <span class='ivar'>@needs_unloading</span>
@@ -1156,12 +1430,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ranged'>ranged</span>
   <span class='ivar'>@ranged</span>
@@ -1197,12 +1471,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_skip_repair'>skip_repair</span>
   <span class='ivar'>@skip_repair</span>
@@ -1238,12 +1512,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_swappable'>swappable</span>
   <span class='ivar'>@swappable</span>
@@ -1279,12 +1553,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tie_to'>tie_to</span>
   <span class='ivar'>@tie_to</span>
@@ -1320,12 +1594,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_transform_text'>transform_text</span>
   <span class='ivar'>@transform_text</span>
@@ -1361,12 +1635,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_transform_verb'>transform_verb</span>
   <span class='ivar'>@transform_verb</span>
@@ -1402,12 +1676,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_transforms_to'>transforms_to</span>
   <span class='ivar'>@transforms_to</span>
@@ -1443,12 +1717,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wield'>wield</span>
   <span class='ivar'>@wield</span>
@@ -1484,12 +1758,12 @@
       <pre class="lines">
 
 
-401
-402
-403</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 401</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_worn'>worn</span>
   <span class='ivar'>@worn</span>
@@ -1515,29 +1789,39 @@
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Convenience method to parse the text of an item as shown when in your hands, with or without an adjective,
+into an Item class instance. Originally designed to support DRCI and equipmanager methods.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-446
-447
-448
-449
-450
-451
-452
-453
-454
-455
-456
-457
-458
-459</pre>
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 446</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 701</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_from_text'>from_text</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -1575,12 +1859,25 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the given noun is a ranged weapon.</p>
+    <p>Checks whether a noun represents a ranged weapon.</p>
+<p>Returns true if the noun matches <span class='object_link'><a href="../DRC.html#COMMON_RANGED_WEAPONS_PATTERN-constant" title="Lich::DragonRealms::DRC::COMMON_RANGED_WEAPONS_PATTERN (constant)">COMMON_RANGED_WEAPONS_PATTERN</a></span> (bow, crossbow,
+sling, etc.) or <span class='object_link'><a href="../DRC.html#RACIAL_RANGED_WEAPONS_PATTERN-constant" title="Lich::DragonRealms::DRC::RACIAL_RANGED_WEAPONS_PATTERN (constant)">RACIAL_RANGED_WEAPONS_PATTERN</a></span> (Gamgweth names like jranoki,
+uku'uan). Case-insensitive. Returns false if noun is nil.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRC::Item (class)">Item</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::DragonRealms::DRC::Item#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>name:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bow</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bow</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
+</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sword</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; false</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1588,12 +1885,12 @@
         <span class='name'>noun</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the noun to check.</p></div>
+        <div class='inline'><p>the item noun</p></div>
       
     </li>
   
@@ -1610,7 +1907,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the noun is a ranged weapon, false otherwise.</p></div>
+        <div class='inline'><p>true if the noun is a known ranged weapon</p></div>
       
     </li>
   
@@ -1622,17 +1919,17 @@
       <pre class="lines">
 
 
-437
-438
-439
-440
-441
-442
-443
-444</pre>
+690
+691
+692
+693
+694
+695
+696
+697</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 437</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 690</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span><span class='lparen'>(</span><span class='id identifier rubyid_noun'>noun</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_noun'>noun</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1658,12 +1955,23 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the short name of the item, including its adjective if present.</p>
+    <p>Returns a short gettable name combining the adjective and noun.</p>
+<p>If an adjective is set, returns &quot;adjective.noun&quot;; otherwise returns the noun alone.
+Used for unambiguous item targeting in game commands.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRC::Item (class)">Item</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::DragonRealms::DRC::Item#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>name:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sword</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>adjective:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>blue</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span> <span class='comment'>#=&gt; &quot;blue.sword&quot;</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -1675,7 +1983,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the short name of the item.</p></div>
+        <div class='inline'><p>the short item name</p></div>
       
     </li>
   
@@ -1687,12 +1995,12 @@
       <pre class="lines">
 
 
-425
-426
-427</pre>
+661
+662
+663</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 425</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 661</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_short_name'>short_name</span>
   <span class='ivar'>@adjective</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@adjective</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='embexpr_beg'>#{</span><span class='ivar'>@name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='ivar'>@name</span>
@@ -1705,24 +2013,60 @@
       <div class="method_details ">
   <h3 class="signature " id="short_regex-instance_method">
   
-    #<strong>short_regex</strong>  &#x21d2; <tt>Object</tt> 
+    #<strong>short_regex</strong>  &#x21d2; <tt>Regexp</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns a regex pattern matching the item in game output.</p>
+<p>If an adjective is set, matches &quot;adjective...noun&quot; (word boundary, any chars,
+word-boundary noun); otherwise matches just the noun. Case-insensitive.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRC::Item (class)">Item</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::DragonRealms::DRC::Item#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>name:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sword</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>adjective:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>blue</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>the blue ornate sword</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a pattern to match the item in text</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-429
-430
-431</pre>
+674
+675
+676</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 429</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common.rb', line 674</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_short_regex'>short_regex</span>
   <span class='ivar'>@adjective</span> <span class='op'>?</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b</span><span class='embexpr_beg'>#{</span><span class='ivar'>@adjective</span><span class='embexpr_end'>}</span><span class='tstring_content'>.*\b</span><span class='embexpr_beg'>#{</span><span class='ivar'>@name</span><span class='embexpr_end'>}</span><span class='regexp_end'>/i</span></span> <span class='op'>:</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b</span><span class='embexpr_beg'>#{</span><span class='ivar'>@name</span><span class='embexpr_end'>}</span><span class='regexp_end'>/i</span></span>
@@ -1737,7 +2081,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:29 2026 by
+  Generated on Wed Aug 26 16:50:53 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

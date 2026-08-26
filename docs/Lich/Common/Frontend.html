@@ -80,13 +80,27 @@
   
   <dl>
     <dt>Defined in:</dt>
-    <dd>documented/common/front-end.rb
+    <dd>documented/common/front-end.rb<span class="defines">,<br>
+  documented/common/front-end.rb</span>
+
 </dd>
   </dl>
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Frontend registry and capabilities system for client identification.</p>
+<p>Manages a registry of game frontends (e.g., Wrayth, Saga, Wizard) with their
+capabilities and discovery metadata. Scripts query this module to check
+frontend features and access the current client identity.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
   
     <h2>
       Constant Summary
@@ -95,10 +109,66 @@
 
     <dl class="constants">
       
+        <dt id="PLATFORM_KEYS-constant" class="">PLATFORM_KEYS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Canonical platform identifiers used in discovery and launch plans.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#platform_key-class_method" title="Lich::Common::Frontend.platform_key (method)">platform_key</a></span></li>
+    
+      <li><span class='object_link'><a href="#validate_platform_key!-class_method" title="Lich::Common::Frontend.validate_platform_key! (method)">validate_platform_key!</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>darwin</span><span class='words_sep'> </span><span class='tstring_content'>linux</span><span class='words_sep'> </span><span class='tstring_content'>windows</span><span class='words_sep'> </span><span class='tstring_content'>unsupported</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ORIGIN_SENTINEL-constant" class="">ORIGIN_SENTINEL =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\x1f</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+        <dt id="SAGA_LICH_LAUNCH_ENVIRONMENT-constant" class="">SAGA_LICH_LAUNCH_ENVIRONMENT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Environment variables passed to Saga during launch via the launcher adapter.</p>
+<p>Tokens like <code>%host%</code>, <code>%port%</code>, and <code>%key%</code> are substituted by the launcher
+with values from the connection context.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#register-class_method" title="Lich::Common::Frontend.register (method)">register</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SAGA_LICH_MODE</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>1</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SAGA_LICH_HOST</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%host%</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SAGA_LICH_PORT</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%port%</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SAGA_LICH_KEY</span><span class='tstring_end'>&#39;</span></span>  <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%key%</span><span class='tstring_end'>&#39;</span></span>
+<span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
         <dt id="CLIENT_STRING-constant" class="">CLIENT_STRING =
           <div class="docstring">
   <div class="discussion">
-    <p>─── Client String ─────────────────────────────────────────
+    <p>--- Client String -----------------------------------------
 Default client string (Wrayth identity) sent during handshake</p>
 
   </div>
@@ -113,7 +183,7 @@ Default client string (Wrayth identity) sent during handshake</p>
         <dt id="XML_FRONTENDS-constant" class="">XML_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p>─── Backward-Compatible Constants ─────────────────────────
+    <p>--- Backward-Compatible Constants -------------------------
 These arrays are derived from the registry for backward compatibility.
 External code may still reference these constants directly.</p>
 
@@ -127,19 +197,68 @@ External code may still reference these constants directly.</p>
         <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:xml</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GSL_FRONTENDS-constant" class="">GSL_FRONTENDS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Deprecated: list of frontends supporting GSL.</p>
+<p>For backward compatibility. New code should call <code>.frontends_with_capability(:gsl)</code>
+or check a specific frontend with <code>.has_capability?(name, :gsl)</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:gsl</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="STREAM_FRONTENDS-constant" class="">STREAM_FRONTENDS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Deprecated: list of frontends supporting XML streams.</p>
+<p>For backward compatibility. New code should call <code>.frontends_with_capability(:streams)</code>
+or check a specific frontend with <code>.has_capability?(name, :streams)</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:streams</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="MONO_FRONTENDS-constant" class="">MONO_FRONTENDS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Deprecated: list of frontends supporting monospace rendering.</p>
+<p>For backward compatibility. New code should call <code>.frontends_with_capability(:mono)</code>
+or check a specific frontend with <code>.has_capability?(name, :mono)</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:mono</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SENTINEL_FRONTENDS-constant" class="">SENTINEL_FRONTENDS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Deprecated: list of frontends supporting sentinel tags.</p>
+<p>For backward compatibility. New code should call <code>.frontends_with_capability(:sentinel)</code>
+or check a specific frontend with <code>.has_capability?(name, :sentinel)</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:sentinel</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -161,6 +280,28 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#canonical_name-class_method" title="canonical_name (class method)">.<strong>canonical_name</strong>(frontend_name)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the stable catalog identifier for a frontend or alias.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#cleanup_session_file-class_method" title="cleanup_session_file (class method)">.<strong>cleanup_session_file</strong>  &#x21d2; void </a>
     
 
@@ -175,7 +316,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Cleans up (deletes) the current session file if it exists.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Deletes the session descriptor file if it exists.</p></div></span>
   
 </li>
 
@@ -197,7 +338,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Accessor for the current frontend identity ($frontend global).</p></div></span>
   
 </li>
 
@@ -219,7 +360,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Setter for the current frontend identity.</p></div></span>
   
 </li>
 
@@ -241,7 +382,51 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Creates a session file for the specified frontend session.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Writes a session descriptor to a temporary file for detachable clients.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#definition_for-class_method" title="definition_for (class method)">.<strong>definition_for</strong>(frontend_name)  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns an immutable catalog definition for a registered frontend.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#definitions-class_method" title="definitions (class method)">.<strong>definitions</strong>(gui_selectable: nil)  &#x21d2; Array&lt;Hash&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns immutable catalog definitions, optionally restricted to those intended for the graphical launcher.</p></div></span>
   
 </li>
 
@@ -263,7 +448,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Detects the frontend process ID (PID) based on the launch method.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Detect and store the frontend process ID Uses various methods depending on how Lich was launched.</p></div></span>
   
 </li>
 
@@ -285,7 +470,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Detects the current platform (Windows, macOS, Linux, or unsupported).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Detect the current platform.</p></div></span>
   
 </li>
 
@@ -293,7 +478,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#ensure_windows_modules-class_method" title="ensure_windows_modules (class method)">.<strong>ensure_windows_modules</strong>  &#x21d2; Boolean </a>
+      <a href="#display_name-class_method" title="display_name (class method)">.<strong>display_name</strong>(frontend_name)  &#x21d2; String </a>
     
 
     
@@ -307,7 +492,29 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Ensures that the necessary Windows modules are loaded.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the catalog display name, with a stable fallback for legacy saved entries that predate the catalog.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#ensure_windows_modules-class_method" title="ensure_windows_modules (class method)">.<strong>ensure_windows_modules</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Ensure Windows modules are loaded (they're defined at top level).</p></div></span>
   
 </li>
 
@@ -329,7 +536,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns a list of frontend names that support a specific capability.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns all frontends that have a specific capability.</p></div></span>
   
 </li>
 
@@ -359,7 +566,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#init_from_parent-class_method" title="init_from_parent (class method)">.<strong>init_from_parent</strong>(parent_pid)  &#x21d2; Integer </a>
+      <a href="#init_from_parent-class_method" title="init_from_parent (class method)">.<strong>init_from_parent</strong>(parent_pid)  &#x21d2; Integer<sup>?</sup> </a>
     
 
     
@@ -373,7 +580,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes the frontend from a parent process ID.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initialize PID from parent process (for Warlock).</p></div></span>
   
 </li>
 
@@ -381,7 +588,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#metadata_for-class_method" title="metadata_for (class method)">.<strong>metadata_for</strong>(frontend_name, key)  &#x21d2; String<sup>?</sup> </a>
+      <a href="#metadata_for-class_method" title="metadata_for (class method)">.<strong>metadata_for</strong>(frontend_name, key)  &#x21d2; Object<sup>?</sup> </a>
     
 
     
@@ -395,7 +602,29 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves metadata for a registered frontend by key.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Retrieves a metadata value for a given frontend.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#native_windows_runtime%3F-class_method" title="native_windows_runtime? (class method)">.<strong>native_windows_runtime?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Native user32 bindings require a Windows MRI ABI, not merely a Windows host.</p></div></span>
   
 </li>
 
@@ -417,7 +646,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the current frontend process ID (PID).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get the current frontend PID.</p></div></span>
   
 </li>
 
@@ -425,7 +654,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#pid=-class_method" title="pid= (class method)">.<strong>pid=</strong>(value)  &#x21d2; void </a>
+      <a href="#pid=-class_method" title="pid= (class method)">.<strong>pid=</strong>(value)  &#x21d2; Integer </a>
     
 
     
@@ -439,7 +668,51 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the frontend process ID (PID).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set the frontend PID.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#platform_key-class_method" title="platform_key (class method)">.<strong>platform_key</strong>  &#x21d2; Symbol </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the canonical platform key used by frontend discovery and launch-plan metadata.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#player_id_tag-class_method" title="player_id_tag (class method)">.<strong>player_id_tag</strong>(player_id)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Build the <playerID> re-emit tag for a detachable client (e.g. Saga).</p></div></span>
   
 </li>
 
@@ -461,7 +734,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Refocuses the frontend window based on the detected platform.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Refocus the frontend window.</p></div></span>
   
 </li>
 
@@ -483,7 +756,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns a callback proc for refocusing the frontend window.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Create a callback for GTK windows to refocus on click.</p></div></span>
   
 </li>
 
@@ -491,7 +764,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#refocus_linux-class_method" title="refocus_linux (class method)">.<strong>refocus_linux</strong>(pid)  &#x21d2; Boolean </a>
+      <a href="#refocus_linux-class_method" title="refocus_linux (class method)">.<strong>refocus_linux</strong>(pid)  &#x21d2; Object </a>
     
 
     
@@ -505,7 +778,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Refocuses a Linux window based on the given process ID (PID).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Linux refocus implementation.</p></div></span>
   
 </li>
 
@@ -513,7 +786,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#refocus_macos-class_method" title="refocus_macos (class method)">.<strong>refocus_macos</strong>(pid)  &#x21d2; Boolean </a>
+      <a href="#refocus_macos-class_method" title="refocus_macos (class method)">.<strong>refocus_macos</strong>(pid)  &#x21d2; Object </a>
     
 
     
@@ -527,7 +800,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Refocuses a macOS window based on the given process ID (PID).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>macOS refocus implementation.</p></div></span>
   
 </li>
 
@@ -535,7 +808,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#refocus_windows-class_method" title="refocus_windows (class method)">.<strong>refocus_windows</strong>(pid)  &#x21d2; Boolean </a>
+      <a href="#refocus_windows-class_method" title="refocus_windows (class method)">.<strong>refocus_windows</strong>(pid)  &#x21d2; Object </a>
     
 
     
@@ -549,7 +822,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Refocuses a Windows window based on the given process ID (PID).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Windows refocus implementation.</p></div></span>
   
 </li>
 
@@ -557,7 +830,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#register-class_method" title="register (class method)">.<strong>register</strong>(name, capabilities: [], metadata: {})  &#x21d2; void </a>
+      <a href="#register-class_method" title="register (class method)">.<strong>register</strong>(name, capabilities: [], metadata: {})  &#x21d2; Object </a>
     
 
     
@@ -571,7 +844,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Registers a new frontend with the specified capabilities and metadata.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Registers a frontend with its capabilities and metadata.</p></div></span>
   
 </li>
 
@@ -593,7 +866,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns a list of all registered frontend names.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns every recognized frontend name: canonical catalog identifiers followed by their accepted aliases.</p></div></span>
   
 </li>
 
@@ -601,7 +874,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#resolve_linux_pid-class_method" title="resolve_linux_pid (class method)">.<strong>resolve_linux_pid</strong>(pid)  &#x21d2; Integer </a>
+      <a href="#resolve_linux_pid-class_method" title="resolve_linux_pid (class method)">.<strong>resolve_linux_pid</strong>(pid)  &#x21d2; Object </a>
     
 
     
@@ -615,7 +888,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves a Linux process ID (PID) to find the correct one based on window visibility.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Linux-specific PID resolution.</p></div></span>
   
 </li>
 
@@ -637,7 +910,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves a process ID (PID) to find the correct one based on platform.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolve PID by walking up process tree to find window owner.</p></div></span>
   
 </li>
 
@@ -645,7 +918,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#resolve_windows_pid-class_method" title="resolve_windows_pid (class method)">.<strong>resolve_windows_pid</strong>(pid)  &#x21d2; Integer </a>
+      <a href="#resolve_windows_pid-class_method" title="resolve_windows_pid (class method)">.<strong>resolve_windows_pid</strong>(pid)  &#x21d2; Object </a>
     
 
     
@@ -659,7 +932,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves a Windows process ID (PID) to find the correct one based on window visibility.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Windows-specific PID resolution.</p></div></span>
   
 </li>
 
@@ -681,7 +954,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Send version string, ready signals, and setup commands to the game server.</p></div></span>
   
 </li>
 
@@ -703,7 +976,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the location of the current session file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the path to the session descriptor file, or nil if not yet created.</p></div></span>
   
 </li>
 
@@ -725,7 +998,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the frontend PID from the client.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set PID from a detachable frontend such as Profanity or Saga.</p></div></span>
   
 </li>
 
@@ -747,7 +1020,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the specified frontend supports GSL capabilities.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports GSL (game scripting language).</p></div></span>
   
 </li>
 
@@ -769,7 +1042,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the specified frontend supports mono capabilities.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports monospace rendering.</p></div></span>
   
 </li>
 
@@ -791,7 +1064,29 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the specified frontend supports room window capabilities.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports a dedicated room window.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#supports_sentinel%3F-class_method" title="supports_sentinel? (class method)">.<strong>supports_sentinel?</strong>(fe = $frontend)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports sentinel tags (detachable client protocol).</p></div></span>
   
 </li>
 
@@ -813,7 +1108,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the specified frontend supports streams capabilities.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports XML stream output.</p></div></span>
   
 </li>
 
@@ -835,7 +1130,7 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the specified frontend supports XML capabilities.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports XML protocol.</p></div></span>
   
 </li>
 
@@ -843,7 +1138,7 @@ External code may still reference these constants directly.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#windows_parent_pid-class_method" title="windows_parent_pid (class method)">.<strong>windows_parent_pid</strong>(wmi, pid)  &#x21d2; Integer </a>
+      <a href="#validate_platform_key!-class_method" title="validate_platform_key! (class method)">.<strong>validate_platform_key!</strong>(key)  &#x21d2; Symbol </a>
     
 
     
@@ -857,7 +1152,51 @@ External code may still reference these constants directly.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the parent process ID for a given Windows process ID.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Validates a canonical platform key used by discovery and launch plans.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#windows_parent_pid-class_method" title="windows_parent_pid (class method)">.<strong>windows_parent_pid</strong>(wmi, pid)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Get parent process ID on Windows.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#windows_platform%3F-class_method" title="windows_platform? (class method)">.<strong>windows_platform?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns whether the current host is classified as Windows.</p></div></span>
   
 </li>
 
@@ -873,7 +1212,77 @@ External code may still reference these constants directly.</p>
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="cleanup_session_file-class_method">
+  <h3 class="signature first" id="canonical_name-class_method">
+  
+    .<strong>canonical_name</strong>(frontend_name)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the stable catalog identifier for a frontend or alias.
+Unknown values are normalized but are not registered.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>frontend_name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+125
+126
+127
+128</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 125</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
+  <span class='ivar'>@aliases</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="cleanup_session_file-class_method">
   
     .<strong>cleanup_session_file</strong>  &#x21d2; <tt>void</tt> 
   
@@ -883,12 +1292,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Cleans up (deletes) the current session file if it exists.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Deletes the session descriptor file if it exists.</p>
+<p>Called during shutdown to clean up temporary launch artifacts.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#create_session_file-class_method" title="Lich::Common::Frontend.create_session_file (method)">create_session_file</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -896,13 +1313,13 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-236
-237
-238
-239</pre>
+550
+551
+552
+553</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 236</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 550</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cleanup_session_file'>cleanup_session_file</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@session_file</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -922,18 +1339,27 @@ External code may still reference these constants directly.</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Accessor for the current frontend identity ($frontend global)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-184
-185
-186</pre>
+484
+485
+486</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 184</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 484</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_client'>client</span>
   <span class='gvar'>$frontend</span>
@@ -952,18 +1378,27 @@ External code may still reference these constants directly.</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Setter for the current frontend identity</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-188
-189
-190</pre>
+489
+490
+491</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 188</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 489</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_client='>client=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='gvar'>$frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
@@ -984,12 +1419,24 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Creates a session file for the specified frontend session.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Writes a session descriptor to a temporary file for detachable clients.</p>
+<p>Creates the directory structure under the system temp folder
+(<code>$TMPDIR/simutronics/sessions/</code>) and writes a JSON file with the session
+details. Used by launcher adapters to hand off connection info to frontends
+like Saga.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_create_session_file'>create_session_file</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Talan</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>eaccess.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>7024</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -997,12 +1444,12 @@ External code may still reference these constants directly.</p>
         <span class='name'>name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the name of the session</p></div>
+        <div class='inline'><p>character name (lowercase, then capitalized for filename); if nil, does nothing</p></div>
       
     </li>
   
@@ -1016,7 +1463,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the host for the session</p></div>
+        <div class='inline'><p>game server hostname or IP</p></div>
       
     </li>
   
@@ -1030,7 +1477,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the port for the session</p></div>
+        <div class='inline'><p>game server port</p></div>
       
     </li>
   
@@ -1046,7 +1493,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>whether to display session information (default: true)</p></div>
+        <div class='inline'><p>if true, prints the descriptor to stdout</p></div>
       
     </li>
   
@@ -1059,19 +1506,19 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-215
-216
-217
-218
-219
-220
-221
-222
-223
-224</pre>
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 215</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 525</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_create_session_file'>create_session_file</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='label'>display_session:</span> <span class='kw'>true</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1081,6 +1528,192 @@ External code may still reference these constants directly.</p>
   <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>writing session descriptor to %s\n%s</span><span class='tstring_end'>&quot;</span></span> <span class='op'>%</span> <span class='lbracket'>[</span><span class='ivar'>@session_file</span><span class='comma'>,</span> <span class='id identifier rubyid_session_descriptor'>session_descriptor</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_display_session'>display_session</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='ivar'>@session_file</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>w</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_fd'>fd</span><span class='op'>|</span>
     <span class='id identifier rubyid_fd'>fd</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_session_descriptor'>session_descriptor</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="definition_for-class_method">
+  
+    .<strong>definition_for</strong>(frontend_name)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns an immutable catalog definition for a registered frontend.</p>
+<p>Accepted inputs are a non-empty String or Symbol naming an existing
+registry entry. Invalid or unknown identifiers raise ArgumentError.
+This method performs no discovery and persists nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>frontend_name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if frontend_name is blank or unregistered</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 161</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_definition_for'>definition_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend name must not be empty</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown frontend: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+
+  <span class='ivar'>@definitions</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_deep_freeze'><span class='object_link'><a href="../Util.html#deep_freeze-class_method" title="Lich::Util.deep_freeze (method)">deep_freeze</a></span></span><span class='lparen'>(</span>
+    <span class='lbrace'>{</span>
+      <span class='label'>id:</span> <span class='id identifier rubyid_key'>key</span><span class='comma'>,</span>
+      <span class='label'>capabilities:</span> <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span><span class='comma'>,</span>
+      <span class='label'>metadata:</span> <span class='id identifier rubyid_deep_copy'>deep_copy</span><span class='lparen'>(</span><span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:metadata</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+    <span class='rbrace'>}</span>
+  <span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="definitions-class_method">
+  
+    .<strong>definitions</strong>(gui_selectable: nil)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns immutable catalog definitions, optionally restricted to those
+intended for the graphical launcher.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>gui_selectable</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+180
+181
+182
+183
+184
+185
+186
+187</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 180</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_definitions'>definitions</span><span class='lparen'>(</span><span class='label'>gui_selectable:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_definitions'>definitions</span> <span class='op'>=</span> <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='op'>|</span> <span class='id identifier rubyid_definition_for'>definition_for</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_definitions'>definitions</span> <span class='kw'>if</span> <span class='id identifier rubyid_gui_selectable'>gui_selectable</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_definitions'>definitions</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_definition'>definition</span><span class='op'>|</span>
+    <span class='id identifier rubyid_definition'>definition</span><span class='period'>.</span><span class='id identifier rubyid_dig'>dig</span><span class='lparen'>(</span><span class='symbol'>:metadata</span><span class='comma'>,</span> <span class='symbol'>:gui_selectable</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_gui_selectable'>gui_selectable</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1099,7 +1732,8 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Detects the frontend process ID (PID) based on the launch method.</p>
+    <p>Detect and store the frontend process ID
+Uses various methods depending on how Lich was launched</p>
 
   </div>
 </div>
@@ -1116,7 +1750,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the detected PID or nil if not found</p></div>
+        <div class='inline'><p>The detected PID or nil if detection fails</p></div>
       
     </li>
   
@@ -1128,28 +1762,28 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321</pre>
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 303</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 613</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detect_pid'>detect_pid</span>
   <span class='comment'># Return existing PID if already set
@@ -1186,7 +1820,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Detects the current platform (Windows, macOS, Linux, or unsupported).</p>
+    <p>Detect the current platform</p>
 
   </div>
 </div>
@@ -1203,7 +1837,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the detected platform symbol</p></div>
+        <div class='inline'><p>:windows, :macos, :linux, or :unsupported</p></div>
       
     </li>
   
@@ -1215,25 +1849,89 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-358
-359
-360
-361
-362
-363
-364
-365</pre>
+665
+666
+667
+668</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 358</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 665</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detect_platform'>detect_platform</span>
-  <span class='kw'>case</span> <span class='const'>RUBY_PLATFORM</span>
-  <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>mingw|mswin</span><span class='regexp_end'>/</span></span> <span class='kw'>then</span> <span class='symbol'>:windows</span>
-  <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>darwin</span><span class='regexp_end'>/</span></span>      <span class='kw'>then</span> <span class='symbol'>:macos</span>
-  <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>linux</span><span class='regexp_end'>/</span></span>       <span class='kw'>then</span> <span class='symbol'>:linux</span>
-  <span class='kw'>else</span>                    <span class='symbol'>:unsupported</span>
-  <span class='kw'>end</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_platform_key'>platform_key</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>==</span> <span class='symbol'>:darwin</span> <span class='op'>?</span> <span class='symbol'>:macos</span> <span class='op'>:</span> <span class='id identifier rubyid_key'>key</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="display_name-class_method">
+  
+    .<strong>display_name</strong>(frontend_name)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the catalog display name, with a stable fallback for legacy
+saved entries that predate the catalog.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>frontend_name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+224
+225
+226
+227
+228</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 224</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_display_name'>display_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_definition_for'>definition_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_dig'>dig</span><span class='lparen'>(</span><span class='symbol'>:metadata</span><span class='comma'>,</span> <span class='symbol'>:display_name</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
+<span class='kw'>rescue</span> <span class='const'>ArgumentError</span>
+  <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1243,7 +1941,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="ensure_windows_modules-class_method">
   
-    .<strong>ensure_windows_modules</strong>  &#x21d2; <tt>Boolean</tt> 
+    .<strong>ensure_windows_modules</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1251,28 +1949,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Ensures that the necessary Windows modules are loaded.</p>
+    <p>Ensure Windows modules are loaded (they're defined at top level)</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if modules are loaded, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -1280,23 +1962,19 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-572
-573
-574
-575
-576
-577
-578</pre>
+853
+854
+855
+856
+857</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 572</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 853</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ensure_windows_modules'>ensure_windows_modules</span>
-  <span class='comment'># Check if modules exist - they should be defined at file load time
-</span>  <span class='kw'>if</span> <span class='const'>RUBY_PLATFORM</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>mingw|mswin</span><span class='regexp_end'>/</span></span>
-    <span class='kw'>return</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Win32Enum.html" title="Win32Enum (module)">Win32Enum</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../WinAPI.html" title="WinAPI (module)">WinAPI</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>end</span>
-  <span class='kw'>false</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_native_windows_runtime?'>native_windows_runtime?</span>
+
+  <span class='kw'>defined?</span><span class='lparen'>(</span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Win32Enum.html" title="Win32Enum (module)">Win32Enum</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../WinAPI.html" title="WinAPI (module)">WinAPI</a></span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1314,7 +1992,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a list of frontend names that support a specific capability.</p>
+    <p>Returns all frontends that have a specific capability.</p>
 
   </div>
 </div>
@@ -1332,7 +2010,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the capability to check for</p></div>
+        <div class='inline'><p>The capability to filter by</p></div>
       
     </li>
   
@@ -1348,9 +2026,6 @@ External code may still reference these constants directly.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>an array of frontend names that support the capability</p></div>
-      
     </li>
   
 </ul>
@@ -1361,15 +2036,23 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-103
-104
-105</pre>
+240
+241
+242
+243
+244
+245
+246</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 103</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 240</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='rparen'>)</span>
-  <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__name'>_name</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='op'>|</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
+  <span class='id identifier rubyid_canonical'>canonical</span> <span class='op'>=</span> <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__name'>_name</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='op'>|</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
+  <span class='id identifier rubyid_aliases'>aliases</span> <span class='op'>=</span> <span class='ivar'>@aliases</span><span class='period'>.</span><span class='id identifier rubyid_filter_map'>filter_map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_alias_name'>alias_name</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
+    <span class='id identifier rubyid_alias_name'>alias_name</span> <span class='kw'>if</span> <span class='id identifier rubyid_canonical'>canonical</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_canonical'>canonical</span> <span class='op'>+</span> <span class='id identifier rubyid_aliases'>aliases</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1405,7 +2088,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the frontend</p></div>
+        <div class='inline'><p>The name of the frontend to check</p></div>
       
     </li>
   
@@ -1419,7 +2102,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the capability to check</p></div>
+        <div class='inline'><p>The capability to check for</p></div>
       
     </li>
   
@@ -1435,9 +2118,6 @@ External code may still reference these constants directly.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if the frontend has the capability, false otherwise</p></div>
-      
     </li>
   
 </ul>
@@ -1448,19 +2128,21 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-75
-76
-77
-78
-79</pre>
+134
+135
+136
+137
+138
+139</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 75</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 134</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='comma'>,</span> <span class='id identifier rubyid_capability'>capability</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
-  <span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>?</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1470,7 +2152,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="init_from_parent-class_method">
   
-    .<strong>init_from_parent</strong>(parent_pid)  &#x21d2; <tt>Integer</tt> 
+    .<strong>init_from_parent</strong>(parent_pid)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
   
 
   
@@ -1478,42 +2160,24 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes the frontend from a parent process ID.</p>
+    <p>Initialize PID from parent process (for Warlock)</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>parent_pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the parent process ID to initialize from</p></div>
-      
-    </li>
-  
-</ul>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
     <li>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the resolved frontend PID</p></div>
+        <div class='inline'><p>The resolved frontend PID</p></div>
       
     </li>
   
@@ -1525,43 +2189,43 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288</pre>
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 262</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 573</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_init_from_parent'>init_from_parent</span><span class='lparen'>(</span><span class='id identifier rubyid_parent_pid'>parent_pid</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=== Frontend.init_from_parent called ===</span><span class='tstring_end'>&quot;</span></span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Parent process PID: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_parent_pid'>parent_pid</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
 
   <span class='comment'># Let&#39;s see what process this actually is on Windows
-</span>  <span class='kw'>if</span> <span class='const'>RUBY_PLATFORM</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>mingw|mswin</span><span class='regexp_end'>/</span></span>
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_windows_platform?'>windows_platform?</span>
     <span class='kw'>begin</span>
       <span class='id identifier rubyid_require'>require</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>win32ole</span><span class='tstring_end'>&#39;</span></span>
       <span class='id identifier rubyid_wmi'>wmi</span> <span class='op'>=</span> <span class='const'>WIN32OLE</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>winmgmts://</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -1570,7 +2234,7 @@ External code may still reference these constants directly.</p>
       <span class='kw'>if</span> <span class='id identifier rubyid_row'>row</span>
         <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Parent process name: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_row'>row</span><span class='period'>.</span><span class='const'>Name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
       <span class='kw'>end</span>
-    <span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+    <span class='kw'>rescue</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='const'>LoadError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Could not get parent process name: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
@@ -1591,7 +2255,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="metadata_for-class_method">
   
-    .<strong>metadata_for</strong>(frontend_name, key)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+    .<strong>metadata_for</strong>(frontend_name, key)  &#x21d2; <tt>Object</tt><sup>?</sup> 
   
 
   
@@ -1599,7 +2263,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves metadata for a registered frontend by key.</p>
+    <p>Retrieves a metadata value for a given frontend.</p>
 
   </div>
 </div>
@@ -1617,7 +2281,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the frontend</p></div>
+        <div class='inline'><p>The name of the frontend</p></div>
       
     </li>
   
@@ -1626,12 +2290,12 @@ External code may still reference these constants directly.</p>
         <span class='name'>key</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt>Symbol</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the key of the metadata to retrieve</p></div>
+        <div class='inline'><p>The metadata key to retrieve</p></div>
       
     </li>
   
@@ -1643,12 +2307,9 @@ External code may still reference these constants directly.</p>
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>Object</tt>, <tt>nil</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the metadata value or nil if not found</p></div>
       
     </li>
   
@@ -1660,19 +2321,73 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-86
-87
-88
-89
-90</pre>
+145
+146
+147
+148
+149
+150</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 86</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 145</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_metadata_for'>metadata_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
-  <span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:metadata</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:metadata</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="native_windows_runtime?-class_method">
+  
+    .<strong>native_windows_runtime?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Native user32 bindings require a Windows MRI ABI, not merely a Windows host.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+31
+32
+33</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 31</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_native_windows_runtime?'>native_windows_runtime?</span>
+  <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_host_os'>host_os</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>mingw|mswin</span><span class='regexp_end'>/i</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1690,7 +2405,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the current frontend process ID (PID).</p>
+    <p>Get the current frontend PID</p>
 
   </div>
 </div>
@@ -1707,7 +2422,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current PID or nil if not set</p></div>
+        <div class='inline'><p>The PID if set, nil otherwise</p></div>
       
     </li>
   
@@ -1719,12 +2434,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-245
-246
-247</pre>
+559
+560
+561</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 245</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 559</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span>
   <span class='ivar'>@pid_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@frontend_pid</span> <span class='rbrace'>}</span>
@@ -1737,7 +2452,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="pid=-class_method">
   
-    .<strong>pid=</strong>(value)  &#x21d2; <tt>void</tt> 
+    .<strong>pid=</strong>(value)  &#x21d2; <tt>Integer</tt> 
   
 
   
@@ -1745,7 +2460,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the frontend process ID (PID).</p>
+    <p>Set the frontend PID</p>
 
   </div>
 </div>
@@ -1763,12 +2478,28 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the PID to set</p></div>
+        <div class='inline'><p>The PID to store</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The stored PID</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -1776,17 +2507,133 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-253
-254
-255
-256</pre>
+566
+567
+568
+569</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 253</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 566</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid='>pid=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_value'>value</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
   <span class='ivar'>@pid_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@frontend_pid</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="platform_key-class_method">
+  
+    .<strong>platform_key</strong>  &#x21d2; <tt>Symbol</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the canonical platform key used by frontend discovery and
+launch-plan metadata.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>:darwin, :windows, :linux, or :unsupported</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+193
+194
+195
+196
+197
+198
+199</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 193</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_platform_key'>platform_key</span>
+  <span class='kw'>return</span> <span class='symbol'>:darwin</span> <span class='kw'>if</span> <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_mac?'>mac?</span>
+  <span class='kw'>return</span> <span class='symbol'>:linux</span> <span class='kw'>if</span> <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_linux?'>linux?</span>
+  <span class='kw'>return</span> <span class='symbol'>:windows</span> <span class='kw'>if</span> <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_windows?'>windows?</span>
+
+  <span class='symbol'>:unsupported</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="player_id_tag-class_method">
+  
+    .<strong>player_id_tag</strong>(player_id)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Build the <playerID> re-emit tag for a detachable client (e.g. Saga).</p>
+<p>Lich consumes the game's one-time <playerID> during its own login
+handshake, before a detachable client attaches, so the client never
+sees it. XMLData.player_id stores the id verbatim, so re-emitting
+reproduces exactly what a Direct login delivers.</p>
+<p>Returns the tag string only when player_id is a bare numeric id (the
+form the game sends). Returns nil otherwise, so callers skip emitting
+an empty or malformed tag before login has populated the id.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+476
+477
+478
+479
+480
+481</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 476</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_player_id_tag'>player_id_tag</span><span class='lparen'>(</span><span class='id identifier rubyid_player_id'>player_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_id'>id</span> <span class='op'>=</span> <span class='id identifier rubyid_player_id'>player_id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_id'>id</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A\d+\z</span><span class='regexp_end'>/</span></span>
+
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;playerID id=&#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;/&gt;</span><span class='tstring_end'>&quot;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1804,7 +2651,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Refocuses the frontend window based on the detected platform.</p>
+    <p>Refocus the frontend window</p>
 
   </div>
 </div>
@@ -1821,7 +2668,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if refocus was successful, false otherwise</p></div>
+        <div class='inline'><p>true if successful, false otherwise</p></div>
       
     </li>
   
@@ -1833,24 +2680,24 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-326
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340</pre>
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 326</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 635</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus'>refocus</span>
   <span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span>
@@ -1883,7 +2730,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a callback proc for refocusing the frontend window.</p>
+    <p>Create a callback for GTK windows to refocus on click</p>
 
   </div>
 </div>
@@ -1900,7 +2747,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>a proc that refocuses the window when called</p></div>
+        <div class='inline'><p>A proc that can be called to refocus the frontend</p></div>
       
     </li>
   
@@ -1912,18 +2759,18 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-345
-346
-347
-348
-349
-350
-351
-352
-353</pre>
+653
+654
+655
+656
+657
+658
+659
+660
+661</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 345</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 653</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_callback'>refocus_callback</span>
   <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span>
@@ -1942,7 +2789,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="refocus_linux-class_method">
   
-    .<strong>refocus_linux</strong>(pid)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>refocus_linux</strong>(pid)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1950,46 +2797,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Refocuses a Linux window based on the given process ID (PID).</p>
+    <p>Linux refocus implementation</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID of the window to refocus</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if refocus was successful, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -1997,24 +2810,24 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565
-566
-567</pre>
+836
+837
+838
+839
+840
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 553</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 836</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_linux'>refocus_linux</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which xdotool &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -2039,7 +2852,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="refocus_macos-class_method">
   
-    .<strong>refocus_macos</strong>(pid)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>refocus_macos</strong>(pid)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2047,46 +2860,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Refocuses a macOS window based on the given process ID (PID).</p>
+    <p>macOS refocus implementation</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID of the window to refocus</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if refocus was successful, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2094,25 +2873,25 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-532
-533
-534
-535
-536
-537
-538
-539
-540
-541
-542
-543
-544
-545
-546
-547</pre>
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 532</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 818</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_macos'>refocus_macos</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which osascript &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -2138,7 +2917,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="refocus_windows-class_method">
   
-    .<strong>refocus_windows</strong>(pid)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>refocus_windows</strong>(pid)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2146,46 +2925,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Refocuses a Windows window based on the given process ID (PID).</p>
+    <p>Windows refocus implementation</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID of the window to refocus</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if refocus was successful, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2193,46 +2938,46 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-490
-491
-492
-493
-494
-495
-496
-497
-498
-499
-500
-501
-502
-503
-504
-505
-506
-507
-508
-509
-510
-511
-512
-513
-514
-515
-516
-517
-518
-519
-520
-521
-522
-523
-524
-525
-526</pre>
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808
+809
+810
+811
+812
+813
+814
+815</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 490</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 779</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_windows'>refocus_windows</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_ensure_windows_modules'>ensure_windows_modules</span>
@@ -2279,7 +3024,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="register-class_method">
   
-    .<strong>register</strong>(name, capabilities: [], metadata: {})  &#x21d2; <tt>void</tt> 
+    .<strong>register</strong>(name, capabilities: [], metadata: {})  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2287,7 +3032,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Registers a new frontend with the specified capabilities and metadata.</p>
+    <p>Registers a frontend with its capabilities and metadata.</p>
 
   </div>
 </div>
@@ -2300,12 +3045,12 @@ External code may still reference these constants directly.</p>
         <span class='name'>name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt>Symbol</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the name of the frontend to register</p></div>
+        <div class='inline'><p>The name of the frontend (e.g., :wrayth)</p></div>
       
     </li>
   
@@ -2321,7 +3066,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>a list of capabilities for the frontend</p></div>
+        <div class='inline'><p>A list of capabilities (e.g., [:xml, :streams])</p></div>
       
     </li>
   
@@ -2337,12 +3082,25 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>additional metadata for the frontend</p></div>
+        <div class='inline'><p>Additional data (e.g., { client_string: &quot;...&quot; })</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2350,19 +3108,29 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-64
-65
-66
-67
-68</pre>
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 109</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_register'>register</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>capabilities:</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>metadata:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend name must not be empty</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='ivar'>@registry</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbrace'>{</span> <span class='label'>capabilities:</span> <span class='const'>Set</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='comma'>,</span> <span class='label'>metadata:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:capabilities</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_merge'>merge</span><span class='lparen'>(</span><span class='id identifier rubyid_capabilities'>capabilities</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_sym</span><span class='rparen'>)</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:metadata</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_merge!'>merge!</span><span class='lparen'>(</span><span class='id identifier rubyid_metadata'>metadata</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:metadata</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_merge!'>merge!</span><span class='lparen'>(</span><span class='id identifier rubyid_deep_copy'>deep_copy</span><span class='lparen'>(</span><span class='id identifier rubyid_metadata'>metadata</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_metadata'>metadata</span><span class='lbracket'>[</span><span class='symbol'>:aliases</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_alias_name'>alias_name</span><span class='op'>|</span> <span class='ivar'>@aliases</span><span class='lbracket'>[</span><span class='id identifier rubyid_alias_name'>alias_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_key'>key</span> <span class='rbrace'>}</span>
+  <span class='ivar'>@definitions</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2380,7 +3148,8 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a list of all registered frontend names.</p>
+    <p>Returns every recognized frontend name: canonical catalog identifiers
+followed by their accepted aliases.</p>
 
   </div>
 </div>
@@ -2396,9 +3165,6 @@ External code may still reference these constants directly.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>an array of registered frontend names</p></div>
-      
     </li>
   
 </ul>
@@ -2409,15 +3175,15 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-95
-96
-97</pre>
+233
+234
+235</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 95</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 233</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_registered_frontends'>registered_frontends</span>
-  <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
+  <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='op'>+</span> <span class='ivar'>@aliases</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2427,7 +3193,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="resolve_linux_pid-class_method">
   
-    .<strong>resolve_linux_pid</strong>(pid)  &#x21d2; <tt>Integer</tt> 
+    .<strong>resolve_linux_pid</strong>(pid)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2435,46 +3201,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves a Linux process ID (PID) to find the correct one based on window visibility.</p>
+    <p>Linux-specific PID resolution</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID to resolve</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the resolved PID</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2482,33 +3214,33 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-461
-462
-463
-464
-465
-466
-467
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477
-478
-479
-480
-481
-482
-483
-484</pre>
+753
+754
+755
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+770
+771
+772
+773
+774
+775
+776</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 461</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 753</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_linux_pid'>resolve_linux_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_pid'>pid</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which xdotool &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -2550,7 +3282,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves a process ID (PID) to find the correct one based on platform.</p>
+    <p>Resolve PID by walking up process tree to find window owner</p>
 
   </div>
 </div>
@@ -2568,7 +3300,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the PID to resolve</p></div>
+        <div class='inline'><p>Starting process ID</p></div>
       
     </li>
   
@@ -2585,7 +3317,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the resolved PID</p></div>
+        <div class='inline'><p>The resolved PID</p></div>
       
     </li>
   
@@ -2597,24 +3329,24 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-371
-372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-382
-383
-384
-385</pre>
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 371</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 673</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_pid'>resolve_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='id identifier rubyid_pid'>pid</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -2639,7 +3371,7 @@ External code may still reference these constants directly.</p>
       <div class="method_details ">
   <h3 class="signature " id="resolve_windows_pid-class_method">
   
-    .<strong>resolve_windows_pid</strong>(pid)  &#x21d2; <tt>Integer</tt> 
+    .<strong>resolve_windows_pid</strong>(pid)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2647,46 +3379,12 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves a Windows process ID (PID) to find the correct one based on window visibility.</p>
+    <p>Windows-specific PID resolution</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID to resolve</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the resolved PID</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2694,63 +3392,63 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-391
-392
-393
-394
-395
-396
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
-408
-409
-410
-411
-412
-413
-414
-415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
-427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444</pre>
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741
+742
+743</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 391</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 690</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_windows_pid'>resolve_windows_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=== resolve_windows_pid starting with PID: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> ===</span><span class='tstring_end'>&quot;</span></span>
@@ -2820,30 +3518,40 @@ External code may still reference these constants directly.</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Send version string, ready signals, and setup commands to the game server.
+Used during login handshake for wizard/avalon/frostbite frontends.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-192
-193
-194
-195
-196
-197
-198
-199
-200
-201
-202
-203
-204
-205
-206</pre>
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 192</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 495</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_send_handshake'>send_handshake</span><span class='lparen'>(</span><span class='id identifier rubyid_version_string'>version_string</span><span class='rparen'>)</span>
   <span class='gvar'>$_CLIENTBUFFER_</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_version_string'>version_string</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='rparen'>)</span>
@@ -2876,7 +3584,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the location of the current session file.</p>
+    <p>Returns the path to the session descriptor file, or nil if not yet created.</p>
 
   </div>
 </div>
@@ -2893,11 +3601,18 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the session file location or nil if not set</p></div>
+        <div class='inline'><p>absolute path to the session file</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#create_session_file-class_method" title="Lich::Common::Frontend.create_session_file (method)">create_session_file</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -2905,12 +3620,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-229
-230
-231</pre>
+540
+541
+542</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 229</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 540</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_session_file_location'>session_file_location</span>
   <span class='ivar'>@session_file</span>
@@ -2931,7 +3646,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Sets the frontend PID from the client.</p>
+    <p>Set PID from a detachable frontend such as Profanity or Saga.</p>
 
   </div>
 </div>
@@ -2949,7 +3664,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the PID to set</p></div>
+        <div class='inline'><p>The PID sent by the client</p></div>
       
     </li>
   
@@ -2966,7 +3681,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>the set PID</p></div>
+        <div class='inline'><p>The stored PID</p></div>
       
     </li>
   
@@ -2978,14 +3693,14 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-294
-295
-296
-297
-298</pre>
+604
+605
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 294</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 604</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_set_from_client'>set_from_client</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='id identifier rubyid_pid'>pid</span>
@@ -3008,12 +3723,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the specified frontend supports GSL capabilities.</p>
+    <p>Checks whether a frontend supports GSL (game scripting language).</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_gsl?'>supports_gsl?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wizard</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3021,14 +3744,14 @@ External code may still reference these constants directly.</p>
         <span class='name'>fe</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>$frontend</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend to check (defaults to $frontend)</p></div>
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
       
     </li>
   
@@ -3045,7 +3768,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend supports GSL, false otherwise</p></div>
+        <div class='inline'><p>true if the frontend has the <code>:gsl</code> capability</p></div>
       
     </li>
   
@@ -3057,12 +3780,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-156
-157
-158</pre>
+422
+423
+424</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 156</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 422</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_gsl?'>supports_gsl?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:gsl</span><span class='rparen'>)</span>
@@ -3083,12 +3806,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the specified frontend supports mono capabilities.</p>
+    <p>Checks whether a frontend supports monospace rendering.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_mono?'>supports_mono?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>stormfront</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3096,14 +3827,14 @@ External code may still reference these constants directly.</p>
         <span class='name'>fe</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>$frontend</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend to check (defaults to $frontend)</p></div>
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
       
     </li>
   
@@ -3120,7 +3851,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend supports mono, false otherwise</p></div>
+        <div class='inline'><p>true if the frontend has the <code>:mono</code> capability</p></div>
       
     </li>
   
@@ -3132,12 +3863,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-172
-173
-174</pre>
+442
+443
+444</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 172</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 442</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_mono?'>supports_mono?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:mono</span><span class='rparen'>)</span>
@@ -3158,12 +3889,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the specified frontend supports room window capabilities.</p>
+    <p>Checks whether a frontend supports a dedicated room window.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_room_window?'>supports_room_window?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3171,14 +3910,14 @@ External code may still reference these constants directly.</p>
         <span class='name'>fe</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>$frontend</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend to check (defaults to $frontend)</p></div>
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
       
     </li>
   
@@ -3195,7 +3934,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend supports room window, false otherwise</p></div>
+        <div class='inline'><p>true if the frontend has the <code>:room_window</code> capability</p></div>
       
     </li>
   
@@ -3207,15 +3946,98 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-180
-181
-182</pre>
+452
+453
+454</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 180</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 452</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_room_window?'>supports_room_window?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:room_window</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="supports_sentinel?-class_method">
+  
+    .<strong>supports_sentinel?</strong>(fe = $frontend)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Checks whether a frontend supports sentinel tags (detachable client protocol).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_sentinel?'>supports_sentinel?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>saga</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>fe</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>$frontend</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the frontend has the <code>:sentinel</code> capability</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+462
+463
+464</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 462</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_sentinel?'>supports_sentinel?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:sentinel</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3233,12 +4055,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the specified frontend supports streams capabilities.</p>
+    <p>Checks whether a frontend supports XML stream output.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_streams?'>supports_streams?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>saga</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3246,14 +4076,14 @@ External code may still reference these constants directly.</p>
         <span class='name'>fe</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>$frontend</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend to check (defaults to $frontend)</p></div>
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
       
     </li>
   
@@ -3270,7 +4100,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend supports streams, false otherwise</p></div>
+        <div class='inline'><p>true if the frontend has the <code>:streams</code> capability</p></div>
       
     </li>
   
@@ -3282,12 +4112,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-164
-165
-166</pre>
+432
+433
+434</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 164</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 432</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_streams?'>supports_streams?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:streams</span><span class='rparen'>)</span>
@@ -3308,12 +4138,20 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the specified frontend supports XML capabilities.</p>
+    <p>Checks whether a frontend supports XML protocol.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3321,14 +4159,14 @@ External code may still reference these constants directly.</p>
         <span class='name'>fe</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>$frontend</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend to check (defaults to $frontend)</p></div>
+        <div class='inline'><p>frontend name; defaults to the current <code>$frontend</code></p></div>
       
     </li>
   
@@ -3345,7 +4183,7 @@ External code may still reference these constants directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend supports XML, false otherwise</p></div>
+        <div class='inline'><p>true if the frontend has the <code>:xml</code> capability</p></div>
       
     </li>
   
@@ -3357,12 +4195,12 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-148
-149
-150</pre>
+412
+413
+414</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 148</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 412</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:xml</span><span class='rparen'>)</span>
@@ -3373,9 +4211,9 @@ External code may still reference these constants directly.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="windows_parent_pid-class_method">
+  <h3 class="signature " id="validate_platform_key!-class_method">
   
-    .<strong>windows_parent_pid</strong>(wmi, pid)  &#x21d2; <tt>Integer</tt> 
+    .<strong>validate_platform_key!</strong>(key)  &#x21d2; <tt>Symbol</tt> 
   
 
   
@@ -3383,7 +4221,7 @@ External code may still reference these constants directly.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the parent process ID for a given Windows process ID.</p>
+    <p>Validates a canonical platform key used by discovery and launch plans.</p>
 
   </div>
 </div>
@@ -3393,29 +4231,12 @@ External code may still reference these constants directly.</p>
   
     <li>
       
-        <span class='name'>wmi</span>
+        <span class='name'>key</span>
       
       
-        <span class='type'>(<tt>WIN32OLE</tt>)</span>
+        <span class='type'>(<tt>Symbol</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the WMI connection object</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>pid</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the PID to check</p></div>
       
     </li>
   
@@ -3427,12 +4248,25 @@ External code may still reference these constants directly.</p>
     <li>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the parent process ID or 0 if not found</p></div>
+        <div class='inline'><p>when key is not canonical</p></div>
       
     </li>
   
@@ -3444,14 +4278,57 @@ External code may still reference these constants directly.</p>
       <pre class="lines">
 
 
-451
-452
-453
-454
-455</pre>
+206
+207
+208
+209
+210</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 206</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_validate_platform_key!'>validate_platform_key!</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_key'>key</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#PLATFORM_KEYS-constant" title="Lich::Common::Frontend::PLATFORM_KEYS (constant)">PLATFORM_KEYS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>invalid platform key: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="windows_parent_pid-class_method">
+  
+    .<strong>windows_parent_pid</strong>(wmi, pid)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get parent process ID on Windows</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+746
+747
+748
+749
+750</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 746</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_windows_parent_pid'>windows_parent_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_wmi'>wmi</span><span class='comma'>,</span> <span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_rows'>rows</span> <span class='op'>=</span> <span class='id identifier rubyid_wmi'>wmi</span><span class='period'>.</span><span class='const'>ExecQuery</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SELECT ParentProcessId FROM Win32_Process WHERE ProcessId=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -3463,12 +4340,64 @@ External code may still reference these constants directly.</p>
 </table>
 </div>
     
+      <div class="method_details ">
+  <h3 class="signature " id="windows_platform?-class_method">
+  
+    .<strong>windows_platform?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns whether the current host is classified as Windows.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+215
+216
+217</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/front-end.rb', line 215</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_windows_platform?'>windows_platform?</span>
+  <span class='id identifier rubyid_platform_key'>platform_key</span> <span class='op'>==</span> <span class='symbol'>:windows</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
   </div>
 
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:15 2026 by
+  Generated on Wed Aug 26 16:50:34 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

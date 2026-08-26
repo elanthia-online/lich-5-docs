@@ -105,20 +105,29 @@
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
     <hr />
-<p>Lich::Common::LruIndex — optional drop-in replacement for <code>@@index</code></p>
+<p>Lich::Common::LruIndex - optional drop-in replacement for <code>@@index</code></p>
 <p>A size-capped Least Recently Used (LRU) cache that stores the same
 <tt>[GameObj, last_seen_at]</tt> tuple format as the default plain Hash,
 making it a transparent drop-in replacement.</p>
 <p>Use when profiling shows <code>@@index</code> growing too large in very long or
 heavily automated sessions. Combines LRU eviction (by access recency)
 with the same TTL-based <code>prune_older_than</code> interface as <code>prune_index!</code>.</p>
-<p>Usage — swap the initializer inside GameObj:</p>
+<p>Usage - swap the initializer inside GameObj:</p>
 <pre class="code ruby"><code class="ruby"><span class='cvar'>@@index</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'>LruIndex</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::LruIndex#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='int'>2000</span><span class='rparen'>)</span>
 </code></pre>
 <p>How it works:</p>
 <pre class="code ruby"><code class="ruby">Ruby Hashes preserve insertion order. On every read (+[]+) the accessed
 entry is moved to the end (most recently used). When the cap is reached
-on a write (+[]=+), the first entry (least recently used) is evicted.</code></pre>
+on a write (+[]=+), the first entry (least recently used) is evicted.
+All operations remain O(1) amortized.
+</code></pre>
+<p>Choosing a cap:</p>
+<pre class="code ruby"><code class="ruby">A typical Lich session visits at most a few hundred unique room/NPC
+combinations. 2,000 is generous for normal play; raise to 5,000+ for
+marathon scripts that sweep large areas. Memory cost per entry is
+negligible (the key string + a two-element array).
+</code></pre>
+<hr />
 
   </div>
 </div>
@@ -143,7 +152,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#[]-instance_method" title="#[] (instance method)">#<strong>[]</strong>(key)  &#x21d2; Object </a>
+      <a href="#[]-instance_method" title="#[] (instance method)">#<strong>[]</strong>(key)  &#x21d2; Array(GameObj, Float)<sup>?</sup> </a>
     
 
     
@@ -157,7 +166,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the <code>[GameObj, last_seen_at]</code> tuple for <code>key</code>, promoting it to most-recently-used position.</p></div></span>
   
 </li>
 
@@ -165,7 +174,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#[]=-instance_method" title="#[]= (instance method)">#<strong>[]=</strong>(key, value)  &#x21d2; Object </a>
+      <a href="#[]=-instance_method" title="#[]= (instance method)">#<strong>[]=</strong>(key, value)  &#x21d2; Array(GameObj, Float) </a>
     
 
     
@@ -179,7 +188,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stores a <code>[GameObj, last_seen_at]</code> tuple under <code>key</code>.</p></div></span>
   
 </li>
 
@@ -187,7 +196,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#clear-instance_method" title="#clear (instance method)">#<strong>clear</strong>  &#x21d2; Object </a>
+      <a href="#clear-instance_method" title="#clear (instance method)">#<strong>clear</strong>  &#x21d2; void </a>
     
 
     
@@ -201,7 +210,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes all entries.</p></div></span>
   
 </li>
 
@@ -209,7 +218,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#delete_if-instance_method" title="#delete_if (instance method)">#<strong>delete_if</strong>(&amp;block)  &#x21d2; Object </a>
+      <a href="#delete_if-instance_method" title="#delete_if (instance method)">#<strong>delete_if</strong> {|key, value| ... } &#x21d2; LruIndex </a>
     
 
     
@@ -223,7 +232,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes entries using a block predicate, identical to <code>Hash#delete_if</code>.</p></div></span>
   
 </li>
 
@@ -231,7 +240,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#each_value-instance_method" title="#each_value (instance method)">#<strong>each_value</strong>(&amp;block)  &#x21d2; Object </a>
+      <a href="#each_value-instance_method" title="#each_value (instance method)">#<strong>each_value</strong> {|key, value| ... } &#x21d2; Object </a>
     
 
     
@@ -245,7 +254,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Iterates over all entries, yielding <code>[key, [GameObj, last_seen_at]]</code> to the block.</p></div></span>
   
 </li>
 
@@ -291,7 +300,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns <code>true</code> if <code>key</code> is present without altering LRU order.</p></div></span>
   
 </li>
 
@@ -299,7 +308,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#prune_older_than-instance_method" title="#prune_older_than (instance method)">#<strong>prune_older_than</strong>(cutoff)  &#x21d2; Object </a>
+      <a href="#prune_older_than-instance_method" title="#prune_older_than (instance method)">#<strong>prune_older_than</strong>(cutoff)  &#x21d2; Integer </a>
     
 
     
@@ -313,7 +322,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes entries whose <code>last_seen_at</code> timestamp is older than <code>cutoff</code> seconds (a monotonic Float).</p></div></span>
   
 </li>
 
@@ -321,7 +330,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#size-instance_method" title="#size (instance method)">#<strong>size</strong>  &#x21d2; Object </a>
+      <a href="#size-instance_method" title="#size (instance method)">#<strong>size</strong>  &#x21d2; Integer </a>
     
 
     
@@ -335,7 +344,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the current number of entries.</p></div></span>
   
 </li>
 
@@ -363,7 +372,27 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>capacity</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>2000</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>maximum number of entries before LRU eviction</p></div>
+      
+    </li>
+  
+</ul>
+
 
 </div><table class="source_code">
   <tr>
@@ -371,13 +400,13 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <pre class="lines">
 
 
-782
-783
-784
-785</pre>
+1509
+1510
+1511
+1512</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 782</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1509</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_capacity'>capacity</span> <span class='op'>=</span> <span class='int'>2000</span><span class='rparen'>)</span>
   <span class='ivar'>@capacity</span> <span class='op'>=</span> <span class='id identifier rubyid_capacity'>capacity</span>
@@ -398,29 +427,67 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details first">
   <h3 class="signature first" id="[]-instance_method">
   
-    #<strong>[]</strong>(key)  &#x21d2; <tt>Object</tt> 
+    #<strong>[]</strong>(key)  &#x21d2; <tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt><sup>?</sup> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the <code>[GameObj, last_seen_at]</code> tuple for <code>key</code>, promoting it to
+most-recently-used position. Returns <code>nil</code> if the key is not present.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-787
-788
-789
-790
-791
-792
-793
-794</pre>
+1519
+1520
+1521
+1522
+1523
+1524
+1525
+1526</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 787</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1519</span>
 
 <span class='kw'>def</span> <span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
@@ -438,26 +505,75 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="[]=-instance_method">
   
-    #<strong>[]=</strong>(key, value)  &#x21d2; <tt>Object</tt> 
+    #<strong>[]=</strong>(key, value)  &#x21d2; <tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Stores a <code>[GameObj, last_seen_at]</code> tuple under <code>key</code>. Evicts the least
+recently used entry first if the store is at capacity.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-796
-797
-798
-799
-800</pre>
+1534
+1535
+1536
+1537
+1538</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 796</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1534</span>
 
 <span class='kw'>def</span> <span class='op'>[]=</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
@@ -472,24 +588,33 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="clear-instance_method">
   
-    #<strong>clear</strong>  &#x21d2; <tt>Object</tt> 
+    #<strong>clear</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Removes all entries.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-823
-824
-825</pre>
+1580
+1581
+1582</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 823</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1580</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
@@ -502,25 +627,73 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="delete_if-instance_method">
   
-    #<strong>delete_if</strong>(&amp;block)  &#x21d2; <tt>Object</tt> 
+    #<strong>delete_if</strong> {|key, value| ... } &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::LruIndex (class)">LruIndex</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Removes entries using a block predicate, identical to <code>Hash#delete_if</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Yield Parameters:</p>
+<ul class="yieldparam">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::LruIndex (class)">LruIndex</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-827
-828
-829
-830</pre>
+1589
+1590
+1591
+1592</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 827</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1589</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_delete_if'>delete_if</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
@@ -534,24 +707,60 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="each_value-instance_method">
   
-    #<strong>each_value</strong>(&amp;block)  &#x21d2; <tt>Object</tt> 
+    #<strong>each_value</strong> {|key, value| ... } &#x21d2; <tt>Object</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Iterates over all entries, yielding <code>[key, [GameObj, last_seen_at]]</code> to
+the block. Used by <code>index_stats</code> when <code>@@index</code> is an <code>LruIndex</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Yield Parameters:</p>
+<ul class="yieldparam">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span>, Float)</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-819
-820
-821</pre>
+1573
+1574
+1575</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 819</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1573</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_each_value'>each_value</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
@@ -572,12 +781,27 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Returns <code>true</code> if <code>key</code> is present without altering LRU order.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -598,12 +822,12 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <pre class="lines">
 
 
-802
-803
-804</pre>
+1544
+1545
+1546</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 802</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1544</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
@@ -616,33 +840,79 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="prune_older_than-instance_method">
   
-    #<strong>prune_older_than</strong>(cutoff)  &#x21d2; <tt>Object</tt> 
+    #<strong>prune_older_than</strong>(cutoff)  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Removes entries whose <code>last_seen_at</code> timestamp is older than <code>cutoff</code>
+seconds (a monotonic Float). Mirrors the interface expected by
+<code>prune_index!</code> when <code>@@index</code> is swapped for an <code>LruIndex</code>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>cutoff</span>
+      
+      
+        <span class='type'>(<tt>Float</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>monotonic timestamp; entries last seen before this
+time are removed</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the number of entries removed</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-806
-807
-808
-809
-810
-811
-812
-813
-814
-815
-816
-817</pre>
+1555
+1556
+1557
+1558
+1559
+1560
+1561
+1562
+1563
+1564
+1565
+1566</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 806</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1555</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_prune_older_than'>prune_older_than</span><span class='lparen'>(</span><span class='id identifier rubyid_cutoff'>cutoff</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_pruned'>pruned</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -664,24 +934,46 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
       <div class="method_details ">
   <h3 class="signature " id="size-instance_method">
   
-    #<strong>size</strong>  &#x21d2; <tt>Object</tt> 
+    #<strong>size</strong>  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the current number of entries.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-832
-833
-834</pre>
+1597
+1598
+1599</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 832</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1597</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_size'>size</span>
   <span class='ivar'>@store</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
@@ -696,7 +988,7 @@ on a write (+[]=+), the first entry (least recently used) is evicted.</code></pr
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:26 2026 by
+  Generated on Wed Aug 26 16:50:48 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

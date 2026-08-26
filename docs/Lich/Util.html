@@ -85,8 +85,8 @@
   
   <dl>
     <dt>Defined in:</dt>
-    <dd>documented/update.rb<span class="defines">,<br>
-  documented/util/opts.rb,<br> documented/util/util.rb,<br> documented/magic-info.rb,<br> documented/util/textstripper.rb,<br> documented/util/memoryreleaser.rb,<br> documented/common/update/file_writer.rb,<br> documented/common/update/script_sync.rb,<br> documented/common/update/custom_repos.rb,<br> documented/common/update/file_updater.rb,<br> documented/common/update/github_client.rb,<br> documented/common/update/status_reporter.rb,<br> documented/common/update/tracked_scripts.rb,<br> documented/common/update/branch_installer.rb,<br> documented/common/update/channel_resolver.rb,<br> documented/common/update/snapshot_manager.rb,<br> documented/common/update/release_installer.rb</span>
+    <dd>documented/util/deep_freeze.rb<span class="defines">,<br>
+  documented/update.rb,<br> documented/util/opts.rb,<br> documented/util/util.rb,<br> documented/magic-info.rb,<br> documented/util/textstripper.rb,<br> documented/util/gtk_compaction.rb,<br> documented/util/memoryreleaser.rb,<br> documented/common/update/file_writer.rb,<br> documented/common/update/script_sync.rb,<br> documented/common/update/custom_repos.rb,<br> documented/common/update/file_updater.rb,<br> documented/common/update/github_client.rb,<br> documented/common/update/status_reporter.rb,<br> documented/common/update/tracked_scripts.rb,<br> documented/common/update/branch_installer.rb,<br> documented/common/update/channel_resolver.rb,<br> documented/common/update/snapshot_manager.rb,<br> documented/common/update/release_installer.rb</span>
 
 </dd>
   </dl>
@@ -95,7 +95,7 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Provides utility methods for the Lich project.</p>
+    <p>Namespace for Lich utility modules and classes.</p>
 
   </div>
 </div>
@@ -113,7 +113,7 @@
 <p class="children">
   
     
-      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Util/Magicinfo.html" title="Lich::Util::Magicinfo (module)">Magicinfo</a></span>, <span class='object_link'><a href="Util/MemoryReleaser.html" title="Lich::Util::MemoryReleaser (module)">MemoryReleaser</a></span>, <span class='object_link'><a href="Util/TextStripper.html" title="Lich::Util::TextStripper (module)">TextStripper</a></span>, <span class='object_link'><a href="Util/Update.html" title="Lich::Util::Update (module)">Update</a></span>
+      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Util/GtkCompaction.html" title="Lich::Util::GtkCompaction (module)">GtkCompaction</a></span>, <span class='object_link'><a href="Util/Magicinfo.html" title="Lich::Util::Magicinfo (module)">Magicinfo</a></span>, <span class='object_link'><a href="Util/MemoryReleaser.html" title="Lich::Util::MemoryReleaser (module)">MemoryReleaser</a></span>, <span class='object_link'><a href="Util/TextStripper.html" title="Lich::Util::TextStripper (module)">TextStripper</a></span>, <span class='object_link'><a href="Util/Update.html" title="Lich::Util::Update (module)">Update</a></span>
     
   
     
@@ -121,6 +121,73 @@
     
   
 </p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="QUIET_STATE_TAGS-constant" class="">QUIET_STATE_TAGS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Self-closing tags that toggle persistent client display state (as
+opposed to e.g. <prompt>, which self-heals on the next prompt). The raw
+server chunk handed to a DownstreamHook proc is not split on line
+boundaries, so the server is free to bundle one of these onto the same
+chunk as text that quiet: true is about to drop. Silently discarding
+that chunk would discard the tag with it -- e.g. dropping a trailing
+mono-closing <output class=""/> that rode in on the same chunk as the
+<prompt> a quiet-filtered range ends on leaves the frontend stuck in
+mono mode until an unrelated, later mono tag happens to close it.</p>
+<p>Only the mono/formatting <output> tag is confirmed to hit this in
+practice today. The list is deliberately an array of patterns (not a
+single regex) so a future confirmed case -- e.g. pushBold/popBold or
+pushStream/popStream -- can be added as its own entry without touching
+the filtering logic below. Keep each pattern anchored to a single
+self-closing <code>&lt;tag .../&gt;</code>, with no capturing groups (String#scan
+returns captured subgroups instead of full matches when a pattern has
+any, which would silently change what preserve_quiet_state_tags
+returns), so a scan can't accidentally absorb surrounding text or
+change shape.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;output class=&quot;[^&quot;]*&quot;\s*\/&gt;</span><span class='regexp_end'>/</span></span> <span class='comment'># mono/formatting state toggle
+</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="QUIET_STATE_TAG_PATTERN-constant" class="">QUIET_STATE_TAG_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Combines QUIET_STATE_TAGS into a single alternation, scanned once per
+chunk. Scanning each pattern separately and concatenating the results
+(the original approach) groups matches by pattern rather than by where
+they actually appear -- invisible with a single pattern, but as soon as
+a second entry is added, two tags from different patterns on the same
+chunk would come back in pattern order instead of source order, which
+matters when the tags are an open/close pair. A single combined scan
+preserves the chunk's real left-to-right order regardless of how many
+patterns are registered.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#QUIET_STATE_TAGS-constant" title="Lich::Util::QUIET_STATE_TAGS (constant)">QUIET_STATE_TAGS</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+    </dl>
+  
 
 
 
@@ -153,7 +220,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Generates a unique anonymous hook name based on the current time and a random number.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Generates a unique anonymous hook identifier string.</p></div></span>
   
 </li>
 
@@ -161,7 +228,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#deep_freeze-class_method" title="deep_freeze (class method)">.<strong>deep_freeze</strong>(obj)  &#x21d2; Object </a>
+      <a href="#deep_freeze-class_method" title="deep_freeze (class method)">.<strong>deep_freeze</strong>(value)  &#x21d2; Object </a>
     
 
     
@@ -175,7 +242,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Recursively freezes an object and its contents.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Recursively freezes Arrays, Hashes, and their nested contents.</p></div></span>
   
 </li>
 
@@ -197,7 +264,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Installs the specified Ruby gems and requires them if specified.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Installs and optionally requires a set of Ruby gems specified in a Hash.</p></div></span>
   
 </li>
 
@@ -219,7 +286,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Issues a command and captures the output based on the provided patterns.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Issues a command to the game and captures output between start and end patterns.</p></div></span>
   
 </li>
 
@@ -241,7 +308,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Normalizes the lookup for effects based on the provided value.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Normalizes and performs a lookup for an effect based on the provided value.</p></div></span>
   
 </li>
 
@@ -271,6 +338,28 @@
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#preserve_quiet_state_tags-class_method" title="preserve_quiet_state_tags (class method)">.<strong>preserve_quiet_state_tags</strong>(chunk)  &#x21d2; String<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Pulls any QUIET_STATE_TAGS matches out of a chunk that quiet: true is about to drop, so callers can forward just the tags instead of the whole chunk.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#quiet_command-class_method" title="quiet_command (class method)">.<strong>quiet_command</strong>(command, start_pattern, end_pattern, include_end = true, timeout = 5, silent = true)  &#x21d2; Array&lt;String&gt; </a>
     
 
@@ -285,7 +374,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Issues a command quietly and captures the output.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Issues a command to the game with XML downstream disabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.</p></div></span>
   
 </li>
 
@@ -307,7 +396,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Issues a command quietly and captures the output in XML format.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Issues a command to the game with XML downstream enabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.</p></div></span>
   
 </li>
 
@@ -329,7 +418,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the count of silver from the output of a command.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Retrieves the current silver count from the game output by issuing the 'info' command and parsing the response.</p></div></span>
   
 </li>
 
@@ -356,12 +445,20 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Generates a unique anonymous hook name based on the current time and a random number.</p>
+    <p>Generates a unique anonymous hook identifier string.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_anon_hook'>anon_hook</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>event</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;Util::event-2024-06-13 12:34:56 +0000-1234&quot;</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -376,7 +473,7 @@
       
       
         &mdash;
-        <div class='inline'><p>an optional prefix for the hook name.</p></div>
+        <div class='inline'><p>an optional prefix to include in the identifier (default: '')</p></div>
       
     </li>
   
@@ -393,7 +490,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the generated anonymous hook name.</p></div>
+        <div class='inline'><p>a unique identifier in the format &quot;Util::<prefix>-<timestamp>-&lt;random_number&gt;&quot;</p></div>
       
     </li>
   
@@ -405,13 +502,13 @@
       <pre class="lines">
 
 
-57
-58
-59
-60</pre>
+71
+72
+73
+74</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 57</span>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 71</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_anon_hook'>anon_hook</span><span class='lparen'>(</span><span class='id identifier rubyid_prefix'>prefix</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
@@ -425,7 +522,7 @@
       <div class="method_details ">
   <h3 class="signature " id="deep_freeze-class_method">
   
-    .<strong>deep_freeze</strong>(obj)  &#x21d2; <tt>Object</tt> 
+    .<strong>deep_freeze</strong>(value)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -433,7 +530,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Recursively freezes an object and its contents.</p>
+    <p>Recursively freezes Arrays, Hashes, and their nested contents.</p>
 
   </div>
 </div>
@@ -443,7 +540,7 @@
   
     <li>
       
-        <span class='name'>obj</span>
+        <span class='name'>value</span>
       
       
         <span class='type'>(<tt>Object</tt>)</span>
@@ -451,7 +548,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the object to freeze.</p></div>
+        <div class='inline'><p>object to freeze</p></div>
       
     </li>
   
@@ -468,7 +565,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the frozen object.</p></div>
+        <div class='inline'><p>the original object after recursive freezing</p></div>
       
     </li>
   
@@ -480,33 +577,15 @@
       <pre class="lines">
 
 
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290</pre>
+11
+12
+13</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 279</span>
+      <pre class="code"><span class="info file"># File 'documented/util/deep_freeze.rb', line 11</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_deep_freeze'>deep_freeze</span><span class='lparen'>(</span><span class='id identifier rubyid_obj'>obj</span><span class='rparen'>)</span>
-  <span class='kw'>case</span> <span class='id identifier rubyid_obj'>obj</span>
-  <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span></span>
-    <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid_v'>v</span><span class='op'>|</span>
-      <span class='id identifier rubyid_deep_freeze'>deep_freeze</span><span class='lparen'>(</span><span class='id identifier rubyid_k'>k</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_deep_freeze'>deep_freeze</span><span class='lparen'>(</span><span class='id identifier rubyid_v'>v</span><span class='rparen'>)</span>
-    <span class='kw'>end</span>
-  <span class='kw'>when</span> <span class='const'>Array</span>
-    <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_el'>el</span><span class='op'>|</span> <span class='id identifier rubyid_deep_freeze'>deep_freeze</span><span class='lparen'>(</span><span class='id identifier rubyid_el'>el</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
-  <span class='kw'>end</span>
-  <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_deep_freeze'>deep_freeze</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_deep_freeze_value'>deep_freeze_value</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_compare_by_identity'>compare_by_identity</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -524,12 +603,23 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Installs the specified Ruby gems and requires them if specified.</p>
+    <p>Installs and optionally requires a set of Ruby gems specified in a Hash.</p>
+<p>This method will attempt to install any gems that are not already installed.
+If a gem is installed and its value is true, it will be required.
+If installation fails for any gem, an error will be raised listing all failed gems.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_install_gem_requirements'>install_gem_requirements</span><span class='lparen'>(</span><span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>json</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>colorize</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='kw'>false</span> <span class='rbrace'>}</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -537,28 +627,13 @@
         <span class='name'>gems_to_install</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../String.html" title="String (class)">String</a></span> =&gt; Boolean}</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a hash of gem names and whether to require them.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>user_install</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>false</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>whether to install gems for the user (default: false).</p></div>
+        <div class='inline'><p>A hash where each key is the name of a gem to install (as a String),
+and each value is a Boolean indicating whether to require the gem after installation.</p></div>
       
     </li>
   
@@ -575,7 +650,20 @@
       
       
         &mdash;
-        <div class='inline'><p>if gems_to_install is not a Hash or has invalid keys/values.</p></div>
+        <div class='inline'><p>If the argument is not a Hash, or if the hash contains keys that are not Strings
+or values that are not TrueClass/FalseClass.</p></div>
+      
+    </li>
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>RuntimeError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>If any gems fail to install, raises an error listing the failed gems.</p></div>
       
     </li>
   
@@ -587,59 +675,59 @@
       <pre class="lines">
 
 
-223
-224
-225
-226
-227
-228
-229
-230
-231
-232
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247
-248
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272</pre>
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 223</span>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 331</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_install_gem_requirements'>install_gem_requirements</span><span class='lparen'>(</span><span class='id identifier rubyid_gems_to_install'>gems_to_install</span><span class='comma'>,</span> <span class='label'>user_install:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>install_gem_requirements must be passed a Hash</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_gems_to_install'>gems_to_install</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
@@ -707,7 +795,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Issues a command and captures the output based on the provided patterns.</p>
+    <p>Issues a command to the game and captures output between start and end patterns.</p>
 
   </div>
 </div>
@@ -725,7 +813,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the command to execute.</p></div>
+        <div class='inline'><p>The command to send.</p></div>
       
     </li>
   
@@ -739,7 +827,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the pattern to identify the start of the output.</p></div>
+        <div class='inline'><p>Pattern marking the start of output capture.</p></div>
       
     </li>
   
@@ -748,14 +836,14 @@
         <span class='name'>end_pattern</span>
       
       
-        <span class='type'>(<tt>Regexp</tt>)</span>
+        <span class='type'>(<tt>Regexp</tt>, <tt>Symbol</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>/&lt;prompt/</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the pattern to identify the end of the output (default: /&lt;prompt/).</p></div>
+        <div class='inline'><p>Pattern marking the end of output capture. Defaults to /&lt;prompt/. Use :ignore for single-line capture.</p></div>
       
     </li>
   
@@ -771,7 +859,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to include the end line in the result (default: true).</p></div>
+        <div class='inline'><p>Whether to include the end line in the result. Defaults to true.</p></div>
       
     </li>
   
@@ -787,7 +875,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the maximum time to wait for the command to complete (default: 5).</p></div>
+        <div class='inline'><p>Timeout in seconds for the command. Defaults to 5.</p></div>
       
     </li>
   
@@ -803,7 +891,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to suppress output (default: nil).</p></div>
+        <div class='inline'><p>Whether to silence script output. Defaults to nil (no change).</p></div>
       
     </li>
   
@@ -819,7 +907,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to use XML output (default: true).</p></div>
+        <div class='inline'><p>Whether to use XML downstream. Defaults to true.</p></div>
       
     </li>
   
@@ -835,7 +923,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to suppress output during processing (default: false).</p></div>
+        <div class='inline'><p>If true, suppresses output of lines to FE starting with the start_pattern and ending with the end_pattern. Defaults to false.</p></div>
       
     </li>
   
@@ -851,7 +939,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to use fput instead of put (default: true).</p></div>
+        <div class='inline'><p>If true, uses fput to send the command; otherwise uses put. Defaults to true.</p></div>
       
     </li>
   
@@ -868,654 +956,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the lines of output captured from the command.</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 74</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='int'>5</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>use_fput:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
-  <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_anon_hook'>anon_hook</span>
-  <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>false</span>
-  <span class='id identifier rubyid_ignore_end'>ignore_end</span> <span class='op'>=</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='symbol'>:ignore</span><span class='rparen'>)</span>
-
-  <span class='id identifier rubyid_save_script_silent'>save_script_silent</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span>
-  <span class='id identifier rubyid_save_want_downstream'>save_want_downstream</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span>
-  <span class='id identifier rubyid_save_want_downstream_xml'>save_want_downstream_xml</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span>
-
-  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='id identifier rubyid_silent'>silent</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_silent'>silent</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span> <span class='op'>=</span> <span class='op'>!</span><span class='id identifier rubyid_usexml'>usexml</span>
-  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span> <span class='op'>=</span> <span class='id identifier rubyid_usexml'>usexml</span>
-
-  <span class='kw'>begin</span>
-    <span class='const'>Timeout</span><span class='op'>::</span><span class='id identifier rubyid_timeout'>timeout</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='const'>Interrupt</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
-      <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_line'>line</span><span class='op'>|</span>
-        <span class='kw'>if</span> <span class='id identifier rubyid_filter'>filter</span>
-          <span class='kw'>if</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span> <span class='op'>||</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span>
-            <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-            <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>false</span>
-            <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_ignore_end'>ignore_end</span>
-              <span class='kw'>next</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='rparen'>)</span>
-            <span class='kw'>else</span>
-              <span class='id identifier rubyid_line'>line</span>
-            <span class='kw'>end</span>
-          <span class='kw'>else</span>
-            <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span>
-              <span class='kw'>next</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='rparen'>)</span>
-            <span class='kw'>else</span>
-              <span class='id identifier rubyid_line'>line</span>
-            <span class='kw'>end</span>
-          <span class='kw'>end</span>
-        <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span>
-          <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>true</span>
-          <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span>
-            <span class='kw'>next</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='rparen'>)</span>
-          <span class='kw'>else</span>
-            <span class='id identifier rubyid_line'>line</span>
-          <span class='kw'>end</span>
-        <span class='kw'>else</span>
-          <span class='id identifier rubyid_line'>line</span>
-        <span class='kw'>end</span>
-      <span class='rbrace'>}</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_use_fput'>use_fput</span> <span class='op'>?</span> <span class='id identifier rubyid_fput'><span class='object_link'><a href="../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_put'><span class='object_link'><a href="../top-level-namespace.html#put-instance_method" title="#put (method)">put</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='rparen'>)</span>
-
-      <span class='kw'>until</span> <span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='semicolon'>;</span> <span class='kw'>end</span>
-      <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
-      <span class='kw'>unless</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span>
-        <span class='kw'>until</span> <span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span>
-          <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
-        <span class='kw'>end</span>
-      <span class='kw'>end</span>
-      <span class='kw'>unless</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span>
-        <span class='kw'>if</span> <span class='id identifier rubyid_include_end'>include_end</span>
-          <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
-        <span class='kw'>end</span>
-      <span class='kw'>end</span>
-    <span class='rbrace'>}</span>
-  <span class='kw'>rescue</span> <span class='const'>Interrupt</span>
-    <span class='kw'>nil</span>
-  <span class='kw'>ensure</span>
-    <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='id identifier rubyid_save_script_silent'>save_script_silent</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_silent'>silent</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span> <span class='op'>=</span> <span class='id identifier rubyid_save_want_downstream'>save_want_downstream</span>
-    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span> <span class='op'>=</span> <span class='id identifier rubyid_save_want_downstream_xml'>save_want_downstream_xml</span>
-  <span class='kw'>end</span>
-  <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="normalize_lookup-class_method">
-  
-    .<strong>normalize_lookup</strong>(effect, val)  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Normalizes the lookup for effects based on the provided value.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>effect</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the name of the effect to look up.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>val</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>, <tt>Symbol</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the value to normalize and check.</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if the normalized value exists, false otherwise.</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>RuntimeError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the lookup case is invalid.</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 19</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_lookup'>normalize_lookup</span><span class='lparen'>(</span><span class='id identifier rubyid_effect'>effect</span><span class='comma'>,</span> <span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_caller_type'>caller_type</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Effects::</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_effect'>effect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>case</span> <span class='id identifier rubyid_val'>val</span>
-  <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></span>
-    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:downcase</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
-  <span class='kw'>when</span> <span class='const'>Integer</span>
-    <span class='comment'>#      seek = mappings.fetch(val, nil)
-</span>    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_active?'>active?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
-  <span class='kw'>when</span> <span class='const'>Symbol</span>
-    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:downcase</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
-  <span class='kw'>else</span>
-    <span class='id identifier rubyid_fail'>fail</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>invalid lookup case </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>end</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="normalize_name-class_method">
-  
-    .<strong>normalize_name</strong>(name)  &#x21d2; <tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Normalizes a given name by converting it to a lowercase string and replacing or removing certain characters.</p>
-<p>The normalization process handles the following cases:</p>
-<ul>
-<li>Converts spaces and hyphens to underscores.</li>
-<li>Removes colons and apostrophes.</li>
-<li>Converts symbols to strings.
-Normalizes a given name by converting it to a lowercase string and replacing or removing certain characters.</li>
-</ul>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>name</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the name to normalize.</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the normalized name.</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-44
-45
-46
-47
-48
-49
-50
-51</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 44</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\s</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>-</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>:</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>:</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&#39;</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&#39;</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_normal_name'>normal_name</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="quiet_command-class_method">
-  
-    .<strong>quiet_command</strong>(command, start_pattern, end_pattern, include_end = true, timeout = 5, silent = true)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Issues a command quietly and captures the output.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>command</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the command to execute.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>start_pattern</span>
-      
-      
-        <span class='type'>(<tt>Regexp</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the pattern to identify the start of the output.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>end_pattern</span>
-      
-      
-        <span class='type'>(<tt>Regexp</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the pattern to identify the end of the output.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>include_end</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>true</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>whether to include the end line in the result (default: true).</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>timeout</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>5</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the maximum time to wait for the command to complete (default: 5).</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>silent</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>true</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>whether to suppress output (default: true).</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the lines of output captured from the command.</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-166
-167
-168</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 166</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_quiet_command'>quiet_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_include_end'>include_end</span> <span class='op'>=</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='int'>5</span><span class='comma'>,</span> <span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='kw'>true</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='id identifier rubyid_include_end'>include_end</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='id identifier rubyid_silent'>silent</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="quiet_command_xml-class_method">
-  
-    .<strong>quiet_command_xml</strong>(command, start_pattern, end_pattern = /&lt;prompt/, include_end = true, timeout = 5, silent = true)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Issues a command quietly and captures the output in XML format.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>command</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the command to execute.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>start_pattern</span>
-      
-      
-        <span class='type'>(<tt>Regexp</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the pattern to identify the start of the output.</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>end_pattern</span>
-      
-      
-        <span class='type'>(<tt>Regexp</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>/&lt;prompt/</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the pattern to identify the end of the output (default: /&lt;prompt/).</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>include_end</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>true</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>whether to include the end line in the result (default: true).</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>timeout</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>5</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the maximum time to wait for the command to complete (default: 5).</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>silent</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>true</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>whether to suppress output (default: true).</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the lines of output captured from the command.</p></div>
+        <div class='inline'><p>Lines of output captured between start and end patterns.</p></div>
       
     </li>
   
@@ -1529,79 +970,25 @@ Normalizes a given name by converting it to a lowercase string and replacing or 
 
 153
 154
-155</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 153</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_quiet_command_xml'>quiet_command_xml</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id identifier rubyid_include_end'>include_end</span> <span class='op'>=</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='int'>5</span><span class='comma'>,</span> <span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='kw'>true</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='id identifier rubyid_include_end'>include_end</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='id identifier rubyid_silent'>silent</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="silver_count-class_method">
-  
-    .<strong>silver_count</strong>(timeout = 3)  &#x21d2; <tt>Integer</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Retrieves the count of silver from the output of a command.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>timeout</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>3</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the maximum time to wait for the command to complete (default: 3).</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the count of silver.</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
 174
 175
 176
@@ -1644,10 +1031,866 @@ Normalizes a given name by converting it to a lowercase string and replacing or 
 213
 214
 215
-216</pre>
+216
+217
+218
+219
+220
+221</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 174</span>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 153</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='int'>5</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>use_fput:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_anon_hook'>anon_hook</span>
+  <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_ignore_end'>ignore_end</span> <span class='op'>=</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='symbol'>:ignore</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_save_script_silent'>save_script_silent</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span>
+  <span class='id identifier rubyid_save_want_downstream'>save_want_downstream</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span>
+  <span class='id identifier rubyid_save_want_downstream_xml'>save_want_downstream_xml</span> <span class='op'>=</span> <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span>
+
+  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='id identifier rubyid_silent'>silent</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_silent'>silent</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span> <span class='op'>=</span> <span class='op'>!</span><span class='id identifier rubyid_usexml'>usexml</span>
+  <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span> <span class='op'>=</span> <span class='id identifier rubyid_usexml'>usexml</span>
+
+  <span class='kw'>begin</span>
+    <span class='const'>Timeout</span><span class='op'>::</span><span class='id identifier rubyid_timeout'>timeout</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='const'>Interrupt</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+      <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_line'>line</span><span class='op'>|</span>
+        <span class='kw'>if</span> <span class='id identifier rubyid_filter'>filter</span>
+          <span class='kw'>if</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span> <span class='op'>||</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span>
+            <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+            <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>false</span>
+            <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_ignore_end'>ignore_end</span>
+              <span class='kw'>next</span><span class='lparen'>(</span><span class='id identifier rubyid_preserve_quiet_state_tags'>preserve_quiet_state_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+            <span class='kw'>else</span>
+              <span class='id identifier rubyid_line'>line</span>
+            <span class='kw'>end</span>
+          <span class='kw'>else</span>
+            <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span>
+              <span class='kw'>next</span><span class='lparen'>(</span><span class='id identifier rubyid_preserve_quiet_state_tags'>preserve_quiet_state_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+            <span class='kw'>else</span>
+              <span class='id identifier rubyid_line'>line</span>
+            <span class='kw'>end</span>
+          <span class='kw'>end</span>
+        <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span>
+          <span class='id identifier rubyid_filter'>filter</span> <span class='op'>=</span> <span class='kw'>true</span>
+          <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span>
+            <span class='kw'>next</span><span class='lparen'>(</span><span class='id identifier rubyid_preserve_quiet_state_tags'>preserve_quiet_state_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+          <span class='kw'>else</span>
+            <span class='id identifier rubyid_line'>line</span>
+          <span class='kw'>end</span>
+        <span class='kw'>else</span>
+          <span class='id identifier rubyid_line'>line</span>
+        <span class='kw'>end</span>
+      <span class='rbrace'>}</span><span class='comma'>,</span> <span class='label'>persist:</span> <span class='kw'>false</span><span class='rparen'>)</span> <span class='comment'># scoped to this command; removed in the ensure below
+</span>      <span class='id identifier rubyid_use_fput'>use_fput</span> <span class='op'>?</span> <span class='id identifier rubyid_fput'><span class='object_link'><a href="../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_put'><span class='object_link'><a href="../top-level-namespace.html#put-instance_method" title="#put (method)">put</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='rparen'>)</span>
+
+      <span class='kw'>until</span> <span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='semicolon'>;</span> <span class='kw'>end</span>
+      <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
+      <span class='kw'>unless</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span>
+        <span class='kw'>until</span> <span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span>
+          <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
+        <span class='kw'>end</span>
+      <span class='kw'>end</span>
+      <span class='kw'>unless</span> <span class='id identifier rubyid_ignore_end'>ignore_end</span>
+        <span class='kw'>if</span> <span class='id identifier rubyid_include_end'>include_end</span>
+          <span class='id identifier rubyid_result'>result</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_rstrip'>rstrip</span>
+        <span class='kw'>end</span>
+      <span class='kw'>end</span>
+    <span class='rbrace'>}</span>
+  <span class='kw'>rescue</span> <span class='const'>Interrupt</span>
+    <span class='kw'>nil</span>
+  <span class='kw'>ensure</span>
+    <span class='const'>DownstreamHook</span><span class='period'>.</span><span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='id identifier rubyid_save_script_silent'>save_script_silent</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_silent'>silent</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream'>want_downstream</span> <span class='op'>=</span> <span class='id identifier rubyid_save_want_downstream'>save_want_downstream</span>
+    <span class='const'>Script</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_want_downstream_xml'>want_downstream_xml</span> <span class='op'>=</span> <span class='id identifier rubyid_save_want_downstream_xml'>save_want_downstream_xml</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="normalize_lookup-class_method">
+  
+    .<strong>normalize_lookup</strong>(effect, val)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Normalizes and performs a lookup for an effect based on the provided value.</p>
+<p>Depending on the type of <code>val</code>, this method will:</p>
+<ul>
+<li>For String: Check if the normalized string matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).</li>
+<li>For Integer: Check if the effect is active for the given integer value.</li>
+<li>For Symbol: Check if the normalized symbol matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).</li>
+</ul>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>effect</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The name of the effect class (without the &quot;Effects::&quot; prefix).</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>val</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The value to look up; can be a string, integer, or symbol.</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>True if the lookup is successful, false otherwise.</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>RuntimeError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>If <code>val</code> is not a String, Integer, or Symbol.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 23</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_lookup'>normalize_lookup</span><span class='lparen'>(</span><span class='id identifier rubyid_effect'>effect</span><span class='comma'>,</span> <span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_caller_type'>caller_type</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Effects::</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_effect'>effect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>case</span> <span class='id identifier rubyid_val'>val</span>
+  <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></span>
+    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:downcase</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='const'>Integer</span>
+    <span class='comment'>#      seek = mappings.fetch(val, nil)
+</span>    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_active?'>active?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='const'>Symbol</span>
+    <span class='lparen'>(</span><span class='id identifier rubyid_eval'>eval</span> <span class='id identifier rubyid_caller_type'>caller_type</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_transform_keys'>transform_keys</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:downcase</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_fail'>fail</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>invalid lookup case </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="normalize_name-class_method">
+  
+    .<strong>normalize_name</strong>(name)  &#x21d2; <tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Normalizes a given name by converting it to a lowercase string and replacing or removing certain characters.</p>
+<p>The normalization process handles the following cases:</p>
+<ul>
+<li>Converts spaces and hyphens to underscores.</li>
+<li>Removes colons and apostrophes.</li>
+<li>Converts symbols to strings.</li>
+<li>Converts all characters to lowercase.</li>
+</ul>
+<p>Examples:</p>
+<pre class="code ruby"><code class="ruby"><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>vault_kick</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; &quot;vault_kick&quot;
+</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>vault kick</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; &quot;vault_kick&quot;
+</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>vault-kick</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; &quot;vault_kick&quot;
+</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='symbol'>:vault_kick</span><span class='rparen'>)</span>       <span class='comment'>#=&gt; &quot;vault_kick&quot;
+</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='symbol'>:vaultkick</span><span class='rparen'>)</span>        <span class='comment'>#=&gt; &quot;vaultkick&quot;
+</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>predator&#39;s eye</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;predators_eye&quot;</span></code></pre>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The name to normalize.</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The normalized name.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+56
+57
+58
+59
+60
+61
+62
+63</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 56</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_name'>normalize_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\s</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>-</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>:</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>:</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&#39;</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&#39;</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_normal_name'>normal_name</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="preserve_quiet_state_tags-class_method">
+  
+    .<strong>preserve_quiet_state_tags</strong>(chunk)  &#x21d2; <tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Pulls any QUIET_STATE_TAGS matches out of a chunk that quiet: true is
+about to drop, so callers can forward just the tags instead of the
+whole chunk.</p>
+<p>The returned string is newline-terminated even though the matched tags
+themselves never include one. Every other chunk that reaches this
+pipeline is newline/CRLF-terminated as part of the game server's
+line-oriented stream framing; a bare, unterminated tag is not a shape
+of line this pipeline produced before this method existed. For
+sentinel-supporting frontends (currently only Saga -- see
+Frontend::ORIGIN_SENTINEL and Game#prefix_origin_sentinel), every
+forwarded line gets a leading origin-marker byte that the client is
+expected to consume as routing metadata and strip before display. That
+worked here once the segment was given the same line termination as
+everything else the client already handles; without it, the client had
+nothing to delimit an otherwise content-only segment, and the marker
+byte fell through to the display as a literal, visible character.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>chunk</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the raw stream chunk being suppressed.</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the concatenated tag matches, in the order they
+appeared, terminated with a newline; or nil if none were found
+(signals DownstreamHook to drop the chunk entirely, same as before
+this method existed).</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+134
+135
+136
+137
+138
+139</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 134</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_preserve_quiet_state_tags'>preserve_quiet_state_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_tags'>tags</span> <span class='op'>=</span> <span class='id identifier rubyid_chunk'>chunk</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#QUIET_STATE_TAG_PATTERN-constant" title="Lich::Util::QUIET_STATE_TAG_PATTERN (constant)">QUIET_STATE_TAG_PATTERN</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_tags'>tags</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_tags'>tags</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="quiet_command-class_method">
+  
+    .<strong>quiet_command</strong>(command, start_pattern, end_pattern, include_end = true, timeout = 5, silent = true)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Issues a command to the game with XML downstream disabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_quiet_command'>quiet_command</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>exp</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Exp\:</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='int'>5</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='kw'>true</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>command</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the command to send to the game</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>start_pattern</span>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern marking the start of output capture</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>end_pattern</span>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern marking the end of output capture</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>include_end</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to include the line matching end_pattern in the result; defaults to true</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>timeout</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>5</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>timeout in seconds for the command; defaults to 5</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>silent</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to silence script output; defaults to true</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>lines of output captured between start and end patterns, stripped of trailing whitespace</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#issue_command-class_method" title="Lich::Util.issue_command (method)">issue_command</a></span></li>
+    
+      <li><span class='object_link'><a href="#quiet_command_xml-class_method" title="Lich::Util.quiet_command_xml (method)">quiet_command_xml</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+253
+254
+255</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 253</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_quiet_command'>quiet_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_include_end'>include_end</span> <span class='op'>=</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='int'>5</span><span class='comma'>,</span> <span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='id identifier rubyid_include_end'>include_end</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='id identifier rubyid_silent'>silent</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="quiet_command_xml-class_method">
+  
+    .<strong>quiet_command_xml</strong>(command, start_pattern, end_pattern = /&lt;prompt/, include_end = true, timeout = 5, silent = true)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Issues a command to the game with XML downstream enabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_quiet_command_xml'>quiet_command_xml</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>score</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+HP\:</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='int'>5</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='kw'>true</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>command</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the command to send to the game</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>start_pattern</span>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern marking the start of output capture</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>end_pattern</span>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>/&lt;prompt/</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern marking the end of output capture; defaults to /&lt;prompt/</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>include_end</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to include the line matching end_pattern in the result; defaults to true</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>timeout</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>5</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>timeout in seconds for the command; defaults to 5</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>silent</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to silence script output; defaults to true</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>lines of output captured between start and end patterns, stripped of trailing whitespace</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#issue_command-class_method" title="Lich::Util.issue_command (method)">issue_command</a></span></li>
+    
+      <li><span class='object_link'><a href="#quiet_command-class_method" title="Lich::Util.quiet_command (method)">quiet_command</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+236
+237
+238</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 236</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_quiet_command_xml'>quiet_command_xml</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;prompt</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id identifier rubyid_include_end'>include_end</span> <span class='op'>=</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='int'>5</span><span class='comma'>,</span> <span class='id identifier rubyid_silent'>silent</span> <span class='op'>=</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_issue_command'>issue_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_start_pattern'>start_pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_end_pattern'>end_pattern</span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='id identifier rubyid_include_end'>include_end</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='id identifier rubyid_silent'>silent</span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="silver_count-class_method">
+  
+    .<strong>silver_count</strong>(timeout = 3)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Retrieves the current silver count from the game output by issuing the 'info' command
+and parsing the response. Uses a downstream hook to filter and extract the silver value.</p>
+<p>This method temporarily silences output, sets up a downstream hook to capture the relevant
+lines, and restores the previous silence state after completion.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_silver'>silver</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_silver_count'>silver_count</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>timeout</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>3</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the maximum number of seconds to wait for a response (default: 3)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the amount of silver, or 0 if not found or on timeout</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/util/util.rb', line 268</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_silver_count'>silver_count</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_silence_me'><span class='object_link'><a href="../top-level-namespace.html#silence_me-instance_method" title="#silence_me (method)">silence_me</a></span></span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_undo_silence'>undo_silence</span> <span class='op'>=</span> <span class='id identifier rubyid_silence_me'><span class='object_link'><a href="../top-level-namespace.html#silence_me-instance_method" title="#silence_me (method)">silence_me</a></span></span><span class='rparen'>)</span>
@@ -1675,8 +1918,8 @@ Normalizes a given name by converting it to a lowercase string and replacing or 
       <span class='kw'>else</span>
         <span class='id identifier rubyid_line'>line</span>
       <span class='kw'>end</span>
-    <span class='rbrace'>}</span><span class='rparen'>)</span>
-    <span class='comment'># script thread
+    <span class='rbrace'>}</span><span class='comma'>,</span> <span class='label'>persist:</span> <span class='kw'>false</span><span class='rparen'>)</span> <span class='comment'># scoped to this command; removed in the ensure below
+</span>    <span class='comment'># script thread
 </span>    <span class='id identifier rubyid_fput'><span class='object_link'><a href="../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span>
     <span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span>
       <span class='comment'># non-blocking check, this allows us to
@@ -1702,7 +1945,7 @@ Normalizes a given name by converting it to a lowercase string and replacing or 
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:14 2026 by
+  Generated on Wed Aug 26 16:50:32 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

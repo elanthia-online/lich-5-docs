@@ -86,7 +86,19 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Frozen regular expression patterns for parsing DragonRealms game output.</p>
+<p>Patterns are organized by feature: experience tracking, character stats,
+room state, spellbooks, barbarian abilities, thief khri, and other commands
+like <code>inv search</code>, <code>exp mods</code>, and <code>played</code>.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
   
     <h2>
       Constant Summary
@@ -143,7 +155,12 @@
         <dt id="BalanceValue-constant" class="">BalanceValue =
           
         </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:You are|\[You&#39;re) (?&lt;balance&gt;</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../DragonRealms.html#DR_BALANCE_VALUES-constant" title="Lich::DragonRealms::DR_BALANCE_VALUES (constant)">DR_BALANCE_VALUES</a></span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>) balanced?</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:You are|\[You&#39;re)(?:.*,)? (?&lt;balance&gt;</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../DragonRealms.html#DR_BALANCE_VALUES-constant" title="Lich::DragonRealms::DR_BALANCE_VALUES (constant)">DR_BALANCE_VALUES</a></span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>) balanced?\b</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="PositionValue-constant" class="">PositionValue =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>balanced? (?:and|with) (?&lt;position&gt;</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../DragonRealms.html#DR_POSITION_VALUES-constant" title="Lich::DragonRealms::DR_POSITION_VALUES (constant)">DR_POSITION_VALUES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ExpClearMindstate-constant" class="">ExpClearMindstate =
           
@@ -225,11 +242,6 @@
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Logoff :  (?&lt;weekday&gt;[A-Z][a-z]{2}) (?&lt;month&gt;[A-Z][a-z]{2}) (?&lt;day&gt;[\s\d]{2}) (?&lt;hour&gt;\d{2}):(?&lt;minute&gt;\d{2}):(?&lt;second&gt;\d{2}) ET (?&lt;year&gt;\d{4})</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="RoomIDOff-constant" class="">RoomIDOff =
-          
-        </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You will no longer see room IDs when LOOKing in the game and room windows\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
-      
         <dt id="Rested_EXP-constant" class="">Rested_EXP =
           
         </dt>
@@ -254,6 +266,26 @@
           
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>You rummage about your person, looking for</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="GameShutdown-constant" class="">GameShutdown =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Scheduled shutdown announcement, e.g. &quot;Announcement: DragonRealms will
+be shutting down in 15 minutes for routine maintenance.&quot; Anchored to
+the start of the line (with the optional &quot;Announcement:&quot; prefix) so
+quoted or chat text containing the phrase cannot trigger it. Only the
+stem is stable: the count drops to &quot;1 minute&quot; (singular) and the
+reason/trailing text varies (&quot;...as soon as possible.&quot;), so match the
+stem and capture the count.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:Announcement:\s+)?DragonRealms will be shutting down in (?&lt;minutes&gt;\d+) minutes?\b</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="OutputClassMono-constant" class="">OutputClassMono =
           <div class="docstring">
@@ -391,7 +423,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:20 2026 by
+  Generated on Wed Aug 26 16:50:41 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

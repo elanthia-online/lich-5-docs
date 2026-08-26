@@ -88,8 +88,7 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Base module for game instances.</p>
-<p>This module provides the foundational classes and methods for creating game instances.</p>
+    <p>Namespace for game-agnostic formatting and processing shared by all game instances.</p>
 
   </div>
 </div>
@@ -100,14 +99,81 @@
 <p class="children">
   
     
-      <strong class="modules">Modules:</strong> <span class='object_link'><a href="GameBase/GameInstance.html" title="Lich::GameBase::GameInstance (module)">GameInstance</a></span>, <span class='object_link'><a href="GameBase/GameInstanceFactory.html" title="Lich::GameBase::GameInstanceFactory (module)">GameInstanceFactory</a></span>, <span class='object_link'><a href="GameBase/XMLCleaner.html" title="Lich::GameBase::XMLCleaner (module)">XMLCleaner</a></span>
+      <strong class="modules">Modules:</strong> <span class='object_link'><a href="GameBase/GameInstance.html" title="Lich::GameBase::GameInstance (module)">GameInstance</a></span>, <span class='object_link'><a href="GameBase/GameInstanceFactory.html" title="Lich::GameBase::GameInstanceFactory (module)">GameInstanceFactory</a></span>, <span class='object_link'><a href="GameBase/RoomFormatter.html" title="Lich::GameBase::RoomFormatter (module)">RoomFormatter</a></span>, <span class='object_link'><a href="GameBase/XMLCleaner.html" title="Lich::GameBase::XMLCleaner (module)">XMLCleaner</a></span>
     
   
     
-      <strong class="classes">Classes:</strong> <span class='object_link'><a href="GameBase/Game.html" title="Lich::GameBase::Game (class)">Game</a></span>
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="GameBase/Game.html" title="Lich::GameBase::Game (class)">Game</a></span>, <span class='object_link'><a href="GameBase/GameStreamDesyncError.html" title="Lich::GameBase::GameStreamDesyncError (class)">GameStreamDesyncError</a></span>
     
   
 </p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="STREAM_DESYNC_ERRORS-constant" class="">STREAM_DESYNC_ERRORS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Ox error-callback messages that mean the fragment ended mid-token -- the
+only unambiguous truncation signal, since a complete line cannot end inside
+an open tag, attribute list, or quoted value. (In practice genuine
+truncation is an edge case: reads are newline-delimited via @socket.gets,
+Simu keeps each tag on one line, multi-line content is reassembled upstream
+by buffer_room_objs, and #4's tag_end guard keeps @active_tags balanced
+regardless. This is a backstop for a partial read at disconnect.)</p>
+<p>Ox also fires the callback for Simu's routine almost-XML -- bare text and
+multiple top-level elements ('text not terminated', 'multiple top level
+elements'), nested quotes ('no attribute value'), unescaped ampersands
+('Invalid special character sequence'), missing </d> end tags ('Start End
+Mismatch: ... not closed') -- none of which match these patterns, so they
+stay tolerated. The message prefix matters: 'Unexpected Character: element
+not closed' (a start tag that never got its '&gt;') is truncation, while the
+similarly worded 'Start End Mismatch: element ... not closed' (an element
+missing its end tag) is routine.</p>
+<p>'attribute value not in quotes' is intentionally NOT here: it fires on a
+<em>complete</em> unquoted-attribute line (<a x=y>), so matching it false-resets a
+fully-parsed fragment. A truncated unquoted attr (&lt;a x=y) still resets via
+'attributes not terminated' / 'element not closed' below.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\ANot Terminated: attributes not terminated</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\ANot Terminated: quoted value not terminated</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\ANot Terminated: document not terminated</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AUnexpected Character: element not closed</span><span class='regexp_end'>/</span></span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="NO_ATTRIBUTE_VALUE_ERROR-constant" class="">NO_ATTRIBUTE_VALUE_ERROR =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Ox's signature when a tag scatters into valueless attributes: the
+settingsInfo space-not-found bug, or a same-quote inside a quoted value
+(e.g. title='Tsetem's Items'), where the inner quote ends the value early.
+(A genuinely valueless attribute, <a foo>, reports the same thing, but the
+repairs leave it unchanged so no reparse happens.)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AUnexpected Character: no attribute value</span><span class='regexp_end'>/</span></span></pre></dd>
+      
+    </dl>
+  
 
 
 
@@ -120,7 +186,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:13 2026 by
+  Generated on Wed Aug 26 16:50:32 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

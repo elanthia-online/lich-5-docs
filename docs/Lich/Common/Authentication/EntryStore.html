@@ -86,7 +86,18 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Handles YAML-based state management for the Lich GUI login system
+Provides a more maintainable alternative to the Marshal-based state system
+Enhanced with password encryption support</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
 
 
 
@@ -104,7 +115,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#add_favorite-class_method" title="add_favorite (class method)">.<strong>add_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; Boolean </a>
+      <a href="#add_favorite-class_method" title="add_favorite (class method)">.<strong>add_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; Boolean </a>
     
 
     
@@ -118,7 +129,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds a character to the favorites list in the YAML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Adds a character to the favorites list Marks the specified character as a favorite with proper ordering Optimized to preserve account ordering in YAML structure.</p></div></span>
   
 </li>
 
@@ -140,7 +151,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Changes the encryption mode for the stored entries and updates the master password if necessary.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Changes encryption mode for all accounts Re-encrypts all passwords from current mode to new mode Automatically retrieves old master password from keychain if leaving Enhanced mode Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed).</p></div></span>
   
 </li>
 
@@ -159,10 +170,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts legacy entry data to the new YAML format.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts legacy format to YAML data structure Transforms legacy entry data into the YAML structure for storage Enhanced with case normalization to prevent duplicate accounts and ensure consistent formatting Preserves encryption_mode from entries and master_password_validation_test if provided.</p></div></span>
   
 </li>
 
@@ -170,7 +181,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#convert_yaml_to_legacy_format-class_method" title="convert_yaml_to_legacy_format (class method)">.<strong>convert_yaml_to_legacy_format</strong>(yaml_data)  &#x21d2; Array&lt;Hash&gt; </a>
+      <a href="#convert_yaml_to_legacy_format-class_method" title="convert_yaml_to_legacy_format (class method)">.<strong>convert_yaml_to_legacy_format</strong>(yaml_data)  &#x21d2; Array </a>
     
 
     
@@ -181,10 +192,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts the YAML data to the legacy format for compatibility.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts YAML data structure to legacy format Transforms the YAML structure into the format expected by existing code Maintains normalized case formatting from YAML storage Handles encrypted passwords transparently.</p></div></span>
   
 </li>
 
@@ -206,7 +217,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Decrypts the given encrypted password using the specified mode and optional master password.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Decrypts a password based on the current encryption mode.</p></div></span>
   
 </li>
 
@@ -214,7 +225,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#decrypt_password_with_recovery-class_method" title="decrypt_password_with_recovery (class method)">.<strong>decrypt_password_with_recovery</strong>(encrypted_password, mode:, account_name: nil, master_password: nil, validation_test: nil)  &#x21d2; String </a>
+      <a href="#decrypt_password_with_recovery-class_method" title="decrypt_password_with_recovery (class method)">.<strong>decrypt_password_with_recovery</strong>(encrypted_password, mode:, account_name: nil, master_password: nil, validation_test: nil)  &#x21d2; String<sup>?</sup> </a>
     
 
     
@@ -228,7 +239,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Attempts to decrypt the given password, with recovery options if the master password is missing.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Decrypts password with recovery mechanism for missing master password If master password is missing from Keychain but validation test exists, prompts user to re-enter master password, validates it, and saves to Keychain.</p></div></span>
   
 </li>
 
@@ -250,7 +261,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Encrypts all passwords in the provided YAML data using the specified mode.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Encrypts all passwords in yaml_data structure.</p></div></span>
   
 </li>
 
@@ -272,7 +283,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Encrypts the given password using the specified mode and optional master password.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Encrypts a password based on the current encryption mode.</p></div></span>
   
 </li>
 
@@ -280,7 +291,117 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#ensure_master_password_exists-class_method" title="ensure_master_password_exists (class method)">.<strong>ensure_master_password_exists</strong>  &#x21d2; Object </a>
+      <a href="#ensure_master_password_exists-class_method" title="ensure_master_password_exists (class method)">.<strong>ensure_master_password_exists</strong>  &#x21d2; Hash, ... </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Ensures master password exists for master_password mode conversions Shows UI prompt to user if not found in Keychain Creates validation test and stores in Keychain.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#find_character-class_method" title="find_character (class method)">.<strong>find_character</strong>(yaml_data, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Finds a character in the YAML data with precise matching Prioritizes exact frontend matches for newly added characters.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#find_entry_in_legacy_format-class_method" title="find_entry_in_legacy_format (class method)">.<strong>find_entry_in_legacy_format</strong>(entry_data, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Finds an entry in legacy format array using the same matching logic as find_character Searches for an entry based on key identifying fields rather than exact hash equality This method reuses the proven matching logic from find_character for consistency.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#generate_yaml_content-class_method" title="generate_yaml_content (class method)">.<strong>generate_yaml_content</strong>(yaml_data)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Generates YAML file content with standard header and dumped data Reduces code duplication by providing a common method for formatting YAML output.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#get_existing_master_password_for_migration-class_method" title="get_existing_master_password_for_migration (class method)">.<strong>get_existing_master_password_for_migration</strong>  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Gets existing master password and creates validation test for migration scenarios Used when converting DAT to YAML and a master password already exists in keychain This handles the case: no YAML, DAT exists, master password in keychain.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#get_favorites-class_method" title="get_favorites (class method)">.<strong>get_favorites</strong>(data_dir)  &#x21d2; Array </a>
     
 
     
@@ -294,117 +415,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#find_character-class_method" title="find_character (class method)">.<strong>find_character</strong>(yaml_data, username, char_name, game_code, frontend = nil)  &#x21d2; Hash<sup>?</sup> </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Finds a character in the YAML data based on the provided criteria.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#find_entry_in_legacy_format-class_method" title="find_entry_in_legacy_format (class method)">.<strong>find_entry_in_legacy_format</strong>(entry_data, username, char_name, game_code, frontend = nil)  &#x21d2; Hash<sup>?</sup> </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Finds an entry in the legacy format based on the provided criteria.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#generate_yaml_content-class_method" title="generate_yaml_content (class method)">.<strong>generate_yaml_content</strong>(yaml_data)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#get_existing_master_password_for_migration-class_method" title="get_existing_master_password_for_migration (class method)">.<strong>get_existing_master_password_for_migration</strong>  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#get_favorites-class_method" title="get_favorites (class method)">.<strong>get_favorites</strong>(data_dir)  &#x21d2; Array&lt;Hash&gt; </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Retrieves a list of favorite characters from the YAML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Gets all favorite characters across all accounts Returns an array of favorite characters sorted by favorite order.</p></div></span>
   
 </li>
 
@@ -426,7 +437,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the next available order number for a new favorite character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Gets the next available favorite order number Finds the highest current favorite order and returns the next number.</p></div></span>
   
 </li>
 
@@ -434,7 +445,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#is_favorite%3F-class_method" title="is_favorite? (class method)">.<strong>is_favorite?</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; Boolean </a>
+      <a href="#is_favorite%3F-class_method" title="is_favorite? (class method)">.<strong>is_favorite?</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; Boolean </a>
     
 
     
@@ -448,7 +459,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if a character is marked as a favorite in the YAML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a character is marked as a favorite Returns true if the specified character is in the favorites list.</p></div></span>
   
 </li>
 
@@ -456,7 +467,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#load_saved_entries-class_method" title="load_saved_entries (class method)">.<strong>load_saved_entries</strong>(data_dir, autosort_state)  &#x21d2; Array&lt;Hash&gt; </a>
+      <a href="#load_saved_entries-class_method" title="load_saved_entries (class method)">.<strong>load_saved_entries</strong>(data_dir, autosort_state)  &#x21d2; Array </a>
     
 
     
@@ -470,7 +481,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads saved entries from the specified directory, prioritizing YAML format.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads saved entry data from YAML file Reads and deserializes entry data from the entry.yaml file, with fallback to entry.dat Enhanced to support favorites functionality and encryption with backward compatibility.</p></div></span>
   
 </li>
 
@@ -492,7 +503,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Migrates entries from the legacy format to the new YAML format.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Migrates from legacy Marshal format to YAML format with encryption support Converts entry.dat to entry.yaml format for improved maintainability.</p></div></span>
   
 </li>
 
@@ -511,10 +522,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Migrates the provided YAML data to include encryption format fields.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Migrates YAML data to support encryption format Adds encryption_mode field if not present.</p></div></span>
   
 </li>
 
@@ -533,10 +544,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Migrates the YAML data to include favorite fields for characters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Migrates YAML data to support favorites format Adds favorites fields to existing character records if not present.</p></div></span>
   
 </li>
 
@@ -544,7 +555,73 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#normalize_account_name-class_method" title="normalize_account_name (class method)">.<strong>normalize_account_name</strong>(name)  &#x21d2; Object </a>
+      <a href="#normalize_account_name-class_method" title="normalize_account_name (class method)">.<strong>normalize_account_name</strong>(name)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Normalizes account names to UPCASE for consistent storage and comparison Prevents duplicate accounts due to case variations.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#normalize_character_name-class_method" title="normalize_character_name (class method)">.<strong>normalize_character_name</strong>(name)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Normalizes character names to Title case (first letter capitalized) Ensures consistent character name formatting across the application.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#prepare_yaml_for_serialization-class_method" title="prepare_yaml_for_serialization (class method)">.<strong>prepare_yaml_for_serialization</strong>(yaml_data)  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Prepares YAML data for serialization with password preservation Ensures encrypted passwords are serialized as quoted strings to prevent YAML multiline formatting Clones the data to avoid mutating the caller's object Ensures required top-level fields exist (encryption_mode, master_password_validation_test).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#remove_favorite-class_method" title="remove_favorite (class method)">.<strong>remove_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; Boolean </a>
     
 
     
@@ -558,73 +635,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#normalize_character_name-class_method" title="normalize_character_name (class method)">.<strong>normalize_character_name</strong>(name)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#prepare_yaml_for_serialization-class_method" title="prepare_yaml_for_serialization (class method)">.<strong>prepare_yaml_for_serialization</strong>(yaml_data)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#remove_favorite-class_method" title="remove_favorite (class method)">.<strong>remove_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; Boolean </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Removes a character from the favorites list in the YAML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes a character from the favorites list Unmarks the specified character as a favorite and reorders remaining favorites.</p></div></span>
   
 </li>
 
@@ -643,10 +654,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Reorders all favorite characters in the YAML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reorders all favorites to have consecutive order numbers Ensures favorite_order values are consecutive starting from 1.</p></div></span>
   
 </li>
 
@@ -668,7 +679,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Reorders the favorites list based on the provided order.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reorders favorites based on provided character list Updates the favorite order for all favorites based on new ordering.</p></div></span>
   
 </li>
 
@@ -676,7 +687,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#restore_backup_and_return_false-class_method" title="restore_backup_and_return_false (class method)">.<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; Boolean </a>
+      <a href="#restore_backup_and_return_false-class_method" title="restore_backup_and_return_false (class method)">.<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; Object </a>
     
 
     
@@ -687,10 +698,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Restores the backup file to the original YAML file and returns false.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Restores backup and returns false.</p></div></span>
   
 </li>
 
@@ -712,7 +723,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Saves the provided entry data to the YAML file in the specified directory.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Saves entry data to YAML file Converts and serializes entry data to the entry.yaml file with encryption support Preserves master_password_validation_test from existing YAML during round-trip conversion Encrypts passwords based on the file's encryption_mode before writing.</p></div></span>
   
 </li>
 
@@ -720,7 +731,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#sort_entries_with_favorites-class_method" title="sort_entries_with_favorites (class method)">.<strong>sort_entries_with_favorites</strong>(entries, autosort_state)  &#x21d2; Array&lt;Hash&gt; </a>
+      <a href="#sort_entries_with_favorites-class_method" title="sort_entries_with_favorites (class method)">.<strong>sort_entries_with_favorites</strong>(entries, autosort_state)  &#x21d2; Array </a>
     
 
     
@@ -731,10 +742,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sorts entries with favorites prioritized based on the autosort state.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sorts entries with favorites priority based on autosort setting When autosort is enabled, favorites are placed first and all entries are sorted When autosort is disabled, original order is preserved without reordering.</p></div></span>
   
 </li>
 
@@ -742,7 +753,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#write_yaml_file-class_method" title="write_yaml_file (class method)">.<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; Object </a>
+      <a href="#write_yaml_file-class_method" title="write_yaml_file (class method)">.<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; void </a>
     
 
     
@@ -753,10 +764,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Writes YAML data to file with standard headers and secure permissions Handles preparation and formatting of YAML data for all save operations.</p></div></span>
   
 </li>
 
@@ -778,7 +789,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the path to the YAML file for storing entries.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Generates the full path to the entry.yaml file.</p></div></span>
   
 </li>
 
@@ -796,7 +807,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="add_favorite-class_method">
   
-    .<strong>add_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>add_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -804,7 +815,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Adds a character to the favorites list in the YAML data.</p>
+    <p>Adds a character to the favorites list
+Marks the specified character as a favorite with proper ordering
+Optimized to preserve account ordering in YAML structure</p>
 
   </div>
 </div>
@@ -822,7 +835,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -836,7 +849,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the username associated with the character</p></div>
+        <div class='inline'><p>Account username</p></div>
       
     </li>
   
@@ -850,7 +863,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the character to add as a favorite</p></div>
+        <div class='inline'><p>Character name</p></div>
       
     </li>
   
@@ -864,7 +877,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the game code associated with the character</p></div>
+        <div class='inline'><p>Game code</p></div>
       
     </li>
   
@@ -873,14 +886,30 @@
         <span class='name'>frontend</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend associated with the character, if applicable</p></div>
+        <div class='inline'><p>Frontend identifier (optional for backward compatibility)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>custom_launch</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>, <tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:__unset</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Exact custom launch command, or :__unset for legacy matching</p></div>
       
     </li>
   
@@ -897,7 +926,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the character was added to favorites, false otherwise</p></div>
+        <div class='inline'><p>True if operation was successful</p></div>
       
     </li>
   
@@ -909,23 +938,6 @@
       <pre class="lines">
 
 
-482
-483
-484
-485
-486
-487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
-498
 499
 500
 501
@@ -939,12 +951,29 @@
 509
 510
 511
-512</pre>
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 482</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 499</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add_favorite'>add_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add_favorite'>add_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
 
@@ -953,7 +982,7 @@
     <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='id identifier rubyid_migrate_to_favorites_format'>migrate_to_favorites_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
 
     <span class='comment'># Find the character with frontend precision
-</span>    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
+</span>    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_character'>character</span>
 
     <span class='comment'># Don&#39;t add if already a favorite
@@ -991,7 +1020,10 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Changes the encryption mode for the stored entries and updates the master password if necessary.</p>
+    <p>Changes encryption mode for all accounts
+Re-encrypts all passwords from current mode to new mode
+Automatically retrieves old master password from keychain if leaving Enhanced mode
+Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed)</p>
 
   </div>
 </div>
@@ -1009,7 +1041,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing account data</p></div>
       
     </li>
   
@@ -1023,7 +1055,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the new encryption mode to set</p></div>
+        <div class='inline'><p>Target encryption mode (:plaintext, :standard, :enhanced)</p></div>
       
     </li>
   
@@ -1039,7 +1071,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the new master password for Enhanced mode, if applicable</p></div>
+        <div class='inline'><p>New master password (required if entering Enhanced)</p></div>
       
     </li>
   
@@ -1056,7 +1088,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the encryption mode was changed successfully, false otherwise</p></div>
+        <div class='inline'><p>true if successful, false on failure (errors logged to Lich.log)</p></div>
       
     </li>
   
@@ -1068,21 +1100,6 @@
       <pre class="lines">
 
 
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
 347
 348
 349
@@ -1179,10 +1196,25 @@
 440
 441
 442
-443</pre>
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 332</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 347</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_change_encryption_mode'>change_encryption_mode</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_new_mode'>new_mode</span><span class='comma'>,</span> <span class='id identifier rubyid_new_master_password'>new_master_password</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_file_path'>yaml_file_path</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1289,7 +1321,7 @@
     <span class='comment'># Clean up backup on success
 </span>    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm'>rm</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
 
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Encryption mode changed successfully: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_current_mode'>current_mode</span><span class='embexpr_end'>}</span><span class='tstring_content'> → </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_mode'>new_mode</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Encryption mode changed successfully: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_current_mode'>current_mode</span><span class='embexpr_end'>}</span><span class='tstring_content'> -&gt; </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_mode'>new_mode</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>true</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
     <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Encryption mode change failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -1312,7 +1344,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Converts legacy entry data to the new YAML format.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Converts legacy format to YAML data structure
+Transforms legacy entry data into the YAML structure for storage
+Enhanced with case normalization to prevent duplicate accounts and ensure consistent formatting
+Preserves encryption_mode from entries and master_password_validation_test if provided</p>
 
   </div>
 </div>
@@ -1325,12 +1364,12 @@
         <span class='name'>entry_data</span>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the legacy entry data to convert</p></div>
+        <div class='inline'><p>Array of entry data in legacy format</p></div>
       
     </li>
   
@@ -1339,14 +1378,14 @@
         <span class='name'>validation_test</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the validation test for the master password, if applicable</p></div>
+        <div class='inline'><p>Master password validation test to preserve (optional)</p></div>
       
     </li>
   
@@ -1363,7 +1402,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the converted YAML data</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -1375,46 +1414,6 @@
       <pre class="lines">
 
 
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727
-728
-729
-730
-731
-732
-733
-734
-735
-736
-737
-738
-739
-740
-741
-742
-743
-744
-745
-746
-747
-748
-749
-750
-751
 752
 753
 754
@@ -1427,10 +1426,50 @@
 761
 762
 763
-764</pre>
+764
+765
+766
+767
+768
+769
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 712</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 752</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_convert_legacy_to_yaml_format'>convert_legacy_to_yaml_format</span><span class='lparen'>(</span><span class='id identifier rubyid_entry_data'>entry_data</span><span class='comma'>,</span> <span class='id identifier rubyid_validation_test'>validation_test</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rbrace'>}</span>
@@ -1493,7 +1532,7 @@
       <div class="method_details ">
   <h3 class="signature " id="convert_yaml_to_legacy_format-class_method">
   
-    .<strong>convert_yaml_to_legacy_format</strong>(yaml_data)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt> 
+    .<strong>convert_yaml_to_legacy_format</strong>(yaml_data)  &#x21d2; <tt>Array</tt> 
   
 
   
@@ -1501,7 +1540,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Converts the YAML data to the legacy format for compatibility.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Converts YAML data structure to legacy format
+Transforms the YAML structure into the format expected by existing code
+Maintains normalized case formatting from YAML storage
+Handles encrypted passwords transparently</p>
 
   </div>
 </div>
@@ -1519,7 +1565,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data to convert</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -1531,12 +1577,12 @@
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array of entries in legacy format</p></div>
+        <div class='inline'><p>Array of entry data in legacy format with decrypted passwords</p></div>
       
     </li>
   
@@ -1548,52 +1594,52 @@
       <pre class="lines">
 
 
-663
-664
-665
-666
-667
-668
-669
-670
-671
-672
-673
-674
-675
-676
-677
-678
-679
-680
-681
-682
-683
-684
-685
-686
-687
-688
-689
-690
-691
-692
-693
-694
-695
-696
-697
-698
 699
 700
 701
 702
 703
 704
-705</pre>
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 663</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 699</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_convert_yaml_to_legacy_format'>convert_yaml_to_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_entries'>entries</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -1654,7 +1700,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Decrypts the given encrypted password using the specified mode and optional master password.</p>
+    <p>Decrypts a password based on the current encryption mode</p>
 
   </div>
 </div>
@@ -1672,7 +1718,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encrypted password to decrypt</p></div>
+        <div class='inline'><p>Encrypted password</p></div>
       
     </li>
   
@@ -1686,7 +1732,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encryption mode used for the password</p></div>
+        <div class='inline'><p>Encryption mode (:plaintext, :standard, :enhanced)</p></div>
       
     </li>
   
@@ -1702,7 +1748,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the account associated with the password</p></div>
+        <div class='inline'><p>Account name for :standard mode</p></div>
       
     </li>
   
@@ -1718,7 +1764,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the master password for decryption, if required</p></div>
+        <div class='inline'><p>Master password for :enhanced mode</p></div>
       
     </li>
   
@@ -1735,23 +1781,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the decrypted password</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if decryption fails</p></div>
+        <div class='inline'><p>Decrypted plaintext password</p></div>
       
     </li>
   
@@ -1763,23 +1793,23 @@
       <pre class="lines">
 
 
-234
-235
-236
-237
-238
-239
-240
-241
-242
 243
 244
 245
 246
-247</pre>
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 234</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_decrypt_password'>decrypt_password</span><span class='lparen'>(</span><span class='id identifier rubyid_encrypted_password'>encrypted_password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_encrypted_password'>encrypted_password</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span> <span class='op'>||</span> <span class='id identifier rubyid_mode'>mode</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -1803,7 +1833,7 @@
       <div class="method_details ">
   <h3 class="signature " id="decrypt_password_with_recovery-class_method">
   
-    .<strong>decrypt_password_with_recovery</strong>(encrypted_password, mode:, account_name: nil, master_password: nil, validation_test: nil)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+    .<strong>decrypt_password_with_recovery</strong>(encrypted_password, mode:, account_name: nil, master_password: nil, validation_test: nil)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
   
 
   
@@ -1811,7 +1841,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Attempts to decrypt the given password, with recovery options if the master password is missing.</p>
+    <p>Decrypts password with recovery mechanism for missing master password
+If master password is missing from Keychain but validation test exists,
+prompts user to re-enter master password, validates it, and saves to Keychain</p>
 
   </div>
 </div>
@@ -1829,7 +1861,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encrypted password to decrypt</p></div>
+        <div class='inline'><p>Encrypted password to decrypt</p></div>
       
     </li>
   
@@ -1843,7 +1875,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encryption mode used for the password</p></div>
+        <div class='inline'><p>Encryption mode (:plaintext, :standard, :enhanced)</p></div>
       
     </li>
   
@@ -1852,14 +1884,14 @@
         <span class='name'>account_name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the name of the account associated with the password</p></div>
+        <div class='inline'><p>Account name for :standard mode</p></div>
       
     </li>
   
@@ -1875,7 +1907,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the master password for decryption, if required</p></div>
+        <div class='inline'><p>Master password if already known</p></div>
       
     </li>
   
@@ -1884,14 +1916,14 @@
         <span class='name'>validation_test</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the validation test for recovery</p></div>
+        <div class='inline'><p>Validation test hash from YAML (optional)</p></div>
       
     </li>
   
@@ -1903,12 +1935,13 @@
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the decrypted password</p></div>
+        <div class='inline'><p>Decrypted password, or nil if the user cancels
+master password recovery and Lich begins shutting down</p></div>
       
     </li>
   
@@ -1924,7 +1957,7 @@
       
       
         &mdash;
-        <div class='inline'><p>if decryption fails and recovery is not possible</p></div>
+        <div class='inline'><p>If decryption fails and cannot be recovered</p></div>
       
     </li>
   
@@ -1936,18 +1969,6 @@
       <pre class="lines">
 
 
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
 270
 271
 272
@@ -1978,10 +1999,22 @@
 297
 298
 299
-300</pre>
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 258</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 270</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_decrypt_password_with_recovery'>decrypt_password_with_recovery</span><span class='lparen'>(</span><span class='id identifier rubyid_encrypted_password'>encrypted_password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>validation_test:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='comment'># Try normal decryption first
@@ -1996,7 +2029,7 @@
 
     <span class='kw'>if</span> <span class='id identifier rubyid_recovery_result'>recovery_result</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_recovery_result'>recovery_result</span><span class='lbracket'>[</span><span class='symbol'>:password</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
       <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: User cancelled master password recovery</span><span class='tstring_end'>&quot;</span></span>
-      <span class='const'>Gtk</span><span class='period'>.</span><span class='id identifier rubyid_main_quit'>main_quit</span>
+      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='period'>.</span><span class='id identifier rubyid_quit_gtk_main_loop'><span class='object_link'><a href="../../Common.html#quit_gtk_main_loop-class_method" title="Lich::Common.quit_gtk_main_loop (method)">quit_gtk_main_loop</a></span></span>
       <span class='kw'>return</span> <span class='kw'>nil</span>
     <span class='kw'>end</span>
 
@@ -2016,7 +2049,7 @@
 </span>    <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_continue_session'>continue_session</span>
       <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: User chose to close application after password recovery</span><span class='tstring_end'>&quot;</span></span>
       <span class='comment'># Exit the application gracefully
-</span>      <span class='const'>Gtk</span><span class='period'>.</span><span class='id identifier rubyid_main_quit'>main_quit</span>
+</span>      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='period'>.</span><span class='id identifier rubyid_quit_gtk_main_loop'><span class='object_link'><a href="../../Common.html#quit_gtk_main_loop-class_method" title="Lich::Common.quit_gtk_main_loop (method)">quit_gtk_main_loop</a></span></span>
     <span class='kw'>end</span>
 
     <span class='comment'># Retry decryption with recovered password
@@ -2042,7 +2075,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Encrypts all passwords in the provided YAML data using the specified mode.</p>
+    <p>Encrypts all passwords in yaml_data structure</p>
 
   </div>
 </div>
@@ -2060,7 +2093,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data containing accounts and passwords</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -2074,7 +2107,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encryption mode to use</p></div>
+        <div class='inline'><p>Encryption mode</p></div>
       
     </li>
   
@@ -2090,7 +2123,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the master password for encryption, if required</p></div>
+        <div class='inline'><p>Master password if using :enhanced mode</p></div>
       
     </li>
   
@@ -2107,7 +2140,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the updated YAML data with encrypted passwords</p></div>
+        <div class='inline'><p>YAML data with encrypted passwords</p></div>
       
     </li>
   
@@ -2119,26 +2152,26 @@
       <pre class="lines">
 
 
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
 320
 321
 322
 323
-324</pre>
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 308</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 320</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_encrypt_all_passwords'>encrypt_all_passwords</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_mode'>mode</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -2173,7 +2206,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Encrypts the given password using the specified mode and optional master password.</p>
+    <p>Encrypts a password based on the current encryption mode</p>
 
   </div>
 </div>
@@ -2191,7 +2224,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the password to encrypt</p></div>
+        <div class='inline'><p>Plaintext password</p></div>
       
     </li>
   
@@ -2205,7 +2238,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encryption mode to use</p></div>
+        <div class='inline'><p>Encryption mode (:plaintext, :standard, :enhanced)</p></div>
       
     </li>
   
@@ -2221,7 +2254,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the account associated with the password</p></div>
+        <div class='inline'><p>Account name for :standard mode</p></div>
       
     </li>
   
@@ -2237,7 +2270,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the master password for encryption, if required</p></div>
+        <div class='inline'><p>Master password for :enhanced mode</p></div>
       
     </li>
   
@@ -2254,23 +2287,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encrypted password</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if encryption fails</p></div>
+        <div class='inline'><p>Encrypted password or plaintext if mode is :plaintext</p></div>
       
     </li>
   
@@ -2282,17 +2299,17 @@
       <pre class="lines">
 
 
-217
-218
-219
-220
-221
-222
-223
-224</pre>
+227
+228
+229
+230
+231
+232
+233
+234</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 217</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 227</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_encrypt_password'>encrypt_password</span><span class='lparen'>(</span><span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_password'>password</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span> <span class='op'>||</span> <span class='id identifier rubyid_mode'>mode</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -2310,54 +2327,85 @@
       <div class="method_details ">
   <h3 class="signature " id="ensure_master_password_exists-class_method">
   
-    .<strong>ensure_master_password_exists</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>ensure_master_password_exists</strong>  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, ... 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Ensures master password exists for master_password mode conversions
+Shows UI prompt to user if not found in Keychain
+Creates validation test and stores in Keychain</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Hash with validation_test if new, password string if existing, nil if cancelled</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-969
-970
-971
-972
-973
-974
-975
-976
-977
-978
-979
-980
-981
-982
-983
-984
-985
-986
-987
-988
-989
-990
-991
-992
-993
-994
-995
-996
-997
-998
-999
-1000
-1001</pre>
+1068
+1069
+1070
+1071
+1072
+1073
+1074
+1075
+1076
+1077
+1078
+1079
+1080
+1081
+1082
+1083
+1084
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092
+1093
+1094
+1095
+1096
+1097
+1098
+1099
+1100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 969</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1068</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ensure_master_password_exists'>ensure_master_password_exists</span>
   <span class='comment'># Check if master password already in Keychain
@@ -2400,7 +2448,7 @@
       <div class="method_details ">
   <h3 class="signature " id="find_character-class_method">
   
-    .<strong>find_character</strong>(yaml_data, username, char_name, game_code, frontend = nil)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+    .<strong>find_character</strong>(yaml_data, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
   
 
   
@@ -2408,7 +2456,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Finds a character in the YAML data based on the provided criteria.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Finds a character in the YAML data with precise matching
+Prioritizes exact frontend matches for newly added characters</p>
 
   </div>
 </div>
@@ -2426,7 +2479,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data containing accounts and characters</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -2440,7 +2493,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the username associated with the character</p></div>
+        <div class='inline'><p>Account username</p></div>
       
     </li>
   
@@ -2454,7 +2507,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the character to find</p></div>
+        <div class='inline'><p>Character name</p></div>
       
     </li>
   
@@ -2468,7 +2521,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the game code associated with the character</p></div>
+        <div class='inline'><p>Game code</p></div>
       
     </li>
   
@@ -2484,7 +2537,23 @@
       
       
         &mdash;
-        <div class='inline'><p>the frontend associated with the character, if applicable</p></div>
+        <div class='inline'><p>Frontend identifier</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>custom_launch</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>, <tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:__unset</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Exact custom launch command, or :__unset for legacy matching</p></div>
       
     </li>
   
@@ -2501,7 +2570,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the found character data, or nil if not found</p></div>
+        <div class='inline'><p>Character hash or nil if not found</p></div>
       
     </li>
   
@@ -2513,181 +2582,12 @@
       <pre class="lines">
 
 
-820
-821
-822
-823
-824
-825
-826
-827
-828
-829
-830
-831
-832
-833
-834
-835
-836
-837
-838
-839
-840
-841
-842
-843
-844</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 820</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_username'>username</span><span class='rbracket'>]</span>
-  <span class='id identifier rubyid_account_data'>account_data</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_username'>username</span><span class='rbracket'>]</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
-
-  <span class='comment'># If frontend is specified, find exact match first
-</span>  <span class='kw'>if</span> <span class='id identifier rubyid_frontend'>frontend</span>
-    <span class='id identifier rubyid_exact_match'>exact_match</span> <span class='op'>=</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_character'>character</span><span class='op'>|</span>
-      <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_char_name'>char_name</span> <span class='op'>&amp;&amp;</span>
-        <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span>
-        <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_frontend'>frontend</span>
-    <span class='kw'>end</span>
-    <span class='kw'>return</span> <span class='id identifier rubyid_exact_match'>exact_match</span> <span class='kw'>if</span> <span class='id identifier rubyid_exact_match'>exact_match</span>
-  <span class='kw'>end</span>
-
-  <span class='comment'># Fallback to basic matching only if no exact match found and frontend is nil
-</span>  <span class='kw'>if</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-    <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_character'>character</span><span class='op'>|</span>
-      <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_char_name'>char_name</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span>
-    <span class='kw'>end</span>
-  <span class='kw'>else</span>
-    <span class='comment'># If frontend was specified but no exact match found, return nil
-</span>    <span class='kw'>nil</span>
-  <span class='kw'>end</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="find_entry_in_legacy_format-class_method">
-  
-    .<strong>find_entry_in_legacy_format</strong>(entry_data, username, char_name, game_code, frontend = nil)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Finds an entry in the legacy format based on the provided criteria.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>entry_data</span>
-      
-      
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the legacy entry data to search</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>username</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the username associated with the entry</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>char_name</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the name of the character to find</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>game_code</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the game code associated with the entry</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>frontend</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the frontend associated with the entry, if applicable</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the found entry data, or nil if not found</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
+868
+869
+870
+871
+872
+873
 874
 875
 876
@@ -2704,12 +2604,211 @@
 887
 888
 889
-890</pre>
+890
+891
+892
+893
+894
+895</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 874</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 868</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_entry_in_legacy_format'>find_entry_in_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_entry_data'>entry_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_username'>username</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_account_data'>account_data</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_username'>username</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
+
+  <span class='comment'># If frontend is specified, find exact match first
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_frontend'>frontend</span>
+    <span class='id identifier rubyid_exact_match'>exact_match</span> <span class='op'>=</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_character'>character</span><span class='op'>|</span>
+      <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_char_name'>char_name</span> <span class='op'>&amp;&amp;</span>
+        <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span>
+        <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>&amp;&amp;</span>
+        <span class='lparen'>(</span><span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>==</span> <span class='symbol'>:__unset</span> <span class='op'>||</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='op'>==</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_exact_match'>exact_match</span> <span class='kw'>if</span> <span class='id identifier rubyid_exact_match'>exact_match</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># Fallback to basic matching only if no exact match found and frontend is nil
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_character'>character</span><span class='op'>|</span>
+      <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_char_name'>char_name</span> <span class='op'>&amp;&amp;</span>
+        <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span>
+        <span class='lparen'>(</span><span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>==</span> <span class='symbol'>:__unset</span> <span class='op'>||</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='op'>==</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>else</span>
+    <span class='comment'># If frontend was specified but no exact match found, return nil
+</span>    <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="find_entry_in_legacy_format-class_method">
+  
+    .<strong>find_entry_in_legacy_format</strong>(entry_data, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Finds an entry in legacy format array using the same matching logic as find_character
+Searches for an entry based on key identifying fields rather than exact hash equality
+This method reuses the proven matching logic from find_character for consistency</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>entry_data</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Array of entry data in legacy format</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>username</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Account username</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>char_name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Character name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>game_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Game code</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>frontend</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Frontend identifier (optional for backward compatibility)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>custom_launch</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>, <tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:__unset</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Exact custom launch command, or :__unset for legacy matching</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Entry hash if found, nil otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+930
+931
+932
+933
+934
+935
+936
+937
+938
+939
+940
+941
+942
+943
+944
+945
+946
+947
+948</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 930</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_entry_in_legacy_format'>find_entry_in_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_entry_data'>entry_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_entry_data'>entry_data</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_entry'>entry</span><span class='op'>|</span>
     <span class='comment'># Match on username first
 </span>    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:user_id</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_username'>username</span>
@@ -2717,12 +2816,14 @@
     <span class='comment'># Apply same matching logic as find_character
 </span>    <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>=</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_char_name'>char_name</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:game_code</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span>
 
+    <span class='id identifier rubyid_matches_custom_launch'>matches_custom_launch</span> <span class='op'>=</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>==</span> <span class='symbol'>:__unset</span> <span class='op'>||</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:custom_launch</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='op'>==</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
+
     <span class='kw'>if</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
       <span class='comment'># Backward compatibility: if no frontend specified, match any frontend
-</span>      <span class='id identifier rubyid_matches_basic'>matches_basic</span>
+</span>      <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_matches_custom_launch'>matches_custom_launch</span>
     <span class='kw'>else</span>
       <span class='comment'># Frontend precision: must match exact frontend
-</span>      <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_frontend'>frontend</span>
+</span>      <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_matches_custom_launch'>matches_custom_launch</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
@@ -2734,30 +2835,78 @@
       <div class="method_details ">
   <h3 class="signature " id="generate_yaml_content-class_method">
   
-    .<strong>generate_yaml_content</strong>(yaml_data)  &#x21d2; <tt>Object</tt> 
+    .<strong>generate_yaml_content</strong>(yaml_data)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Generates YAML file content with standard header and dumped data
+Reduces code duplication by providing a common method for formatting YAML output</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>yaml_data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>YAML data structure to dump</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Complete YAML file content with header</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-949
-950
-951
-952
-953
-954
-955
-956
-957</pre>
+1035
+1036
+1037
+1038
+1039
+1040
+1041
+1042
+1043</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 949</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1035</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_generate_yaml_content'>generate_yaml_content</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Prepare YAML with password preservation (clones to avoid mutation)
@@ -2776,44 +2925,75 @@
       <div class="method_details ">
   <h3 class="signature " id="get_existing_master_password_for_migration-class_method">
   
-    .<strong>get_existing_master_password_for_migration</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>get_existing_master_password_for_migration</strong>  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Gets existing master password and creates validation test for migration scenarios
+Used when converting DAT to YAML and a master password already exists in keychain
+This handles the case: no YAML, DAT exists, master password in keychain</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Hash with validation_test or nil if error</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-1003
-1004
-1005
-1006
-1007
-1008
-1009
-1010
-1011
-1012
-1013
-1014
-1015
-1016
-1017
-1018
-1019
-1020
-1021
-1022
-1023
-1024
-1025</pre>
+1108
+1109
+1110
+1111
+1112
+1113
+1114
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122
+1123
+1124
+1125
+1126
+1127
+1128
+1129
+1130</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1003</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1108</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_existing_master_password_for_migration'>get_existing_master_password_for_migration</span>
   <span class='comment'># Retrieve existing master password from keychain
@@ -2846,7 +3026,7 @@
       <div class="method_details ">
   <h3 class="signature " id="get_favorites-class_method">
   
-    .<strong>get_favorites</strong>(data_dir)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt> 
+    .<strong>get_favorites</strong>(data_dir)  &#x21d2; <tt>Array</tt> 
   
 
   
@@ -2854,7 +3034,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves a list of favorite characters from the YAML data.</p>
+    <p>Gets all favorite characters across all accounts
+Returns an array of favorite characters sorted by favorite order</p>
 
   </div>
 </div>
@@ -2872,7 +3053,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -2884,12 +3065,12 @@
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array of favorite characters, each represented as a hash</p></div>
+        <div class='inline'><p>Array of favorite character data in legacy format</p></div>
       
     </li>
   
@@ -2901,28 +3082,6 @@
       <pre class="lines">
 
 
-584
-585
-586
-587
-588
-589
-590
-591
-592
-593
-594
-595
-596
-597
-598
-599
-600
-601
-602
-603
-604
-605
 606
 607
 608
@@ -2935,10 +3094,33 @@
 615
 616
 617
-618</pre>
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 584</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_favorites'>get_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -2961,6 +3143,7 @@
             <span class='label'>game_code:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
             <span class='label'>game_name:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
             <span class='label'>frontend:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+            <span class='label'>custom_launch:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
             <span class='label'>favorite_order:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>favorite_order</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='int'>999</span><span class='comma'>,</span>
             <span class='label'>favorite_added:</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>favorite_added</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
           <span class='rbrace'>}</span>
@@ -2991,7 +3174,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the next available order number for a new favorite character.</p>
+    <p>Gets the next available favorite order number
+Finds the highest current favorite order and returns the next number</p>
 
   </div>
 </div>
@@ -3009,7 +3193,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data containing accounts and characters</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -3026,7 +3210,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the next favorite order number</p></div>
+        <div class='inline'><p>Next available favorite order number</p></div>
       
     </li>
   
@@ -3038,24 +3222,24 @@
       <pre class="lines">
 
 
-850
-851
-852
-853
-854
-855
-856
-857
-858
-859
-860
-861
-862
-863
-864</pre>
+902
+903
+904
+905
+906
+907
+908
+909
+910
+911
+912
+913
+914
+915
+916</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 850</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 902</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_next_favorite_order'>get_next_favorite_order</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_max_order'>max_order</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -3080,7 +3264,7 @@
       <div class="method_details ">
   <h3 class="signature " id="is_favorite?-class_method">
   
-    .<strong>is_favorite?</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>is_favorite?</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -3088,7 +3272,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if a character is marked as a favorite in the YAML data.</p>
+    <p>Checks if a character is marked as a favorite
+Returns true if the specified character is in the favorites list</p>
 
   </div>
 </div>
@@ -3106,7 +3291,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -3120,7 +3305,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the username associated with the character</p></div>
+        <div class='inline'><p>Account username</p></div>
       
     </li>
   
@@ -3134,7 +3319,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the character to check</p></div>
+        <div class='inline'><p>Character name</p></div>
       
     </li>
   
@@ -3148,7 +3333,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the game code associated with the character</p></div>
+        <div class='inline'><p>Game code</p></div>
       
     </li>
   
@@ -3157,14 +3342,30 @@
         <span class='name'>frontend</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend associated with the character, if applicable</p></div>
+        <div class='inline'><p>Frontend identifier (optional for backward compatibility)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>custom_launch</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>, <tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:__unset</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Exact custom launch command, or :__unset for legacy matching</p></div>
       
     </li>
   
@@ -3181,7 +3382,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the character is a favorite, false otherwise</p></div>
+        <div class='inline'><p>True if character is a favorite</p></div>
       
     </li>
   
@@ -3193,26 +3394,26 @@
       <pre class="lines">
 
 
-564
-565
-566
-567
-568
-569
-570
-571
-572
-573
-574
-575
-576
-577
-578</pre>
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 564</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 585</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_is_favorite?'>is_favorite?</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_is_favorite?'>is_favorite?</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
 
@@ -3220,7 +3421,7 @@
     <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='const'>YAML</span><span class='period'>.</span><span class='id identifier rubyid_safe_load_file'>safe_load_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='label'>permitted_classes:</span> <span class='lbracket'>[</span><span class='const'>Symbol</span><span class='rbracket'>]</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='id identifier rubyid_migrate_to_favorites_format'>migrate_to_favorites_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
 
-    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_character'>character</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>is_favorite</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='kw'>true</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
     <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Error checking favorite status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -3235,7 +3436,7 @@
       <div class="method_details ">
   <h3 class="signature " id="load_saved_entries-class_method">
   
-    .<strong>load_saved_entries</strong>(data_dir, autosort_state)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt> 
+    .<strong>load_saved_entries</strong>(data_dir, autosort_state)  &#x21d2; <tt>Array</tt> 
   
 
   
@@ -3243,7 +3444,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Loads saved entries from the specified directory, prioritizing YAML format.</p>
+    <p>Loads saved entry data from YAML file
+Reads and deserializes entry data from the entry.yaml file, with fallback to entry.dat
+Enhanced to support favorites functionality and encryption with backward compatibility</p>
 
   </div>
 </div>
@@ -3261,7 +3464,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the entry files</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -3275,7 +3478,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to sort entries by favorites</p></div>
+        <div class='inline'><p>Whether to use auto-sorting</p></div>
       
     </li>
   
@@ -3287,28 +3490,12 @@
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array of loaded entries, each represented as a hash</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if there is an error loading the entries</p></div>
+        <div class='inline'><p>Array of saved login entries in the legacy format with favorites info</p></div>
       
     </li>
   
@@ -3320,13 +3507,6 @@
       <pre class="lines">
 
 
-26
-27
-28
-29
-30
-31
-32
 33
 34
 35
@@ -3354,10 +3534,17 @@
 57
 58
 59
-60</pre>
+60
+61
+62
+63
+64
+65
+66
+67</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_saved_entries'>load_saved_entries</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_autosort_state'>autosort_state</span><span class='rparen'>)</span>
   <span class='comment'># Guard against nil data_dir
@@ -3410,7 +3597,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Migrates entries from the legacy format to the new YAML format.</p>
+    <p>Migrates from legacy Marshal format to YAML format with encryption support
+Converts entry.dat to entry.yaml format for improved maintainability</p>
 
   </div>
 </div>
@@ -3428,7 +3616,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the legacy entry file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -3444,7 +3632,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the encryption mode to use for the migrated entries</p></div>
+        <div class='inline'><p>Encryption mode (:plaintext, :standard, :enhanced)</p></div>
       
     </li>
   
@@ -3461,7 +3649,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if migration was successful, false otherwise</p></div>
+        <div class='inline'><p>True if migration was successful</p></div>
       
     </li>
   
@@ -3473,17 +3661,6 @@
       <pre class="lines">
 
 
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142
-143
 144
 145
 146
@@ -3547,10 +3724,21 @@
 204
 205
 206
-207</pre>
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 133</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 144</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_from_legacy'>migrate_from_legacy</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='label'>encryption_mode:</span> <span class='symbol'>:plaintext</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_dat_file'>dat_file</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>entry.dat</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -3643,7 +3831,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Migrates the provided YAML data to include encryption format fields.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Migrates YAML data to support encryption format
+Adds encryption_mode field if not present</p>
 
   </div>
 </div>
@@ -3661,7 +3854,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data to migrate</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -3678,7 +3871,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the migrated YAML data with encryption fields added</p></div>
+        <div class='inline'><p>YAML data structure with encryption support</p></div>
       
     </li>
   
@@ -3690,19 +3883,19 @@
       <pre class="lines">
 
 
-463
-464
-465
-466
-467
-468
-469
-470
-471
-472</pre>
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 463</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 477</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_to_encryption_format'>migrate_to_encryption_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
@@ -3730,7 +3923,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Migrates the YAML data to include favorite fields for characters.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Migrates YAML data to support favorites format
+Adds favorites fields to existing character records if not present</p>
 
   </div>
 </div>
@@ -3748,7 +3946,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data to migrate</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -3765,7 +3963,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the migrated YAML data with favorite fields added</p></div>
+        <div class='inline'><p>YAML data structure with favorites support</p></div>
       
     </li>
   
@@ -3777,24 +3975,24 @@
       <pre class="lines">
 
 
-796
-797
-798
-799
-800
-801
-802
-803
-804
-805
-806
-807
-808
-809
-810</pre>
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 796</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 841</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_to_favorites_format'>migrate_to_favorites_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -3819,25 +4017,73 @@
       <div class="method_details ">
   <h3 class="signature " id="normalize_account_name-class_method">
   
-    .<strong>normalize_account_name</strong>(name)  &#x21d2; <tt>Object</tt> 
+    .<strong>normalize_account_name</strong>(name)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Normalizes account names to UPCASE for consistent storage and comparison
+Prevents duplicate accounts due to case variations</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Raw account name</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Normalized account name in UPCASE</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-939
-940
-941
-942</pre>
+1013
+1014
+1015
+1016</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 939</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1013</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_account_name'>normalize_account_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3851,25 +4097,73 @@
       <div class="method_details ">
   <h3 class="signature " id="normalize_character_name-class_method">
   
-    .<strong>normalize_character_name</strong>(name)  &#x21d2; <tt>Object</tt> 
+    .<strong>normalize_character_name</strong>(name)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Normalizes character names to Title case (first letter capitalized)
+Ensures consistent character name formatting across the application</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Raw character name</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Normalized character name in Title case</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-944
-945
-946
-947</pre>
+1024
+1025
+1026
+1027</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 944</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1024</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'>normalize_character_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3883,42 +4177,92 @@
       <div class="method_details ">
   <h3 class="signature " id="prepare_yaml_for_serialization-class_method">
   
-    .<strong>prepare_yaml_for_serialization</strong>(yaml_data)  &#x21d2; <tt>Object</tt> 
+    .<strong>prepare_yaml_for_serialization</strong>(yaml_data)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Prepares YAML data for serialization with password preservation
+Ensures encrypted passwords are serialized as quoted strings to prevent YAML multiline formatting
+Clones the data to avoid mutating the caller's object
+Ensures required top-level fields exist (encryption_mode, master_password_validation_test)</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>yaml_data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>YAML data structure to prepare for serialization</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Cloned yaml_data with passwords forced to plain strings and required fields set</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-917
-918
-919
-920
-921
-922
-923
-924
-925
-926
-927
-928
-929
-930
-931
-932
-933
-934
-935
-936
-937</pre>
+985
+986
+987
+988
+989
+990
+991
+992
+993
+994
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004
+1005</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 917</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 985</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_prepare_yaml_for_serialization'>prepare_yaml_for_serialization</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Clone to avoid mutating caller&#39;s object
@@ -3949,7 +4293,7 @@
       <div class="method_details ">
   <h3 class="signature " id="remove_favorite-class_method">
   
-    .<strong>remove_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>remove_favorite</strong>(data_dir, username, char_name, game_code, frontend = nil, custom_launch = :__unset)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -3957,7 +4301,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Removes a character from the favorites list in the YAML data.</p>
+    <p>Removes a character from the favorites list
+Unmarks the specified character as a favorite and reorders remaining favorites</p>
 
   </div>
 </div>
@@ -3975,7 +4320,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -3989,7 +4334,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the username associated with the character</p></div>
+        <div class='inline'><p>Account username</p></div>
       
     </li>
   
@@ -4003,7 +4348,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the character to remove from favorites</p></div>
+        <div class='inline'><p>Character name</p></div>
       
     </li>
   
@@ -4017,7 +4362,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the game code associated with the character</p></div>
+        <div class='inline'><p>Game code</p></div>
       
     </li>
   
@@ -4026,14 +4371,30 @@
         <span class='name'>frontend</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the frontend associated with the character, if applicable</p></div>
+        <div class='inline'><p>Frontend identifier (optional for backward compatibility)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>custom_launch</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>, <tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:__unset</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Exact custom launch command, or :__unset for legacy matching</p></div>
       
     </li>
   
@@ -4050,7 +4411,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the character was removed from favorites, false otherwise</p></div>
+        <div class='inline'><p>True if operation was successful</p></div>
       
     </li>
   
@@ -4062,25 +4423,6 @@
       <pre class="lines">
 
 
-522
-523
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533
-534
-535
-536
-537
-538
-539
-540
 541
 542
 543
@@ -4094,12 +4436,31 @@
 551
 552
 553
-554</pre>
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 522</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 541</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_favorite'>remove_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_favorite'>remove_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
 
@@ -4108,7 +4469,7 @@
     <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='id identifier rubyid_migrate_to_favorites_format'>migrate_to_favorites_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
 
     <span class='comment'># Find the character with frontend precision
-</span>    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
+</span>    <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_character'>character</span>
 
     <span class='comment'># Don&#39;t remove if not a favorite
@@ -4148,7 +4509,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Reorders all favorite characters in the YAML data.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Reorders all favorites to have consecutive order numbers
+Ensures favorite_order values are consecutive starting from 1</p>
 
   </div>
 </div>
@@ -4166,7 +4532,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the YAML data containing accounts and characters</p></div>
+        <div class='inline'><p>YAML data structure</p></div>
       
     </li>
   
@@ -4179,29 +4545,29 @@
       <pre class="lines">
 
 
-896
-897
-898
-899
-900
-901
-902
-903
-904
-905
-906
-907
-908
-909
-910
-911
-912
-913
-914
-915</pre>
+956
+957
+958
+959
+960
+961
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+972
+973
+974
+975</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 896</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 956</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reorder_all_favorites'>reorder_all_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Collect all favorites
@@ -4239,7 +4605,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Reorders the favorites list based on the provided order.</p>
+    <p>Reorders favorites based on provided character list
+Updates the favorite order for all favorites based on new ordering</p>
 
   </div>
 </div>
@@ -4257,7 +4624,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the YAML file</p></div>
+        <div class='inline'><p>Directory containing entry data</p></div>
       
     </li>
   
@@ -4266,12 +4633,12 @@
         <span class='name'>ordered_favorites</span>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array of favorite characters with their new order</p></div>
+        <div class='inline'><p>Array of hashes with username, char_name, game_code, frontend</p></div>
       
     </li>
   
@@ -4288,7 +4655,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the favorites were reordered successfully, false otherwise</p></div>
+        <div class='inline'><p>True if operation was successful</p></div>
       
     </li>
   
@@ -4300,30 +4667,6 @@
       <pre class="lines">
 
 
-625
-626
-627
-628
-629
-630
-631
-632
-633
-634
-635
-636
-637
-638
-639
-640
-641
-642
-643
-644
-645
-646
-647
-648
 649
 650
 651
@@ -4332,10 +4675,42 @@
 654
 655
 656
-657</pre>
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+689</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 625</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 649</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reorder_favorites'>reorder_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_ordered_favorites'>ordered_favorites</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -4347,12 +4722,20 @@
 
     <span class='comment'># Update favorite order for each character in the provided order
 </span>    <span class='id identifier rubyid_ordered_favorites'>ordered_favorites</span><span class='period'>.</span><span class='id identifier rubyid_each_with_index'>each_with_index</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='op'>|</span>
+      <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='symbol'>:custom_launch</span><span class='rparen'>)</span>
+                        <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:custom_launch</span><span class='rbracket'>]</span>
+                      <span class='kw'>elsif</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+                        <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
+                      <span class='kw'>else</span>
+                        <span class='symbol'>:__unset</span>
+                      <span class='kw'>end</span>
       <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span>
         <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span>
         <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:username</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>username</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
         <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
         <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:game_code</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
-        <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
+        <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_favorite_info'>favorite_info</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+        <span class='id identifier rubyid_custom_launch'>custom_launch</span>
       <span class='rparen'>)</span>
 
       <span class='kw'>if</span> <span class='id identifier rubyid_character'>character</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_character'>character</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>is_favorite</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -4378,7 +4761,7 @@
       <div class="method_details ">
   <h3 class="signature " id="restore_backup_and_return_false-class_method">
   
-    .<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -4386,60 +4769,16 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Restores the backup file to the original YAML file and returns false.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Restores backup and returns false</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>backup_file</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the path to the backup file</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>yaml_file</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the path to the original YAML file</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>false, indicating the operation was unsuccessful</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -4447,17 +4786,17 @@
       <pre class="lines">
 
 
-450
-451
-452
-453
-454
-455
-456
-457</pre>
+462
+463
+464
+465
+466
+467
+468
+469</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 450</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 462</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
@@ -4483,7 +4822,10 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Saves the provided entry data to the YAML file in the specified directory.</p>
+    <p>Saves entry data to YAML file
+Converts and serializes entry data to the entry.yaml file with encryption support
+Preserves master_password_validation_test from existing YAML during round-trip conversion
+Encrypts passwords based on the file's encryption_mode before writing</p>
 
   </div>
 </div>
@@ -4501,7 +4843,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory where the YAML file will be saved</p></div>
+        <div class='inline'><p>Directory to save entry data</p></div>
       
     </li>
   
@@ -4510,12 +4852,12 @@
         <span class='name'>entry_data</span>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the entry data to save, each represented as a hash</p></div>
+        <div class='inline'><p>Array of entry data in legacy format</p></div>
       
     </li>
   
@@ -4532,7 +4874,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the entries were saved successfully, false otherwise</p></div>
+        <div class='inline'><p>True if save was successful</p></div>
       
     </li>
   
@@ -4544,16 +4886,6 @@
       <pre class="lines">
 
 
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
 77
 78
 79
@@ -4603,10 +4935,20 @@
 123
 124
 125
-126</pre>
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 67</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 77</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_save_entries'>save_entries</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_entry_data'>entry_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -4676,7 +5018,7 @@
       <div class="method_details ">
   <h3 class="signature " id="sort_entries_with_favorites-class_method">
   
-    .<strong>sort_entries_with_favorites</strong>(entries, autosort_state)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt> 
+    .<strong>sort_entries_with_favorites</strong>(entries, autosort_state)  &#x21d2; <tt>Array</tt> 
   
 
   
@@ -4684,7 +5026,13 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Sorts entries with favorites prioritized based on the autosort state.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Sorts entries with favorites priority based on autosort setting
+When autosort is enabled, favorites are placed first and all entries are sorted
+When autosort is disabled, original order is preserved without reordering</p>
 
   </div>
 </div>
@@ -4697,12 +5045,12 @@
         <span class='name'>entries</span>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the entries to sort</p></div>
+        <div class='inline'><p>Array of entry data</p></div>
       
     </li>
   
@@ -4716,7 +5064,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to sort entries by favorites</p></div>
+        <div class='inline'><p>Whether to use auto-sorting</p></div>
       
     </li>
   
@@ -4728,12 +5076,12 @@
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the sorted entries</p></div>
+        <div class='inline'><p>Sorted array of entries (if autosort enabled) or original order (if disabled)</p></div>
       
     </li>
   
@@ -4745,29 +5093,29 @@
       <pre class="lines">
 
 
-771
-772
-773
-774
-775
-776
-777
-778
-779
-780
-781
-782
-783
-784
-785
-786
-787
-788
-789
-790</pre>
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 771</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 814</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sort_entries_with_favorites'>sort_entries_with_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_entries'>entries</span><span class='comma'>,</span> <span class='id identifier rubyid_autosort_state'>autosort_state</span><span class='rparen'>)</span>
   <span class='comment'># If autosort is disabled, preserve original order without any reordering
@@ -4797,30 +5145,76 @@
       <div class="method_details ">
   <h3 class="signature " id="write_yaml_file-class_method">
   
-    .<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; <tt>Object</tt> 
+    .<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Writes YAML data to file with standard headers and secure permissions
+Handles preparation and formatting of YAML data for all save operations</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>yaml_file</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Path to YAML file to write</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>yaml_data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>YAML data structure to save</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-959
-960
-961
-962
-963
-964
-965
-966
-967</pre>
+1052
+1053
+1054
+1055
+1056
+1057
+1058
+1059
+1060</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 959</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1052</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_write_yaml_file'>write_yaml_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_prepared_yaml'>prepared_yaml</span> <span class='op'>=</span> <span class='id identifier rubyid_prepare_yaml_for_serialization'>prepare_yaml_for_serialization</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
@@ -4847,7 +5241,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the path to the YAML file for storing entries.</p>
+    <p>Generates the full path to the entry.yaml file.</p>
 
   </div>
 </div>
@@ -4865,7 +5259,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory where the YAML file is located</p></div>
+        <div class='inline'><p>The directory where the entry.yaml file is located.</p></div>
       
     </li>
   
@@ -4882,7 +5276,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the full path to the YAML file</p></div>
+        <div class='inline'><p>The full path to the entry.yaml file.</p></div>
       
     </li>
   
@@ -4894,12 +5288,12 @@
       <pre class="lines">
 
 
-16
-17
-18</pre>
+22
+23
+24</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 16</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 22</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'>yaml_file_path</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>entry.yaml</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -4914,7 +5308,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:21 2026 by
+  Generated on Wed Aug 26 16:50:42 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

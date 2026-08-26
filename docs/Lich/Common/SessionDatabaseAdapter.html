@@ -104,20 +104,13 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Handles database interactions for session management.</p>
-<p>This class provides methods to upsert, find, delete, and query sessions.</p>
+    <p>Row-oriented adapter for session summary state.
+This intentionally differs from blob-backed script_auto_settings storage.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Lich::Common</a></span></li>
-    
-  </ul>
 
 </div>
   
@@ -167,7 +160,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves all active sessions from the database.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns all rows currently tracked in the session summary table.</p></div></span>
   
 </li>
 
@@ -189,7 +182,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Deletes a session from the database by its process ID.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Deletes a row for the provided pid.</p></div></span>
   
 </li>
 
@@ -211,7 +204,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves session names that have duplicates in the active sessions.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns names that currently appear more than once.</p></div></span>
   
 </li>
 
@@ -233,7 +226,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Finds a session by its process ID.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds one row by pid.</p></div></span>
   
 </li>
 
@@ -257,7 +250,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new SessionDatabaseAdapter instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Builds an adapter bound to a row-oriented session summary table.</p></div></span>
   
 </li>
 
@@ -279,7 +272,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves sessions that are currently tracked and not exited.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns rows that still appear active in storage and may need a liveness sweep against the current OS process table.</p></div></span>
   
 </li>
 
@@ -301,7 +294,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Inserts or updates a session in the database.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Inserts or updates a session row by pid.</p></div></span>
   
 </li>
 
@@ -324,7 +317,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new SessionDatabaseAdapter instance.</p>
+    <p>Builds an adapter bound to a row-oriented session summary table.</p>
 
   </div>
 </div>
@@ -344,7 +337,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the database connection (optional)</p></div>
+        <div class='inline'><p>optional injected database connection</p></div>
       
     </li>
   
@@ -360,7 +353,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory where the database file is located</p></div>
+        <div class='inline'><p>directory containing lich.db3 when db is not injected</p></div>
       
     </li>
   
@@ -376,7 +369,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the table to use for sessions</p></div>
+        <div class='inline'><p>session summary table name</p></div>
       
     </li>
   
@@ -389,16 +382,16 @@
       <pre class="lines">
 
 
+19
 20
 21
-22
-23</pre>
+22</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 20</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 19</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>db:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>data_dir:</span> <span class='const'>DATA_DIR</span><span class='comma'>,</span> <span class='label'>table_name:</span> <span class='const'><span class='object_link'><a href="#DEFAULT_TABLE_NAME-constant" title="Lich::Common::SessionDatabaseAdapter::DEFAULT_TABLE_NAME (constant)">DEFAULT_TABLE_NAME</a></span></span><span class='rparen'>)</span>
-  <span class='ivar'>@db</span> <span class='op'>=</span> <span class='id identifier rubyid_db'>db</span> <span class='op'>||</span> <span class='const'>SQLite3</span><span class='op'>::</span><span class='const'>Database</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lich.db3</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='ivar'>@db</span> <span class='op'>=</span> <span class='id identifier rubyid_db'>db</span> <span class='op'>||</span> <span class='id identifier rubyid_open_database'>open_database</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lich.db3</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
   <span class='ivar'>@table_name</span> <span class='op'>=</span> <span class='id identifier rubyid_table_name'>table_name</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -424,7 +417,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves all active sessions from the database.</p>
+    <p>Returns all rows currently tracked in the session summary table.</p>
 
   </div>
 </div>
@@ -441,7 +434,7 @@
       
       
         &mdash;
-        <div class='inline'><p>an array of hashes representing active sessions</p></div>
+        <div class='inline'><p>rows sorted by pid</p></div>
       
     </li>
   
@@ -453,14 +446,14 @@
       <pre class="lines">
 
 
+57
 58
 59
 60
-61
-62</pre>
+61</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 58</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 57</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_active_sessions'>active_sessions</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
@@ -483,7 +476,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Deletes a session from the database by its process ID.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Deletes a row for the provided pid.</p>
 
   </div>
 </div>
@@ -499,9 +492,6 @@
         <span class='type'>(<tt>Integer</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the process ID of the session to delete</p></div>
       
     </li>
   
@@ -544,7 +534,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves session names that have duplicates in the active sessions.</p>
+    <p>Returns names that currently appear more than once.
+Duplicate names are treated as data points, not enforcement failures.</p>
 
   </div>
 </div>
@@ -561,7 +552,7 @@
       
       
         &mdash;
-        <div class='inline'><p>an array of hashes containing session names and their duplicate counts</p></div>
+        <div class='inline'><p>rows containing <code>session_name</code> and <code>duplicate_count</code></p></div>
       
     </li>
   
@@ -573,9 +564,6 @@
       <pre class="lines">
 
 
-84
-85
-86
 87
 88
 89
@@ -586,10 +574,13 @@
 94
 95
 96
-97</pre>
+97
+98
+99
+100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 84</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 87</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_duplicate_active_session_names'>duplicate_active_session_names</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
@@ -621,7 +612,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Finds a session by its process ID.</p>
+    <p>Finds one row by pid.</p>
 
   </div>
 </div>
@@ -638,9 +629,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the process ID of the session to find</p></div>
-      
     </li>
   
 </ul>
@@ -655,9 +643,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the session data as a hash, or nil if not found</p></div>
-      
     </li>
   
 </ul>
@@ -668,14 +653,14 @@
       <pre class="lines">
 
 
-76
 77
 78
 79
-80</pre>
+80
+81</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 76</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 77</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_find_session'>find_session</span><span class='lparen'>(</span><span class='label'>pid:</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
@@ -698,7 +683,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves sessions that are currently tracked and not exited.</p>
+    <p>Returns rows that still appear active in storage and may need a
+liveness sweep against the current OS process table.</p>
 
   </div>
 </div>
@@ -715,7 +701,7 @@
       
       
         &mdash;
-        <div class='inline'><p>an array of hashes representing tracked live candidates</p></div>
+        <div class='inline'><p>non-exited rows sorted by pid</p></div>
       
     </li>
   
@@ -727,18 +713,18 @@
       <pre class="lines">
 
 
-101
-102
-103
-104
-105
 106
 107
 108
-109</pre>
+109
+110
+111
+112
+113
+114</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 101</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 106</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tracked_live_candidates'>tracked_live_candidates</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
@@ -765,8 +751,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Inserts or updates a session in the database.</p>
-<p>This method will insert a new session or update an existing one based on the provided payload.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Inserts or updates a session row by pid.</p>
 
   </div>
 </div>
@@ -784,7 +769,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the session data to upsert</p></div>
+        <div class='inline'><p>row fields for insert/update</p></div>
       
     </li>
   
@@ -797,6 +782,8 @@
       <pre class="lines">
 
 
+28
+29
 30
 31
 32
@@ -819,12 +806,10 @@
 49
 50
 51
-52
-53
-54</pre>
+52</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/settings/session_database_adapter.rb', line 28</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_upsert_session'>upsert_session</span><span class='lparen'>(</span><span class='id identifier rubyid_payload'>payload</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
@@ -861,7 +846,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:32 2026 by
+  Generated on Wed Aug 26 16:50:56 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

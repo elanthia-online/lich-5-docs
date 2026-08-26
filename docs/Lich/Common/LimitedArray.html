@@ -106,55 +106,337 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents an array with a maximum size limit.</p>
-<p>This class extends the standard Array to enforce a maximum size,
-automatically removing the oldest elements when the limit is reached.</p>
+    <p>Bounded script buffer with condition-variable-backed blocking reads.</p>
 
   </div>
 </div>
 <div class="tags">
   
 
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li>Array</li>
-    
-  </ul>
+</div>
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="SYNCHRONIZED_ARRAY_MUTATORS-constant" class="">SYNCHRONIZED_ARRAY_MUTATORS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Mutating Array methods that require synchronization in <span class='object_link'><a href="" title="Lich::Common::LimitedArray (class)">Lich::Common::LimitedArray</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>list of method names that modify the array</p></div>
+      
+    </li>
+  
+</ul>
 
 </div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='words_sep'>
+  </span><span class='tstring_content'>collect!</span><span class='words_sep'> </span><span class='tstring_content'>compact!</span><span class='words_sep'> </span><span class='tstring_content'>delete</span><span class='words_sep'> </span><span class='tstring_content'>delete_at</span><span class='words_sep'> </span><span class='tstring_content'>delete_if</span><span class='words_sep'> </span><span class='tstring_content'>filter!</span><span class='words_sep'> </span><span class='tstring_content'>keep_if</span><span class='words_sep'> </span><span class='tstring_content'>map!</span><span class='words_sep'> </span><span class='tstring_content'>pop</span><span class='words_sep'>
+  </span><span class='tstring_content'>reject!</span><span class='words_sep'> </span><span class='tstring_content'>reverse!</span><span class='words_sep'> </span><span class='tstring_content'>rotate!</span><span class='words_sep'> </span><span class='tstring_content'>select!</span><span class='words_sep'> </span><span class='tstring_content'>shuffle!</span><span class='words_sep'> </span><span class='tstring_content'>slice!</span><span class='words_sep'> </span><span class='tstring_content'>sort!</span><span class='words_sep'> </span><span class='tstring_content'>sort_by!</span><span class='words_sep'> </span><span class='tstring_content'>uniq!</span><span class='words_sep'>
+</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ENUMERATOR_MUTATORS-constant" class="">ENUMERATOR_MUTATORS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Subset of <span class='object_link'><a href="#SYNCHRONIZED_ARRAY_MUTATORS-constant" title="Lich::Common::LimitedArray::SYNCHRONIZED_ARRAY_MUTATORS (constant)">SYNCHRONIZED_ARRAY_MUTATORS</a></span> that return an Enumerator when called without a block.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>list of method names that support lazy evaluation</p></div>
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>collect!</span><span class='words_sep'> </span><span class='tstring_content'>delete_if</span><span class='words_sep'> </span><span class='tstring_content'>filter!</span><span class='words_sep'> </span><span class='tstring_content'>keep_if</span><span class='words_sep'> </span><span class='tstring_content'>map!</span><span class='words_sep'> </span><span class='tstring_content'>reject!</span><span class='words_sep'> </span><span class='tstring_content'>select!</span><span class='words_sep'> </span><span class='tstring_content'>sort_by!</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="RAW_PUSH-constant" class="">RAW_PUSH =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#push, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:push</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_UNSHIFT-constant" class="">RAW_UNSHIFT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#unshift, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:unshift</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_SHIFT-constant" class="">RAW_SHIFT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#shift, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:shift</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_POP-constant" class="">RAW_POP =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#pop, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:pop</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_EMPTY-constant" class="">RAW_EMPTY =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#empty?, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:empty?</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_LENGTH-constant" class="">RAW_LENGTH =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#length, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:length</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_CLEAR-constant" class="">RAW_CLEAR =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#clear, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:clear</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="RAW_DUP-constant" class="">RAW_DUP =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Unbound reference to Array#dup, used to bypass overrides in synchronized operations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>UnboundMethod</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_instance_method'>instance_method</span><span class='lparen'>(</span><span class='symbol'>:dup</span><span class='rparen'>)</span></pre></dd>
+      
+        <dt id="INIT_MUTEX-constant" class="">INIT_MUTEX =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Global mutex protecting initialization of per-instance synchronization primitives.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Mutex</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span></pre></dd>
+      
+    </dl>
+  
 
 
 
-  <h2>Instance Attribute Summary <small><a href="#" class="summary_toggle">collapse</a></small></h2>
-  <ul class="summary">
-    
-      <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#max_size-instance_method" title="#max_size (instance method)">#<strong>max_size</strong>  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-    
-    
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_size.</p></div></span>
-  
-</li>
-
-    
-  </ul>
 
 
 
@@ -170,7 +452,7 @@ automatically removing the oldest elements when the limit is reached.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#history-instance_method" title="#history (instance method)">#<strong>history</strong>  &#x21d2; Array </a>
+      <a href="#[]=-instance_method" title="#[]= (instance method)">#<strong>[]=</strong>(*args)  &#x21d2; Object </a>
     
 
     
@@ -184,7 +466,183 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns an empty array representing the history of elements.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets elements by index or range and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clear-instance_method" title="#clear (instance method)">#<strong>clear</strong>  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Removes all elements from the array.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clear_snapshot-instance_method" title="#clear_snapshot (instance method)">#<strong>clear_snapshot</strong>  &#x21d2; Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns a snapshot of the current array and clears it in one atomic operation.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#concat-instance_method" title="#concat (instance method)">#<strong>concat</strong>(other)  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Concatenates another array and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#dup-instance_method" title="#dup (instance method)">#<strong>dup</strong>  &#x21d2; Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns a shallow copy of the array.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#empty%3F-instance_method" title="#empty? (instance method)">#<strong>empty?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns whether the array is empty.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#fill-instance_method" title="#fill (instance method)">#<strong>fill</strong>(*args) { ... } &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Fills the array with a value or block result and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#flatten!-instance_method" title="#flatten! (instance method)">#<strong>flatten!</strong>(*args)  &#x21d2; self<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Recursively flattens nested arrays and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#history-instance_method" title="#history (instance method)">#<strong>history</strong>  &#x21d2; Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns an empty array (placeholder for compatibility).</p></div></span>
   
 </li>
 
@@ -208,7 +666,7 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new LimitedArray instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a bounded array with a default size of 200 elements.</p></div></span>
   
 </li>
 
@@ -216,7 +674,7 @@ automatically removing the oldest elements when the limit is reached.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#push-instance_method" title="#push (instance method)">#<strong>push</strong>(line)  &#x21d2; Object </a>
+      <a href="#insert-instance_method" title="#insert (instance method)">#<strong>insert</strong>(index, *objects)  &#x21d2; self </a>
     
 
     
@@ -230,7 +688,7 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds an element to the LimitedArray, removing the oldest elements if the maximum size is exceeded.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Inserts elements at the given index and trims the front if it exceeds max_size.</p></div></span>
   
 </li>
 
@@ -238,7 +696,7 @@ automatically removing the oldest elements when the limit is reached.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#shove-instance_method" title="#shove (instance method)">#<strong>shove</strong>(line)  &#x21d2; Object </a>
+      <a href="#max_size-instance_method" title="#max_size (instance method)">#<strong>max_size</strong>  &#x21d2; Integer </a>
     
 
     
@@ -249,10 +707,190 @@ automatically removing the oldest elements when the limit is reached.</p>
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds an element to the LimitedArray, similar to push.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the maximum number of elements this array will hold.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#max_size=-instance_method" title="#max_size= (instance method)">#<strong>max_size=</strong>(value)  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Sets the maximum number of elements, trimming the front if necessary.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#push-instance_method" title="#push (instance method)">#<strong>push</strong>(*lines)  &#x21d2; self </a>
+    
+
+    
+      (also: #&lt;&lt;, #append)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Appends elements to the end of the array and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#replace-instance_method" title="#replace (instance method)">#<strong>replace</strong>(other)  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Replaces the entire array contents and trims the front if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#shift-instance_method" title="#shift (instance method)">#<strong>shift</strong>(*args)  &#x21d2; Object, ... </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Removes and returns the first element(s) from the front of the array.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#shove-instance_method" title="#shove (instance method)">#<strong>shove</strong>(line)  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Appends an element to the end of the array (alias for push).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#try_shift-instance_method" title="#try_shift (instance method)">#<strong>try_shift</strong>  &#x21d2; Object<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Removes and returns the first element, or nil if the array is empty (non-blocking).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#unshift-instance_method" title="#unshift (instance method)">#<strong>unshift</strong>(*lines)  &#x21d2; self </a>
+    
+
+    
+      (also: #prepend)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Prepends elements to the beginning of the array and trims the back if it exceeds max_size.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#wait_shift-instance_method" title="#wait_shift (instance method)">#<strong>wait_shift</strong>(timeout = nil)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Wait for and remove the next item, returning nil when timeout expires.</p></div></span>
   
 </li>
 
@@ -276,12 +914,21 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new LimitedArray instance.</p>
+    <p>Initializes a bounded array with a default size of 200 elements.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_buf'>buf</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::LimitedArray (class)">LimitedArray</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>5</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_max_size'>max_size</span> <span class='comment'>#=&gt; 200</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -296,7 +943,7 @@ automatically removing the oldest elements when the limit is reached.</p>
       
       
         &mdash;
-        <div class='inline'><p>the initial size of the array (default is 0)</p></div>
+        <div class='inline'><p>initial capacity; excess elements are trimmed from the front</p></div>
       
     </li>
   
@@ -305,14 +952,14 @@ automatically removing the oldest elements when the limit is reached.</p>
         <span class='name'>obj</span>
       
       
-        <span class='type'>(<tt>Object</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>Object</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the initial object to populate the array (default is nil)</p></div>
+        <div class='inline'><p>initial value to fill; optional</p></div>
       
     </li>
   
@@ -325,17 +972,19 @@ automatically removing the oldest elements when the limit is reached.</p>
       <pre class="lines">
 
 
-17
-18
-19
-20</pre>
+68
+69
+70
+71
+72</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 17</span>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 68</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_size'>size</span> <span class='op'>=</span> <span class='int'>0</span><span class='comma'>,</span> <span class='id identifier rubyid_obj'>obj</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@max_size</span> <span class='op'>=</span> <span class='int'>200</span>
   <span class='kw'>super</span>
+  <span class='id identifier rubyid_trim_front_locked'>trim_front_locked</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -343,52 +992,6 @@ automatically removing the oldest elements when the limit is reached.</p>
 </div>
   
 </div>
-
-  <div id="instance_attr_details" class="attr_details">
-    <h2>Instance Attribute Details</h2>
-    
-      
-      <span id="max_size=-instance_method"></span>
-      <div class="method_details first">
-  <h3 class="signature first" id="max_size-instance_method">
-  
-    #<strong>max_size</strong>  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Returns the value of attribute max_size.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-11
-12
-13</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 11</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_max_size'>max_size</span>
-  <span class='ivar'>@max_size</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-  </div>
 
 
   <div id="instance_method_details" class="method_details_list">
@@ -396,9 +999,9 @@ automatically removing the oldest elements when the limit is reached.</p>
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="history-instance_method">
+  <h3 class="signature first" id="[]=-instance_method">
   
-    #<strong>history</strong>  &#x21d2; <tt>Array</tt> 
+    #<strong>[]=</strong>(*args)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -406,7 +1009,277 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns an empty array representing the history of elements.</p>
+    <p>Sets elements by index or range and trims the front if it exceeds max_size.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>args</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>index/range and value(s) to assign</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the assigned value(s)</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+165
+166
+167</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 165</span>
+
+<span class='kw'>def</span> <span class='op'>[]=</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:[]=</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clear-instance_method">
+  
+    #<strong>clear</strong>  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Removes all elements from the array.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+220
+221
+222</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 220</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="#RAW_CLEAR-constant" title="Lich::Common::LimitedArray::RAW_CLEAR (constant)">RAW_CLEAR</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clear_snapshot-instance_method">
+  
+    #<strong>clear_snapshot</strong>  &#x21d2; <tt>Array</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns a snapshot of the current array and clears it in one atomic operation.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_buf'>buf</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::LimitedArray (class)">LimitedArray</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::LimitedArray#initialize (method)">new</a></span></span>
+<span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='int'>1</span><span class='comma'>,</span> <span class='int'>2</span><span class='comma'>,</span> <span class='int'>3</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_snapshot'>snapshot</span> <span class='op'>=</span> <span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_clear_snapshot'>clear_snapshot</span>
+<span class='id identifier rubyid_snapshot'>snapshot</span> <span class='comment'>#=&gt; [1, 2, 3]
+</span><span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a shallow copy of the array before clearing</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+265
+266
+267
+268
+269
+270
+271</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 265</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_clear_snapshot'>clear_snapshot</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_snapshot'>snapshot</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#RAW_DUP-constant" title="Lich::Common::LimitedArray::RAW_DUP (constant)">RAW_DUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="#RAW_CLEAR-constant" title="Lich::Common::LimitedArray::RAW_CLEAR (constant)">RAW_CLEAR</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_snapshot'>snapshot</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="concat-instance_method">
+  
+    #<strong>concat</strong>(other)  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Concatenates another array and trims the front if it exceeds max_size.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the array to concatenate</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+140
+141
+142</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 140</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_concat'>concat</span><span class='lparen'>(</span><span class='id identifier rubyid_other'>other</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:concat</span><span class='comma'>,</span> <span class='id identifier rubyid_other'>other</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="dup-instance_method">
+  
+    #<strong>dup</strong>  &#x21d2; <tt>Array</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns a shallow copy of the array.</p>
 
   </div>
 </div>
@@ -423,7 +1296,7 @@ automatically removing the oldest elements when the limit is reached.</p>
       
       
         &mdash;
-        <div class='inline'><p>an empty array</p></div>
+        <div class='inline'><p>a new unsynchronized copy</p></div>
       
     </li>
   
@@ -435,15 +1308,15 @@ automatically removing the oldest elements when the limit is reached.</p>
       <pre class="lines">
 
 
-40
-41
-42</pre>
+227
+228
+229</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 40</span>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 227</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_history'>history</span>
-  <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_dup'>dup</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="#RAW_DUP-constant" title="Lich::Common::LimitedArray::RAW_DUP (constant)">RAW_DUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -451,9 +1324,9 @@ automatically removing the oldest elements when the limit is reached.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="push-instance_method">
+  <h3 class="signature " id="empty?-instance_method">
   
-    #<strong>push</strong>(line)  &#x21d2; <tt>Object</tt> 
+    #<strong>empty?</strong>  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -461,7 +1334,62 @@ automatically removing the oldest elements when the limit is reached.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Adds an element to the LimitedArray, removing the oldest elements if the maximum size is exceeded.</p>
+    <p>Returns whether the array is empty.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the array has no elements</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+213
+214
+215</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 213</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="#RAW_EMPTY-constant" title="Lich::Common::LimitedArray::RAW_EMPTY (constant)">RAW_EMPTY</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="fill-instance_method">
+  
+    #<strong>fill</strong>(*args) { ... } &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Fills the array with a value or block result and trims the front if it exceeds max_size.</p>
 
   </div>
 </div>
@@ -471,7 +1399,7 @@ automatically removing the oldest elements when the limit is reached.</p>
   
     <li>
       
-        <span class='name'>line</span>
+        <span class='name'>args</span>
       
       
         <span class='type'>(<tt>Object</tt>)</span>
@@ -479,7 +1407,93 @@ automatically removing the oldest elements when the limit is reached.</p>
       
       
         &mdash;
-        <div class='inline'><p>the element to add to the array</p></div>
+        <div class='inline'><p>value or range and value</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Yields:</p>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'><p>block to generate values</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+174
+175
+176</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 174</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_fill'>fill</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:fill</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="flatten!-instance_method">
+  
+    #<strong>flatten!</strong>(*args)  &#x21d2; <tt>self</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Recursively flattens nested arrays and trims the front if it exceeds max_size.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>args</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>optional depth limit</p></div>
       
     </li>
   
@@ -491,12 +1505,12 @@ automatically removing the oldest elements when the limit is reached.</p>
     <li>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt>self</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the element that was added</p></div>
+        <div class='inline'><p>self if the array changed, nil otherwise</p></div>
       
     </li>
   
@@ -508,17 +1522,15 @@ automatically removing the oldest elements when the limit is reached.</p>
       <pre class="lines">
 
 
-25
-26
-27
-28</pre>
+182
+183
+184</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 25</span>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 182</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_shift'>shift</span> <span class='kw'>while</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='op'>&gt;=</span> <span class='ivar'>@max_size</span>
-  <span class='kw'>super</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_flatten!'>flatten!</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:flatten!</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -526,9 +1538,9 @@ automatically removing the oldest elements when the limit is reached.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="shove-instance_method">
+  <h3 class="signature " id="history-instance_method">
   
-    #<strong>shove</strong>(line)  &#x21d2; <tt>Object</tt> 
+    #<strong>history</strong>  &#x21d2; <tt>Array</tt> 
   
 
   
@@ -540,7 +1552,541 @@ automatically removing the oldest elements when the limit is reached.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Adds an element to the LimitedArray, similar to push.</p>
+<p>Returns an empty array (placeholder for compatibility).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>always returns an empty array</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+198
+199
+200</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 198</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_history'>history</span>
+  <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="insert-instance_method">
+  
+    #<strong>insert</strong>(index, *objects)  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Inserts elements at the given index and trims the front if it exceeds max_size.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>index</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the insertion point</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>objects</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one or more elements to insert</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+157
+158
+159</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 157</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_insert'>insert</span><span class='lparen'>(</span><span class='id identifier rubyid_index'>index</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_objects'>objects</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:insert</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_objects'>objects</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="max_size-instance_method">
+  
+    #<strong>max_size</strong>  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the maximum number of elements this array will hold.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the size limit</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+77
+78
+79</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 77</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_max_size'>max_size</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@max_size</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="max_size=-instance_method">
+  
+    #<strong>max_size=</strong>(value)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Sets the maximum number of elements, trimming the front if necessary.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new size limit, must be positive</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new max_size</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if value is not a positive Integer</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 86</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_max_size='>max_size=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>max_size must be a positive Integer</span><span class='tstring_end'>&#39;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='ivar'>@max_size</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
+    <span class='id identifier rubyid_trim_front_locked'>trim_front_locked</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="push-instance_method">
+  
+    #<strong>push</strong>(*lines)  &#x21d2; <tt>self</tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='<<-instance_method'>&lt;&lt;</span>, <span id='append-instance_method'>append</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Appends elements to the end of the array and trims the front if it exceeds max_size.</p>
+<p>Broadcasts to any threads waiting in <span class='object_link'><a href="#wait_shift-instance_method" title="Lich::Common::LimitedArray#wait_shift (method)">#wait_shift</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_buf'>buf</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::LimitedArray (class)">LimitedArray</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::LimitedArray#initialize (method)">new</a></span></span>
+<span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>line 1</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>line 2</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>lines</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one or more elements to append</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+106
+107
+108
+109
+110
+111
+112
+113</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 106</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_lines'>lines</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#RAW_PUSH-constant" title="Lich::Common::LimitedArray::RAW_PUSH (constant)">RAW_PUSH</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_lines'>lines</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_trim_front_locked'>trim_front_locked</span>
+    <span class='id identifier rubyid_condition'>condition</span><span class='period'>.</span><span class='id identifier rubyid_broadcast'>broadcast</span> <span class='kw'>unless</span> <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="replace-instance_method">
+  
+    #<strong>replace</strong>(other)  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Replaces the entire array contents and trims the front if it exceeds max_size.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the replacement contents</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+148
+149
+150</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 148</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_replace'>replace</span><span class='lparen'>(</span><span class='id identifier rubyid_other'>other</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_bounded_mutation'>bounded_mutation</span><span class='lparen'>(</span><span class='symbol'>:replace</span><span class='comma'>,</span> <span class='id identifier rubyid_other'>other</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="shift-instance_method">
+  
+    #<strong>shift</strong>(*args)  &#x21d2; <tt>Object</tt>, ... 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Removes and returns the first element(s) from the front of the array.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>args</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>optional count of elements to remove</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>, <tt>Array</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the removed element(s), or nil if empty</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+206
+207
+208</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 206</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_shift'>shift</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="#RAW_SHIFT-constant" title="Lich::Common::LimitedArray::RAW_SHIFT (constant)">RAW_SHIFT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="shove-instance_method">
+  
+    #<strong>shove</strong>(line)  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Appends an element to the end of the array (alias for push).</p>
 
   </div>
 </div>
@@ -558,7 +2104,7 @@ automatically removing the oldest elements when the limit is reached.</p>
       
       
         &mdash;
-        <div class='inline'><p>the element to add to the array</p></div>
+        <div class='inline'><p>the element to append</p></div>
       
     </li>
   
@@ -570,12 +2116,9 @@ automatically removing the oldest elements when the limit is reached.</p>
     <li>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt>self</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the element that was added</p></div>
       
     </li>
   
@@ -587,15 +2130,229 @@ automatically removing the oldest elements when the limit is reached.</p>
       <pre class="lines">
 
 
-34
-35
-36</pre>
+190
+191
+192</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 34</span>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 190</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_shove'>shove</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="try_shift-instance_method">
+  
+    #<strong>try_shift</strong>  &#x21d2; <tt>Object</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Removes and returns the first element, or nil if the array is empty (non-blocking).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the removed element or nil</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+248
+249
+250
+251
+252
+253
+254</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 248</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_try_shift'>try_shift</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#RAW_EMPTY-constant" title="Lich::Common::LimitedArray::RAW_EMPTY (constant)">RAW_EMPTY</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+
+    <span class='const'><span class='object_link'><a href="#RAW_SHIFT-constant" title="Lich::Common::LimitedArray::RAW_SHIFT (constant)">RAW_SHIFT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="unshift-instance_method">
+  
+    #<strong>unshift</strong>(*lines)  &#x21d2; <tt>self</tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='prepend-instance_method'>prepend</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Prepends elements to the beginning of the array and trims the back if it exceeds max_size.</p>
+<p>Broadcasts to any threads waiting in <span class='object_link'><a href="#wait_shift-instance_method" title="Lich::Common::LimitedArray#wait_shift (method)">#wait_shift</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_buf'>buf</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::LimitedArray (class)">LimitedArray</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::LimitedArray#initialize (method)">new</a></span></span>
+<span class='id identifier rubyid_buf'>buf</span><span class='period'>.</span><span class='id identifier rubyid_unshift'>unshift</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>first</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>second</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>lines</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one or more elements to prepend</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+126
+127
+128
+129
+130
+131
+132
+133</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 126</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_unshift'>unshift</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_lines'>lines</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#RAW_UNSHIFT-constant" title="Lich::Common::LimitedArray::RAW_UNSHIFT (constant)">RAW_UNSHIFT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_lines'>lines</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="#RAW_POP-constant" title="Lich::Common::LimitedArray::RAW_POP (constant)">RAW_POP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span> <span class='kw'>while</span> <span class='const'><span class='object_link'><a href="#RAW_LENGTH-constant" title="Lich::Common::LimitedArray::RAW_LENGTH (constant)">RAW_LENGTH</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span> <span class='op'>&gt;</span> <span class='ivar'>@max_size</span>
+    <span class='id identifier rubyid_condition'>condition</span><span class='period'>.</span><span class='id identifier rubyid_broadcast'>broadcast</span> <span class='kw'>unless</span> <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="wait_shift-instance_method">
+  
+    #<strong>wait_shift</strong>(timeout = nil)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Wait for and remove the next item, returning nil when timeout expires.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/limitedarray.rb', line 232</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_wait_shift'>wait_shift</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_mutex'>mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_deadline'>deadline</span> <span class='op'>=</span> <span class='id identifier rubyid_monotonic_time'>monotonic_time</span> <span class='op'>+</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span> <span class='kw'>if</span> <span class='id identifier rubyid_timeout'>timeout</span>
+    <span class='kw'>while</span> <span class='const'><span class='object_link'><a href="#RAW_EMPTY-constant" title="Lich::Common::LimitedArray::RAW_EMPTY (constant)">RAW_EMPTY</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>=</span> <span class='id identifier rubyid_deadline'>deadline</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_deadline'>deadline</span> <span class='op'>-</span> <span class='id identifier rubyid_monotonic_time'>monotonic_time</span>
+      <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
+
+      <span class='id identifier rubyid_condition'>condition</span><span class='period'>.</span><span class='id identifier rubyid_wait'>wait</span><span class='lparen'>(</span><span class='id identifier rubyid_mutex'>mutex</span><span class='comma'>,</span> <span class='id identifier rubyid_remaining'>remaining</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='const'><span class='object_link'><a href="#RAW_SHIFT-constant" title="Lich::Common::LimitedArray::RAW_SHIFT (constant)">RAW_SHIFT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bind_call'>bind_call</span><span class='lparen'>(</span><span class='kw'>self</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -607,7 +2364,7 @@ automatically removing the oldest elements when the limit is reached.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:28 2026 by
+  Generated on Wed Aug 26 16:50:51 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

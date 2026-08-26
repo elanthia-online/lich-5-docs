@@ -90,23 +90,38 @@
   <div class="discussion">
     <p>Combat tracking system</p>
 <p>Main interface for the combat tracking system. Integrates with Lich's
-Combat tracking system</p>
-<p>Main interface for the combat tracking system. Integrates with Lich's
-game processing to track various combat-related events.</p>
+downstream hooks to process game output and track combat events.</p>
+<p>Features:</p>
+<ul>
+<li>Damage tracking and HP estimation</li>
+<li>Wound/injury tracking by body part</li>
+<li>Status effect tracking with auto-expiration</li>
+<li>UCS (Unarmed Combat System) support</li>
+<li>Async processing for performance</li>
+<li>Automatic creature registry cleanup</li>
+</ul>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Enable tracking</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Tracker</span><span class='period'>.</span><span class='id identifier rubyid_enable!'><span class='object_link'><a href="#enable!-class_method" title="Lich::Gemstone::Combat::Tracker.enable! (method)">enable!</a></span></span>
+<span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Tracker</span><span class='period'>.</span><span class='id identifier rubyid_configure'><span class='object_link'><a href="#configure-class_method" title="Lich::Gemstone::Combat::Tracker.configure (method)">configure</a></span></span><span class='lparen'>(</span><span class='label'>track_wounds:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>track_statuses:</span> <span class='kw'>true</span><span class='rparen'>)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Get statistics</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_stats'>stats</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Tracker</span><span class='period'>.</span><span class='id identifier rubyid_stats'><span class='object_link'><a href="#stats-class_method" title="Lich::Gemstone::Combat::Tracker.stats (method)">stats</a></span></span>
+<span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Active threads: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_stats'>stats</span><span class='lbracket'>[</span><span class='symbol'>:active</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span></code></pre>
+    
+  </div>
 
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="Processor.html" title="Lich::Gemstone::Combat::Processor (module)">Processor</a></span></li>
-    
-      <li><span class='object_link'><a href="AsyncProcessor.html" title="Lich::Gemstone::Combat::AsyncProcessor (class)">AsyncProcessor</a></span></li>
-    
-  </ul>
 
 </div>
   
@@ -120,24 +135,12 @@ game processing to track various combat-related events.</p>
         <dt id="DEFAULT_SETTINGS-constant" class="">DEFAULT_SETTINGS =
           <div class="docstring">
   <div class="discussion">
-    <p>Default settings for combat tracking
-Default settings for combat tracking</p>
+    <p>Default settings for combat tracking</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Default settings</p></div></h5>
-      
-      <pre class="example code"><code><span class='const'>DEFAULT_SETTINGS</span><span class='lbracket'>[</span><span class='symbol'>:enabled</span><span class='rbracket'>]</span> <span class='comment'># =&gt; false
-</span><span class='const'>DEFAULT_SETTINGS</span><span class='lbracket'>[</span><span class='symbol'>:track_damage</span><span class='rbracket'>]</span> <span class='comment'># =&gt; true</span></code></pre>
-    
-  </div>
-
 
 </div>
         </dt>
@@ -154,6 +157,63 @@ Default settings for combat tracking</p>
 </span>  <span class='label'>cleanup_interval:</span> <span class='int'>100</span><span class='comma'>,</span>    <span class='comment'># Cleanup creature registry every N chunks
 </span>  <span class='label'>cleanup_max_age:</span> <span class='int'>600</span>      <span class='comment'># Remove creatures older than N seconds (10 minutes)
 </span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="COMBAT_RELEVANT_PATTERN-constant" class="">COMBAT_RELEVANT_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Single compiled filter for combat-relevant content. One regex scan
+replaces ~11 include? calls plus a regex per line; alternation of
+literals compiles to an efficient multi-substring search.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>points of damage</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>              <span class='comment'># Creatures
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>**</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>                       <span class='comment'># Flares
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>AS:</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>                      <span class='comment'># Attack rolls
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>swing</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>thrust</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>cast</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gesture</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>positioning against</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>      <span class='comment'># UCS position
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>vulnerable to a followup</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='comment'># UCS tierup
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>crimson mist</span><span class='tstring_end'>&#39;</span></span>              <span class='comment'># UCS smite
+</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="COMBAT_RESOLUTION_PATTERN-constant" class="">COMBAT_RESOLUTION_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Regex pattern matching combat resolution outcomes: hit, miss, parry, block, dodge.</p>
+<p>Case-insensitive word-boundary match used to identify combat resolution lines in game output.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>A matching line from game output</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You hit the ogre!</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>or</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The troll parries your attack.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+    
+  </div>
+
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#COMBAT_RELEVANT_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RELEVANT_PATTERN (constant)">COMBAT_RELEVANT_PATTERN</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b(?:hit|miss|parr|block|dodge)\b</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -248,7 +308,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Determines if a line of text is relevant to combat.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if line contains combat-relevant content.</p></div></span>
   
 </li>
 
@@ -270,7 +330,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Configures the combat tracker with new settings.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Update tracker settings.</p></div></span>
   
 </li>
 
@@ -292,7 +352,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if debug mode is enabled.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if debug mode is enabled.</p></div></span>
   
 </li>
 
@@ -314,7 +374,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Disables combat tracking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Disable combat tracking.</p></div></span>
   
 </li>
 
@@ -336,7 +396,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Disables debug mode for combat tracking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Disable debug logging.</p></div></span>
   
 </li>
 
@@ -358,7 +418,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Enables combat tracking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Enable combat tracking.</p></div></span>
   
 </li>
 
@@ -380,7 +440,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Enables debug mode for combat tracking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Enable debug logging.</p></div></span>
   
 </li>
 
@@ -402,7 +462,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if combat tracking is enabled.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if combat tracking is enabled.</p></div></span>
   
 </li>
 
@@ -424,7 +484,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the fallback maximum HP value.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Retrieves the fallback maximum HP value used for creatures without template data.</p></div></span>
   
 </li>
 
@@ -446,7 +506,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes a chunk of combat data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Process a chunk of game lines.</p></div></span>
   
 </li>
 
@@ -468,7 +528,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the fallback maximum HP value.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set fallback HP value for creatures without templates.</p></div></span>
   
 </li>
 
@@ -490,7 +550,7 @@ Default settings for combat tracking</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the current statistics of the combat tracker.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get processing statistics.</p></div></span>
   
 </li>
 
@@ -529,12 +589,12 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-58
-59
-60</pre>
+64
+65
+66</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 58</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 64</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_buffer'>buffer</span>
   <span class='ivar'>@buffer</span>
@@ -570,12 +630,12 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-58
-59
-60</pre>
+64
+65
+66</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 58</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 64</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_settings'>settings</span>
   <span class='ivar'>@settings</span>
@@ -603,7 +663,8 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Determines if a line of text is relevant to combat.</p>
+    <p>Check if line contains combat-relevant content</p>
+<p>Quick filter to avoid processing non-combat lines.</p>
 
   </div>
 </div>
@@ -621,7 +682,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>the line of text to check</p></div>
+        <div class='inline'><p>Game line to check</p></div>
       
     </li>
   
@@ -638,7 +699,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the line is combat relevant, false otherwise</p></div>
+        <div class='inline'><p>true if line may contain combat events</p></div>
       
     </li>
   
@@ -650,37 +711,15 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180
-181
-182</pre>
+215
+216
+217</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 169</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 215</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_combat_relevant?'>combat_relevant?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>swing</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
-    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>thrust</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
-    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>cast</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
-    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gesture</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
-    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>points of damage</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
-    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>**</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># Flares
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># Creatures
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>AS:</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># Attack rolls
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>positioning against</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># UCS position
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>vulnerable to a followup</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># UCS tierup
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>crimson mist</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='comment'># UCS smite
-</span>    <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b(?:hit|miss|parr|block|dodge)\b</span><span class='regexp_end'>/i</span></span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#COMBAT_RELEVANT_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RELEVANT_PATTERN (constant)">COMBAT_RELEVANT_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="#COMBAT_RESOLUTION_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RESOLUTION_PATTERN (constant)">COMBAT_RESOLUTION_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -698,7 +737,9 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Configures the combat tracker with new settings.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Update tracker settings</p>
+<p>Merges new settings with existing ones and persists to Lich settings.
+Reinitializes processor if thread count changes.</p>
 
   </div>
 </div>
@@ -718,11 +759,97 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>the new settings to apply</p></div>
+        <div class='inline'><p>Settings to update</p></div>
       
     </li>
   
 </ul>
+
+  
+    
+    
+    <p class="tag_title">Options Hash (<tt>new_settings</tt>):</p>
+    <ul class="option">
+      
+        <li>
+          <span class="name">:enabled</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Enable/disable tracking</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:track_damage</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Track damage</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:track_wounds</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Track wounds/injuries</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:track_statuses</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Track status effects</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:track_ucs</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Track UCS data</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:max_threads</span>
+          <span class="type">(<tt>Integer</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Thread pool size</p></div>
+          
+        </li>
+      
+        <li>
+          <span class="name">:debug</span>
+          <span class="type">(<tt>Boolean</tt>)</span>
+          <span class="default">
+            
+          </span>
+          
+            &mdash; <div class='inline'><p>Enable debug logging</p></div>
+          
+        </li>
+      
+    </ul>
+  
 
 
 </div><table class="source_code">
@@ -731,24 +858,24 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-188
-189
-190
-191
-192
-193
-194
-195
-196
-197
-198
-199
-200
-201
-202</pre>
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 188</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 233</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='id identifier rubyid_new_settings'>new_settings</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
@@ -781,7 +908,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if debug mode is enabled.</p>
+    <p>Check if debug mode is enabled</p>
 
   </div>
 </div>
@@ -798,7 +925,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>true if debug mode is enabled, false otherwise</p></div>
+        <div class='inline'><p>true if debug logging is active</p></div>
       
     </li>
   
@@ -810,12 +937,12 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-103
-104
-105</pre>
+121
+122
+123</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 103</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 121</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_debug?'>debug?</span>
   <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:debug</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='gvar'>$combat_debug</span>
@@ -836,7 +963,8 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Disables combat tracking.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Disable combat tracking</p>
+<p>Shuts down the processor, removes hooks, and persists disabled state.</p>
 
   </div>
 </div>
@@ -849,21 +977,21 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98</pre>
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 87</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 105</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_disable!'>disable!</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@enabled</span>
@@ -893,7 +1021,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Disables debug mode for combat tracking.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Disable debug logging</p>
 
   </div>
 </div>
@@ -906,13 +1034,13 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-118
-119
-120
-121</pre>
+136
+137
+138
+139</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 118</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 136</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_disable_debug!'>disable_debug!</span>
   <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='kw'>false</span><span class='rparen'>)</span>
@@ -934,7 +1062,9 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Enables combat tracking.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Enable combat tracking</p>
+<p>Initializes the processor, loads settings, and adds downstream hook.
+Persists enabled state to DB.</p>
 
   </div>
 </div>
@@ -947,21 +1077,21 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82</pre>
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 87</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enable!'>enable!</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@enabled</span>
@@ -991,7 +1121,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Enables debug mode for combat tracking.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Enable debug logging</p>
 
   </div>
 </div>
@@ -1004,13 +1134,13 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-110
-111
-112
-113</pre>
+128
+129
+130
+131</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 110</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 128</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enable_debug!'>enable_debug!</span>
   <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>enabled:</span> <span class='kw'>true</span><span class='rparen'>)</span>
@@ -1032,7 +1162,8 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if combat tracking is enabled.</p>
+    <p>Check if combat tracking is enabled</p>
+<p>Lazily initializes on first check if not already initialized.</p>
 
   </div>
 </div>
@@ -1049,7 +1180,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>true if combat tracking is enabled, false otherwise</p></div>
+        <div class='inline'><p>true if tracking is active</p></div>
       
     </li>
   
@@ -1061,15 +1192,25 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-63
-64
-65
-66</pre>
+71
+72
+73
+74
+75
+76
+77
+78
+79</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 63</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 71</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
+  <span class='comment'># Before login data is available we can&#39;t load per-character
+</span>  <span class='comment'># settings; report disabled instead of sleeping on the caller&#39;s
+</span>  <span class='comment'># thread (the background init thread completes setup once ready).
+</span>  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span> <span class='op'>||</span> <span class='id identifier rubyid_xmldata_ready?'>xmldata_ready?</span>
+
   <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
   <span class='ivar'>@enabled</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:enabled</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
@@ -1089,7 +1230,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the fallback maximum HP value.</p>
+    <p>Retrieves the fallback maximum HP value used for creatures without template data.</p>
 
   </div>
 </div>
@@ -1106,7 +1247,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>the fallback maximum HP value</p></div>
+        <div class='inline'><p>the configured fallback max HP (default 350)</p></div>
       
     </li>
   
@@ -1118,13 +1259,13 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-135
-136
-137
-138</pre>
+153
+154
+155
+156</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 135</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 153</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fallback_hp'>fallback_hp</span>
   <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
@@ -1146,7 +1287,9 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Processes a chunk of combat data.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Process a chunk of game lines</p>
+<p>Filters for combat-relevant lines and processes them.
+Triggers periodic cleanup of old creature instances.</p>
 
   </div>
 </div>
@@ -1164,7 +1307,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>the chunk of combat data to process</p></div>
+        <div class='inline'><p>Game lines to process</p></div>
       
     </li>
   
@@ -1177,29 +1320,29 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163</pre>
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 144</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 165</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_process'>process</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1208,7 +1351,7 @@ Default settings for combat tracking</p>
   <span class='comment'># Quick filter - only process if combat-related content present
 </span>  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_chunk'>chunk</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_line'>line</span><span class='op'>|</span> <span class='id identifier rubyid_combat_relevant?'>combat_relevant?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
 
-  <span class='kw'>if</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:max_threads</span><span class='rbracket'>]</span> <span class='op'>&gt;</span> <span class='int'>1</span>
+  <span class='kw'>if</span> <span class='ivar'>@async_processor</span>
     <span class='ivar'>@async_processor</span><span class='period'>.</span><span class='id identifier rubyid_process_async'>process_async</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
   <span class='kw'>else</span>
     <span class='const'><span class='object_link'><a href="Processor.html" title="Lich::Gemstone::Combat::Processor (module)">Processor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_process'><span class='object_link'><a href="Processor.html#process-class_method" title="Lich::Gemstone::Combat::Processor.process (method)">process</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
@@ -1237,7 +1380,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the fallback maximum HP value.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Set fallback HP value for creatures without templates</p>
 
   </div>
 </div>
@@ -1255,7 +1398,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>the fallback maximum HP value</p></div>
+        <div class='inline'><p>Default max HP value</p></div>
       
     </li>
   
@@ -1268,13 +1411,13 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-127
-128
-129
-130</pre>
+145
+146
+147
+148</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 127</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 145</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_fallback_hp'>set_fallback_hp</span><span class='lparen'>(</span><span class='id identifier rubyid_hp_value'>hp_value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>fallback_max_hp:</span> <span class='id identifier rubyid_hp_value'>hp_value</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
@@ -1296,7 +1439,7 @@ Default settings for combat tracking</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the current statistics of the combat tracker.</p>
+    <p>Get processing statistics</p>
 
   </div>
 </div>
@@ -1313,7 +1456,7 @@ Default settings for combat tracking</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash containing the current stats</p></div>
+        <div class='inline'><p>Stats including :enabled, :buffer_size, :settings, :active, :total</p></div>
       
     </li>
   
@@ -1325,24 +1468,24 @@ Default settings for combat tracking</p>
       <pre class="lines">
 
 
-207
-208
-209
-210
-211
-212
-213
-214
-215
-216
-217
-218
-219
-220
-221</pre>
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 207</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 252</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stats'>stats</span>
   <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>enabled:</span> <span class='kw'>false</span> <span class='rbrace'>}</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1369,7 +1512,7 @@ Default settings for combat tracking</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:17 2026 by
+  Generated on Wed Aug 26 16:50:37 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

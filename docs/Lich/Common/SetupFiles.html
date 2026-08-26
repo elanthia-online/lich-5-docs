@@ -109,20 +109,38 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Manages YAML configuration file loading, caching, and cascading merge for lich scripts.</p>
-<p>Supports:</p>
-<ul>
-<li>Base YAML files (base.yaml, base-empty.yaml)</li>
-<li>Character-specific YAML files (character-setup.yaml)</li>
-<li>Include files with recursive resolution and circular dependency protection</li>
-<li>Automatic caching with modification-time checking</li>
-<li>Deep-clone protection against in-memory mutation</li>
-</ul>
+    <p>Loads, caches, and merges YAML configuration files for Lich scripts.</p>
+<p>SetupFiles manages a cascading merge of base, character-specific, and included
+configuration files. It handles recursive include resolution with circular
+dependency protection, automatic caching with modification-time checking, and
+deep-clone protection to prevent in-memory mutations from affecting cached data.</p>
+<p>Files are merged in this order: base.yaml, base-empty.yaml, resolved includes,
+then character-specific profiles. Keys listed in a file's <code>union_keys</code> property
+are merged as array unions instead of overwrites, allowing multiple files to
+contribute to shared lists.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Load character settings with a custom profile suffix</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_setup'>setup</span> <span class='op'>=</span> <span class='const'>SetupFiles</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::SetupFiles#initialize (method)">new</a></span></span>
+<span class='id identifier rubyid_settings'>settings</span> <span class='op'>=</span> <span class='id identifier rubyid_setup'>setup</span><span class='period'>.</span><span class='id identifier rubyid_get_settings'>get_settings</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_suffix</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_puts'>puts</span> <span class='id identifier rubyid_settings'>settings</span><span class='period'>.</span><span class='id identifier rubyid_some_key'>some_key</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Load game data</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_setup'>setup</span> <span class='op'>=</span> <span class='const'>SetupFiles</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::SetupFiles#initialize (method)">new</a></span></span>
+<span class='id identifier rubyid_spells'>spells</span> <span class='op'>=</span> <span class='id identifier rubyid_setup'>setup</span><span class='period'>.</span><span class='id identifier rubyid_get_data'>get_data</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>spells</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
@@ -173,7 +191,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves data for a specified type from the base YAML file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the config in a 'scripts/data/base-type.yaml' file.</p></div></span>
   
 </li>
 
@@ -181,7 +199,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#get_settings-instance_method" title="#get_settings (instance method)">#<strong>get_settings</strong>(character_suffixes = [])  &#x21d2; Hash </a>
+      <a href="#get_settings-instance_method" title="#get_settings (instance method)">#<strong>get_settings</strong>(character_suffixes = [])  &#x21d2; OpenStruct </a>
     
 
     
@@ -195,7 +213,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves settings for the specified character suffixes.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns your character's settings.</p></div></span>
   
 </li>
 
@@ -203,7 +221,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(debug = false)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(debug = false)  &#x21d2; SetupFiles </a>
     
 
     
@@ -219,7 +237,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new SetupFiles instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a SetupFiles instance.</p></div></span>
   
 </li>
 
@@ -227,7 +245,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reload-instance_method" title="#reload (instance method)">#<strong>reload</strong>  &#x21d2; void </a>
+      <a href="#reload-instance_method" title="#reload (instance method)">#<strong>reload</strong>  &#x21d2; Object </a>
     
 
     
@@ -241,7 +259,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Reloads the profiles and data for the SetupFiles instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reloads cached files that have changed on disk.</p></div></span>
   
 </li>
 
@@ -260,10 +278,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Safely loads a YAML file and returns its contents as a hash.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads a YAML file safely, converting it to a Hash via OpenStruct.</p></div></span>
   
 </li>
 
@@ -279,7 +297,7 @@
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(debug = false)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(debug = false)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::SetupFiles (class)">SetupFiles</a></span></tt> 
   
 
   
@@ -287,7 +305,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new SetupFiles instance.</p>
+    <p>Initializes a SetupFiles instance.</p>
 
   </div>
 </div>
@@ -307,7 +325,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether to enable debug logging</p></div>
+        <div class='inline'><p>if true, logs detailed cache operations to the debug stream; defaults to false</p></div>
       
     </li>
   
@@ -320,14 +338,14 @@
       <pre class="lines">
 
 
-69
-70
-71
-72
-73</pre>
+103
+104
+105
+106
+107</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 69</span>
+      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 103</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_debug'><span class='object_link'><a href="../../top-level-namespace.html#debug-instance_method" title="#debug (method)">debug</a></span></span> <span class='op'>=</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='kw'>super</span><span class='lparen'>(</span><span class='rparen'>)</span>
@@ -357,7 +375,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves data for a specified type from the base YAML file.</p>
+    <p>Returns the config in a 'scripts/data/base-type.yaml' file.</p>
 
   </div>
 </div>
@@ -375,7 +393,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the type of data to retrieve</p></div>
+        <div class='inline'><p>the data file type (e.g. 'spells', 'town')</p></div>
       
     </li>
   
@@ -392,7 +410,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the data loaded from the YAML file</p></div>
+        <div class='inline'><p>data from base-type.yaml</p></div>
       
     </li>
   
@@ -404,14 +422,14 @@
       <pre class="lines">
 
 
-133
-134
-135
-136
-137</pre>
+171
+172
+173
+174
+175</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 133</span>
+      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 171</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_data'><span class='object_link'><a href="../../top-level-namespace.html#get_data-instance_method" title="#get_data (method)">get_data</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_filename'>filename</span> <span class='op'>=</span> <span class='id identifier rubyid_to_base_filename'>to_base_filename</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='rparen'>)</span>
@@ -426,7 +444,7 @@
       <div class="method_details ">
   <h3 class="signature " id="get_settings-instance_method">
   
-    #<strong>get_settings</strong>(character_suffixes = [])  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+    #<strong>get_settings</strong>(character_suffixes = [])  &#x21d2; <tt>OpenStruct</tt> 
   
 
   
@@ -434,7 +452,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves settings for the specified character suffixes.</p>
+    <p>Returns your character's settings.</p>
 
   </div>
 </div>
@@ -454,7 +472,7 @@
       
       
         &mdash;
-        <div class='inline'><p>an array of character suffixes to include</p></div>
+        <div class='inline'><p>additional profile suffixes to load</p></div>
       
     </li>
   
@@ -466,12 +484,12 @@
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt>OpenStruct</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the merged settings from all relevant YAML files</p></div>
+        <div class='inline'><p>merged and transformed settings</p></div>
       
     </li>
   
@@ -483,45 +501,45 @@
       <pre class="lines">
 
 
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127</pre>
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 92</span>
+      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 130</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_settings'><span class='object_link'><a href="../../top-level-namespace.html#get_settings-instance_method" title="#get_settings (method)">get_settings</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_character_suffixes'>character_suffixes</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_character_suffixes'>character_suffixes</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>setup</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_character_suffixes'>character_suffixes</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_uniq'>uniq</span>
@@ -567,7 +585,7 @@
       <div class="method_details ">
   <h3 class="signature " id="reload-instance_method">
   
-    #<strong>reload</strong>  &#x21d2; <tt>void</tt> 
+    #<strong>reload</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -575,7 +593,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Reloads the profiles and data for the SetupFiles instance.</p>
+    <p>Reloads cached files that have changed on disk.</p>
 
   </div>
 </div>
@@ -588,13 +606,13 @@
       <pre class="lines">
 
 
-141
-142
-143
-144</pre>
+178
+179
+180
+181</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 141</span>
+      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 178</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reload'>reload</span>
   <span class='id identifier rubyid_reload_profiles'>reload_profiles</span><span class='lparen'>(</span><span class='id identifier rubyid_character_suffixes_to_filenames'>character_suffixes_to_filenames</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>setup</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -616,7 +634,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Safely loads a YAML file and returns its contents as a hash.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Loads a YAML file safely, converting it to a Hash via OpenStruct.</p>
+<p>Silently catches and logs parsing errors, returning an empty Hash on failure.
+This method is tolerant of YAML errors that occur during script initialization,
+before full error reporting is available.</p>
 
   </div>
 </div>
@@ -634,7 +659,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the path to the YAML file</p></div>
+        <div class='inline'><p>path to the YAML file</p></div>
       
     </li>
   
@@ -651,23 +676,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the parsed YAML data</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if there is an error parsing the YAML file</p></div>
+        <div class='inline'><p>parsed YAML as a Hash, or {} on parse error</p></div>
       
     </li>
   
@@ -679,16 +688,16 @@
       <pre class="lines">
 
 
-80
-81
-82
-83
-84
-85
-86</pre>
+118
+119
+120
+121
+122
+123
+124</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 80</span>
+      <pre class="code"><span class="info file"># File 'documented/common/setup_files.rb', line 118</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_safe_load_yaml'>safe_load_yaml</span><span class='lparen'>(</span><span class='id identifier rubyid_filepath'>filepath</span><span class='rparen'>)</span>
   <span class='const'>OpenStruct</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'>YAML</span><span class='period'>.</span><span class='id identifier rubyid_unsafe_load_file'>unsafe_load_file</span><span class='lparen'>(</span><span class='id identifier rubyid_filepath'>filepath</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span>
@@ -707,7 +716,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:27 2026 by
+  Generated on Wed Aug 26 16:50:51 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

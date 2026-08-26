@@ -86,7 +86,23 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Thread-safe circular buffer for game server output and script input streams.</p>
+<p>Buffer maintains a fixed-size ring of lines, each tagged with a stream identifier
+that indicates the source (game server downstream output, upstream commands, script
+output, etc.). Each thread maintains its own read cursor and stream filter, allowing
+independent consumption of the shared buffer while preserving thread safety via mutex.</p>
+<p>Threads are registered automatically on their first call to .gets, .gets?, .rewind,
+or .clear; stale entries are cleaned up automatically via throttled sweeps to prevent
+unbounded memory growth in long-running sessions.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
   
     <h2>
       Constant Summary
@@ -96,113 +112,32 @@
     <dl class="constants">
       
         <dt id="DOWNSTREAM_STRIPPED-constant" class="">DOWNSTREAM_STRIPPED =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the downstream stripped mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_RAW-constant" title="Lich::Common::Buffer::DOWNSTREAM_RAW (constant)">DOWNSTREAM_RAW</a></span></li>
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_MOD-constant" title="Lich::Common::Buffer::DOWNSTREAM_MOD (constant)">DOWNSTREAM_MOD</a></span></li>
-    
-  </ul>
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>1</span></pre></dd>
       
         <dt id="DOWNSTREAM_RAW-constant" class="">DOWNSTREAM_RAW =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the downstream raw mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></li>
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_MOD-constant" title="Lich::Common::Buffer::DOWNSTREAM_MOD (constant)">DOWNSTREAM_MOD</a></span></li>
-    
-  </ul>
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>2</span></pre></dd>
       
         <dt id="DOWNSTREAM_MOD-constant" class="">DOWNSTREAM_MOD =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the downstream modified mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></li>
-    
-      <li><span class='object_link'><a href="#DOWNSTREAM_RAW-constant" title="Lich::Common::Buffer::DOWNSTREAM_RAW (constant)">DOWNSTREAM_RAW</a></span></li>
-    
-  </ul>
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>4</span></pre></dd>
       
         <dt id="UPSTREAM-constant" class="">UPSTREAM =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the upstream mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>8</span></pre></dd>
       
         <dt id="UPSTREAM_MOD-constant" class="">UPSTREAM_MOD =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the upstream modified mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>16</span></pre></dd>
       
         <dt id="SCRIPT_OUTPUT-constant" class="">SCRIPT_OUTPUT =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Represents the script output mode.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='int'>32</span></pre></dd>
       
@@ -236,6 +171,23 @@
         </dt>
         <dd><pre class="code"><span class='int'>3000</span></pre></dd>
       
+        <dt id="cleanup_throttle-classvariable" class="">@@cleanup_throttle =
+          <div class="docstring">
+  <div class="discussion">
+    <p>@@index / @@streams are keyed by Thread#object_id and were never pruned,
+so every thread that ever read the buffer leaked an entry that outlived
+it. maybe_cleanup sweeps dead-thread entries from the registration path,
+at most once every 60s via this throttle.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="Throttle.html" title="Lich::Common::Throttle (class)">Throttle</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="Throttle.html#initialize-instance_method" title="Lich::Common::Throttle#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='float'>60.0</span><span class='rparen'>)</span></pre></dd>
+      
     </dl>
   
 
@@ -250,7 +202,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:14 2026 by
+  Generated on Wed Aug 26 16:50:33 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

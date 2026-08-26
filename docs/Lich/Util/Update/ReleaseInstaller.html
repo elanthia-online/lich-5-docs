@@ -104,10 +104,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Handles the installation of Lich5 from GitHub releases.</p>
-<p>This class manages release announcements, downloads,
-Ruby compatibility checks, and file extraction.
-It delegates data/script updates to FileUpdater and backups to SnapshotManager.</p>
+    <p>Installs Lich5 from GitHub releases (stable and beta).</p>
+<p>Handles release announcements, tarball downloads, Ruby compatibility checks,
+and file extraction. Delegates to FileUpdater for data/script updates and
+SnapshotManager for backups.</p>
 
   </div>
 </div>
@@ -126,8 +126,14 @@ It delegates data/script updates to FileUpdater and backups to SnapshotManager.<
         <dt id="TOP_LEVEL_FILES-constant" class="">TOP_LEVEL_FILES =
           <div class="docstring">
   <div class="discussion">
-    <p>Top-level files (besides lib/ and lich.rbw) to copy from release archive.
-lich.rbw is handled separately due to its dynamic target name.</p>
+    <p>Top-level files (besides lib/ and lich.rbw) copied verbatim from the
+release/branch archive into LICH_DIR during a self-update. lich.rbw is
+handled separately due to its dynamic target name.</p>
+<p>Gemfile.lock travels alongside Gemfile so the resolved dependency set
+on disk stays consistent with the Gemfile after an update. Shipping a
+new Gemfile without its lock would leave a stale lock that a later
+<code>bundle install</code> (or any Bundler invocation) has to re-resolve.
+Entries absent from the archive are skipped (see #copy_top_level_files).</p>
 
   </div>
 </div>
@@ -136,7 +142,82 @@ lich.rbw is handled separately due to its dynamic target name.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>Gemfile</span><span class='words_sep'> </span><span class='tstring_content'>LICENSE</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>Gemfile</span><span class='words_sep'> </span><span class='tstring_content'>Gemfile.lock</span><span class='words_sep'> </span><span class='tstring_content'>LICENSE</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="REQUIRED_ARCHIVE_ITEMS-constant" class="">REQUIRED_ARCHIVE_ITEMS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Archive entries that must exist for an extracted download to count as a
+structurally valid Lich installation. Deliberately distinct from
+TOP_LEVEL_FILES so that optional payload (e.g. Gemfile.lock, which older
+release tarballs may omit) never gates an update.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>lib</span><span class='words_sep'> </span><span class='tstring_content'>lich.rbw</span><span class='words_sep'> </span><span class='tstring_content'>Gemfile</span><span class='words_sep'> </span><span class='tstring_content'>LICENSE</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="REQUIRED_RUBY_PATTERN-constant" class="">REQUIRED_RUBY_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches the REQUIRED_RUBY constant declaration in lib/version.rb.</p>
+<p>Captures the required Ruby version string (e.g., &quot;3.0.0&quot;).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># Matches lines like:
+</span><span class='comment'># REQUIRED_RUBY = &quot;3.0.0&quot;
+</span><span class='comment'># REQUIRED_RUBY = &#39;3.0.0&#39;</span></code></pre>
+    
+  </div>
+
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ruby_upgrade_required%3F-instance_method" title="Lich::Util::Update::ReleaseInstaller#ruby_upgrade_required? (method)">#ruby_upgrade_required?</a></span></li>
+    
+      <li><span class='object_link'><a href="#check_ruby_compatibility-instance_method" title="Lich::Util::Update::ReleaseInstaller#check_ruby_compatibility (method)">#check_ruby_compatibility</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>REQUIRED_RUBY\s*=\s*[&quot;&#39;]([^&quot;&#39;]+)[&quot;&#39;]</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="GEMSTONE_INSTALL_URL-constant" class="">GEMSTONE_INSTALL_URL =
+          <div class="docstring">
+  <div class="discussion">
+    <p>URL to GemStone IV Lich installation and upgrade documentation.</p>
+<p>Displayed when a Ruby upgrade is required before updating Lich.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#announce-instance_method" title="Lich::Util::Update::ReleaseInstaller#announce (method)">#announce</a></span></li>
+    
+      <li><span class='object_link'><a href="#check_ruby_compatibility-instance_method" title="Lich::Util::Update::ReleaseInstaller#check_ruby_compatibility (method)">#check_ruby_compatibility</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>https://gswiki.play.net/Lich:Software/Installation</span><span class='tstring_end'>&#39;</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -172,7 +253,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Announces the availability of a new version of Lich5.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Displays announcement if new version available.</p></div></span>
   
 </li>
 
@@ -194,7 +275,29 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the Ruby version is compatible with the specified Lich version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if current Ruby meets minimum version requirement.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#copy_top_level_files-instance_method" title="#copy_top_level_files (instance method)">#<strong>copy_top_level_files</strong>(source_dir)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Copies each top-level file present in the extracted archive into LICH_DIR.</p></div></span>
   
 </li>
 
@@ -216,7 +319,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Downloads the release update for Lich5.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Downloads and installs latest stable release.</p></div></span>
   
 </li>
 
@@ -238,7 +341,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Extracts the Lich version from the specified version file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Extracts LICH_VERSION constant from version.rb file.</p></div></span>
   
 </li>
 
@@ -246,7 +349,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(client, resolver, snapshot_manager)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(client, resolver, snapshot_manager)  &#x21d2; ReleaseInstaller </a>
     
 
     
@@ -262,7 +365,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new ReleaseInstaller instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>A new instance of ReleaseInstaller.</p></div></span>
   
 </li>
 
@@ -284,7 +387,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Performs the update of Lich5 to the specified version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Copies lib files and lich.rbw from extracted source to install dirs.</p></div></span>
   
 </li>
 
@@ -306,7 +409,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Prepares for beta testing of the next Lich release.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Handles beta update requests (full install or individual file).</p></div></span>
   
 </li>
 
@@ -328,7 +431,29 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Prepares for an update by fetching the latest release information.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fetches latest stable release metadata from GitHub.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#ruby_upgrade_required%3F-instance_method" title="#ruby_upgrade_required? (instance method)">#<strong>ruby_upgrade_required?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Reads the target release's Ruby floor without downloading its archive.</p></div></span>
   
 </li>
 
@@ -350,7 +475,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Validates the structure of the Lich installation directory.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Validates the extracted directory contains every archive entry Lich requires to install safely.</p></div></span>
   
 </li>
 
@@ -365,7 +490,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(client, resolver, snapshot_manager)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(client, resolver, snapshot_manager)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Util::Update::ReleaseInstaller (class)">ReleaseInstaller</a></span></tt> 
   
 
   
@@ -373,7 +498,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new ReleaseInstaller instance.</p>
+    <p>Returns a new instance of ReleaseInstaller.</p>
 
   </div>
 </div>
@@ -386,12 +511,12 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <span class='name'>client</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="GitHubClient.html" title="Lich::Util::Update::GitHubClient (class)">GitHubClient</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the client used to interact with GitHub.</p></div>
+        <div class='inline'><p>GitHub API client instance</p></div>
       
     </li>
   
@@ -400,12 +525,12 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <span class='name'>resolver</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="ChannelResolver.html" title="Lich::Util::Update::ChannelResolver (class)">ChannelResolver</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the resolver for versioning.</p></div>
+        <div class='inline'><p>channel resolver instance</p></div>
       
     </li>
   
@@ -414,12 +539,12 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <span class='name'>snapshot_manager</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="SnapshotManager.html" title="Lich::Util::Update::SnapshotManager (class)">SnapshotManager</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the manager for snapshots.</p></div>
+        <div class='inline'><p>snapshot manager instance</p></div>
       
     </li>
   
@@ -432,19 +557,21 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41</pre>
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 32</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 70</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_client'>client</span><span class='comma'>,</span> <span class='id identifier rubyid_resolver'>resolver</span><span class='comma'>,</span> <span class='id identifier rubyid_snapshot_manager'>snapshot_manager</span><span class='rparen'>)</span>
   <span class='ivar'>@client</span> <span class='op'>=</span> <span class='id identifier rubyid_client'>client</span>
@@ -455,6 +582,8 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   <span class='ivar'>@holder</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@new_features</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@zipfile</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@release_tag</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@required_ruby</span> <span class='op'>=</span> <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -479,13 +608,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>This method checks the current version and compares it to the latest available version.</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Announces the availability of a new version of Lich5.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Displays announcement if new version available.</p>
 
   </div>
 </div>
@@ -498,37 +621,47 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70</pre>
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 46</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 86</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_announce'>announce</span>
   <span class='id identifier rubyid_prep_update'>prep_update</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@update_to</span>
+
   <span class='kw'>if</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_chr'>chr</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>5</span><span class='tstring_end'>&#39;</span></span>
     <span class='kw'>if</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='ivar'>@current</span><span class='rparen'>)</span> <span class='op'>&lt;</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='ivar'>@update_to</span><span class='rparen'>)</span>
       <span class='kw'>unless</span> <span class='ivar'>@new_features</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -540,7 +673,13 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='ivar'>@new_features</span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
-        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>If you are interested in updating, run &#39;</span><span class='embexpr_beg'>#{</span><span class='gvar'>$clean_lich_char</span><span class='embexpr_end'>}</span><span class='tstring_content'>lich5-update --update&#39; now.</span><span class='tstring_end'>&quot;</span></span>
+        <span class='kw'>if</span> <span class='id identifier rubyid_ruby_upgrade_required?'>ruby_upgrade_required?</span>
+          <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Lich version </span><span class='embexpr_beg'>#{</span><span class='ivar'>@update_to</span><span class='embexpr_end'>}</span><span class='tstring_content'> requires Ruby </span><span class='embexpr_beg'>#{</span><span class='ivar'>@required_ruby</span><span class='embexpr_end'>}</span><span class='tstring_content'> or higher.</span><span class='tstring_end'>&quot;</span></span>
+          <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Your current Ruby version is </span><span class='embexpr_beg'>#{</span><span class='const'>RUBY_VERSION</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span>
+          <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Upgrade Ruby before updating Lich: </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#GEMSTONE_INSTALL_URL-constant" title="Lich::Util::Update::ReleaseInstaller::GEMSTONE_INSTALL_URL (constant)">GEMSTONE_INSTALL_URL</a></span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+        <span class='kw'>else</span>
+          <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>If you are interested in updating, run &#39;</span><span class='embexpr_beg'>#{</span><span class='gvar'>$clean_lich_char</span><span class='embexpr_end'>}</span><span class='tstring_content'>lich5-update --update&#39; now.</span><span class='tstring_end'>&quot;</span></span>
+        <span class='kw'>end</span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
       <span class='kw'>end</span>
     <span class='kw'>else</span>
@@ -568,7 +707,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the Ruby version is compatible with the specified Lich version.</p>
+    <p>Checks if current Ruby meets minimum version requirement.</p>
 
   </div>
 </div>
@@ -586,7 +725,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the Lich version files.</p></div>
+        <div class='inline'><p>extracted tarball directory</p></div>
       
     </li>
   
@@ -600,7 +739,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the version of Lich to check compatibility for.</p></div>
+        <div class='inline'><p>version string</p></div>
       
     </li>
   
@@ -617,7 +756,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if compatible, false otherwise.</p></div>
+        <div class='inline'><p>true if compatible</p></div>
       
     </li>
   
@@ -629,40 +768,40 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-296
-297
-298
-299
-300
-301
-302
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320</pre>
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 296</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 377</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check_ruby_compatibility'>check_ruby_compatibility</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_version'>version</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_version_file_path'>version_file_path</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>version.rb</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_version_file_path'>version_file_path</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_version_file_content'>version_file_content</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_read'>read</span><span class='lparen'>(</span><span class='id identifier rubyid_version_file_path'>version_file_path</span><span class='rparen'>)</span>
-    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_version_file_content'>version_file_content</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>REQUIRED_RUBY\s*=\s*[&quot;&#39;]([^&quot;&#39;]+)[&quot;&#39;]</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_version_file_content'>version_file_content</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#REQUIRED_RUBY_PATTERN-constant" title="Lich::Util::Update::ReleaseInstaller::REQUIRED_RUBY_PATTERN (constant)">REQUIRED_RUBY_PATTERN</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
       <span class='id identifier rubyid_required_ruby_version'>required_ruby_version</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span>
       <span class='id identifier rubyid_current_ruby_version'>current_ruby_version</span> <span class='op'>=</span> <span class='const'>RUBY_VERSION</span>
       <span class='kw'>if</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_current_ruby_version'>current_ruby_version</span><span class='rparen'>)</span> <span class='op'>&lt;</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_required_ruby_version'>required_ruby_version</span><span class='rparen'>)</span>
@@ -675,13 +814,85 @@ lich.rbw is handled separately due to its dynamic target name.</p>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Please update your Ruby installation before updating Lich.</span><span class='tstring_end'>&quot;</span></span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DragonRealms - https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich</span><span class='tstring_end'>&quot;</span></span>
-        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Gemstone IV  - https://gswiki.play.net/Lich:Software/Installation</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Gemstone IV  - </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#GEMSTONE_INSTALL_URL-constant" title="Lich::Util::Update::ReleaseInstaller::GEMSTONE_INSTALL_URL (constant)">GEMSTONE_INSTALL_URL</a></span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
         <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
         <span class='kw'>return</span> <span class='kw'>false</span>
       <span class='kw'>end</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
   <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="copy_top_level_files-instance_method">
+  
+    #<strong>copy_top_level_files</strong>(source_dir)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Copies each top-level file present in the extracted archive into
+LICH_DIR. Files missing from the archive are skipped rather than
+treated as errors, so a partial archive (e.g. one without Gemfile.lock)
+updates cleanly instead of aborting.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>source_dir</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>extracted tarball directory</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+353
+354
+355
+356
+357
+358
+359
+360
+361</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 353</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_copy_top_level_files'>copy_top_level_files</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#TOP_LEVEL_FILES-constant" title="Lich::Util::Update::ReleaseInstaller::TOP_LEVEL_FILES (constant)">TOP_LEVEL_FILES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_filename'>filename</span><span class='op'>|</span>
+    <span class='id identifier rubyid_src'>src</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span>
+    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_src'>src</span><span class='rparen'>)</span>
+
+    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_src'>src</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LICH_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Updated </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_filename'>filename</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -699,28 +910,12 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Downloads the release update for Lich5.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Downloads and installs latest stable release.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the update cannot be performed.</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -728,63 +923,63 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-191
-192
-193
-194
-195
-196
-197
-198
-199
-200
-201
-202
-203
-204
-205
-206
-207
-208
-209
-210
-211
-212
-213
-214
-215
-216
-217
-218
-219
-220
-221
-222
-223
-224
-225
-226
-227
-228
-229
-230
-231
-232
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244</pre>
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 191</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 259</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_download_release_update'>download_release_update</span>
   <span class='id identifier rubyid_prep_update'>prep_update</span> <span class='kw'>if</span> <span class='ivar'>@update_to</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='ivar'>@update_to</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -856,7 +1051,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Extracts the Lich version from the specified version file.</p>
+    <p>Extracts LICH_VERSION constant from version.rb file.</p>
 
   </div>
 </div>
@@ -874,7 +1069,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the path to the version file.</p></div>
+        <div class='inline'><p>path to version.rb</p></div>
       
     </li>
   
@@ -891,7 +1086,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the extracted version or nil if not found.</p></div>
+        <div class='inline'><p>version string or nil</p></div>
       
     </li>
   
@@ -903,18 +1098,18 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-325
-326
-327
-328
-329
-330
-331
-332
-333</pre>
+407
+408
+409
+410
+411
+412
+413
+414
+415</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 325</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 407</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_extract_version_from_file'>extract_version_from_file</span><span class='lparen'>(</span><span class='id identifier rubyid_version_file_path'>version_file_path</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_version_file_path'>version_file_path</span><span class='rparen'>)</span>
@@ -941,7 +1136,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Performs the update of Lich5 to the specified version.</p>
+    <p>Copies lib files and lich.rbw from extracted source to install dirs.</p>
 
   </div>
 </div>
@@ -959,7 +1154,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the directory containing the new version files.</p></div>
+        <div class='inline'><p>extracted tarball directory</p></div>
       
     </li>
   
@@ -973,7 +1168,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the version to update to.</p></div>
+        <div class='inline'><p>version string</p></div>
       
     </li>
   
@@ -990,7 +1185,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the update was successful, false otherwise.</p></div>
+        <div class='inline'><p>true if update succeeded</p></div>
       
     </li>
   
@@ -1002,42 +1197,35 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282</pre>
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 250</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 319</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_perform_update'>perform_update</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_version'>version</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_validate_lich_structure'>validate_lich_structure</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='rparen'>)</span>
@@ -1055,14 +1243,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>All Lich lib files have been updated.</span><span class='tstring_end'>&quot;</span></span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
 
-  <span class='comment'># Copy top-level release files to LICH_DIR
-</span>  <span class='const'><span class='object_link'><a href="#TOP_LEVEL_FILES-constant" title="Lich::Util::Update::ReleaseInstaller::TOP_LEVEL_FILES (constant)">TOP_LEVEL_FILES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_filename'>filename</span><span class='op'>|</span>
-    <span class='id identifier rubyid_src'>src</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span>
-    <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_src'>src</span><span class='rparen'>)</span>
-      <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_src'>src</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LICH_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Updated </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_filename'>filename</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>end</span>
-  <span class='kw'>end</span>
+  <span class='id identifier rubyid_copy_top_level_files'>copy_top_level_files</span><span class='lparen'>(</span><span class='id identifier rubyid_source_dir'>source_dir</span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_file_updater'>file_updater</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="FileUpdater.html" title="Lich::Util::Update::FileUpdater (class)">FileUpdater</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="FileUpdater.html#initialize-instance_method" title="Lich::Util::Update::FileUpdater#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='ivar'>@client</span><span class='comma'>,</span> <span class='ivar'>@resolver</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_file_updater'>file_updater</span><span class='period'>.</span><span class='id identifier rubyid_update_core_data_and_scripts'>update_core_data_and_scripts</span><span class='lparen'>(</span><span class='id identifier rubyid_version'>version</span><span class='rparen'>)</span>
@@ -1088,7 +1269,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Prepares for beta testing of the next Lich release.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Handles beta update requests (full install or individual file).</p>
 
   </div>
 </div>
@@ -1108,7 +1289,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the type of beta test.</p></div>
+        <div class='inline'><p>file type ('script', 'library', 'data') or nil for full beta</p></div>
       
     </li>
   
@@ -1124,7 +1305,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the file requested for the beta test.</p></div>
+        <div class='inline'><p>file name if type is set</p></div>
       
     </li>
   
@@ -1137,74 +1318,6 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
 172
 173
 174
@@ -1219,10 +1332,78 @@ lich.rbw is handled separately due to its dynamic target name.</p>
 183
 184
 185
-186</pre>
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 104</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 172</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_prep_betatest'>prep_betatest</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_requested_file'>requested_file</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_type'>type</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1323,28 +1504,12 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Prepares for an update by fetching the latest release information.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Fetches latest stable release metadata from GitHub.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the latest release payload cannot be read.</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -1352,33 +1517,34 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98</pre>
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 75</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 123</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_prep_update'>prep_update</span>
   <span class='id identifier rubyid_latest'>latest</span> <span class='op'>=</span> <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Update.html#GITHUB_REPO-constant" title="Lich::Util::Update::GITHUB_REPO (constant)">GITHUB_REPO</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>/releases/latest</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -1400,9 +1566,86 @@ lich.rbw is handled separately due to its dynamic target name.</p>
     <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Update notice: no release tarball found in assets (prep_update).</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>return</span>
   <span class='kw'>end</span>
-  <span class='ivar'>@update_to</span> <span class='op'>=</span> <span class='id identifier rubyid_latest'>latest</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>tag_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>v</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='ivar'>@release_tag</span> <span class='op'>=</span> <span class='id identifier rubyid_latest'>latest</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>tag_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='ivar'>@update_to</span> <span class='op'>=</span> <span class='ivar'>@release_tag</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^v</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='ivar'>@new_features</span> <span class='op'>=</span> <span class='id identifier rubyid_latest'>latest</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>body</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\#\# What&#39;s Changed.+$</span><span class='regexp_end'>/m</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;!--[\s\S]*?--&gt;</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='ivar'>@zipfile</span> <span class='op'>=</span> <span class='id identifier rubyid_release_asset'>release_asset</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>browser_download_url</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="ruby_upgrade_required?-instance_method">
+  
+    #<strong>ruby_upgrade_required?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Reads the target release's Ruby floor without downloading its archive.
+A failed metadata read must not suppress an otherwise valid update notice.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true when the running Ruby is too old for the release</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 153</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_ruby_upgrade_required?'>ruby_upgrade_required?</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='ivar'>@release_tag</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='ivar'>@release_tag</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='id identifier rubyid_version_url'>version_url</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://raw.githubusercontent.com/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Update.html#GITHUB_REPO-constant" title="Lich::Util::Update::GITHUB_REPO (constant)">GITHUB_REPO</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='ivar'>@release_tag</span><span class='embexpr_end'>}</span><span class='tstring_content'>/lib/version.rb</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_version_content'>version_content</span> <span class='op'>=</span> <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_http_get'>http_get</span><span class='lparen'>(</span><span class='id identifier rubyid_version_url'>version_url</span><span class='comma'>,</span> <span class='label'>auth:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_version_content'>version_content</span><span class='op'>&amp;.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#REQUIRED_RUBY_PATTERN-constant" title="Lich::Util::Update::ReleaseInstaller::REQUIRED_RUBY_PATTERN (constant)">REQUIRED_RUBY_PATTERN</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span>
+
+  <span class='ivar'>@required_ruby</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span>
+  <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'>RUBY_VERSION</span><span class='rparen'>)</span> <span class='op'>&lt;</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='ivar'>@required_ruby</span><span class='rparen'>)</span>
+<span class='kw'>rescue</span> <span class='const'>ArgumentError</span>
+  <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1420,7 +1663,8 @@ lich.rbw is handled separately due to its dynamic target name.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Validates the structure of the Lich installation directory.</p>
+    <p>Validates the extracted directory contains every archive entry Lich
+requires to install safely.</p>
 
   </div>
 </div>
@@ -1438,7 +1682,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>the directory to validate.</p></div>
+        <div class='inline'><p>directory to check</p></div>
       
     </li>
   
@@ -1455,7 +1699,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the structure is valid, false otherwise.</p></div>
+        <div class='inline'><p>true if all required entries are present</p></div>
       
     </li>
   
@@ -1467,17 +1711,15 @@ lich.rbw is handled separately due to its dynamic target name.</p>
       <pre class="lines">
 
 
-287
-288
-289
-290</pre>
+368
+369
+370</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 287</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/release_installer.rb', line 368</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_validate_lich_structure'>validate_lich_structure</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_required_items'>required_items</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lich.rbw</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#TOP_LEVEL_FILES-constant" title="Lich::Util::Update::ReleaseInstaller::TOP_LEVEL_FILES (constant)">TOP_LEVEL_FILES</a></span></span>
-  <span class='id identifier rubyid_required_items'>required_items</span><span class='period'>.</span><span class='id identifier rubyid_all?'>all?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='const'><span class='object_link'><a href="#REQUIRED_ARCHIVE_ITEMS-constant" title="Lich::Util::Update::ReleaseInstaller::REQUIRED_ARCHIVE_ITEMS (constant)">REQUIRED_ARCHIVE_ITEMS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_all?'>all?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1489,7 +1731,7 @@ lich.rbw is handled separately due to its dynamic target name.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:30 2026 by
+  Generated on Wed Aug 26 16:50:55 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

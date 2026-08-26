@@ -89,12 +89,66 @@
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
     <p>Memory management module that provides automatic and manual memory release functionality
-Memory management module that provides automatic and manual memory release functionality.</p>
+for Ruby applications. Supports Linux, macOS, and Windows platforms.</p>
+<p>This module uses a singleton pattern to manage a background thread that periodically
+releases memory back to the operating system after running Ruby's garbage collector.</p>
+<p>Settings are persisted per-character using InstanceSettings and include:</p>
+<ul>
+<li>auto_start: automatically start the memory releaser on module load</li>
+<li>interval: time in seconds between memory releases</li>
+<li>verbose: enable detailed logging</li>
+</ul>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Enable auto-start</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_auto_start!'><span class='object_link'><a href="#auto_start!-class_method" title="Lich::Util::MemoryReleaser.auto_start! (method)">auto_start!</a></span></span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Basic usage</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_start'><span class='object_link'><a href="#start-class_method" title="Lich::Util::MemoryReleaser.start (method)">start</a></span></span>
+<span class='comment'># ... application runs ...
+</span><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_stop'><span class='object_link'><a href="#stop-class_method" title="Lich::Util::MemoryReleaser.stop (method)">stop</a></span></span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>With custom interval and verbose logging</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_start'><span class='object_link'><a href="#start-class_method" title="Lich::Util::MemoryReleaser.start (method)">start</a></span></span><span class='lparen'>(</span><span class='label'>interval:</span> <span class='int'>600</span><span class='comma'>,</span> <span class='label'>verbose:</span> <span class='kw'>true</span><span class='rparen'>)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Change settings</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_interval!'><span class='object_link'><a href="#interval!-class_method" title="Lich::Util::MemoryReleaser.interval! (method)">interval!</a></span></span><span class='lparen'>(</span><span class='int'>1200</span><span class='rparen'>)</span>  <span class='comment'># Change to 20 minutes
+</span><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_verbose!'><span class='object_link'><a href="#verbose!-class_method" title="Lich::Util::MemoryReleaser.verbose! (method)">verbose!</a></span></span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>   <span class='comment'># Enable verbose logging</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Manual memory release</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_release'><span class='object_link'><a href="#release-class_method" title="Lich::Util::MemoryReleaser.release (method)">release</a></span></span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Check status</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_status'><span class='object_link'><a href="#status-class_method" title="Lich::Util::MemoryReleaser.status (method)">status</a></span></span>
+<span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Running: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='lbracket'>[</span><span class='symbol'>:running</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+<span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Auto-start: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='lbracket'>[</span><span class='symbol'>:auto_start</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+<span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Platform: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='lbracket'>[</span><span class='symbol'>:platform</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Run benchmark</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>MemoryReleaser</span><span class='period'>.</span><span class='id identifier rubyid_benchmark'><span class='object_link'><a href="#benchmark-class_method" title="Lich::Util::MemoryReleaser.benchmark (method)">benchmark</a></span></span></code></pre>
+    
+  </div>
+
 
 </div><h2>Defined Under Namespace</h2>
 <p class="children">
@@ -118,21 +172,12 @@ Memory management module that provides automatic and manual memory release funct
         <dt id="DEFAULT_SETTINGS-constant" class="">DEFAULT_SETTINGS =
           <div class="docstring">
   <div class="discussion">
-    <p>Default settings for memory releaser
-Default settings for memory releaser.</p>
+    <p>Default settings for memory releaser</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Util::MemoryReleaser (module)">MemoryReleaser</a></span></span><span class='op'>::</span><span class='const'>DEFAULT_SETTINGS</span><span class='lbracket'>[</span><span class='symbol'>:auto_start</span><span class='rbracket'>]</span> <span class='comment'># =&gt; true</span></code></pre>
-    
-  </div>
-
 
 </div>
         </dt>
@@ -154,7 +199,7 @@ Default settings for memory releaser.</p>
       <li class="public ">
   <span class="summary_signature">
     
-      <a href="#command_queue-class_method" title="command_queue (class method)">.<strong>command_queue</strong>  &#x21d2; Object </a>
+      <a href="#command_queue-class_method" title="command_queue (class method)">.<strong>command_queue</strong>  &#x21d2; Queue </a>
     
 
     
@@ -173,7 +218,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute command_queue.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>The command queue for communicating with the launcher thread.</p></div></span>
   
 </li>
 
@@ -181,7 +226,7 @@ Default settings for memory releaser.</p>
       <li class="public ">
   <span class="summary_signature">
     
-      <a href="#worker_thread-class_method" title="worker_thread (class method)">.<strong>worker_thread</strong>  &#x21d2; Object </a>
+      <a href="#worker_thread-class_method" title="worker_thread (class method)">.<strong>worker_thread</strong>  &#x21d2; Thread<sup>?</sup> </a>
     
 
     
@@ -200,7 +245,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute worker_thread.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>The current worker thread.</p></div></span>
   
 </li>
 
@@ -221,7 +266,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#auto_disable!-class_method" title="auto_disable! (class method)">.<strong>auto_disable!</strong>  &#x21d2; Object </a>
+      <a href="#auto_disable!-class_method" title="auto_disable! (class method)">.<strong>auto_disable!</strong>  &#x21d2; void </a>
     
 
     
@@ -235,7 +280,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Disable auto-start and stop the memory releaser.</p></div></span>
   
 </li>
 
@@ -243,7 +288,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#auto_start!-class_method" title="auto_start! (class method)">.<strong>auto_start!</strong>  &#x21d2; Object </a>
+      <a href="#auto_start!-class_method" title="auto_start! (class method)">.<strong>auto_start!</strong>  &#x21d2; Thread<sup>?</sup> </a>
     
 
     
@@ -257,7 +302,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Enable auto-start and start the memory releaser.</p></div></span>
   
 </li>
 
@@ -265,7 +310,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#benchmark-class_method" title="benchmark (class method)">.<strong>benchmark</strong>  &#x21d2; Object </a>
+      <a href="#benchmark-class_method" title="benchmark (class method)">.<strong>benchmark</strong>  &#x21d2; void </a>
     
 
     
@@ -279,7 +324,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Run a memory release benchmark.</p></div></span>
   
 </li>
 
@@ -287,7 +332,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#instance-class_method" title="instance (class method)">.<strong>instance</strong>  &#x21d2; Object </a>
+      <a href="#instance-class_method" title="instance (class method)">.<strong>instance</strong>  &#x21d2; Manager </a>
     
 
     
@@ -301,7 +346,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get or create the singleton Manager instance.</p></div></span>
   
 </li>
 
@@ -309,7 +354,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#interval!-class_method" title="interval! (class method)">.<strong>interval!</strong>(seconds)  &#x21d2; Object </a>
+      <a href="#interval!-class_method" title="interval! (class method)">.<strong>interval!</strong>(seconds)  &#x21d2; Integer </a>
     
 
     
@@ -323,7 +368,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Update the interval setting.</p></div></span>
   
 </li>
 
@@ -331,7 +376,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#release-class_method" title="release (class method)">.<strong>release</strong>  &#x21d2; Object </a>
+      <a href="#release-class_method" title="release (class method)">.<strong>release</strong>  &#x21d2; void </a>
     
 
     
@@ -345,7 +390,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Perform a manual memory release.</p></div></span>
   
 </li>
 
@@ -353,7 +398,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset!-class_method" title="reset! (class method)">.<strong>reset!</strong>  &#x21d2; Object </a>
+      <a href="#reset!-class_method" title="reset! (class method)">.<strong>reset!</strong>  &#x21d2; void </a>
     
 
     
@@ -367,7 +412,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset the singleton instance.</p></div></span>
   
 </li>
 
@@ -389,7 +434,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if the background thread is running.</p></div></span>
   
 </li>
 
@@ -397,7 +442,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#start-class_method" title="start (class method)">.<strong>start</strong>(interval: nil, verbose: nil)  &#x21d2; Object </a>
+      <a href="#start-class_method" title="start (class method)">.<strong>start</strong>(interval: nil, verbose: nil)  &#x21d2; Thread<sup>?</sup> </a>
     
 
     
@@ -411,7 +456,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Start the background memory release thread.</p></div></span>
   
 </li>
 
@@ -419,7 +464,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#status-class_method" title="status (class method)">.<strong>status</strong>  &#x21d2; Object </a>
+      <a href="#status-class_method" title="status (class method)">.<strong>status</strong>  &#x21d2; Hash </a>
     
 
     
@@ -433,7 +478,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get the current status.</p></div></span>
   
 </li>
 
@@ -441,7 +486,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#stop-class_method" title="stop (class method)">.<strong>stop</strong>  &#x21d2; Object </a>
+      <a href="#stop-class_method" title="stop (class method)">.<strong>stop</strong>  &#x21d2; void </a>
     
 
     
@@ -455,7 +500,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stop the background memory release thread.</p></div></span>
   
 </li>
 
@@ -463,7 +508,7 @@ Default settings for memory releaser.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#verbose!-class_method" title="verbose! (class method)">.<strong>verbose!</strong>(enabled)  &#x21d2; Object </a>
+      <a href="#verbose!-class_method" title="verbose! (class method)">.<strong>verbose!</strong>(enabled)  &#x21d2; Boolean </a>
     
 
     
@@ -477,7 +522,7 @@ Default settings for memory releaser.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Update the verbose setting.</p></div></span>
   
 </li>
 
@@ -495,7 +540,7 @@ Default settings for memory releaser.</p>
       <div class="method_details first">
   <h3 class="signature first" id="command_queue-class_method">
   
-    .<strong>command_queue</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+    .<strong>command_queue</strong>  &#x21d2; <tt>Queue</tt>  <span class="extras">(readonly)</span>
   
 
   
@@ -503,12 +548,28 @@ Default settings for memory releaser.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute command_queue.</p>
+    <p>Returns the command queue for communicating with the launcher thread.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Queue</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the command queue for communicating with the launcher thread</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -516,12 +577,12 @@ Default settings for memory releaser.</p>
       <pre class="lines">
 
 
-545
-546
-547</pre>
+802
+803
+804</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 545</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 802</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_command_queue'>command_queue</span>
   <span class='ivar'>@command_queue</span>
@@ -536,7 +597,7 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="worker_thread-class_method">
   
-    .<strong>worker_thread</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+    .<strong>worker_thread</strong>  &#x21d2; <tt>Thread</tt><sup>?</sup>  <span class="extras">(readonly)</span>
   
 
   
@@ -544,12 +605,28 @@ Default settings for memory releaser.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute worker_thread.</p>
+    <p>Returns the current worker thread.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Thread</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the current worker thread</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -557,12 +634,12 @@ Default settings for memory releaser.</p>
       <pre class="lines">
 
 
-547
-548
-549</pre>
+807
+808
+809</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 547</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 807</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_worker_thread'>worker_thread</span>
   <span class='ivar'>@worker_thread</span>
@@ -582,24 +659,40 @@ Default settings for memory releaser.</p>
       <div class="method_details first">
   <h3 class="signature first" id="auto_disable!-class_method">
   
-    .<strong>auto_disable!</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>auto_disable!</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Disable auto-start and stop the memory releaser</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#auto_disable!-instance_method" title="Lich::Util::MemoryReleaser::Manager#auto_disable! (method)">Lich::Util::MemoryReleaser::Manager#auto_disable!</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-577
-578
-579</pre>
+860
+861
+862</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 577</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 860</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_auto_disable!'>auto_disable!</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_auto_disable!'>auto_disable!</span>
@@ -612,24 +705,56 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="auto_start!-class_method">
   
-    .<strong>auto_start!</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>auto_start!</strong>  &#x21d2; <tt>Thread</tt><sup>?</sup> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Enable auto-start and start the memory releaser</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Thread</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the background thread, or nil if failed to start</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#auto_start!-instance_method" title="Lich::Util::MemoryReleaser::Manager#auto_start! (method)">Lich::Util::MemoryReleaser::Manager#auto_start!</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-573
-574
-575</pre>
+852
+853
+854</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 573</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 852</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_auto_start!'>auto_start!</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_auto_start!'>auto_start!</span>
@@ -642,24 +767,40 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="benchmark-class_method">
   
-    .<strong>benchmark</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>benchmark</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Run a memory release benchmark</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#benchmark-instance_method" title="Lich::Util::MemoryReleaser::Manager#benchmark (method)">Lich::Util::MemoryReleaser::Manager#benchmark</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-601
-602
-603</pre>
+910
+911
+912</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 601</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 910</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_benchmark'>benchmark</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_benchmark'>benchmark</span>
@@ -672,36 +813,62 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="instance-class_method">
   
-    .<strong>instance</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>instance</strong>  &#x21d2; <tt><span class='object_link'><a href="MemoryReleaser/Manager.html" title="Lich::Util::MemoryReleaser::Manager (class)">Manager</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get or create the singleton Manager instance</p>
+<p>If auto_start is enabled in settings, automatically starts the memory releaser.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="MemoryReleaser/Manager.html" title="Lich::Util::MemoryReleaser::Manager (class)">Manager</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the singleton manager instance</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-549
-550
-551
-552
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563</pre>
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 549</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 814</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_instance'>instance</span>
   <span class='ivar'>@mutex</span> <span class='op'>||=</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -726,24 +893,74 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="interval!-class_method">
   
-    .<strong>interval!</strong>(seconds)  &#x21d2; <tt>Object</tt> 
+    .<strong>interval!</strong>(seconds)  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Update the interval setting</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>seconds</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new interval in seconds</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new interval value</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#interval!-instance_method" title="Lich::Util::MemoryReleaser::Manager#interval! (method)">Lich::Util::MemoryReleaser::Manager#interval!</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-581
-582
-583</pre>
+869
+870
+871</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 581</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 869</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_interval!'>interval!</span><span class='lparen'>(</span><span class='id identifier rubyid_seconds'>seconds</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_interval!'>interval!</span><span class='lparen'>(</span><span class='id identifier rubyid_seconds'>seconds</span><span class='rparen'>)</span>
@@ -756,24 +973,40 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="release-class_method">
   
-    .<strong>release</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>release</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Perform a manual memory release</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#release-instance_method" title="Lich::Util::MemoryReleaser::Manager#release (method)">Lich::Util::MemoryReleaser::Manager#release</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-589
-590
-591</pre>
+886
+887
+888</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 589</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 886</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_release'>release</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_release'>release</span>
@@ -786,25 +1019,36 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset!-class_method">
   
-    .<strong>reset!</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>reset!</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Reset the singleton instance</p>
+<p>Stops the current instance if running and clears the singleton.
+Useful for testing or when you need to recreate the instance.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-605
-606
-607
-608</pre>
+920
+921
+922
+923</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 605</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 920</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset!'>reset!</span>
   <span class='ivar'>@instance</span><span class='op'>&amp;.</span><span class='id identifier rubyid_stop'>stop</span>
@@ -826,7 +1070,7 @@ Default settings for memory releaser.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if the background thread is running</p>
 
   </div>
 </div>
@@ -842,9 +1086,19 @@ Default settings for memory releaser.</p>
       
       
       
+        &mdash;
+        <div class='inline'><p>true if running, false otherwise</p></div>
+      
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#running%3F-instance_method" title="Lich::Util::MemoryReleaser::Manager#running? (method)">Lich::Util::MemoryReleaser::Manager#running?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -852,12 +1106,12 @@ Default settings for memory releaser.</p>
       <pre class="lines">
 
 
-593
-594
-595</pre>
+894
+895
+896</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 593</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 894</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_running?'><span class='object_link'><a href="../../top-level-namespace.html#running%3F-instance_method" title="#running? (method)">running?</a></span></span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_running?'>running?</span>
@@ -870,24 +1124,92 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="start-class_method">
   
-    .<strong>start</strong>(interval: nil, verbose: nil)  &#x21d2; <tt>Object</tt> 
+    .<strong>start</strong>(interval: nil, verbose: nil)  &#x21d2; <tt>Thread</tt><sup>?</sup> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Start the background memory release thread</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>interval</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>time in seconds between memory releases (default: uses saved setting)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>verbose</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to enable verbose logging (default: uses saved setting)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Thread</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the background thread, or nil if failed to start</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#start-instance_method" title="Lich::Util::MemoryReleaser::Manager#start (method)">Lich::Util::MemoryReleaser::Manager#start</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-565
-566
-567</pre>
+836
+837
+838</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 565</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 836</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start'>start</span><span class='lparen'>(</span><span class='label'>interval:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>verbose:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_start'>start</span><span class='lparen'>(</span><span class='label'>interval:</span> <span class='id identifier rubyid_interval'>interval</span><span class='comma'>,</span> <span class='label'>verbose:</span> <span class='id identifier rubyid_verbose'>verbose</span><span class='rparen'>)</span>
@@ -900,24 +1222,56 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="status-class_method">
   
-    .<strong>status</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>status</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get the current status</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>status information</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#status-instance_method" title="Lich::Util::MemoryReleaser::Manager#status (method)">Lich::Util::MemoryReleaser::Manager#status</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-597
-598
-599</pre>
+902
+903
+904</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 597</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 902</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status'>status</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_status'>status</span>
@@ -930,24 +1284,40 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="stop-class_method">
   
-    .<strong>stop</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>stop</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Stop the background memory release thread</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#stop-instance_method" title="Lich::Util::MemoryReleaser::Manager#stop (method)">Lich::Util::MemoryReleaser::Manager#stop</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-569
-570
-571</pre>
+844
+845
+846</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 569</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 844</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stop'>stop</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_stop'>stop</span>
@@ -960,24 +1330,74 @@ Default settings for memory releaser.</p>
       <div class="method_details ">
   <h3 class="signature " id="verbose!-class_method">
   
-    .<strong>verbose!</strong>(enabled)  &#x21d2; <tt>Object</tt> 
+    .<strong>verbose!</strong>(enabled)  &#x21d2; <tt>Boolean</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Update the verbose setting</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>enabled</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>whether to enable verbose logging</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new verbose value</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="MemoryReleaser/Manager.html#verbose!-instance_method" title="Lich::Util::MemoryReleaser::Manager#verbose! (method)">Lich::Util::MemoryReleaser::Manager#verbose!</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-585
-586
-587</pre>
+878
+879
+880</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 585</span>
+      <pre class="code"><span class="info file"># File 'documented/util/memoryreleaser.rb', line 878</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_verbose!'>verbose!</span><span class='lparen'>(</span><span class='id identifier rubyid_enabled'>enabled</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_verbose!'>verbose!</span><span class='lparen'>(</span><span class='id identifier rubyid_enabled'>enabled</span><span class='rparen'>)</span>
@@ -992,7 +1412,7 @@ Default settings for memory releaser.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:16 2026 by
+  Generated on Wed Aug 26 16:50:36 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

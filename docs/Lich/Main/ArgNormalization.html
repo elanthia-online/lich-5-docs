@@ -86,7 +86,17 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Normalizes user-facing CLI aliases into the existing lower-level argument
+forms consumed elsewhere in startup.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
   
     <h2>
       Constant Summary
@@ -98,7 +108,9 @@
         <dt id="HEADLESS_PATTERN-constant" class="">HEADLESS_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Regular expression pattern for matching the --headless argument.</p>
+    <p>Matches <code>--headless</code> CLI arguments with optional inline port or target.</p>
+<p>Captures the port/target token if specified inline (e.g., <code>--headless=8080</code>),
+or nil if the token follows as the next argument (e.g., <code>--headless 8080</code>).</p>
 
   </div>
 </div>
@@ -108,11 +120,10 @@
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Matching examples</p></div></h5>
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless=8080</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless=auto</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless=8080</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>HEADLESS_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless=auto</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>HEADLESS_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>HEADLESS_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--headless=</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>HEADLESS_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
     
   </div>
 
@@ -120,7 +131,9 @@
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li>for usage</li>
+      <li><span class='object_link'><a href="#normalize!-class_method" title="Lich::Main::ArgNormalization.normalize! (method)">normalize!</a></span></li>
+    
+      <li><span class='object_link'><a href="#DETACHABLE_CLIENT_PREFIX-constant" title="Lich::Main::ArgNormalization::DETACHABLE_CLIENT_PREFIX (constant)">DETACHABLE_CLIENT_PREFIX</a></span></li>
     
   </ul>
 
@@ -129,7 +142,28 @@
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--headless(?:=(.+))?$</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="DETACHABLE_CLIENT_PREFIX-constant" class="">DETACHABLE_CLIENT_PREFIX =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Prefix for the <code>--detachable-client</code> CLI argument.</p>
+<p>Used to construct arguments like <code>--detachable-client=8080</code> or
+<code>--detachable-client=127.0.0.1:8080</code> that enable headless operation
+with a remote frontend client.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#normalize!-class_method" title="Lich::Main::ArgNormalization.normalize! (method)">normalize!</a></span></li>
+    
+      <li><span class='object_link'><a href="#normalize_headless_target-class_method" title="Lich::Main::ArgNormalization.normalize_headless_target (method)">normalize_headless_target</a></span></li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--detachable-client=</span><span class='tstring_end'>&#39;</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
@@ -167,7 +201,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Normalizes command-line arguments for headless mode.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Rewrites high-level aliases in-place on the provided argv array.</p></div></span>
   
 </li>
 
@@ -175,7 +209,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#normalize_headless_port-class_method" title="normalize_headless_port (class method)">.<strong>normalize_headless_port</strong>(token)  &#x21d2; Integer </a>
+      <a href="#normalize_headless_target-class_method" title="normalize_headless_target (class method)">.<strong>normalize_headless_target</strong>(token)  &#x21d2; String </a>
     
 
     
@@ -189,7 +223,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Normalizes the headless port token.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves the target token accepted by <code>--headless</code> to the canonical form consumed by <code>--detachable-client</code>.</p></div></span>
   
 </li>
 
@@ -215,10 +249,16 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Normalizes command-line arguments for headless mode.
-This method modifies the argv array in place to replace the
---headless argument with --without-frontend and appends the
-detachable client prefix with the specified port.</p>
+    <p>Rewrites high-level aliases in-place on the provided argv array.</p>
+<p>Current rules:</p>
+<ul>
+<li><code>--headless PORT</code> =&gt; <code>--without-frontend --detachable-client=PORT</code></li>
+<li><code>--headless auto</code> =&gt; <code>--without-frontend --detachable-client=0</code></li>
+<li><code>--headless HOST:PORT</code> =&gt; <code>--without-frontend --detachable-client=HOST:PORT</code>
+(HOST may be tailscale, lan, any, an IP address, or a hostname)</li>
+</ul>
+<p>Bare <code>--headless</code> is rejected because an unattached fully headless login
+is not a supported public workflow.</p>
 
   </div>
 </div>
@@ -236,7 +276,7 @@ detachable client prefix with the specified port.</p>
       
       
         &mdash;
-        <div class='inline'><p>the command-line arguments to normalize</p></div>
+        <div class='inline'><p>mutable argument vector</p></div>
       
     </li>
   
@@ -253,7 +293,7 @@ detachable client prefix with the specified port.</p>
       
       
         &mdash;
-        <div class='inline'><p>the modified command-line arguments</p></div>
+        <div class='inline'><p>the normalized argv array</p></div>
       
     </li>
   
@@ -269,31 +309,8 @@ detachable client prefix with the specified port.</p>
       
       
         &mdash;
-        <div class='inline'><p>if --headless is specified more than once</p></div>
-      
-    </li>
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>ArgumentError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if --headless is combined with --detachable-client</p></div>
-      
-    </li>
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>ArgumentError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if --headless does not have a valid port number</p></div>
+        <div class='inline'><p>when <code>--headless</code> is missing a port or conflicts
+with an explicit detachable-client flag</p></div>
       
     </li>
   
@@ -305,37 +322,37 @@ detachable client prefix with the specified port.</p>
       <pre class="lines">
 
 
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
 48
 49
 50
 51
-52</pre>
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/arg_normalization.rb', line 25</span>
+      <pre class="code"><span class="info file"># File 'documented/main/arg_normalization.rb', line 48</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize!'>normalize!</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_headless_indices'>headless_indices</span> <span class='op'>=</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_each_index'>each_index</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_index'>index</span><span class='op'>|</span> <span class='id identifier rubyid_argv'>argv</span><span class='lbracket'>[</span><span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#HEADLESS_PATTERN-constant" title="Lich::Main::ArgNormalization::HEADLESS_PATTERN (constant)">HEADLESS_PATTERN</a></span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -362,7 +379,7 @@ detachable client prefix with the specified port.</p>
   <span class='kw'>end</span>
 
   <span class='id identifier rubyid_argv'>argv</span><span class='lbracket'>[</span><span class='id identifier rubyid_headless_index'>headless_index</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--without-frontend</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_insert'>insert</span><span class='lparen'>(</span><span class='id identifier rubyid_headless_index'>headless_index</span> <span class='op'>+</span> <span class='int'>1</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#DETACHABLE_CLIENT_PREFIX-constant" title="Lich::Main::ArgNormalization::DETACHABLE_CLIENT_PREFIX (constant)">DETACHABLE_CLIENT_PREFIX</a></span></span><span class='embexpr_end'>}</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_normalize_headless_port'>normalize_headless_port</span><span class='lparen'>(</span><span class='id identifier rubyid_port_token'>port_token</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_insert'>insert</span><span class='lparen'>(</span><span class='id identifier rubyid_headless_index'>headless_index</span> <span class='op'>+</span> <span class='int'>1</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#DETACHABLE_CLIENT_PREFIX-constant" title="Lich::Main::ArgNormalization::DETACHABLE_CLIENT_PREFIX (constant)">DETACHABLE_CLIENT_PREFIX</a></span></span><span class='embexpr_end'>}</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_normalize_headless_target'>normalize_headless_target</span><span class='lparen'>(</span><span class='id identifier rubyid_port_token'>port_token</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_argv'>argv</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -371,9 +388,9 @@ detachable client prefix with the specified port.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="normalize_headless_port-class_method">
+  <h3 class="signature " id="normalize_headless_target-class_method">
   
-    .<strong>normalize_headless_port</strong>(token)  &#x21d2; <tt>Integer</tt> 
+    .<strong>normalize_headless_target</strong>(token)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
@@ -381,8 +398,8 @@ detachable client prefix with the specified port.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Normalizes the headless port token.
-Converts the token to an integer if it's not 'auto'.</p>
+    <p>Resolves the target token accepted by <code>--headless</code> to the canonical
+form consumed by <code>--detachable-client</code>.</p>
 
   </div>
 </div>
@@ -400,7 +417,7 @@ Converts the token to an integer if it's not 'auto'.</p>
       
       
         &mdash;
-        <div class='inline'><p>the port token to normalize</p></div>
+        <div class='inline'><p>user-provided token after <code>--headless</code></p></div>
       
     </li>
   
@@ -412,12 +429,13 @@ Converts the token to an integer if it's not 'auto'.</p>
     <li>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the normalized port number</p></div>
+        <div class='inline'><p>canonical <code>PORT</code> or <code>HOST:PORT</code> (port <code>0</code> means
+OS-assigned auto)</p></div>
       
     </li>
   
@@ -433,7 +451,8 @@ Converts the token to an integer if it's not 'auto'.</p>
       
       
         &mdash;
-        <div class='inline'><p>if the port number is not between 1 and 65535 or if it's not 'auto'</p></div>
+        <div class='inline'><p>when the token is not a valid port, <code>auto</code>, or
+HOST:PORT form</p></div>
       
     </li>
   
@@ -445,29 +464,29 @@ Converts the token to an integer if it's not 'auto'.</p>
       <pre class="lines">
 
 
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69</pre>
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/arg_normalization.rb', line 60</span>
+      <pre class="code"><span class="info file"># File 'documented/main/arg_normalization.rb', line 85</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_headless_port'>normalize_headless_port</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_token'>token</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_casecmp'>casecmp</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>auto</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_headless_target'>normalize_headless_target</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DetachableClientTarget.html" title="Lich::Main::DetachableClientTarget (module)">DetachableClientTarget</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="DetachableClientTarget.html#parse-class_method" title="Lich::Main::DetachableClientTarget.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_port'>port</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='kw'>if</span> <span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
-  <span class='id identifier rubyid_port'>port</span> <span class='op'>=</span> <span class='const'>Integer</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='comma'>,</span> <span class='int'>10</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='id identifier rubyid_port'>port</span> <span class='kw'>if</span> <span class='id identifier rubyid_port'>port</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_port'>port</span> <span class='op'>&lt;=</span> <span class='int'>65_535</span>
-
-  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--headless requires a port number between 1 and 65535, or auto</span><span class='tstring_end'>&#39;</span></span>
-<span class='kw'>rescue</span> <span class='const'>ArgumentError</span>
-  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--headless requires a port number between 1 and 65535, or auto</span><span class='tstring_end'>&#39;</span></span>
+  <span class='id identifier rubyid_host'>host</span> <span class='op'>=</span> <span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>:</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'>]</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'>:</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_port'>port</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="DetachableClientTarget.html" title="Lich::Main::DetachableClientTarget (module)">DetachableClientTarget</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DetachableClientTarget.html#ParseError-constant" title="Lich::Main::DetachableClientTarget::ParseError (constant)">ParseError</a></span></span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--headless requires a port number between 1 and 65535, auto, </span><span class='tstring_end'>&#39;</span></span> \
+                       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>or HOST:PORT (HOST may be tailscale, lan, any, an IP address, or a hostname)</span><span class='tstring_end'>&#39;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -479,7 +498,7 @@ Converts the token to an integer if it's not 'auto'.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:17 2026 by
+  Generated on Wed Aug 26 16:50:37 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -104,8 +104,11 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents a thread-safe buffer that allows multiple threads to read and write data.</p>
-<p>This class manages a shared buffer with a maximum size and provides methods to read from and write to it.</p>
+    <p>Thread-safe circular buffer for sharing lines between reader threads.</p>
+<p>Each calling thread maintains its own position in the buffer, allowing
+independent consumers to read at different speeds. The buffer automatically
+discards old entries when it exceeds <span class='object_link'><a href="#max_size-instance_method" title="Lich::Common::SharedBuffer#max_size (method)">#max_size</a></span>, and periodically removes
+index entries for dead threads to prevent memory leaks.</p>
 
   </div>
 </div>
@@ -115,9 +118,7 @@
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#gets-instance_method" title="Lich::Common::SharedBuffer#gets (method)">#gets</a></span></li>
-    
-      <li><span class='object_link'><a href="#update-instance_method" title="Lich::Common::SharedBuffer#update (method)">#update</a></span></li>
+      <li><span class='object_link'><a href="Throttle.html" title="Lich::Common::Throttle (class)">Throttle</a></span></li>
     
   </ul>
 
@@ -169,7 +170,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#cleanup_threads-instance_method" title="#cleanup_threads (instance method)">#<strong>cleanup_threads</strong>  &#x21d2; SharedBuffer </a>
+      <a href="#cleanup_threads-instance_method" title="#cleanup_threads (instance method)">#<strong>cleanup_threads</strong>  &#x21d2; Object </a>
     
 
     
@@ -183,7 +184,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Cleans up the buffer index for threads that are no longer active.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes @buffer_index entries whose thread is no longer alive.</p></div></span>
   
 </li>
 
@@ -205,7 +206,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Clears the lines that have been read from the buffer for the current thread.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns all available lines for the calling thread and advances to the end.</p></div></span>
   
 </li>
 
@@ -227,7 +228,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the next line from the buffer, blocking if necessary until a line is available.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Waits for and returns the next line from the buffer for the calling thread.</p></div></span>
   
 </li>
 
@@ -249,7 +250,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the next line from the buffer without blocking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the next line from the buffer for the calling thread, or nil if no line is ready.</p></div></span>
   
 </li>
 
@@ -257,7 +258,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(args = {})  &#x21d2; SharedBuffer </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(args = {})  &#x21d2; void </a>
     
 
     
@@ -273,7 +274,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new SharedBuffer instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Creates a new shared buffer.</p></div></span>
   
 </li>
 
@@ -295,7 +296,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>rubocop:disable Lint/HashCompareByIdentity Resets the buffer index for the current thread to the beginning of the buffer.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>rubocop:disable Lint/HashCompareByIdentity Resets the calling thread's position to the beginning of the buffer.</p></div></span>
   
 </li>
 
@@ -317,7 +318,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>rubocop:enable Lint/HashCompareByIdentity Adds a new line to the buffer, ensuring the buffer does not exceed its maximum size.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>rubocop:enable Lint/HashCompareByIdentity Appends a line to the buffer and removes old lines if the buffer exceeds max_size.</p></div></span>
   
 </li>
 
@@ -332,7 +333,7 @@
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(args = {})  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::SharedBuffer (class)">SharedBuffer</a></span></tt> 
+    #<strong>initialize</strong>(args = {})  &#x21d2; <tt>void</tt> 
   
 
   
@@ -340,7 +341,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new SharedBuffer instance.</p>
+    <p>Creates a new shared buffer.</p>
 
   </div>
 </div>
@@ -360,7 +361,7 @@
       
       
         &mdash;
-        <div class='inline'><p>options for initialization</p></div>
+        <div class='inline'><p>optional configuration</p></div>
       
     </li>
   
@@ -382,7 +383,7 @@
             
           </span>
           
-            &mdash; <div class='inline'><p>the maximum size of the buffer</p></div>
+            &mdash; <div class='inline'><p>maximum number of lines to retain</p></div>
           
         </li>
       
@@ -396,17 +397,20 @@
       <pre class="lines">
 
 
-17
-18
-19
-20
-21
-22
-23
-24</pre>
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 17</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 27</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_args'>args</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='ivar'>@buffer</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -414,6 +418,9 @@
   <span class='ivar'>@buffer_index</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='ivar'>@buffer_mutex</span> <span class='op'>=</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='ivar'>@max_size</span> <span class='op'>=</span> <span class='id identifier rubyid_args'>args</span><span class='lbracket'>[</span><span class='symbol'>:max_size</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='int'>500</span>
+  <span class='comment'># Sweeps dead-thread entries from @buffer_index (keyed by
+</span>  <span class='comment'># Thread#object_id, previously never pruned) at most once every 60s.
+</span>  <span class='ivar'>@cleanup_throttle</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Throttle.html" title="Lich::Common::Throttle (class)">Throttle</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="Throttle.html#initialize-instance_method" title="Lich::Common::Throttle#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='float'>60.0</span><span class='rparen'>)</span>
   <span class='comment'># return self # rubocop does not like this - Lint/ReturnInVoidContext
 </span><span class='kw'>end</span></pre>
     </td>
@@ -452,12 +459,12 @@
       <pre class="lines">
 
 
-11
-12
-13</pre>
+20
+21
+22</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 11</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 20</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_size'>max_size</span>
   <span class='ivar'>@max_size</span>
@@ -477,7 +484,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="cleanup_threads-instance_method">
   
-    #<strong>cleanup_threads</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::SharedBuffer (class)">SharedBuffer</a></span></tt> 
+    #<strong>cleanup_threads</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -485,28 +492,15 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Cleans up the buffer index for threads that are no longer active.</p>
+    <p>Removes @buffer_index entries whose thread is no longer alive.
+Snapshots the live thread ids once rather than recomputing them per
+entry, and holds the mutex so it cannot race with a concurrent reader
+mutating the hash.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::SharedBuffer (class)">SharedBuffer</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>self</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -514,16 +508,22 @@
       <pre class="lines">
 
 
-119
-120
-121
-122</pre>
+181
+182
+183
+184
+185
+186
+187</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 119</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 181</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cleanup_threads'>cleanup_threads</span>
-  <span class='ivar'>@buffer_index</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid__v'>_v</span><span class='op'>|</span> <span class='kw'>not</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_t'>t</span><span class='op'>|</span> <span class='id identifier rubyid_t'>t</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span> <span class='op'>==</span> <span class='id identifier rubyid_k'>k</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+  <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+    <span class='id identifier rubyid_live_ids'>live_ids</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:object_id</span><span class='rparen'>)</span>
+    <span class='ivar'>@buffer_index</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid__v'>_v</span><span class='op'>|</span> <span class='op'>!</span><span class='id identifier rubyid_live_ids'>live_ids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_k'>k</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='rbrace'>}</span>
   <span class='kw'>return</span> <span class='kw'>self</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -542,12 +542,30 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Clears the lines that have been read from the buffer for the current thread.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>If the thread's position has fallen behind (line was deleted due to
+buffer overflow), silently jumps forward to the oldest available line.</p></div>
+  </div>
+
+<p>Returns all available lines for the calling thread and advances to the end.</p>
+<p>Equivalent to calling <span class='object_link'><a href="#gets%3F-instance_method" title="Lich::Common::SharedBuffer#gets? (method)">#gets?</a></span> repeatedly until nil. On first call, registers
+the thread and initializes its position to the end of the buffer.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># In a reader thread
+</span><span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='id identifier rubyid_buffer'>buffer</span><span class='period'>.</span><span class='id identifier rubyid_clear'>clear</span>  <span class='comment'>#=&gt; [&quot;You say, \&quot;hello\&quot;&quot;, &quot;Person says, \&quot;hi\&quot;&quot;]</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -559,7 +577,8 @@
       
       
         &mdash;
-        <div class='inline'><p>an array of lines that were cleared from the buffer</p></div>
+        <div class='inline'><p>all buffered lines not yet read by this thread,
+or an empty array if none are available</p></div>
       
     </li>
   
@@ -571,34 +590,36 @@
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90</pre>
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 115</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
   <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
   <span class='kw'>if</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
     <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='ivar'>@buffer_offset</span> <span class='op'>+</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup_threads'>maybe_cleanup_threads</span>
     <span class='kw'>return</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='kw'>end</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='ivar'>@buffer_offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
@@ -631,12 +652,30 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the next line from the buffer, blocking if necessary until a line is available.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>If the thread's position has fallen behind (line was deleted due to
+buffer overflow), silently jumps forward to the oldest available line.</p></div>
+  </div>
+
+<p>Waits for and returns the next line from the buffer for the calling thread.</p>
+<p>Blocks with sleep 0.05s until a line is available. On first call, registers
+the thread and initializes its position to the end of the buffer.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># In a reader thread
+</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_buffer'>buffer</span><span class='period'>.</span><span class='id identifier rubyid_gets'>gets</span>  <span class='comment'>#=&gt; &quot;You say, \&quot;hello\&quot;&quot;</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -648,7 +687,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the next line from the buffer or nil if no line is available</p></div>
+        <div class='inline'><p>the next buffered line, or nil if the buffer is empty</p></div>
       
     </li>
   
@@ -660,32 +699,34 @@
       <pre class="lines">
 
 
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45</pre>
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 28</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 50</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_gets'>gets</span>
   <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
   <span class='kw'>if</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
     <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='ivar'>@buffer_offset</span> <span class='op'>+</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup_threads'>maybe_cleanup_threads</span>
   <span class='kw'>end</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='ivar'>@buffer_offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
     <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.05</span> <span class='kw'>while</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='ivar'>@buffer_offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span>
@@ -716,12 +757,31 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the next line from the buffer without blocking.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>If the thread's position has fallen behind (line was deleted due to
+buffer overflow), silently jumps forward to the oldest available line.</p></div>
+  </div>
+
+<p>Returns the next line from the buffer for the calling thread, or nil if
+no line is ready.</p>
+<p>Non-blocking variant of <span class='object_link'><a href="#gets-instance_method" title="Lich::Common::SharedBuffer#gets (method)">#gets</a></span>: returns immediately. On first call, registers
+the thread and initializes its position to the end of the buffer.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># In a reader thread
+</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_buffer'>buffer</span><span class='period'>.</span><span class='id identifier rubyid_gets?'>gets?</span>  <span class='comment'>#=&gt; &quot;You say, \&quot;hello\&quot;&quot; or nil</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -733,7 +793,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the next line from the buffer or nil if no line is available</p></div>
+        <div class='inline'><p>the next buffered line, or nil if none is available</p></div>
       
     </li>
   
@@ -745,33 +805,35 @@
       <pre class="lines">
 
 
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67</pre>
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 49</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 82</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_gets?'>gets?</span>
   <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
   <span class='kw'>if</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
     <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='ivar'>@buffer_offset</span> <span class='op'>+</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup_threads'>maybe_cleanup_threads</span>
   <span class='kw'>end</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='ivar'>@buffer_offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='ivar'>@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
     <span class='kw'>return</span> <span class='kw'>nil</span>
@@ -804,12 +866,23 @@
 </h3><div class="docstring">
   <div class="discussion">
     <p>rubocop:disable Lint/HashCompareByIdentity
-Resets the buffer index for the current thread to the beginning of the buffer.</p>
+Resets the calling thread's position to the beginning of the buffer.</p>
+<p>The next call to <span class='object_link'><a href="#gets-instance_method" title="Lich::Common::SharedBuffer#gets (method)">#gets</a></span>, <span class='object_link'><a href="#gets%3F-instance_method" title="Lich::Common::SharedBuffer#gets? (method)">#gets?</a></span>, or <span class='object_link'><a href="#clear-instance_method" title="Lich::Common::SharedBuffer#clear (method)">#clear</a></span> will return the oldest
+available line. On first call, registers the thread.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># In a reader thread, replay the buffer from the start
+</span><span class='id identifier rubyid_buffer'>buffer</span><span class='period'>.</span><span class='id identifier rubyid_rewind'>rewind</span><span class='period'>.</span><span class='id identifier rubyid_gets'>gets</span>  <span class='comment'>#=&gt; oldest line</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -833,16 +906,20 @@ Resets the buffer index for the current thread to the beginning of the buffer.</
       <pre class="lines">
 
 
-95
-96
-97
-98</pre>
+147
+148
+149
+150
+151
+152</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 95</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 147</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rewind'>rewind</span>
-  <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='ivar'>@buffer_offset</span>
+  <span class='comment'># Hold the mutex: a first-call rewind adds a new key, which must not
+</span>  <span class='comment'># race a concurrent cleanup_threads delete_if.
+</span>  <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@buffer_index</span><span class='lbracket'>[</span><span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='ivar'>@buffer_offset</span> <span class='rbrace'>}</span>
   <span class='kw'>return</span> <span class='kw'>self</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -862,12 +939,22 @@ Resets the buffer index for the current thread to the beginning of the buffer.</
 </h3><div class="docstring">
   <div class="discussion">
     <p>rubocop:enable Lint/HashCompareByIdentity
-Adds a new line to the buffer, ensuring the buffer does not exceed its maximum size.</p>
+Appends a line to the buffer and removes old lines if the buffer exceeds max_size.</p>
+<p>The line is frozen to prevent accidental mutation by readers. Old lines are
+removed from the front (FIFO) as needed.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_buffer'>buffer</span><span class='period'>.</span><span class='id identifier rubyid_update'>update</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You say, \&quot;hello\&quot;</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -880,7 +967,7 @@ Adds a new line to the buffer, ensuring the buffer does not exceed its maximum s
       
       
         &mdash;
-        <div class='inline'><p>the line to add to the buffer</p></div>
+        <div class='inline'><p>the line to append; will be duplicated and frozen</p></div>
       
     </li>
   
@@ -909,21 +996,21 @@ Adds a new line to the buffer, ensuring the buffer does not exceed its maximum s
       <pre class="lines">
 
 
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115</pre>
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 104</span>
+      <pre class="code"><span class="info file"># File 'documented/common/sharedbuffer.rb', line 164</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update'>update</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='ivar'>@buffer_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
@@ -947,7 +1034,7 @@ Adds a new line to the buffer, ensuring the buffer does not exceed its maximum s
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:28 2026 by
+  Generated on Wed Aug 26 16:50:51 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

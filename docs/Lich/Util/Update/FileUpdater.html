@@ -104,9 +104,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Handles the updating of files from repositories.</p>
-<p>This class is responsible for managing updates to scripts, libraries,
-and data files, including handling repository-specific updates.</p>
+    <p>Handles updates for individual scripts, libraries, and data files.</p>
+<p>Supports both repo-specific updates (via &quot;repo_key:filename&quot; syntax with SHA-based
+skip-if-current checks) and legacy auto-detected updates. Transparently delegates to
+the appropriate remote repository based on file type and version channel.</p>
 
   </div>
 </div>
@@ -147,7 +148,7 @@ and data files, including handling repository-specific updates.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new FileUpdater instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>A new instance of FileUpdater.</p></div></span>
   
 </li>
 
@@ -169,7 +170,7 @@ and data files, including handling repository-specific updates.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates core data and scripts based on the game version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Updates core data files (effect-list.xml) after version upgrade.</p></div></span>
   
 </li>
 
@@ -191,7 +192,7 @@ and data files, including handling repository-specific updates.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates a specified file based on its type and version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Updates a file using legacy auto-detection logic.</p></div></span>
   
 </li>
 
@@ -213,7 +214,7 @@ and data files, including handling repository-specific updates.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates a file from the specified repository.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Updates a file from a specific repository.</p></div></span>
   
 </li>
 
@@ -236,7 +237,7 @@ and data files, including handling repository-specific updates.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new FileUpdater instance.</p>
+    <p>Returns a new instance of FileUpdater.</p>
 
   </div>
 </div>
@@ -249,12 +250,12 @@ and data files, including handling repository-specific updates.</p>
         <span class='name'>client</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="GitHubClient.html" title="Lich::Util::Update::GitHubClient (class)">GitHubClient</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the client used to fetch data from repositories</p></div>
+        <div class='inline'><p>GitHub API client instance</p></div>
       
     </li>
   
@@ -263,12 +264,12 @@ and data files, including handling repository-specific updates.</p>
         <span class='name'>resolver</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="ChannelResolver.html" title="Lich::Util::Update::ChannelResolver (class)">ChannelResolver</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the resolver for handling versioning</p></div>
+        <div class='inline'><p>channel resolver instance</p></div>
       
     </li>
   
@@ -281,13 +282,13 @@ and data files, including handling repository-specific updates.</p>
       <pre class="lines">
 
 
-25
-26
-27
-28</pre>
+22
+23
+24
+25</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 25</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 22</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_client'>client</span><span class='comma'>,</span> <span class='id identifier rubyid_resolver'>resolver</span><span class='rparen'>)</span>
   <span class='ivar'>@client</span> <span class='op'>=</span> <span class='id identifier rubyid_client'>client</span>
@@ -316,7 +317,7 @@ and data files, including handling repository-specific updates.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates core data and scripts based on the game version.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Updates core data files (effect-list.xml) after version upgrade.</p>
 
   </div>
 </div>
@@ -336,28 +337,12 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the version to use for updates (default: LICH_VERSION)</p></div>
+        <div class='inline'><p>version string (default: LICH_VERSION)</p></div>
       
     </li>
   
 </ul>
 
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the game type is invalid</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -365,8 +350,6 @@ and data files, including handling repository-specific updates.</p>
       <pre class="lines">
 
 
-207
-208
 209
 210
 211
@@ -384,10 +367,12 @@ and data files, including handling repository-specific updates.</p>
 223
 224
 225
-226</pre>
+226
+227
+228</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 207</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 209</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_core_data_and_scripts'>update_core_data_and_scripts</span><span class='lparen'>(</span><span class='id identifier rubyid_version'>version</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^GS|^DR</span><span class='regexp_end'>/</span></span>
@@ -425,7 +410,7 @@ and data files, including handling repository-specific updates.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates a specified file based on its type and version.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Updates a file using legacy auto-detection logic.</p>
 
   </div>
 </div>
@@ -443,7 +428,7 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the type of file to update (e.g., &quot;script&quot;, &quot;library&quot;, &quot;data&quot;)</p></div>
+        <div class='inline'><p>'script', 'library', or 'data'</p></div>
       
     </li>
   
@@ -457,7 +442,7 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the requested file name</p></div>
+        <div class='inline'><p>requested filename</p></div>
       
     </li>
   
@@ -473,28 +458,12 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the version channel to use (default: 'production')</p></div>
+        <div class='inline'><p>channel ('production' or 'beta')</p></div>
       
     </li>
   
 </ul>
 
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the file cannot be updated</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -502,8 +471,6 @@ and data files, including handling repository-specific updates.</p>
       <pre class="lines">
 
 
-115
-116
 117
 118
 119
@@ -588,10 +555,12 @@ and data files, including handling repository-specific updates.</p>
 198
 199
 200
-201</pre>
+201
+202
+203</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 115</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 117</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_file'>update_file</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_rf'>rf</span><span class='comma'>,</span> <span class='id identifier rubyid_version'>version</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>production</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_version'>version</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:staging|master)$</span><span class='regexp_end'>/i</span></span>
@@ -696,7 +665,7 @@ and data files, including handling repository-specific updates.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates a file from the specified repository.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Updates a file from a specific repository.</p>
 
   </div>
 </div>
@@ -714,7 +683,7 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the type of file to update (e.g., &quot;script&quot;, &quot;data&quot;)</p></div>
+        <div class='inline'><p>'script' or 'data'</p></div>
       
     </li>
   
@@ -728,7 +697,7 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the key identifying the repository</p></div>
+        <div class='inline'><p>repository key from SCRIPT_REPOS</p></div>
       
     </li>
   
@@ -742,28 +711,12 @@ and data files, including handling repository-specific updates.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the file to update</p></div>
+        <div class='inline'><p>file name to update</p></div>
       
     </li>
   
 </ul>
 
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the file cannot be updated</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -771,6 +724,9 @@ and data files, including handling repository-specific updates.</p>
       <pre class="lines">
 
 
+33
+34
+35
 36
 37
 38
@@ -842,10 +798,12 @@ and data files, including handling repository-specific updates.</p>
 104
 105
 106
-107</pre>
+107
+108
+109</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 36</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_updater.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_file_from_repo'>update_file_from_repo</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_repo_key'>repo_key</span><span class='comma'>,</span> <span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_config'>config</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Update.html#SCRIPT_REPOS-constant" title="Lich::Util::Update::SCRIPT_REPOS (constant)">SCRIPT_REPOS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_repo_key'>repo_key</span><span class='rbracket'>]</span>
@@ -856,6 +814,11 @@ and data files, including handling repository-specific updates.</p>
   <span class='kw'>unless</span> <span class='id identifier rubyid_config'>config</span>
     <span class='id identifier rubyid_all_keys'>all_keys</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../Update.html#SCRIPT_REPOS-constant" title="Lich::Util::Update::SCRIPT_REPOS (constant)">SCRIPT_REPOS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="CustomRepos.html" title="Lich::Util::Update::CustomRepos (class)">CustomRepos</a></span></span><span class='period'>.</span><span class='id identifier rubyid_all'><span class='object_link'><a href="CustomRepos.html#all-class_method" title="Lich::Util::Update::CustomRepos.all (method)">all</a></span></span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
     <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: Unknown repository &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_repo_key'>repo_key</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;. Known: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_all_keys'>all_keys</span><span class='embexpr_end'>}</span><span class='tstring_content'>]</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
+
+  <span class='kw'>if</span> <span class='id identifier rubyid_config'>config</span><span class='lbracket'>[</span><span class='symbol'>:custom</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_type'>type</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>data</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: Data file downloads are not supported for custom repos. Only --script= is available.]</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>return</span>
   <span class='kw'>end</span>
 
@@ -929,7 +892,7 @@ and data files, including handling repository-specific updates.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:29 2026 by
+  Generated on Wed Aug 26 16:50:53 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

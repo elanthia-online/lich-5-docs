@@ -104,7 +104,11 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents the messaging associated with a creature.</p>
+    <p>Creature messaging templates for contextual creature descriptions.</p>
+<p>Stores and renders dynamic messaging for creatures: arrival/death text,
+spell casting, combat actions, and creature sounds. Supports placeholder
+substitution (pronouns, directions, weapon types) and random variation
+via arrays of alternatives.</p>
 
   </div>
 </div>
@@ -121,7 +125,38 @@
     <dl class="constants">
       
         <dt id="PLACEHOLDER_MAP-constant" class="">PLACEHOLDER_MAP =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Placeholder substitution options for message templates.</p>
+<p>Maps placeholder names (used in curly braces within messaging templates)
+to their allowed values. Capitalized variants (e.g. Pronoun) use title case;
+lowercase variants use lowercase. RAW: values are regex patterns matched
+without escaping.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='comment'># Template: &quot;The {Pronoun} swings a {weapon}&quot;
+</span><span class='comment'># Placeholders:
+</span><span class='comment'>#   Pronoun -&gt; randomly one of [&quot;He&quot;, &quot;She&quot;, &quot;It&quot;, ...]
+</span><span class='comment'>#   weapon -&gt; RAW regex pattern for any weapon name</span></code></pre>
+    
+  </div>
+
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li>#normalize</li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='lbrace'>{</span>
   <span class='label'>Pronoun:</span> <span class='qwords_beg'>%w[</span><span class='tstring_content'>He</span><span class='words_sep'> </span><span class='tstring_content'>Her</span><span class='words_sep'> </span><span class='tstring_content'>His</span><span class='words_sep'> </span><span class='tstring_content'>It</span><span class='words_sep'> </span><span class='tstring_content'>She</span><span class='tstring_end'>]</span></span><span class='comma'>,</span>
@@ -455,7 +490,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#display-instance_method" title="#display (instance method)">#<strong>display</strong>(field, subs = {})  &#x21d2; Object </a>
+      <a href="#display-instance_method" title="#display (instance method)">#<strong>display</strong>(field, subs = {})  &#x21d2; String, Object </a>
     
 
     
@@ -469,7 +504,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Renders a messaging field with optional placeholder substitutions.</p></div></span>
   
 </li>
 
@@ -501,7 +536,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#match-instance_method" title="#match (instance method)">#<strong>match</strong>(field, str)  &#x21d2; Object </a>
+      <a href="#match-instance_method" title="#match (instance method)">#<strong>match</strong>(field, str)  &#x21d2; Hash<sup>?</sup> </a>
     
 
     
@@ -515,7 +550,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Matches a messaging field against a string and returns captured groups.</p></div></span>
   
 </li>
 
@@ -523,7 +558,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#normalize-instance_method" title="#normalize (instance method)">#<strong>normalize</strong>(value)  &#x21d2; Object </a>
+      <a href="#normalize-instance_method" title="#normalize (instance method)">#<strong>normalize</strong>(value)  &#x21d2; PlaceholderTemplate, ... </a>
     
 
     
@@ -537,7 +572,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Recursively normalizes a messaging value into a renderable form.</p></div></span>
   
 </li>
 
@@ -573,14 +608,14 @@
       <pre class="lines">
 
 
-650
-651
-652
-653
-654</pre>
+701
+702
+703
+704
+705</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 650</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 701</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_data'>data</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span>
@@ -623,12 +658,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_arrival'>arrival</span>
   <span class='ivar'>@arrival</span>
@@ -664,12 +699,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_attack'>attack</span>
   <span class='ivar'>@attack</span>
@@ -705,12 +740,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bite'>bite</span>
   <span class='ivar'>@bite</span>
@@ -746,12 +781,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_claw'>claw</span>
   <span class='ivar'>@claw</span>
@@ -787,12 +822,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_death'>death</span>
   <span class='ivar'>@death</span>
@@ -828,12 +863,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_description'>description</span>
   <span class='ivar'>@description</span>
@@ -869,12 +904,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enrage'>enrage</span>
   <span class='ivar'>@enrage</span>
@@ -910,12 +945,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_flee'>flee</span>
   <span class='ivar'>@flee</span>
@@ -951,12 +986,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_frenzy'>frenzy</span>
   <span class='ivar'>@frenzy</span>
@@ -992,12 +1027,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mstrike'>mstrike</span>
   <span class='ivar'>@mstrike</span>
@@ -1033,12 +1068,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_spell_prep'>spell_prep</span>
   <span class='ivar'>@spell_prep</span>
@@ -1074,12 +1109,12 @@
       <pre class="lines">
 
 
-639
-640
-641</pre>
+677
+678
+679</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sympathy'>sympathy</span>
   <span class='ivar'>@sympathy</span>
@@ -1099,31 +1134,104 @@
       <div class="method_details first">
   <h3 class="signature first" id="display-instance_method">
   
-    #<strong>display</strong>(field, subs = {})  &#x21d2; <tt>Object</tt> 
+    #<strong>display</strong>(field, subs = {})  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Object</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Renders a messaging field with optional placeholder substitutions.</p>
+<p>Retrieves the named field (e.g. :description, :arrival) and renders it:
+if it is a PlaceholderTemplate, substitutes placeholders (falling back to
+random options); if it is an array, joins each rendered element with newlines;
+otherwise returns the plain value.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Messaging (class)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Messaging#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>description:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>{pronoun} has red skin</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_msg'>msg</span><span class='period'>.</span><span class='id identifier rubyid_display'>display</span><span class='lparen'>(</span><span class='symbol'>:description</span><span class='comma'>,</span> <span class='label'>pronoun:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>She</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;She has red skin&quot;</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>field</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the messaging field name (e.g. :description, :death)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>subs</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>optional placeholder -&gt; value substitutions, e.g.
+{ pronoun: &quot;He&quot;, direction: &quot;north&quot; }</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>rendered message or plain value</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-668
-669
-670
-671
-672
-673
-674
-675
-676
-677</pre>
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 668</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 742</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_display'>display</span><span class='lparen'>(</span><span class='id identifier rubyid_field'>field</span><span class='comma'>,</span> <span class='id identifier rubyid_subs'>subs</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='id identifier rubyid_field'>field</span><span class='rparen'>)</span>
@@ -1143,29 +1251,100 @@
       <div class="method_details ">
   <h3 class="signature " id="match-instance_method">
   
-    #<strong>match</strong>(field, str)  &#x21d2; <tt>Object</tt> 
+    #<strong>match</strong>(field, str)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Matches a messaging field against a string and returns captured groups.</p>
+<p>If the field is a PlaceholderTemplate, converts it to a regex and matches;
+returns captured placeholders as a hash, or nil if no match. For non-template
+fields, returns an empty hash if the field equals the string, nil otherwise.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Messaging (class)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Messaging#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>arrival:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>A {noun} arrives from the {direction}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_msg'>msg</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='symbol'>:arrival</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>A goblin arrives from the north</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='comment'>#=&gt; { noun: &quot;goblin&quot;, direction: &quot;north&quot; }</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>field</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the messaging field name (e.g. :arrival, :attack)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>str</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the string to match</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>captured placeholder values, empty hash if exact match,
+nil if no match</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-679
-680
-681
-682
-683
-684
-685
-686</pre>
+767
+768
+769
+770
+771
+772
+773
+774</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 679</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 767</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_field'>field</span><span class='comma'>,</span> <span class='id identifier rubyid_str'>str</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='id identifier rubyid_field'>field</span><span class='rparen'>)</span>
@@ -1183,32 +1362,85 @@
       <div class="method_details ">
   <h3 class="signature " id="normalize-instance_method">
   
-    #<strong>normalize</strong>(value)  &#x21d2; <tt>Object</tt> 
+    #<strong>normalize</strong>(value)  &#x21d2; <tt><span class='object_link'><a href="PlaceholderTemplate.html" title="Lich::Gemstone::PlaceholderTemplate (class)">PlaceholderTemplate</a></span></tt>, ... 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Recursively normalizes a messaging value into a renderable form.</p>
+<p>Detects and converts placeholder templates (strings containing name patterns)
+into <span class='object_link'><a href="PlaceholderTemplate.html" title="Lich::Gemstone::PlaceholderTemplate (class)">PlaceholderTemplate</a></span> objects. Arrays are recursively normalized. Plain
+strings and other values pass through unchanged.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Array</tt>, <tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the raw value from template data</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="PlaceholderTemplate.html" title="Lich::Gemstone::PlaceholderTemplate (class)">PlaceholderTemplate</a></span></tt>, <tt>Array</tt>, <tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>normalized value</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="PlaceholderTemplate.html" title="Lich::Gemstone::PlaceholderTemplate (class)">PlaceholderTemplate</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-656
-657
-658
-659
-660
-661
-662
-663
-664
-665
-666</pre>
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 656</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 716</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_normalize'>normalize</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
@@ -1231,7 +1463,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:27 2026 by
+  Generated on Wed Aug 26 16:50:50 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

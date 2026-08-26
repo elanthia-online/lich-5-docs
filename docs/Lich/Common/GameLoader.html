@@ -88,19 +88,14 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Provides methods to load game-specific resources and configurations.</p>
+    <p>Loads game-specific and common modules based on the running game.</p>
+<p>Call .load! to initialize the Lich runtime with all required dependencies
+for GemStone IV or DragonRealms.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Lich::Common</a></span></li>
-    
-  </ul>
 
 </div>
 
@@ -131,10 +126,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads post-game initialization tasks and settings.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Registers post-load hooks to initialize game settings.</p></div></span>
   
 </li>
 
@@ -153,10 +148,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads common dependencies required before starting the game.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads shared modules required by all games.</p></div></span>
   
 </li>
 
@@ -175,10 +170,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads resources specific to the Dragon Realms game.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads all modules and dependencies for DragonRealms.</p></div></span>
   
 </li>
 
@@ -197,10 +192,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads resources specific to the GemStone game.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads all modules and dependencies for GemStone IV.</p></div></span>
   
 </li>
 
@@ -219,10 +214,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads the appropriate game based on the current game data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads game-specific modules and initializes the Lich runtime.</p></div></span>
   
 </li>
 
@@ -248,7 +243,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Loads post-game initialization tasks and settings.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Registers post-load hooks to initialize game settings.</p>
+<p>Seeds a valid client record on the game server when the character has never
+logged in with the Wrayth client, ensuring properly formatted settingsInfo
+on future connections.</p>
 
   </div>
 </div>
@@ -261,30 +263,30 @@
       <pre class="lines">
 
 
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88</pre>
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 75</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 98</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_after'>common_after</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>common</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>postload.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="PostLoad.html" title="Lich::Common::PostLoad (module)">PostLoad</a></span></span><span class='period'>.</span><span class='id identifier rubyid_register'><span class='object_link'><a href="PostLoad.html#register-class_method" title="Lich::Common::PostLoad.register (method)">register</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>settings_init</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
     <span class='comment'># When the game server sends malformed &lt;settingsInfo  space not found ...&gt; XML,
 </span>    <span class='comment'># it means this character has never logged in with the Wrayth client.
-</span>    <span class='comment'># The reactive fix in handle_xml_error patches the XML and sets the flag.
+</span>    <span class='comment'># Game.fix_invalid_settings_info patches the XML and sets the flag.
 </span>    <span class='comment'># Here we send a dummy &lt;db&gt; command to seed a valid client record so
 </span>    <span class='comment'># the server sends properly formatted settingsInfo on future connects.
 </span>    <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../GameBase.html" title="Lich::GameBase (module)">GameBase</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GameBase/Game.html" title="Lich::GameBase::Game (class)">Game</a></span></span><span class='period'>.</span><span class='id identifier rubyid_settings_init_needed?'><span class='object_link'><a href="../GameBase/Game.html#settings_init_needed%3F-class_method" title="Lich::GameBase::Game.settings_init_needed? (method)">settings_init_needed?</a></span></span>
@@ -309,7 +311,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Loads common dependencies required before starting the game.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads shared modules required by all games.</p>
 
   </div>
 </div>
@@ -322,17 +328,17 @@
       <pre class="lines">
 
 
-10
-11
-12
-13
-14
-15
 16
-17</pre>
+17
+18
+19
+20
+21
+22
+23</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 10</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 16</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_before'>common_before</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>common</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>account.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -358,7 +364,13 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Loads resources specific to the Dragon Realms game.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads all modules and dependencies for DragonRealms.</p>
+<p>Initializes character attributes, game-specific features (infomon, creatures,
+settings), and enables the infomon watcher.</p>
 
   </div>
 </div>
@@ -371,19 +383,20 @@
       <pre class="lines">
 
 
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71</pre>
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 62</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 78</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dragon_realms'>dragon_realms</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_before'>common_before</span>
@@ -392,6 +405,7 @@
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dependency</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>settings_config.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>drinfomon.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>commons.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>creature.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='const'>DRInfomon</span><span class='period'>.</span><span class='id identifier rubyid_watch!'>watch!</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_after'>common_after</span>
 <span class='kw'>end</span></pre>
@@ -411,7 +425,13 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Loads resources specific to the GemStone game.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads all modules and dependencies for GemStone IV.</p>
+<p>Initializes character attributes, game-specific features (bounties, society,
+combat tracking, etc.), and enables active spell and infomon watchers.</p>
 
   </div>
 </div>
@@ -424,17 +444,6 @@
       <pre class="lines">
 
 
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
 32
 33
 34
@@ -461,10 +470,21 @@
 55
 56
 57
-58</pre>
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 21</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 32</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gemstone'>gemstone</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_before'>common_before</span>
@@ -520,7 +540,13 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Loads the appropriate game based on the current game data.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads game-specific modules and initializes the Lich runtime.</p>
+<p>Blocks until the game is identified from the XML data stream, then delegates
+to either .gemstone or .dragon_realms.</p>
 
   </div>
 </div>
@@ -533,15 +559,15 @@
       <pre class="lines">
 
 
-92
-93
-94
-95
-96
-97</pre>
+120
+121
+122
+123
+124
+125</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 92</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 120</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load!'>load!</span>
   <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.1</span> <span class='kw'>while</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='kw'>or</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -559,7 +585,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:15 2026 by
+  Generated on Wed Aug 26 16:50:34 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

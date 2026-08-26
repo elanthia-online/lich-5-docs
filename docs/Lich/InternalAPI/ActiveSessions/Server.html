@@ -104,20 +104,16 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents a server for handling active sessions.</p>
-<p>This class manages client connections and processes requests.</p>
+    <p>Read-only/query plus lifecycle write server for the active sessions API.</p>
+<p>The transport is intentionally local-only TCP to keep behavior consistent
+across Linux, macOS, and Windows. The server delegates all state changes
+to <span class='object_link'><a href="Registry.html" title="Lich::InternalAPI::ActiveSessions::Registry (class)">Registry</a></span>; it does not own lifecycle policy beyond request routing
+and thread cleanup.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../ActiveSessions.html" title="Lich::InternalAPI::ActiveSessions (module)">Lich::InternalAPI::ActiveSessions</a></span></li>
-    
-  </ul>
 
 </div>
   
@@ -129,7 +125,30 @@
     <dl class="constants">
       
         <dt id="READ_TIMEOUT-constant" class="">READ_TIMEOUT =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Maximum number of seconds to wait for the first request line from a
+connected client before abandoning the handler.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='int'>1</span></pre></dd>
       
@@ -255,7 +274,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new Server instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -277,7 +296,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the server is currently running.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Indicates whether the server thread is active.</p></div></span>
   
 </li>
 
@@ -299,7 +318,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Starts the server to accept client connections.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Starts the TCP server and accept loop.</p></div></span>
   
 </li>
 
@@ -321,7 +340,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Stops the server and cleans up resources.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stops the server and its accept thread.</p></div></span>
   
 </li>
 
@@ -344,7 +363,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new Server instance.</p>
+    
 
   </div>
 </div>
@@ -361,9 +380,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the host address to bind the server to</p></div>
-      
     </li>
   
     <li>
@@ -375,9 +391,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the port number to listen on</p></div>
-      
     </li>
   
     <li>
@@ -385,12 +398,9 @@
         <span class='name'>registry</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="Registry.html" title="Lich::InternalAPI::ActiveSessions::Registry (class)">Lich::InternalAPI::ActiveSessions::Registry</a></span></tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the registry for managing session data</p></div>
       
     </li>
   
@@ -404,7 +414,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the token used for authenticating requests</p></div>
+        <div class='inline'><p>shared secret required by all clients</p></div>
       
     </li>
   
@@ -413,14 +423,14 @@
         <span class='name'>server_factory</span>
       
       
-        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>#call</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>optional factory for creating the server</p></div>
+        <div class='inline'><p>builds a listening server</p></div>
       
     </li>
   
@@ -429,14 +439,14 @@
         <span class='name'>accept_thread_factory</span>
       
       
-        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>#call</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>optional factory for creating accept threads</p></div>
+        <div class='inline'><p>builds the accept-loop thread</p></div>
       
     </li>
   
@@ -445,14 +455,14 @@
         <span class='name'>client_thread_factory</span>
       
       
-        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>#call</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>optional factory for creating client threads</p></div>
+        <div class='inline'><p>builds per-client threads</p></div>
       
     </li>
   
@@ -465,22 +475,23 @@
       <pre class="lines">
 
 
-29
-30
-31
-32
-33
-34
-35
-36
-37
 38
 39
 40
-41</pre>
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 29</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 38</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>host:</span><span class='comma'>,</span> <span class='label'>port:</span><span class='comma'>,</span> <span class='label'>registry:</span><span class='comma'>,</span> <span class='label'>auth_token:</span><span class='comma'>,</span> <span class='label'>server_factory:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>accept_thread_factory:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>client_thread_factory:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@host</span> <span class='op'>=</span> <span class='id identifier rubyid_host'>host</span>
@@ -494,6 +505,7 @@
   <span class='ivar'>@thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@mutex</span> <span class='op'>=</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='ivar'>@client_threads</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='ivar'>@stopping</span> <span class='op'>=</span> <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -531,12 +543,12 @@
       <pre class="lines">
 
 
-18
-19
-20</pre>
+28
+29
+30</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 18</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 28</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_auth_token'>auth_token</span>
   <span class='ivar'>@auth_token</span>
@@ -572,12 +584,12 @@
       <pre class="lines">
 
 
-17
-18
-19</pre>
+27
+28
+29</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 17</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 27</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_host'>host</span>
   <span class='ivar'>@host</span>
@@ -613,12 +625,12 @@
       <pre class="lines">
 
 
-17
-18
-19</pre>
+27
+28
+29</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 17</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 27</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_port'>port</span>
   <span class='ivar'>@port</span>
@@ -646,7 +658,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the server is currently running.</p>
+    <p>Indicates whether the server thread is active.</p>
 
   </div>
 </div>
@@ -662,9 +674,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>true if the server is running, false otherwise</p></div>
-      
     </li>
   
 </ul>
@@ -675,12 +684,12 @@
       <pre class="lines">
 
 
-95
-96
-97</pre>
+111
+112
+113</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 95</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 111</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_running?'><span class='object_link'><a href="../../../top-level-namespace.html#running%3F-instance_method" title="#running? (method)">running?</a></span></span>
   <span class='ivar'>@thread</span><span class='op'>&amp;.</span><span class='id identifier rubyid_alive?'>alive?</span> <span class='op'>||</span> <span class='kw'>false</span>
@@ -701,8 +710,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Starts the server to accept client connections.</p>
-<p>This method initializes the server and begins the accept loop.</p>
+    <p>Starts the TCP server and accept loop.</p>
 
   </div>
 </div>
@@ -719,23 +727,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the server started successfully, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if an error occurs during startup</p></div>
+        <div class='inline'><p>true when the server is available for requests</p></div>
       
     </li>
   
@@ -747,32 +739,40 @@
       <pre class="lines">
 
 
-48
-49
-50
-51
-52
-53
-54
-55
 56
 57
 58
 59
 60
-61</pre>
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 48</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 56</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start'>start</span>
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_running?'><span class='object_link'><a href="../../../top-level-namespace.html#running%3F-instance_method" title="#running? (method)">running?</a></span></span>
 
+    <span class='ivar'>@stopping</span> <span class='op'>=</span> <span class='kw'>false</span>
     <span class='ivar'>@server</span> <span class='op'>=</span> <span class='ivar'>@server_factory</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='ivar'>@host</span><span class='comma'>,</span> <span class='ivar'>@port</span><span class='rparen'>)</span>
     <span class='ivar'>@server</span><span class='period'>.</span><span class='id identifier rubyid_setsockopt'>setsockopt</span><span class='lparen'>(</span><span class='const'>Socket</span><span class='op'>::</span><span class='const'>SOL_SOCKET</span><span class='comma'>,</span> <span class='const'>Socket</span><span class='op'>::</span><span class='const'>SO_REUSEADDR</span><span class='comma'>,</span> <span class='int'>1</span><span class='rparen'>)</span> <span class='kw'>rescue</span> <span class='kw'>nil</span>
     <span class='ivar'>@port</span> <span class='op'>=</span> <span class='ivar'>@server</span><span class='period'>.</span><span class='id identifier rubyid_addr'>addr</span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span>
-    <span class='ivar'>@thread</span> <span class='op'>=</span> <span class='ivar'>@accept_thread_factory</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_accept_loop'>accept_loop</span> <span class='rbrace'>}</span>
+    <span class='ivar'>@thread</span> <span class='op'>=</span> <span class='ivar'>@accept_thread_factory</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span> <span class='kw'>do</span>
+      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: ActiveSessions accept thread started pid=</span><span class='embexpr_beg'>#{</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> port=</span><span class='embexpr_beg'>#{</span><span class='ivar'>@port</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_accept_loop'>accept_loop</span>
+    <span class='kw'>end</span>
   <span class='kw'>end</span>
   <span class='kw'>true</span>
 <span class='kw'>rescue</span> <span class='const'>StandardError</span>
@@ -795,8 +795,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Stops the server and cleans up resources.</p>
-<p>This method closes the server socket and joins any active client threads.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Stops the server and its accept thread.</p>
+<p>Client handler threads are joined with a short timeout so shutdown
+does not leak long-lived handler threads when the owning process exits.</p>
 
   </div>
 </div>
@@ -809,20 +810,6 @@
       <pre class="lines">
 
 
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
 81
 82
 83
@@ -833,10 +820,25 @@
 88
 89
 90
-91</pre>
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 67</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/server.rb', line 81</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stop'>stop</span>
   <span class='id identifier rubyid_thread'>thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -847,6 +849,7 @@
     <span class='id identifier rubyid_server'>server</span> <span class='op'>=</span> <span class='ivar'>@server</span>
     <span class='id identifier rubyid_client_threads'>client_threads</span> <span class='op'>=</span> <span class='ivar'>@client_threads</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
     <span class='ivar'>@client_threads</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+    <span class='ivar'>@stopping</span> <span class='op'>=</span> <span class='kw'>true</span>
     <span class='ivar'>@thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
     <span class='ivar'>@server</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='kw'>end</span>
@@ -873,7 +876,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:31 2026 by
+  Generated on Wed Aug 26 16:50:56 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

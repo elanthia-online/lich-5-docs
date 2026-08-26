@@ -90,7 +90,7 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Handles authentication processes within the CLI module.</p>
+    <p>Namespace for authentication, login, and session-related utilities.</p>
 
   </div>
 </div>
@@ -100,7 +100,7 @@
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="" title="Lich::Common::Authentication (module)">for related authentication utilities.</a></span></li>
+      <li><span class='object_link'><a href="Authentication/LoginHelpers.html" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></li>
     
   </ul>
 
@@ -164,7 +164,8 @@ These errors are often temporary and resolve on retry:</p>
   <div class="discussion">
     <p>Known fatal error codes that should not be retried
 REJECT = bad credentials, NORECORD = account not found, INVALID = invalid request
-PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
+PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account
+GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the instance</p>
 
   </div>
 </div>
@@ -173,7 +174,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>REJECT</span><span class='words_sep'> </span><span class='tstring_content'>NORECORD</span><span class='words_sep'> </span><span class='tstring_content'>INVALID</span><span class='words_sep'> </span><span class='tstring_content'>PASSWORD</span><span class='words_sep'> </span><span class='tstring_content'>CHARACTER_NOT_FOUND</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>REJECT</span><span class='words_sep'> </span><span class='tstring_content'>NORECORD</span><span class='words_sep'> </span><span class='tstring_content'>INVALID</span><span class='words_sep'> </span><span class='tstring_content'>PASSWORD</span><span class='words_sep'> </span><span class='tstring_content'>CHARACTER_NOT_FOUND</span><span class='words_sep'> </span><span class='tstring_content'>GENERATOR_NOT_AVAILABLE</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -195,7 +196,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#authenticate-class_method" title="authenticate (class method)">.<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false)  &#x21d2; Boolean </a>
+      <a href="#authenticate-class_method" title="authenticate (class method)">.<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false)  &#x21d2; Hash, Array </a>
     
 
     
@@ -209,7 +210,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Authenticates a user with the provided credentials.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Authenticates a user with the game server Includes automatic retry with exponential backoff for transient errors.</p></div></span>
   
 </li>
 
@@ -231,7 +232,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retries the given block of code for transient authentication errors.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Executes a block with retry logic for transient errors.</p></div></span>
   
 </li>
 
@@ -249,7 +250,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       <div class="method_details first">
   <h3 class="signature first" id="authenticate-class_method">
   
-    .<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt> 
   
 
   
@@ -257,7 +258,8 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Authenticates a user with the provided credentials.</p>
+    <p>Authenticates a user with the game server
+Includes automatic retry with exponential backoff for transient errors</p>
 
   </div>
 </div>
@@ -275,7 +277,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>the account name</p></div>
+        <div class='inline'><p>User account name</p></div>
       
     </li>
   
@@ -289,7 +291,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>the account password</p></div>
+        <div class='inline'><p>User password</p></div>
       
     </li>
   
@@ -305,7 +307,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>optional character name for authentication</p></div>
+        <div class='inline'><p>Character name (optional)</p></div>
       
     </li>
   
@@ -321,7 +323,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>optional game code for authentication</p></div>
+        <div class='inline'><p>Game code (optional)</p></div>
       
     </li>
   
@@ -337,7 +339,23 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>whether to use legacy authentication method</p></div>
+        <div class='inline'><p>Whether to use legacy authentication</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>generator</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Whether to enter the character generator instead of selecting a character</p></div>
       
     </li>
   
@@ -349,12 +367,12 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
     <li>
       
       
-        <span class='type'>(<tt>Boolean</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>true if authentication is successful</p></div>
+        <div class='inline'><p>Authentication data containing connection information</p></div>
       
     </li>
   
@@ -365,12 +383,12 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
     <li>
       
       
-        <span class='type'></span>
+        <span class='type'>(<tt>StandardError</tt>)</span>
       
       
       
-        
-        <div class='inline'><p>FatalAuthError if a fatal authentication error occurs</p></div>
+        &mdash;
+        <div class='inline'><p>Re-raises the last error after all retries exhausted</p></div>
       
     </li>
   
@@ -382,12 +400,6 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       <pre class="lines">
 
 
-35
-36
-37
-38
-39
-40
 41
 42
 43
@@ -404,28 +416,36 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
 54
 55
 56
-57</pre>
+57
+58
+59
+60
+61
+62
+63
+64</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 35</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 41</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_authenticate'>authenticate</span><span class='lparen'>(</span><span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_authenticate'>authenticate</span><span class='lparen'>(</span><span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_character'>character</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_game_code'>game_code</span>
-      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth'><span class='object_link'><a href="Authentication/EAccess.html#auth-class_method" title="Lich::Common::Authentication::EAccess.auth (method)">auth</a></span></span><span class='lparen'>(</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_character'>character</span> <span class='op'>||</span> <span class='id identifier rubyid_generator'>generator</span><span class='rparen'>)</span>
+      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/EAccess.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::EAccess.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span>
         <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span>
         <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span>
         <span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span>
-        <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span>
+        <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span>
+        <span class='label'>generator:</span> <span class='id identifier rubyid_generator'>generator</span>
       <span class='rparen'>)</span>
     <span class='kw'>elsif</span> <span class='id identifier rubyid_legacy'>legacy</span>
-      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth'><span class='object_link'><a href="Authentication/EAccess.html#auth-class_method" title="Lich::Common::Authentication::EAccess.auth (method)">auth</a></span></span><span class='lparen'>(</span>
+      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/EAccess.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::EAccess.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span>
         <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span>
         <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span>
         <span class='label'>legacy:</span> <span class='kw'>true</span>
       <span class='rparen'>)</span>
     <span class='kw'>else</span>
-      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth'><span class='object_link'><a href="Authentication/EAccess.html#auth-class_method" title="Lich::Common::Authentication::EAccess.auth (method)">auth</a></span></span><span class='lparen'>(</span>
+      <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/EAccess.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::EAccess.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span>
         <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span>
         <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span>
       <span class='rparen'>)</span>
@@ -448,7 +468,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retries the given block of code for transient authentication errors.</p>
+    <p>Executes a block with retry logic for transient errors</p>
 
   </div>
 </div>
@@ -465,7 +485,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         
-        <div class='inline'><p>block of code to execute</p></div>
+        <div class='inline'><p>The block to execute with retry</p></div>
       
     </li>
   
@@ -481,7 +501,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       
       
         &mdash;
-        <div class='inline'><p>the result of the block if successful</p></div>
+        <div class='inline'><p>The result of the block</p></div>
       
     </li>
   
@@ -492,24 +512,24 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
     <li>
       
       
-        <span class='type'></span>
+        <span class='type'>(<tt><span class='object_link'><a href="Authentication/FatalAuthError.html" title="Lich::Common::Authentication::FatalAuthError (class)">FatalAuthError</a></span></tt>)</span>
       
       
       
-        
-        <div class='inline'><p>FatalAuthError if a fatal authentication error occurs</p></div>
+        &mdash;
+        <div class='inline'><p>For fatal auth failures (bad credentials, etc.)</p></div>
       
     </li>
   
     <li>
       
       
-        <span class='type'></span>
+        <span class='type'>(<tt>StandardError</tt>)</span>
       
       
       
-        
-        <div class='inline'><p>StandardError if all retries are exhausted</p></div>
+        &mdash;
+        <div class='inline'><p>Re-raises the last error after all retries exhausted</p></div>
       
     </li>
   
@@ -521,13 +541,6 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
       <pre class="lines">
 
 
-65
-66
-67
-68
-69
-70
-71
 72
 73
 74
@@ -568,10 +581,17 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
 109
 110
 111
-112</pre>
+112
+113
+114
+115
+116
+117
+118
+119</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 65</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 72</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_with_retry'>with_retry</span>
   <span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -631,7 +651,7 @@ PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:18 2026 by
+  Generated on Wed Aug 26 16:50:38 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

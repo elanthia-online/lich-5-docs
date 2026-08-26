@@ -89,6 +89,11 @@
   
   
   
+  <dl>
+      <dt>Includes:</dt>
+      <dd><span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span></dd>
+  </dl>
+  
   
 
   
@@ -104,8 +109,12 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents an instance of a creature in the game.</p>
-<p>This class manages the state and behavior of individual creatures.</p>
+    <p>Individual GemStone creature instance (runtime tracking with ID).</p>
+<p>Shares its id-keyed registry, room roster and <code>&lt;crtrStatus&gt;</code> status/flag
+handling with DragonRealms via the <span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span> mixin; the
+GemStone-specific layer here adds bestiary templates, UCS (Unarmed Combat
+System) tracking, HP/injury modelling and the GemStone <code>valid_target?</code>
+exclusions.</p>
 
   </div>
 </div>
@@ -122,7 +131,25 @@
     <dl class="constants">
       
         <dt id="BODY_PARTS-constant" class="">BODY_PARTS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Valid GemStone body parts for injury tracking.</p>
+<p>Used by <span class='object_link'><a href="#add_injury-instance_method" title="Lich::Gemstone::CreatureInstance#add_injury (method)">#add_injury</a></span> to validate injury locations. Keys correspond to
+the body part names used in the bestiary and combat parsing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li>#injured?, #injured_locations</li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>abdomen</span><span class='words_sep'> </span><span class='tstring_content'>back</span><span class='words_sep'> </span><span class='tstring_content'>chest</span><span class='words_sep'> </span><span class='tstring_content'>head</span><span class='words_sep'> </span><span class='tstring_content'>leftArm</span><span class='words_sep'> </span><span class='tstring_content'>leftEye</span><span class='words_sep'> </span><span class='tstring_content'>leftFoot</span><span class='words_sep'> </span><span class='tstring_content'>leftHand</span><span class='words_sep'> </span><span class='tstring_content'>leftLeg</span><span class='words_sep'> </span><span class='tstring_content'>neck</span><span class='words_sep'> </span><span class='tstring_content'>nerves</span><span class='words_sep'> </span><span class='tstring_content'>rightArm</span><span class='words_sep'> </span><span class='tstring_content'>rightEye</span><span class='words_sep'> </span><span class='tstring_content'>rightFoot</span><span class='words_sep'> </span><span class='tstring_content'>rightHand</span><span class='words_sep'> </span><span class='tstring_content'>rightLeg</span><span class='tstring_end'>]</span></span></pre></dd>
       
@@ -154,57 +181,16 @@
         </dt>
         <dd><pre class="code"><span class='int'>15</span></pre></dd>
       
-        <dt id="STATUS_DURATIONS-constant" class="">STATUS_DURATIONS =
-          <div class="docstring">
-  <div class="discussion">
-    <p>Status effect durations (in seconds) for auto-cleanup
-nil = no auto-cleanup (waits for removal message)</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
-        </dt>
-        <dd><pre class="code"><span class='lbrace'>{</span>
-  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>breeze</span><span class='tstring_end'>&#39;</span></span>      <span class='op'>=&gt;</span> <span class='int'>6</span><span class='comma'>,</span> <span class='comment'># 6 seconds roundtime
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bind</span><span class='tstring_end'>&#39;</span></span>        <span class='op'>=&gt;</span> <span class='int'>10</span><span class='comma'>,</span> <span class='comment'># 10 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>web</span><span class='tstring_end'>&#39;</span></span>         <span class='op'>=&gt;</span> <span class='int'>8</span><span class='comma'>,</span> <span class='comment'># 8 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>entangle</span><span class='tstring_end'>&#39;</span></span>    <span class='op'>=&gt;</span> <span class='int'>10</span><span class='comma'>,</span> <span class='comment'># 10 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>hypnotism</span><span class='tstring_end'>&#39;</span></span>   <span class='op'>=&gt;</span> <span class='int'>12</span><span class='comma'>,</span> <span class='comment'># 12 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>calm</span><span class='tstring_end'>&#39;</span></span>        <span class='op'>=&gt;</span> <span class='int'>15</span><span class='comma'>,</span> <span class='comment'># 15 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>mass_calm</span><span class='tstring_end'>&#39;</span></span>   <span class='op'>=&gt;</span> <span class='int'>15</span><span class='comma'>,</span> <span class='comment'># 15 seconds typical
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sleep</span><span class='tstring_end'>&#39;</span></span>       <span class='op'>=&gt;</span> <span class='int'>8</span><span class='comma'>,</span> <span class='comment'># 8 seconds typical (can wake early)
-</span>  <span class='comment'># Statuses with reliable removal messages - no duration needed
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span>     <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>immobilized</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>prone</span><span class='tstring_end'>&#39;</span></span>       <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span>         <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>blind</span><span class='tstring_end'>&#39;</span></span>       <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span>         <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sunburst</span><span class='tstring_end'>&#39;</span></span>    <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>webbed</span><span class='tstring_end'>&#39;</span></span>      <span class='op'>=&gt;</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='comment'># Has removal messages
-</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>poisoned</span><span class='tstring_end'>&#39;</span></span>    <span class='op'>=&gt;</span> <span class='kw'>nil</span> <span class='comment'># Has removal messages
-</span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
-      
-        <dt id="instances-classvariable" class="">@@instances =
-          
-        </dt>
-        <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span></pre></dd>
-      
-        <dt id="max_size-classvariable" class="">@@max_size =
-          
-        </dt>
-        <dd><pre class="code"><span class='int'>1000</span></pre></dd>
-      
-        <dt id="auto_register-classvariable" class="">@@auto_register =
-          
-        </dt>
-        <dd><pre class="code"><span class='kw'>true</span></pre></dd>
-      
     </dl>
   
 
 
+
+  
+  
+  <h3 class="inherited">Constants included
+     from <span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="../Common/CreatureBase.html#ALL_CRTR_FLAGS-constant" title="Lich::Common::CreatureBase::ALL_CRTR_FLAGS (constant)">Common::CreatureBase::ALL_CRTR_FLAGS</a></span>, <span class='object_link'><a href="../Common/CreatureBase.html#CRTR_CLASSIFICATION_FLAGS-constant" title="Lich::Common::CreatureBase::CRTR_CLASSIFICATION_FLAGS (constant)">Common::CreatureBase::CRTR_CLASSIFICATION_FLAGS</a></span>, <span class='object_link'><a href="../Common/CreatureBase.html#CRTR_STATUS_FLAGS-constant" title="Lich::Common::CreatureBase::CRTR_STATUS_FLAGS (constant)">Common::CreatureBase::CRTR_STATUS_FLAGS</a></span>, <span class='object_link'><a href="../Common/CreatureBase.html#KNOWN_FLAG_NAMES-constant" title="Lich::Common::CreatureBase::KNOWN_FLAG_NAMES (constant)">Common::CreatureBase::KNOWN_FLAG_NAMES</a></span>, <span class='object_link'><a href="../Common/CreatureBase.html#STATUS_DURATIONS-constant" title="Lich::Common::CreatureBase::STATUS_DURATIONS (constant)">Common::CreatureBase::STATUS_DURATIONS</a></span></p>
 
 
   <h2>Instance Attribute Summary <small><a href="#" class="summary_toggle">collapse</a></small></h2>
@@ -480,7 +466,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get UCS position tier (1-3, or nil if expired).</p></div></span>
   
 </li>
 
@@ -530,7 +516,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get UCS tierup vulnerability (or nil if expired).</p></div></span>
   
 </li>
 
@@ -567,214 +553,6 @@ nil = no auto-cleanup (waits for removal message)</p>
 
   
     <h2>
-      Class Method Summary
-      <small><a href="#" class="summary_toggle">collapse</a></small>
-    </h2>
-
-    <ul class="summary">
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#[]-class_method" title="[] (class method)">.<strong>[]</strong>(id)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#all-class_method" title="all (class method)">.<strong>all</strong>  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#auto_register%3F-class_method" title="auto_register? (class method)">.<strong>auto_register?</strong>  &#x21d2; Boolean </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#cleanup_old-class_method" title="cleanup_old (class method)">.<strong>cleanup_old</strong>(max_age_seconds = 600)  &#x21d2; Integer </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Cleans up old creature instances based on their age.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#clear-class_method" title="clear (class method)">.<strong>clear</strong>  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#configure-class_method" title="configure (class method)">.<strong>configure</strong>(max_size: 1000, auto_register: true)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#full%3F-class_method" title="full? (class method)">.<strong>full?</strong>  &#x21d2; Boolean </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#register-class_method" title="register (class method)">.<strong>register</strong>(name, id, noun = nil)  &#x21d2; CreatureInstance<sup>?</sup> </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Registers a new creature instance.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#size-class_method" title="size (class method)">.<strong>size</strong>  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-    </ul>
-    
-  
-    <h2>
       Instance Method Summary
       <small><a href="#" class="summary_toggle">collapse</a></small>
     </h2>
@@ -784,7 +562,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#add_damage-instance_method" title="#add_damage (instance method)">#<strong>add_damage</strong>(amount)  &#x21d2; void </a>
+      <a href="#add_damage-instance_method" title="#add_damage (instance method)">#<strong>add_damage</strong>(amount)  &#x21d2; Object </a>
     
 
     
@@ -798,7 +576,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds damage to the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Add damage to creature.</p></div></span>
   
 </li>
 
@@ -806,7 +584,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#add_injury-instance_method" title="#add_injury (instance method)">#<strong>add_injury</strong>(body_part, amount = 1)  &#x21d2; void </a>
+      <a href="#add_injury-instance_method" title="#add_injury (instance method)">#<strong>add_injury</strong>(body_part, amount = 1)  &#x21d2; Object </a>
     
 
     
@@ -820,51 +598,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds an injury to a specific body part of the creature instance.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#add_status-instance_method" title="#add_status (instance method)">#<strong>add_status</strong>(status, duration = nil)  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Adds a status effect to the creature instance.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#cleanup_expired_statuses-instance_method" title="#cleanup_expired_statuses (instance method)">#<strong>cleanup_expired_statuses</strong>  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Cleans up any expired status effects from the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Add injury to body part.</p></div></span>
   
 </li>
 
@@ -886,7 +620,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Clear smote status.</p></div></span>
   
 </li>
 
@@ -894,7 +628,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#current_hp-instance_method" title="#current_hp (instance method)">#<strong>current_hp</strong>  &#x21d2; Integer<sup>?</sup> </a>
+      <a href="#current_hp-instance_method" title="#current_hp (instance method)">#<strong>current_hp</strong>  &#x21d2; Object </a>
     
 
     
@@ -908,7 +642,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the current hit points of the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate current HP (max_hp - damage_taken).</p></div></span>
   
 </li>
 
@@ -930,7 +664,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature is dead (0 HP).</p></div></span>
   
 </li>
 
@@ -938,7 +672,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#essential_data-instance_method" title="#essential_data (instance method)">#<strong>essential_data</strong>  &#x21d2; Hash </a>
+      <a href="#essential_data-instance_method" title="#essential_data (instance method)">#<strong>essential_data</strong>  &#x21d2; Object </a>
     
 
     
@@ -952,7 +686,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves essential data about the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Essential data for this instance.</p></div></span>
   
 </li>
 
@@ -974,29 +708,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#has_status%3F-instance_method" title="#has_status? (instance method)">#<strong>has_status?</strong>(status)  &#x21d2; Boolean </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Checks if the creature instance has a specific status effect.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature died from fatal crit.</p></div></span>
   
 </li>
 
@@ -1018,7 +730,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature has template data.</p></div></span>
   
 </li>
 
@@ -1040,7 +752,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate HP percentage (0-100).</p></div></span>
   
 </li>
 
@@ -1048,7 +760,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(id, noun, name)  &#x21d2; CreatureInstance </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(id, noun, name)  &#x21d2; void </a>
     
 
     
@@ -1064,7 +776,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>A new instance of CreatureInstance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a creature instance for runtime tracking.</p></div></span>
   
 </li>
 
@@ -1086,7 +798,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if injured at location.</p></div></span>
   
 </li>
 
@@ -1108,7 +820,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get all injured locations.</p></div></span>
   
 </li>
 
@@ -1130,7 +842,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the creature instance is below a certain HP threshold.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature is below HP threshold.</p></div></span>
   
 </li>
 
@@ -1152,7 +864,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Mark creature as killed by fatal critical hit.</p></div></span>
   
 </li>
 
@@ -1174,7 +886,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get maximum HP from template, with fallback.</p></div></span>
   
 </li>
 
@@ -1182,7 +894,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#position_to_tier-instance_method" title="#position_to_tier (instance method)">#<strong>position_to_tier</strong>(pos)  &#x21d2; Integer<sup>?</sup> </a>
+      <a href="#muckled%3F-instance_method" title="#muckled? (instance method)">#<strong>muckled?</strong>  &#x21d2; Boolean </a>
     
 
     
@@ -1196,7 +908,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts a position string to a tier number.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Creature-side analog of Lich::Gemstone::Status.muckled? (the player's own &quot;can't act right now&quot; check).</p></div></span>
   
 </li>
 
@@ -1204,7 +916,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#remove_status-instance_method" title="#remove_status (instance method)">#<strong>remove_status</strong>(status)  &#x21d2; void </a>
+      <a href="#position_to_tier-instance_method" title="#position_to_tier (instance method)">#<strong>position_to_tier</strong>(pos)  &#x21d2; Object </a>
     
 
     
@@ -1218,7 +930,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Removes a status effect from the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Convert position string/number to tier (1-3).</p></div></span>
   
 </li>
 
@@ -1240,7 +952,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset damage (creature healed or respawned).</p></div></span>
   
 </li>
 
@@ -1248,7 +960,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#set_ucs_position-instance_method" title="#set_ucs_position (instance method)">#<strong>set_ucs_position</strong>(position)  &#x21d2; void </a>
+      <a href="#set_ucs_position-instance_method" title="#set_ucs_position (instance method)">#<strong>set_ucs_position</strong>(position)  &#x21d2; Object </a>
     
 
     
@@ -1262,7 +974,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the UCS position for the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set UCS position tier.</p></div></span>
   
 </li>
 
@@ -1270,7 +982,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#set_ucs_tierup-instance_method" title="#set_ucs_tierup (instance method)">#<strong>set_ucs_tierup</strong>(attack_type)  &#x21d2; void </a>
+      <a href="#set_ucs_tierup-instance_method" title="#set_ucs_tierup (instance method)">#<strong>set_ucs_tierup</strong>(attack_type)  &#x21d2; Object </a>
     
 
     
@@ -1284,7 +996,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the UCS tier-up type for the creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set UCS tierup vulnerability.</p></div></span>
   
 </li>
 
@@ -1292,7 +1004,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#smite!-instance_method" title="#smite! (instance method)">#<strong>smite!</strong>  &#x21d2; void </a>
+      <a href="#smite!-instance_method" title="#smite! (instance method)">#<strong>smite!</strong>  &#x21d2; Object </a>
     
 
     
@@ -1306,7 +1018,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Marks the creature instance as smote.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Mark creature as smote (crimson mist applied).</p></div></span>
   
 </li>
 
@@ -1328,7 +1040,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the creature instance is currently smote.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature is currently smote.</p></div></span>
   
 </li>
 
@@ -1336,7 +1048,7 @@ nil = no auto-cleanup (waits for removal message)</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#statuses-instance_method" title="#statuses (instance method)">#<strong>statuses</strong>  &#x21d2; Object </a>
+      <a href="#template-instance_method" title="#template (instance method)">#<strong>template</strong>  &#x21d2; Object </a>
     
 
     
@@ -1350,29 +1062,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#template-instance_method" title="#template (instance method)">#<strong>template</strong>  &#x21d2; CreatureTemplate<sup>?</sup> </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Retrieves the template associated with this creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get the template for this creature.</p></div></span>
   
 </li>
 
@@ -1394,7 +1084,29 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the UCS data for the creature instance has expired.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if UCS data has expired.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#valid_target%3F-instance_method" title="#valid_target? (instance method)">#<strong>valid_target?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Checks whether this creature should be considered attackable.</p></div></span>
   
 </li>
 
@@ -1403,13 +1115,25 @@ nil = no auto-cleanup (waits for removal message)</p>
     
   
 
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <h3 class="inherited">Methods included from <span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="../Common/CreatureBase.html#included-class_method" title="Lich::Common::CreatureBase.included (method)">included</a></span></p>
 <div id="constructor_details" class="method_details_list">
   <h2>Constructor Details</h2>
   
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(id, noun, name)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Gemstone::CreatureInstance (class)">CreatureInstance</a></span></tt> 
+    #<strong>initialize</strong>(id, noun, name)  &#x21d2; <tt>void</tt> 
   
 
   
@@ -1417,12 +1141,61 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a new instance of CreatureInstance.</p>
+    <p>Initializes a creature instance for runtime tracking.</p>
+<p>Sets up the creature's identity, injury log, HP tracking, and UCS (Unarmed
+Combat System) state. Status tracking is delegated to the shared
+<span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span> mixin.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the creature's unique id in the room</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>noun</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the creature noun (e.g. &quot;orc&quot;, &quot;spider&quot;)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the display name, may include boon adjectives</p></div>
+      
+    </li>
+  
+</ul>
+
 
 </div><table class="source_code">
   <tr>
@@ -1430,37 +1203,35 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-223
-224
-225
-226
-227
-228
-229
-230
-231
-232
-233
-234
-235
-236
-237
-238</pre>
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 223</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 268</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='ivar'>@id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
   <span class='ivar'>@noun</span> <span class='op'>=</span> <span class='id identifier rubyid_noun'>noun</span>
   <span class='ivar'>@name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span>
-  <span class='ivar'>@status</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_initialize_status_tracking'>initialize_status_tracking</span>
   <span class='ivar'>@injuries</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>0</span><span class='rparen'>)</span>
   <span class='ivar'>@health</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>=</span> <span class='int'>0</span>
   <span class='ivar'>@created_at</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
   <span class='ivar'>@fatal_crit</span> <span class='op'>=</span> <span class='kw'>false</span>
-  <span class='ivar'>@status_timestamps</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
   <span class='ivar'>@ucs_position</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_tierup</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -1502,12 +1273,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_created_at'>created_at</span>
   <span class='ivar'>@created_at</span>
@@ -1543,12 +1314,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_damage_taken'>damage_taken</span>
   <span class='ivar'>@damage_taken</span>
@@ -1584,12 +1355,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit'>fatal_crit</span>
   <span class='ivar'>@fatal_crit</span>
@@ -1625,12 +1396,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_health'>health</span>
   <span class='ivar'>@health</span>
@@ -1666,12 +1437,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_id'>id</span>
   <span class='ivar'>@id</span>
@@ -1707,12 +1478,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injuries'>injuries</span>
   <span class='ivar'>@injuries</span>
@@ -1748,12 +1519,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -1789,12 +1560,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_noun'>noun</span>
   <span class='ivar'>@noun</span>
@@ -1830,12 +1601,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status'>status</span>
   <span class='ivar'>@status</span>
@@ -1871,12 +1642,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status_timestamps'>status_timestamps</span>
   <span class='ivar'>@status_timestamps</span>
@@ -1897,19 +1668,28 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get UCS position tier (1-3, or nil if expired)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-377
-378
-379
-380</pre>
+365
+366
+367
+368</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 377</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 365</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_position'>ucs_position</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -1946,12 +1726,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_smote'>ucs_smote</span>
   <span class='ivar'>@ucs_smote</span>
@@ -1972,19 +1752,28 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get UCS tierup vulnerability (or nil if expired)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-382
-383
-384
-385</pre>
+371
+372
+373
+374</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 382</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 371</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_tierup'>ucs_tierup</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -2021,12 +1810,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-193
-194
-195</pre>
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_updated'>ucs_updated</span>
   <span class='ivar'>@ucs_updated</span>
@@ -2039,486 +1828,6 @@ nil = no auto-cleanup (waits for removal message)</p>
   </div>
 
 
-  <div id="class_method_details" class="method_details_list">
-    <h2>Class Method Details</h2>
-
-    
-      <div class="method_details first">
-  <h3 class="signature first" id="[]-class_method">
-  
-    .<strong>[]</strong>(id)  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-537
-538
-539</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 537</span>
-
-<span class='kw'>def</span> <span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
-  <span class='cvar'>@@instances</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="all-class_method">
-  
-    .<strong>all</strong>  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-541
-542
-543</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 541</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_all'>all</span>
-  <span class='cvar'>@@instances</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="auto_register?-class_method">
-  
-    .<strong>auto_register?</strong>  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    
-
-  </div>
-</div>
-<div class="tags">
-  
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-499
-500
-501</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 499</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_auto_register?'>auto_register?</span>
-  <span class='cvar'>@@auto_register</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="cleanup_old-class_method">
-  
-    .<strong>cleanup_old</strong>(max_age_seconds = 600)  &#x21d2; <tt>Integer</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Cleans up old creature instances based on their age.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>max_age_seconds</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>600</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the maximum age in seconds for instances to keep</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the number of instances removed</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-552
-553
-554
-555
-556
-557</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 552</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_cleanup_old'>cleanup_old</span><span class='lparen'>(</span><span class='id identifier rubyid_max_age_seconds'>max_age_seconds</span> <span class='op'>=</span> <span class='int'>600</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_cutoff'>cutoff</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>-</span> <span class='id identifier rubyid_max_age_seconds'>max_age_seconds</span>
-  <span class='id identifier rubyid_removed'>removed</span> <span class='op'>=</span> <span class='cvar'>@@instances</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__id'>_id</span><span class='comma'>,</span> <span class='id identifier rubyid_instance'>instance</span><span class='op'>|</span> <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_created_at'>created_at</span> <span class='op'>&lt;</span> <span class='id identifier rubyid_cutoff'>cutoff</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
-  <span class='cvar'>@@instances</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__id'>_id</span><span class='comma'>,</span> <span class='id identifier rubyid_instance'>instance</span><span class='op'>|</span> <span class='id identifier rubyid_instance'>instance</span><span class='period'>.</span><span class='id identifier rubyid_created_at'>created_at</span> <span class='op'>&lt;</span> <span class='id identifier rubyid_cutoff'>cutoff</span> <span class='rbrace'>}</span>
-  <span class='id identifier rubyid_removed'>removed</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="clear-class_method">
-  
-    .<strong>clear</strong>  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-545
-546
-547</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 545</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
-  <span class='cvar'>@@instances</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="configure-class_method">
-  
-    .<strong>configure</strong>(max_size: 1000, auto_register: true)  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-494
-495
-496
-497</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 494</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>max_size:</span> <span class='int'>1000</span><span class='comma'>,</span> <span class='label'>auto_register:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-  <span class='cvar'>@@max_size</span> <span class='op'>=</span> <span class='id identifier rubyid_max_size'>max_size</span>
-  <span class='cvar'>@@auto_register</span> <span class='op'>=</span> <span class='id identifier rubyid_auto_register'>auto_register</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="full?-class_method">
-  
-    .<strong>full?</strong>  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    
-
-  </div>
-</div>
-<div class="tags">
-  
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-507
-508
-509</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 507</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_full?'>full?</span>
-  <span class='id identifier rubyid_size'>size</span> <span class='op'>&gt;=</span> <span class='cvar'>@@max_size</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="register-class_method">
-  
-    .<strong>register</strong>(name, id, noun = nil)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Gemstone::CreatureInstance (class)">CreatureInstance</a></span></tt><sup>?</sup> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Registers a new creature instance.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>name</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the name of the creature</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>id</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the unique identifier for the creature</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>noun</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional noun representing the creature</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Gemstone::CreatureInstance (class)">CreatureInstance</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the registered creature instance or nil if registration failed</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-516
-517
-518
-519
-520
-521
-522
-523
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533
-534
-535</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 516</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_register'>register</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_auto_register?'>auto_register?</span>
-  <span class='kw'>return</span> <span class='cvar'>@@instances</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='cvar'>@@instances</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span> <span class='comment'># Already exists
-</span>
-  <span class='comment'># Auto-cleanup old instances if registry is full - get progressively more aggressive
-</span>  <span class='kw'>if</span> <span class='id identifier rubyid_full?'>full?</span>
-    <span class='comment'># Try 120 minutes, then 15 minute intervals.
-</span>    <span class='lbracket'>[</span><span class='int'>7200</span><span class='comma'>,</span> <span class='int'>6300</span><span class='comma'>,</span> <span class='int'>5400</span><span class='comma'>,</span> <span class='int'>4500</span><span class='comma'>,</span> <span class='int'>3600</span><span class='comma'>,</span> <span class='int'>2700</span><span class='comma'>,</span> <span class='int'>1800</span><span class='comma'>,</span> <span class='int'>900</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_age_threshold'>age_threshold</span><span class='op'>|</span>
-      <span class='id identifier rubyid_removed'>removed</span> <span class='op'>=</span> <span class='id identifier rubyid_cleanup_old'>cleanup_old</span><span class='lparen'>(</span><span class='id identifier rubyid_age_threshold'>age_threshold</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--- Auto-cleanup: removed </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_removed'>removed</span><span class='embexpr_end'>}</span><span class='tstring_content'> old creatures (threshold: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_age_threshold'>age_threshold</span><span class='embexpr_end'>}</span><span class='tstring_content'>s)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_removed'>removed</span> <span class='op'>&gt;</span> <span class='int'>0</span> <span class='op'>&amp;&amp;</span> <span class='gvar'>$creature_debug</span>
-      <span class='kw'>break</span> <span class='kw'>unless</span> <span class='id identifier rubyid_full?'>full?</span>
-    <span class='kw'>end</span>
-    <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_full?'>full?</span> <span class='comment'># Still full after all cleanup attempts
-</span>  <span class='kw'>end</span>
-
-  <span class='id identifier rubyid_instance'>instance</span> <span class='op'>=</span> <span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='cvar'>@@instances</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_instance'>instance</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--- Creature registered: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
-  <span class='id identifier rubyid_instance'>instance</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="size-class_method">
-  
-    .<strong>size</strong>  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-503
-504
-505</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 503</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_size'>size</span>
-  <span class='cvar'>@@instances</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-  </div>
-
   <div id="instance_method_details" class="method_details_list">
     <h2>Instance Method Details</h2>
 
@@ -2526,7 +1835,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details first">
   <h3 class="signature first" id="add_damage-instance_method">
   
-    #<strong>add_damage</strong>(amount)  &#x21d2; <tt>void</tt> 
+    #<strong>add_damage</strong>(amount)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2534,30 +1843,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Adds damage to the creature instance.</p>
+    <p>Add damage to creature</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>amount</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the amount of damage to add</p></div>
-      
-    </li>
-  
-</ul>
-
 
 </div><table class="source_code">
   <tr>
@@ -2565,12 +1856,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-418
-419
-420</pre>
+405
+406
+407</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 418</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 405</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_damage'>add_damage</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>+=</span> <span class='id identifier rubyid_amount'>amount</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -2583,7 +1874,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="add_injury-instance_method">
   
-    #<strong>add_injury</strong>(body_part, amount = 1)  &#x21d2; <tt>void</tt> 
+    #<strong>add_injury</strong>(body_part, amount = 1)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2591,62 +1882,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Adds an injury to a specific body part of the creature instance.</p>
+    <p>Add injury to body part</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>body_part</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the body part to injure</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>amount</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>1</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the amount of injury to add</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>ArgumentError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if the body part is invalid</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2654,171 +1895,21 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-392
-393
-394
-395
-396
-397</pre>
+377
+378
+379
+380
+381
+382</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 392</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 377</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_injury'>add_injury</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='comma'>,</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#BODY_PARTS-constant" title="Lich::Gemstone::CreatureInstance::BODY_PARTS (constant)">BODY_PARTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Invalid body part: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_body_part'>body_part</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>end</span>
   <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='id identifier rubyid_amount'>amount</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="add_status-instance_method">
-  
-    #<strong>add_status</strong>(status, duration = nil)  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Adds a status effect to the creature instance.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>status</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the status to add</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>duration</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional duration for the status effect</p></div>
-      
-    </li>
-  
-</ul>
-
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 254</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_add_status'>add_status</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='comma'>,</span> <span class='id identifier rubyid_duration'>duration</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-
-  <span class='ivar'>@status</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_status'>status</span>
-
-  <span class='comment'># Set expiration timestamp for timed statuses
-</span>  <span class='id identifier rubyid_status_key'>status_key</span> <span class='op'>=</span> <span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
-  <span class='id identifier rubyid_duration'>duration</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="#STATUS_DURATIONS-constant" title="Lich::Gemstone::CreatureInstance::STATUS_DURATIONS (constant)">STATUS_DURATIONS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_status_key'>status_key</span><span class='rbracket'>]</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_duration'>duration</span>
-    <span class='ivar'>@status_timestamps</span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>+</span> <span class='id identifier rubyid_duration'>duration</span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  +status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='embexpr_end'>}</span><span class='tstring_content'> (expires in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_duration'>duration</span><span class='embexpr_end'>}</span><span class='tstring_content'>s)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
-  <span class='kw'>else</span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  +status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='embexpr_end'>}</span><span class='tstring_content'> (no auto-expiry)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
-  <span class='kw'>end</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="cleanup_expired_statuses-instance_method">
-  
-    #<strong>cleanup_expired_statuses</strong>  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Cleans up any expired status effects from the creature instance.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 281</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span>
-  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@status_timestamps</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
-
-  <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-  <span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__status'>_status</span><span class='comma'>,</span> <span class='id identifier rubyid_expires_at'>expires_at</span><span class='op'>|</span> <span class='id identifier rubyid_expires_at'>expires_at</span> <span class='op'>&lt;=</span> <span class='id identifier rubyid_now'>now</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_expired_status'>expired_status</span><span class='op'>|</span>
-    <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_expired_status'>expired_status</span><span class='rparen'>)</span>
-    <span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_expired_status'>expired_status</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  ~status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_expired_status'>expired_status</span><span class='embexpr_end'>}</span><span class='tstring_content'> (auto-expired)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
-  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2834,25 +1925,34 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Clear smote status</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-364
-365
-366
-367
-368</pre>
+352
+353
+354
+355
+356</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 364</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 352</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_smote'>clear_smote</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  UCS: smote cleared</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UCS: smote cleared</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2862,7 +1962,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="current_hp-instance_method">
   
-    #<strong>current_hp</strong>  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+    #<strong>current_hp</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2870,28 +1970,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the current hit points of the creature instance.</p>
+    <p>Calculate current HP (max_hp - damage_taken)</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the current hit points or nil if max_hp is not set</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2899,13 +1983,13 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-444
-445
-446
-447</pre>
+431
+432
+433
+434</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 444</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 431</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_hp'>current_hp</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
@@ -2927,7 +2011,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if creature is dead (0 HP)</p>
 
   </div>
 </div>
@@ -2953,12 +2037,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-462
-463
-464</pre>
+449
+450
+451</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 462</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 449</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dead?'>dead?</span>
   <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>==</span> <span class='int'>0</span>
@@ -2971,7 +2055,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="essential_data-instance_method">
   
-    #<strong>essential_data</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+    #<strong>essential_data</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2979,28 +2063,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves essential data about the creature instance.</p>
+    <p>Essential data for this instance</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>a hash containing essential attributes of the creature instance</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -3008,28 +2076,28 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-472
-473
-474
-475
-476
-477
-478
-479
-480
-481
-482
-483
-484
-485
-486
 487
 488
 489
-490</pre>
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 472</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 487</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_essential_data'>essential_data</span>
   <span class='lbrace'>{</span>
@@ -3066,7 +2134,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if creature died from fatal crit</p>
 
   </div>
 </div>
@@ -3092,90 +2160,15 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-407
-408
-409</pre>
+395
+396
+397</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 407</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 395</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit?'>fatal_crit?</span>
   <span class='ivar'>@fatal_crit</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="has_status?-instance_method">
-  
-    #<strong>has_status?</strong>(status)  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Checks if the creature instance has a specific status effect.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>status</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the status to check</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if the status is present, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-295
-296
-297
-298</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 295</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span> <span class='comment'># Clean up expired statuses first
-</span>  <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3193,7 +2186,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if creature has template data</p>
 
   </div>
 </div>
@@ -3219,12 +2212,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-246
-247
-248</pre>
+295
+296
+297</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 246</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 295</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_template?'>has_template?</span>
   <span class='op'>!</span><span class='id identifier rubyid_template'>template</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3243,19 +2236,28 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Calculate HP percentage (0-100)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-449
-450
-451
-452</pre>
+437
+438
+439
+440</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 449</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 437</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&gt;</span> <span class='int'>0</span>
@@ -3277,7 +2279,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if injured at location</p>
 
   </div>
 </div>
@@ -3303,12 +2305,12 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-399
-400
-401</pre>
+385
+386
+387</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 399</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 385</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured?'>injured?</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='comma'>,</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span>
@@ -3327,18 +2329,27 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get all injured locations</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-411
-412
-413</pre>
+400
+401
+402</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 411</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 400</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured_locations'>injured_locations</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span> <span class='id identifier rubyid_value'>value</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
@@ -3359,32 +2370,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the creature instance is below a certain HP threshold.</p>
+    <p>Check if creature is below HP threshold</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>threshold</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>25</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the HP percentage threshold to check against</p></div>
-      
-    </li>
-  
-</ul>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -3394,9 +2385,6 @@ nil = no auto-cleanup (waits for removal message)</p>
         <span class='type'>(<tt>Boolean</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>true if below the threshold, false otherwise</p></div>
       
     </li>
   
@@ -3408,13 +2396,13 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-457
-458
-459
-460</pre>
+443
+444
+445
+446</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 457</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 443</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_low_hp?'>low_hp?</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>25</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
@@ -3434,18 +2422,27 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Mark creature as killed by fatal critical hit</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-403
-404
-405</pre>
+390
+391
+392</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 403</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 390</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mark_fatal_crit!'>mark_fatal_crit!</span>
   <span class='ivar'>@fatal_crit</span> <span class='op'>=</span> <span class='kw'>true</span>
@@ -3464,34 +2461,43 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get maximum HP from template, with fallback</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
 422
 423
 424
 425
 426
 427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440</pre>
+428</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 422</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 410</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
   <span class='comment'># Try template first
@@ -3518,9 +2524,9 @@ nil = no auto-cleanup (waits for removal message)</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="position_to_tier-instance_method">
+  <h3 class="signature " id="muckled?-instance_method">
   
-    #<strong>position_to_tier</strong>(pos)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+    #<strong>muckled?</strong>  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -3528,42 +2534,27 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Converts a position string to a tier number.</p>
+    <p>Creature-side analog of Lich::Gemstone::Status.muckled? (the player's
+own &quot;can't act right now&quot; check). Deliberately narrower than
+everything tracked in @status: excludes penalty-only conditions
+(disoriented), positional ones (prone/kneeling/sitting/flying/
+hovering), and calm (the player version excludes that too, tracking
+it separately) - this is only the statuses that actually prevent
+acting, not ones that merely penalize or reposition.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>pos</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the position to convert</p></div>
-      
-    </li>
-  
-</ul>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
     <li>
       
       
-        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>Boolean</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the corresponding tier number or nil if invalid</p></div>
       
     </li>
   
@@ -3575,17 +2566,58 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-309
-310
-311
-312
-313
-314
-315
-316</pre>
+476
+477
+478
+479</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 309</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 476</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_muckled?'><span class='object_link'><a href="../../top-level-namespace.html#muckled%3F-instance_method" title="#muckled? (method)">muckled?</a></span></span>
+  <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>webbed</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span> <span class='op'>||</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
+    <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sleeping</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>immobilized</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rooted</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="position_to_tier-instance_method">
+  
+    #<strong>position_to_tier</strong>(pos)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Convert position string/number to tier (1-3)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+302
+303
+304
+305
+306
+307
+308
+309</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 302</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_pos'>pos</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_pos'>pos</span>
@@ -3601,67 +2633,6 @@ nil = no auto-cleanup (waits for removal message)</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="remove_status-instance_method">
-  
-    #<strong>remove_status</strong>(status)  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Removes a status effect from the creature instance.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>status</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the status to remove</p></div>
-      
-    </li>
-  
-</ul>
-
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-273
-274
-275
-276
-277</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 273</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_remove_status'>remove_status</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-  <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-  <span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  -status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
   <h3 class="signature " id="reset_damage-instance_method">
   
     #<strong>reset_damage</strong>  &#x21d2; <tt>Object</tt> 
@@ -3670,18 +2641,27 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Reset damage (creature healed or respawned)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-466
-467
-468</pre>
+482
+483
+484</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 466</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 482</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset_damage'>reset_damage</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -3694,7 +2674,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="set_ucs_position-instance_method">
   
-    #<strong>set_ucs_position</strong>(position)  &#x21d2; <tt>void</tt> 
+    #<strong>set_ucs_position</strong>(position)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3702,30 +2682,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the UCS position for the creature instance.</p>
+    <p>Set UCS position tier</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>position</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the new position to set</p></div>
-      
-    </li>
-  
-</ul>
-
 
 </div><table class="source_code">
   <tr>
@@ -3733,20 +2695,20 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
+312
+313
+314
+315
+316
+317
+318
+319
+320
 321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331</pre>
+322</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 321</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 312</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_position'>set_ucs_position</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_new_tier'>new_tier</span> <span class='op'>=</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
@@ -3757,7 +2719,7 @@ nil = no auto-cleanup (waits for removal message)</p>
 
   <span class='ivar'>@ucs_position</span> <span class='op'>=</span> <span class='id identifier rubyid_new_tier'>new_tier</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  UCS: position=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_tier'>new_tier</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UCS: position=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_tier'>new_tier</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3767,7 +2729,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="set_ucs_tierup-instance_method">
   
-    #<strong>set_ucs_tierup</strong>(attack_type)  &#x21d2; <tt>void</tt> 
+    #<strong>set_ucs_tierup</strong>(attack_type)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3775,30 +2737,12 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the UCS tier-up type for the creature instance.</p>
+    <p>Set UCS tierup vulnerability</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>attack_type</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the type of attack that caused the tier-up</p></div>
-      
-    </li>
-  
-</ul>
-
 
 </div><table class="source_code">
   <tr>
@@ -3806,19 +2750,19 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-336
-337
-338
-339
-340</pre>
+325
+326
+327
+328
+329</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 336</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 325</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_tierup'>set_ucs_tierup</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_type'>attack_type</span><span class='rparen'>)</span>
   <span class='ivar'>@ucs_tierup</span> <span class='op'>=</span> <span class='id identifier rubyid_attack_type'>attack_type</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  UCS: tierup=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attack_type'>attack_type</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UCS: tierup=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attack_type'>attack_type</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3828,7 +2772,7 @@ nil = no auto-cleanup (waits for removal message)</p>
       <div class="method_details ">
   <h3 class="signature " id="smite!-instance_method">
   
-    #<strong>smite!</strong>  &#x21d2; <tt>void</tt> 
+    #<strong>smite!</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3836,7 +2780,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Marks the creature instance as smote.</p>
+    <p>Mark creature as smote (crimson mist applied)</p>
 
   </div>
 </div>
@@ -3849,19 +2793,19 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-344
-345
-346
-347
-348</pre>
+332
+333
+334
+335
+336</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 344</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 332</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smite!'>smite!</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  UCS: smote!</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$creature_debug</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UCS: smote!</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3879,7 +2823,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the creature instance is currently smote.</p>
+    <p>Check if creature is currently smote</p>
 
   </div>
 </div>
@@ -3895,9 +2839,6 @@ nil = no auto-cleanup (waits for removal message)</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if smote, false otherwise</p></div>
-      
     </li>
   
 </ul>
@@ -3908,20 +2849,20 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362</pre>
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 352</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 339</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smote?'>smote?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_smote</span>
@@ -3940,41 +2881,9 @@ nil = no auto-cleanup (waits for removal message)</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="statuses-instance_method">
-  
-    #<strong>statuses</strong>  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-300
-301
-302
-303</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 300</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_statuses'>statuses</span>
-  <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span> <span class='comment'># Clean up expired statuses first
-</span>  <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
   <h3 class="signature " id="template-instance_method">
   
-    #<strong>template</strong>  &#x21d2; <tt><span class='object_link'><a href="CreatureTemplate.html" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></tt><sup>?</sup> 
+    #<strong>template</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3982,28 +2891,14 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the template associated with this creature instance.</p>
+    <p>Get the template for this creature. Sentinel-cached so a creature with
+no template doesn't redo the name lookup (downcase + boon regex) on
+every call the way <code>||=</code> would.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="CreatureTemplate.html" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the creature template or nil if not found</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -4011,15 +2906,21 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-242
-243
-244</pre>
+287
+288
+289
+290
+291
+292</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 242</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 287</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_template'>template</span>
-  <span class='ivar'>@template</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="CreatureTemplate.html" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></span><span class='lbracket'>[</span><span class='ivar'>@name</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='ivar'>@template</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='ivar'>@template_looked_up</span><span class='rparen'>)</span>
+
+  <span class='ivar'>@template_looked_up</span> <span class='op'>=</span> <span class='kw'>true</span>
+  <span class='ivar'>@template</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="CreatureTemplate.html" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></span><span class='lbracket'>[</span><span class='ivar'>@name</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4037,7 +2938,7 @@ nil = no auto-cleanup (waits for removal message)</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the UCS data for the creature instance has expired.</p>
+    <p>Check if UCS data has expired</p>
 
   </div>
 </div>
@@ -4053,8 +2954,62 @@ nil = no auto-cleanup (waits for removal message)</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if expired, false otherwise</p></div>
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+359
+360
+361
+362</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 359</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_updated</span>
+  <span class='lparen'>(</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>-</span> <span class='ivar'>@ucs_updated</span><span class='rparen'>)</span> <span class='op'>&gt;</span> <span class='const'><span class='object_link'><a href="#UCS_TTL-constant" title="Lich::Gemstone::CreatureInstance::UCS_TTL (constant)">UCS_TTL</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="valid_target?-instance_method">
+  
+    #<strong>valid_target?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Checks whether this creature should be considered attackable.</p>
+<p>Uses the same decoy and appendage exclusions as <code>GameObj.targets</code>, but
+uses structured death data from <crtrStatus> and HP tracking instead of
+regex-matching a status string.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
       
     </li>
   
@@ -4066,17 +3021,25 @@ nil = no auto-cleanup (waits for removal message)</p>
       <pre class="lines">
 
 
-372
-373
-374
-375</pre>
+460
+461
+462
+463
+464
+465
+466
+467</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 372</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 460</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
-  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_updated</span>
-  <span class='lparen'>(</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>-</span> <span class='ivar'>@ucs_updated</span><span class='rparen'>)</span> <span class='op'>&gt;</span> <span class='const'><span class='object_link'><a href="#UCS_TTL-constant" title="Lich::Gemstone::CreatureInstance::UCS_TTL (constant)">UCS_TTL</a></span></span>
+<span class='kw'>def</span> <span class='id identifier rubyid_valid_target?'>valid_target?</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='ivar'>@name</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated\b</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@name</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated slush</span><span class='regexp_end'>/i</span></span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='ivar'>@noun</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:arm|appendage|claw|limb|pincer|tentacle)s?$|^(?:palpus|palpi)$</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span>
+                  <span class='ivar'>@name</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:amaranthine|ghostly|grizzled|ancient) kraken tentacle</span><span class='regexp_end'>/i</span></span>
+
+  <span class='kw'>true</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4088,7 +3051,7 @@ nil = no auto-cleanup (waits for removal message)</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:27 2026 by
+  Generated on Wed Aug 26 16:50:50 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

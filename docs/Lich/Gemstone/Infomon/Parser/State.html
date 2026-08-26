@@ -88,9 +88,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Manages the state of the Infomon parser.</p>
-<p>This module keeps track of the current state of the parser, allowing transitions between
-different states such as ready, goals, and profile.</p>
+    <p>Namespace for parser state tracking during multi-line game output parsing.</p>
+<p>Maintains the current parse state (e.g., :ready, :goals, :profile, :enhancive_stats) to handle
+commands whose output spans multiple server lines (SKILL GOALS, PROFILE, INVENTORY ENHANCIVE TOTALS).
+State transitions are guarded to catch parser state machine errors.</p>
 
   </div>
 </div>
@@ -100,7 +101,9 @@ different states such as ready, goals, and profile.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="../Parser.html" title="Lich::Gemstone::Infomon::Parser (module)">Lich::Gemstone::Infomon::Parser</a></span></li>
+      <li><span class='object_link'><a href="#set-class_method" title="Lich::Gemstone::Infomon::Parser::State.set (method)">State.set</a></span></li>
+    
+      <li><span class='object_link'><a href="#get-class_method" title="Lich::Gemstone::Infomon::Parser::State.get (method)">State.get</a></span></li>
     
   </ul>
 
@@ -201,7 +204,7 @@ different states such as ready, goals, and profile.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the current state is one of the enhancive states.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns true if the parser is in any of the Enhancive parsing states.</p></div></span>
   
 </li>
 
@@ -223,7 +226,7 @@ different states such as ready, goals, and profile.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the current state of the parser.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the current parser state.</p></div></span>
   
 </li>
 
@@ -231,7 +234,7 @@ different states such as ready, goals, and profile.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#set-class_method" title="set (class method)">.<strong>set</strong>(state)  &#x21d2; void </a>
+      <a href="#set-class_method" title="set (class method)">.<strong>set</strong>(state)  &#x21d2; Symbol </a>
     
 
     
@@ -245,7 +248,7 @@ different states such as ready, goals, and profile.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the current state of the parser.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets the parser state with transition validation.</p></div></span>
   
 </li>
 
@@ -271,7 +274,9 @@ different states such as ready, goals, and profile.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the current state is one of the enhancive states.</p>
+    <p>Returns true if the parser is in any of the Enhancive parsing states.</p>
+<p>Useful for detecting whether enhancive inventory output is being parsed and for guarding
+initialization of @enhancive_hold across multiple section handlers.</p>
 
   </div>
 </div>
@@ -288,11 +293,19 @@ different states such as ready, goals, and profile.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if in an enhancive state, false otherwise</p></div>
+        <div class='inline'><p>true if state is EnhanciveStats, EnhanciveSkills, EnhanciveResources,
+EnhanciveMartial, EnhanciveSpells, or EnhanciveStatistics; false otherwise</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#set-class_method" title="Lich::Gemstone::Infomon::Parser::State.set (method)">set</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -300,13 +313,13 @@ different states such as ready, goals, and profile.</p>
       <pre class="lines">
 
 
-201
-202
-203
-204</pre>
+272
+273
+274
+275</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 201</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 272</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_enhancive_state?'>enhancive_state?</span>
   <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="#EnhanciveStats-constant" title="Lich::Gemstone::Infomon::Parser::State::EnhanciveStats (constant)">EnhanciveStats</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#EnhanciveSkills-constant" title="Lich::Gemstone::Infomon::Parser::State::EnhanciveSkills (constant)">EnhanciveSkills</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#EnhanciveResources-constant" title="Lich::Gemstone::Infomon::Parser::State::EnhanciveResources (constant)">EnhanciveResources</a></span></span><span class='comma'>,</span>
@@ -328,7 +341,7 @@ different states such as ready, goals, and profile.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the current state of the parser.</p>
+    <p>Returns the current parser state.</p>
 
   </div>
 </div>
@@ -345,11 +358,18 @@ different states such as ready, goals, and profile.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current state of the parser</p></div>
+        <div class='inline'><p>the current state (:ready, :goals, :profile, :enhancive_stats, etc.)</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#set-class_method" title="Lich::Gemstone::Infomon::Parser::State.set (method)">set</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -357,12 +377,12 @@ different states such as ready, goals, and profile.</p>
       <pre class="lines">
 
 
-194
-195
-196</pre>
+260
+261
+262</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 194</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 260</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get'><span class='object_link'><a href="../../../../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span>
   <span class='ivar'>@state</span>
@@ -375,7 +395,7 @@ different states such as ready, goals, and profile.</p>
       <div class="method_details ">
   <h3 class="signature " id="set-class_method">
   
-    .<strong>set</strong>(state)  &#x21d2; <tt>void</tt> 
+    .<strong>set</strong>(state)  &#x21d2; <tt>Symbol</tt> 
   
 
   
@@ -383,8 +403,10 @@ different states such as ready, goals, and profile.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the current state of the parser.</p>
-<p>This method validates the state transition and updates the internal state variable.</p>
+    <p>Sets the parser state with transition validation.</p>
+<p>Enforces valid state transitions: Goals and Profile states can only be entered from Ready;
+Enhancive states can transition from Ready or between other Enhancive states. Attempting an
+invalid transition raises an error with caller context for debugging.</p>
 
   </div>
 </div>
@@ -402,12 +424,55 @@ different states such as ready, goals, and profile.</p>
       
       
         &mdash;
-        <div class='inline'><p>the new state to set</p></div>
+        <div class='inline'><p>the target state (:goals, :profile, :ready, :enhancive_stats, etc.)</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the state that was set</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>RuntimeError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if the state transition is invalid</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#get-class_method" title="Lich::Gemstone::Infomon::Parser::State.get (method)">get</a></span></li>
+    
+      <li>Parser.State::Goals</li>
+    
+      <li>Parser.State::EnhanciveStats</li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -415,25 +480,25 @@ different states such as ready, goals, and profile.</p>
       <pre class="lines">
 
 
-174
-175
-176
-177
-178
-179
-180
-181
-182
-183
-184
-185
-186
-187
-188
-189</pre>
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 174</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/parser.rb', line 239</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_set'>set</span><span class='lparen'>(</span><span class='id identifier rubyid_state'>state</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_state'>state</span>
@@ -461,7 +526,7 @@ different states such as ready, goals, and profile.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:17 2026 by
+  Generated on Wed Aug 26 16:50:37 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

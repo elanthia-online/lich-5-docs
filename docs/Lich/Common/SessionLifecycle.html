@@ -86,7 +86,17 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Minimal lifecycle coordinator for session summary reporting.
+Registers a session, emits periodic heartbeats, and unregisters on clean shutdown.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
   
     <h2>
       Constant Summary
@@ -134,7 +144,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Attempts to register the session with the given parameters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Performs deferred register attempt once game context is available.</p></div></span>
   
 </li>
 
@@ -156,7 +166,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the game context is ready for registration.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Indicates whether XML runtime context is sufficient for registration.</p></div></span>
   
 </li>
 
@@ -178,7 +188,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the frontend context for the session.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves frontend identifier for session reporting.</p></div></span>
   
 </li>
 
@@ -200,7 +210,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the game code from the XML data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves game code from XML runtime state.</p></div></span>
   
 </li>
 
@@ -222,7 +232,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Determines the role of the session based on command line arguments.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves the logical runtime role used for reporting.</p></div></span>
   
 </li>
 
@@ -244,7 +254,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the session name based on command line arguments or defaults.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves the reporting session name from launch/runtime context.</p></div></span>
   
 </li>
 
@@ -266,7 +276,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Starts the session lifecycle with the given parameters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Starts lifecycle tracking and heartbeat emission for the current process.</p></div></span>
   
 </li>
 
@@ -288,7 +298,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Stops the session lifecycle, unregistering the session.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stops lifecycle tracking and unregisters the current process.</p></div></span>
   
 </li>
 
@@ -314,7 +324,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Attempts to register the session with the given parameters.</p>
+    <p>Performs deferred register attempt once game context is available.</p>
 
   </div>
 </div>
@@ -331,9 +341,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the name of the session</p></div>
-      
     </li>
   
     <li>
@@ -345,9 +352,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the role of the session</p></div>
-      
     </li>
   
     <li>
@@ -355,12 +359,9 @@
         <span class='name'>frontend</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the frontend identifier</p></div>
       
     </li>
   
@@ -373,9 +374,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the epoch time when the session started</p></div>
-      
     </li>
   
     <li>
@@ -387,9 +385,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the ISO 8601 formatted start time</p></div>
-      
     </li>
   
     <li>
@@ -400,9 +395,6 @@
         <span class='type'>(<tt>Integer</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>delay before registration in seconds</p></div>
       
     </li>
   
@@ -419,7 +411,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if registration was successful, false otherwise</p></div>
+        <div class='inline'><p>true when register call succeeds, false otherwise</p></div>
       
     </li>
   
@@ -431,23 +423,6 @@
       <pre class="lines">
 
 
-210
-211
-212
-213
-214
-215
-216
-217
-218
-219
-220
-221
-222
-223
-224
-225
-226
 227
 228
 229
@@ -463,10 +438,26 @@
 239
 240
 241
-242</pre>
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 210</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 227</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_attempt_register'>attempt_register</span><span class='lparen'>(</span><span class='label'>session_name:</span><span class='comma'>,</span> <span class='label'>role:</span><span class='comma'>,</span> <span class='label'>frontend:</span><span class='comma'>,</span> <span class='label'>started_epoch:</span><span class='comma'>,</span> <span class='label'>started_iso:</span><span class='comma'>,</span> <span class='label'>registration_delay:</span><span class='rparen'>)</span>
   <span class='kw'>begin</span>
@@ -478,14 +469,13 @@
       <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>pid=</span><span class='embexpr_beg'>#{</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> session=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_session_name'>session_name</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> role=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_role'>role</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='tstring_end'>&quot;</span></span> \
       <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>attempt_epoch=</span><span class='embexpr_beg'>#{</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
     <span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_register_session'><span class='object_link'><a href="SessionsSettings.html#register_session-class_method" title="Lich::Common::SessionsSettings.register_session (method)">register_session</a></span></span><span class='lparen'>(</span>
-      <span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='comma'>,</span>
-      <span class='label'>session_name:</span> <span class='id identifier rubyid_session_name'>session_name</span><span class='comma'>,</span>
-      <span class='label'>role:</span> <span class='id identifier rubyid_role'>role</span><span class='comma'>,</span>
-      <span class='label'>state:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>running</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
-      <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span>
-      <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span>
-    <span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='symbol'>:register_session_admitted</span><span class='comma'>,</span>
+                          <span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='comma'>,</span>
+                          <span class='label'>session_name:</span> <span class='id identifier rubyid_session_name'>session_name</span><span class='comma'>,</span>
+                          <span class='label'>role:</span> <span class='id identifier rubyid_role'>role</span><span class='comma'>,</span>
+                          <span class='label'>state:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>running</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                          <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span>
+                          <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span>
       <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: SessionLifecycle deferred register success </span><span class='tstring_end'>&quot;</span></span> \
       <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>pid=</span><span class='embexpr_beg'>#{</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> session=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_session_name'>session_name</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> role=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_role'>role</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='tstring_end'>&quot;</span></span> \
@@ -517,7 +507,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the game context is ready for registration.</p>
+    <p>Indicates whether XML runtime context is sufficient for registration.</p>
 
   </div>
 </div>
@@ -533,9 +523,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>true if the game context is ready, false otherwise</p></div>
-      
     </li>
   
 </ul>
@@ -546,12 +533,12 @@
       <pre class="lines">
 
 
-197
-198
-199</pre>
+204
+205
+206</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 197</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 204</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_game_context_ready?'>game_context_ready?</span>
   <span class='op'>!</span><span class='id identifier rubyid_resolve_game_code'>resolve_game_code</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -572,7 +559,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the frontend context for the session.</p>
+    <p>Resolves frontend identifier for session reporting.</p>
 
   </div>
 </div>
@@ -589,7 +576,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the frontend identifier or nil if not set</p></div>
+        <div class='inline'><p>resolved frontend value or nil when unavailable</p></div>
       
     </li>
   
@@ -601,14 +588,14 @@
       <pre class="lines">
 
 
-179
-180
-181
-182
-183</pre>
+186
+187
+188
+189
+190</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 179</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 186</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_frontend'>resolve_frontend</span>
   <span class='kw'>return</span> <span class='gvar'>$frontend</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='gvar'>$frontend</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='gvar'>$frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='gvar'>$frontend</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -631,7 +618,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the game code from the XML data.</p>
+    <p>Resolves game code from XML runtime state.</p>
 
   </div>
 </div>
@@ -648,7 +635,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the game code or nil if not available</p></div>
+        <div class='inline'><p>game code when XML context is ready</p></div>
       
     </li>
   
@@ -660,14 +647,14 @@
       <pre class="lines">
 
 
-188
-189
-190
-191
-192</pre>
+195
+196
+197
+198
+199</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 188</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 195</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_game_code'>resolve_game_code</span>
   <span class='kw'>return</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:game</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -690,7 +677,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Determines the role of the session based on command line arguments.</p>
+    <p>Resolves the logical runtime role used for reporting.</p>
 
   </div>
 </div>
@@ -708,7 +695,7 @@
       
       
         &mdash;
-        <div class='inline'><p>command line arguments</p></div>
+        <div class='inline'><p>process argument vector</p></div>
       
     </li>
   
@@ -722,7 +709,7 @@
       
       
         &mdash;
-        <div class='inline'><p>optional port for detachable clients</p></div>
+        <div class='inline'><p>configured detachable client port</p></div>
       
     </li>
   
@@ -739,7 +726,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the resolved role</p></div>
+        <div class='inline'><p>one of <code>headless</code>, <code>detachable</code>, or <code>session</code></p></div>
       
     </li>
   
@@ -751,15 +738,15 @@
       <pre class="lines">
 
 
-40
-41
-42
-43
-44
-45</pre>
+48
+49
+50
+51
+52
+53</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 40</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 48</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_role'>resolve_role</span><span class='lparen'>(</span><span class='label'>argv:</span><span class='comma'>,</span> <span class='label'>detachable_client_port:</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>detachable</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_detachable_client_port'>detachable_client_port</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -783,7 +770,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the session name based on command line arguments or defaults.</p>
+    <p>Resolves the reporting session name from launch/runtime context.</p>
+<p>Resolution order:</p>
+<ol>
+<li><code>--login &lt;name&gt;</code> CLI argument</li>
+<li>account character provided by auth layer</li>
+<li><code>XMLData.name</code> when available after parser initialization</li>
+<li>deterministic PID fallback (<code>pid-&lt;pid&gt;</code>)</li>
+</ol>
 
   </div>
 </div>
@@ -801,7 +795,7 @@
       
       
         &mdash;
-        <div class='inline'><p>command line arguments</p></div>
+        <div class='inline'><p>process argument vector</p></div>
       
     </li>
   
@@ -817,7 +811,7 @@
       
       
         &mdash;
-        <div class='inline'><p>optional account character name</p></div>
+        <div class='inline'><p>resolved account character name</p></div>
       
     </li>
   
@@ -834,7 +828,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the resolved session name</p></div>
+        <div class='inline'><p>normalized session identifier used in session summary state</p></div>
       
     </li>
   
@@ -846,20 +840,20 @@
       <pre class="lines">
 
 
-23
-24
-25
-26
-27
-28
-29
-30
 31
 32
-33</pre>
+33
+34
+35
+36
+37
+38
+39
+40
+41</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 23</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 31</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_session_name'>resolve_session_name</span><span class='lparen'>(</span><span class='label'>argv:</span><span class='comma'>,</span> <span class='label'>account_character:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_login_idx'>login_idx</span> <span class='op'>=</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--login</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_argv'>argv</span><span class='lbracket'>[</span><span class='id identifier rubyid_login_idx'>login_idx</span> <span class='op'>+</span> <span class='int'>1</span><span class='rbracket'>]</span>
@@ -888,7 +882,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Starts the session lifecycle with the given parameters.</p>
+    <p>Starts lifecycle tracking and heartbeat emission for the current process.
+Registration is intentionally deferred to allow XMLData game context to initialize.</p>
 
   </div>
 </div>
@@ -906,7 +901,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the session</p></div>
+        <div class='inline'><p>resolved session identifier</p></div>
       
     </li>
   
@@ -920,7 +915,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the role of the session</p></div>
+        <div class='inline'><p>runtime role (<code>session</code>, <code>detachable</code>, <code>headless</code>)</p></div>
       
     </li>
   
@@ -936,7 +931,7 @@
       
       
         &mdash;
-        <div class='inline'><p>interval for heartbeat in seconds</p></div>
+        <div class='inline'><p>heartbeat interval in seconds</p></div>
       
     </li>
   
@@ -952,7 +947,7 @@
       
       
         &mdash;
-        <div class='inline'><p>delay before registration in seconds</p></div>
+        <div class='inline'><p>initial registration delay in seconds</p></div>
       
     </li>
   
@@ -969,7 +964,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the session started successfully, false otherwise</p></div>
+        <div class='inline'><p>true when started, false when already started or failed</p></div>
       
     </li>
   
@@ -981,15 +976,6 @@
       <pre class="lines">
 
 
-54
-55
-56
-57
-58
-59
-60
-61
-62
 63
 64
 65
@@ -1070,17 +1056,25 @@
 140
 141
 142
-143</pre>
+143
+144
+145
+146
+147
+148
+149</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 54</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 63</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_start'>start</span><span class='lparen'>(</span><span class='label'>session_name:</span><span class='comma'>,</span> <span class='label'>role:</span><span class='comma'>,</span> <span class='label'>heartbeat_interval:</span> <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="SessionsSettings.html#HEARTBEAT_INTERVAL_SECONDS-constant" title="Lich::Common::SessionsSettings::HEARTBEAT_INTERVAL_SECONDS (constant)">HEARTBEAT_INTERVAL_SECONDS</a></span></span><span class='comma'>,</span> <span class='label'>registration_delay:</span> <span class='const'><span class='object_link'><a href="#REGISTRATION_DELAY_SECONDS-constant" title="Lich::Common::SessionLifecycle::REGISTRATION_DELAY_SECONDS (constant)">REGISTRATION_DELAY_SECONDS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_enabled?'><span class='object_link'><a href="SessionsSettings.html#enabled%3F-class_method" title="Lich::Common::SessionsSettings.enabled? (method)">enabled?</a></span></span>
+  <span class='id identifier rubyid_feature_enabled'>feature_enabled</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_enabled?'><span class='object_link'><a href="SessionsSettings.html#enabled%3F-class_method" title="Lich::Common::SessionsSettings.enabled? (method)">enabled?</a></span></span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_feature_enabled'>feature_enabled</span>
 
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='ivar'>@started</span>
 
+    <span class='ivar'>@feature_enabled</span> <span class='op'>=</span> <span class='id identifier rubyid_feature_enabled'>feature_enabled</span>
     <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend'>resolve_frontend</span>
     <span class='id identifier rubyid_started_epoch'>started_epoch</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
     <span class='id identifier rubyid_started_iso'>started_iso</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_at'>at</span><span class='lparen'>(</span><span class='id identifier rubyid_started_epoch'>started_epoch</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_utc'>utc</span><span class='period'>.</span><span class='id identifier rubyid_iso8601'>iso8601</span>
@@ -1136,19 +1130,13 @@
             <span class='rparen'>)</span>
           <span class='kw'>end</span>
 
-          <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span>
-            <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>debug: SessionLifecycle heartbeat tick </span><span class='tstring_end'>&quot;</span></span> \
-            <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>pid=</span><span class='embexpr_beg'>#{</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> session=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_session_name'>session_name</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> role=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_role'>role</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='tstring_end'>&quot;</span></span> \
-            <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tick_epoch=</span><span class='embexpr_beg'>#{</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-          <span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span>
-          <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_heartbeat'><span class='object_link'><a href="SessionsSettings.html#heartbeat-class_method" title="Lich::Common::SessionsSettings.heartbeat (method)">heartbeat</a></span></span><span class='lparen'>(</span>
-            <span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='comma'>,</span>
-            <span class='label'>state:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>running</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
-            <span class='label'>session_name:</span> <span class='id identifier rubyid_session_name'>session_name</span><span class='comma'>,</span>
-            <span class='label'>role:</span> <span class='id identifier rubyid_role'>role</span><span class='comma'>,</span>
-            <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span>
-            <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span>
-          <span class='rparen'>)</span>
+          <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='symbol'>:heartbeat_admitted</span><span class='comma'>,</span>
+                                <span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='comma'>,</span>
+                                <span class='label'>state:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>running</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                                <span class='label'>session_name:</span> <span class='id identifier rubyid_session_name'>session_name</span><span class='comma'>,</span>
+                                <span class='label'>role:</span> <span class='id identifier rubyid_role'>role</span><span class='comma'>,</span>
+                                <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span>
+                                <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
         <span class='kw'>end</span>
       <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
         <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warning: SessionLifecycle heartbeat failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span>
@@ -1156,6 +1144,7 @@
     <span class='kw'>rescue</span> <span class='const'>StandardError</span>
       <span class='ivar'>@running</span> <span class='op'>=</span> <span class='kw'>false</span>
       <span class='ivar'>@started</span> <span class='op'>=</span> <span class='kw'>false</span>
+      <span class='ivar'>@feature_enabled</span> <span class='op'>=</span> <span class='kw'>false</span>
       <span class='ivar'>@heartbeat_thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
       <span class='id identifier rubyid_raise'>raise</span>
     <span class='kw'>end</span>
@@ -1181,7 +1170,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Stops the session lifecycle, unregistering the session.</p>
+    <p>Stops lifecycle tracking and unregisters the current process.</p>
 
   </div>
 </div>
@@ -1198,7 +1187,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the session stopped successfully, false otherwise</p></div>
+        <div class='inline'><p>true when stop/unregister succeeded, false when not running or failed</p></div>
       
     </li>
   
@@ -1210,12 +1199,6 @@
       <pre class="lines">
 
 
-148
-149
-150
-151
-152
-153
 154
 155
 156
@@ -1236,18 +1219,25 @@
 171
 172
 173
-174</pre>
+174
+175
+176
+177
+178
+179
+180
+181</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 148</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_lifecycle.rb', line 154</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_stop'>stop</span>
-  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_enabled?'><span class='object_link'><a href="SessionsSettings.html#enabled%3F-class_method" title="Lich::Common::SessionsSettings.enabled? (method)">enabled?</a></span></span>
-
   <span class='id identifier rubyid_heartbeat_thread'>heartbeat_thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_was_enabled'>was_enabled</span> <span class='op'>=</span> <span class='kw'>false</span>
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@started</span>
 
+    <span class='id identifier rubyid_was_enabled'>was_enabled</span> <span class='op'>=</span> <span class='ivar'>@feature_enabled</span>
     <span class='ivar'>@running</span> <span class='op'>=</span> <span class='kw'>false</span>
     <span class='id identifier rubyid_heartbeat_thread'>heartbeat_thread</span> <span class='op'>=</span> <span class='ivar'>@heartbeat_thread</span>
     <span class='ivar'>@heartbeat_thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -1260,8 +1250,9 @@
 
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='ivar'>@heartbeat_thread</span> <span class='op'>=</span> <span class='kw'>nil</span>
-    <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_unregister_session'><span class='object_link'><a href="SessionsSettings.html#unregister_session-class_method" title="Lich::Common::SessionsSettings.unregister_session (method)">unregister_session</a></span></span><span class='lparen'>(</span><span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="SessionsSettings.html" title="Lich::Common::SessionsSettings (module)">SessionsSettings</a></span></span><span class='period'>.</span><span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='symbol'>:unregister_session_admitted</span><span class='comma'>,</span> <span class='label'>pid:</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_was_enabled'>was_enabled</span>
     <span class='ivar'>@started</span> <span class='op'>=</span> <span class='kw'>false</span>
+    <span class='ivar'>@feature_enabled</span> <span class='op'>=</span> <span class='kw'>false</span>
   <span class='kw'>end</span>
   <span class='kw'>true</span>
 <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
@@ -1278,7 +1269,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:18 2026 by
+  Generated on Wed Aug 26 16:50:38 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

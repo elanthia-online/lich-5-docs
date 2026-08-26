@@ -105,9 +105,9 @@
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
     <p>Manages user-registered custom (3rd-party) script repositories.</p>
-<p>Users can register arbitrary GitHub repos and track individual .lic files
-from them. Custom repo scripts are synced into per-repo subdirectories
-under SCRIPT_DIR/custom.</p>
+<p>Allows users to register arbitrary GitHub repos and track individual .lic files
+from them. Custom repo scripts are synced into per-repo subdirectories under
+SCRIPT_DIR/custom/.</p>
 
   </div>
 </div>
@@ -146,7 +146,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves all registered custom repositories.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns all registered custom repos from UserVars.</p></div></span>
   
 </li>
 
@@ -168,7 +168,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Builds the configuration hash for a custom repository.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Builds a SCRIPT_REPOS-compatible config hash for a custom repo.</p></div></span>
   
 </li>
 
@@ -190,7 +190,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Constructs the destination directory path for the custom repository.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the destination directory for a custom repo's scripts.</p></div></span>
   
 </li>
 
@@ -212,7 +212,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts the owner/repo format into a directory-friendly name.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts owner/repo to a filesystem-safe directory name.</p></div></span>
   
 </li>
 
@@ -244,7 +244,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds a custom repository to the user's registered list.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Registers a custom repository.</p></div></span>
   
 </li>
 
@@ -266,7 +266,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Lists all registered custom repositories in a formatted table.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Displays registered custom repos in a table.</p></div></span>
   
 </li>
 
@@ -288,7 +288,7 @@ under SCRIPT_DIR/custom.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Removes a custom repository from the user's registered list.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Unregisters a custom repository.</p></div></span>
   
 </li>
 
@@ -314,7 +314,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves all registered custom repositories.</p>
+    <p>Returns all registered custom repos from UserVars.</p>
 
   </div>
 </div>
@@ -331,7 +331,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash of custom repositories, where keys are owner/repo strings</p></div>
+        <div class='inline'><p>owner_repo =&gt; registration hash</p></div>
       
     </li>
   
@@ -343,15 +343,17 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-59
-60
-61</pre>
+64
+65
+66
+67</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 59</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 64</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_all'>all</span>
-  <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='id identifier rubyid_data'>data</span> <span class='op'>=</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span>
+  <span class='id identifier rubyid_data'>data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_data'>data</span> <span class='op'>:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -369,7 +371,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Builds the configuration hash for a custom repository.</p>
+    <p>Builds a SCRIPT_REPOS-compatible config hash for a custom repo.</p>
 
   </div>
 </div>
@@ -387,7 +389,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub repository in owner/repo format</p></div>
+        <div class='inline'><p>e.g. &quot;MahtraDR/dr-scripts&quot;</p></div>
       
     </li>
   
@@ -401,7 +403,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the registration details for the repository</p></div>
+        <div class='inline'><p>stored registration with :branch key</p></div>
       
     </li>
   
@@ -418,7 +420,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the configuration hash for the custom repository</p></div>
+        <div class='inline'><p>config hash matching SCRIPT_REPOS entry shape</p></div>
       
     </li>
   
@@ -430,9 +432,6 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-41
-42
-43
 44
 45
 46
@@ -444,12 +443,17 @@ under SCRIPT_DIR/custom.</p>
 52
 53
 54
-55</pre>
+55
+56
+57
+58
+59</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 41</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 44</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_build_config'>build_config</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='comma'>,</span> <span class='id identifier rubyid_registration'>registration</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_registration'>registration</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='kw'>unless</span> <span class='id identifier rubyid_registration'>registration</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_branch'>branch</span> <span class='op'>=</span> <span class='id identifier rubyid_registration'>registration</span><span class='lbracket'>[</span><span class='symbol'>:branch</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_registration'>registration</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>branch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>main</span><span class='tstring_end'>&#39;</span></span>
   <span class='lbrace'>{</span>
     <span class='label'>display_name:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Custom: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
@@ -480,7 +484,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Constructs the destination directory path for the custom repository.</p>
+    <p>Returns the destination directory for a custom repo's scripts.</p>
 
   </div>
 </div>
@@ -498,7 +502,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub repository in owner/repo format</p></div>
+        <div class='inline'><p>e.g. &quot;MahtraDR/dr-scripts&quot;</p></div>
       
     </li>
   
@@ -515,7 +519,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the full path to the destination directory</p></div>
+        <div class='inline'><p>absolute path</p></div>
       
     </li>
   
@@ -527,12 +531,12 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-33
-34
-35</pre>
+35
+36
+37</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 35</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dest_dir'>dest_dir</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>SCRIPT_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_repo_dir_name'>repo_dir_name</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -553,7 +557,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Converts the owner/repo format into a directory-friendly name.</p>
+    <p>Converts owner/repo to a filesystem-safe directory name.</p>
 
   </div>
 </div>
@@ -571,7 +575,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub repository in owner/repo format</p></div>
+        <div class='inline'><p>e.g. &quot;MahtraDR/dr-scripts&quot;</p></div>
       
     </li>
   
@@ -588,7 +592,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the formatted directory name</p></div>
+        <div class='inline'><p>e.g. &quot;MahtraDR-dr-scripts&quot;</p></div>
       
     </li>
   
@@ -600,12 +604,12 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-26
 27
-28</pre>
+28
+29</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 27</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_repo_dir_name'>repo_dir_name</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -632,7 +636,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Adds a custom repository to the user's registered list.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Registers a custom repository.</p>
 
   </div>
 </div>
@@ -650,7 +654,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub repository in owner/repo format</p></div>
+        <div class='inline'><p>&quot;owner/repo&quot; format</p></div>
       
     </li>
   
@@ -666,7 +670,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the branch to track (defaults to 'main')</p></div>
+        <div class='inline'><p>branch name (default: &quot;main&quot;)</p></div>
       
     </li>
   
@@ -679,13 +683,6 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-67
-68
-69
-70
-71
-72
-73
 74
 75
 76
@@ -697,20 +694,51 @@ under SCRIPT_DIR/custom.</p>
 82
 83
 84
-85</pre>
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 67</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 74</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_custom_repo'>add_custom_repo</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='comma'>,</span> <span class='id identifier rubyid_branch'>branch</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>unless</span> <span class='id identifier rubyid_owner_repo'>owner_repo</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$</span><span class='regexp_end'>}</span></span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_owner_repo'>owner_repo</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\A[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\z</span><span class='regexp_end'>}</span></span>
     <span class='const'><span class='object_link'><a href="StatusReporter.html" title="Lich::Util::Update::StatusReporter (module)">StatusReporter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'><span class='object_link'><a href="StatusReporter.html#respond_mono-class_method" title="Lich::Util::Update::StatusReporter.respond_mono (method)">respond_mono</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: Invalid format &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;. Use owner/repo (e.g. MahtraDR/dr-scripts).]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span>
   <span class='kw'>end</span>
 
-  <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span> <span class='op'>||=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_branch'>branch</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_branch'>branch</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>||</span> <span class='id identifier rubyid_branch'>branch</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A[A-Za-z0-9._\/-]+\z</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="StatusReporter.html" title="Lich::Util::Update::StatusReporter (module)">StatusReporter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'><span class='object_link'><a href="StatusReporter.html#respond_mono-class_method" title="Lich::Util::Update::StatusReporter.respond_mono (method)">respond_mono</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: Invalid branch name &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_branch'>branch</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;. Branch names may only contain letters, digits, dots, hyphens, underscores, and slashes.]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
+
+  <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='kw'>unless</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span><span class='lbracket'>[</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rbracket'>]</span>
     <span class='const'><span class='object_link'><a href="StatusReporter.html" title="Lich::Util::Update::StatusReporter (module)">StatusReporter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'><span class='object_link'><a href="StatusReporter.html#respond_mono-class_method" title="Lich::Util::Update::StatusReporter.respond_mono (method)">respond_mono</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; is already registered.]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_new_dir'>new_dir</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_repo_dir_name'>repo_dir_name</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_collider'>collider</span> <span class='op'>=</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='op'>|</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_repo_dir_name'>repo_dir_name</span><span class='lparen'>(</span><span class='id identifier rubyid_k'>k</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_new_dir'>new_dir</span> <span class='rbrace'>}</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_collider'>collider</span>
+    <span class='const'><span class='object_link'><a href="StatusReporter.html" title="Lich::Util::Update::StatusReporter (module)">StatusReporter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'><span class='object_link'><a href="StatusReporter.html#respond_mono-class_method" title="Lich::Util::Update::StatusReporter.respond_mono (method)">respond_mono</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; collides with &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_collider'>collider</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; (both map to directory &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_dir'>new_dir</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;). Choose a different repo or remove the existing one first.]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span>
   <span class='kw'>end</span>
 
@@ -737,7 +765,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Lists all registered custom repositories in a formatted table.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Displays registered custom repos in a table.</p>
 
   </div>
 </div>
@@ -750,32 +778,32 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
 135
-136</pre>
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 114</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 135</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_list_custom_repos'>list_custom_repos</span>
   <span class='id identifier rubyid_repos'>repos</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_all'>all</span>
@@ -816,7 +844,7 @@ under SCRIPT_DIR/custom.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Removes a custom repository from the user's registered list.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Unregisters a custom repository.</p>
 
   </div>
 </div>
@@ -834,7 +862,7 @@ under SCRIPT_DIR/custom.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub repository in owner/repo format</p></div>
+        <div class='inline'><p>&quot;owner/repo&quot; format</p></div>
       
     </li>
   
@@ -847,33 +875,33 @@ under SCRIPT_DIR/custom.</p>
       <pre class="lines">
 
 
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110</pre>
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 90</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/custom_repos.rb', line 110</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_custom_repo'>remove_custom_repo</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span>
-  <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span> <span class='op'>||=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='kw'>unless</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_custom_repos'>custom_repos</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='rparen'>)</span>
     <span class='const'><span class='object_link'><a href="StatusReporter.html" title="Lich::Util::Update::StatusReporter (module)">StatusReporter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'><span class='object_link'><a href="StatusReporter.html#respond_mono-class_method" title="Lich::Util::Update::StatusReporter.respond_mono (method)">respond_mono</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_owner_repo'>owner_repo</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; is not a registered custom repo.]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span>
@@ -903,7 +931,7 @@ under SCRIPT_DIR/custom.</p>
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 06:22:29 2026 by
+  Generated on Wed Aug 26 16:50:53 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>
