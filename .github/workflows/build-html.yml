@@ -67,6 +67,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Always build from the CURRENT tip of main, not the (possibly
+          # stale) commit that triggered the event. A delayed push event
+          # then rebuilds the same current docs and no-ops instead of
+          # racing an already-deployed newer build.
+          ref: main
           fetch-depth: 0
 
       - name: Set up Ruby
@@ -153,6 +158,9 @@ jobs:
           EOF
           )"
 
+          # If main advanced while this run was building, replay the docs
+          # commit on top instead of failing non-fast-forward.
+          git pull --rebase origin main
           git push
           echo "HTML documentation committed"
 
