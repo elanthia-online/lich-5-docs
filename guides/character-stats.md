@@ -221,7 +221,8 @@ Skills.smc           # spirit_mana_control
 
 ```ruby
 # Calculate bonus from ranks
-Skills.to_bonus(30)  # => 140
+Skills.to_bonus(30)  # => 120
+Skills.to_bonus(40)  # => 140
 
 # The formula:
 # Ranks 1-10:   5 per rank

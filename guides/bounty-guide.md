@@ -44,20 +44,24 @@ The bounty system recognizes these task types:
 | `:cull` | Kill a number of creatures |
 | `:dangerous` | Kill a dangerous creature |
 | `:dangerous_spawned` | Dangerous creature has spawned |
-| `:creature_assignment` | Go to taskmaster for creature task |
+| `:creature_assignment` | Go get a creature task |
 | `:gem` | Collect gems from creatures |
+| `:gem_assignment` | Go see the gem dealer for details |
 | `:herb` | Forage specific herbs |
+| `:herb_assignment` | Go see the healer/alchemist for details |
 | `:skin` | Skin specific creatures |
+| `:skin_assignment` | Go see the furrier for details |
 | `:heirloom` | Find a lost heirloom |
-| `:heirloom_found` | Heirloom has been found |
+| `:heirloom_assignment` | Go get an heirloom task |
+| `:heirloom_found` | Heirloom has been found - turn it in |
 | `:rescue` | Rescue a kidnapped child |
-| `:rescue_spawned` | Rescue target has spawned |
+| `:rescue_assignment` | Go get a rescue task |
+| `:rescue_spawned` | Rescue target has been found |
 | `:escort` | Escort a traveler |
-| `:escort_assignment` | Go get escort assignment |
 | `:bandit` | Kill bandits |
-| `:bandit_assignment` | Go to taskmaster for bandit task |
-| `:guard` | Return to taskmaster |
-| `:taskmaster` | Need to visit taskmaster |
+| `:bandit_assignment` | Go get a bandit task |
+| `:guard` | Task complete - report back to the guard |
+| `:taskmaster` | Task complete - return to the Adventurer's Guild |
 | `:failed` | Task has failed |
 | `:none` | No current task |
 
@@ -93,7 +97,7 @@ bounty.bandit?        # Is it a bandit task?
 bounty = Bounty.current
 
 # Has the creature/target spawned?
-bounty.spawned?       # true for dangerous_spawned, rescue_spawned
+bounty.spawned?       # true for dangerous_spawned, rescue_spawned, escort
 bounty.triggered?     # alias for spawned?
 
 # Do you need to go to taskmaster?
@@ -274,10 +278,11 @@ You can check other players' bounties via LNet:
 
 ```ruby
 # Get another player's bounty
-other_bounty = Bounty.lnet("PlayerName")
+player = "SomePlayer"
+other_bounty = Bounty.lnet(player)
 
 if other_bounty
-  echo "#{PlayerName}'s bounty: #{other_bounty.type}"
+  echo "#{player}'s bounty: #{other_bounty.type}"
 else
   echo "Could not get bounty info"
 end

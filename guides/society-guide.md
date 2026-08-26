@@ -77,38 +77,38 @@ Voln members gain Symbols as they progress through ranks:
 
 | Rank | Symbol |
 |------|--------|
-| 1 | Recognition |
-| 2 | Blessing |
-| 3 | Thought |
-| 4 | Preservation |
-| 5 | Dreams |
-| 6 | Courage |
-| 7 | Protection |
-| 8 | Submission |
-| 9 | Sleep |
-| 10 | Transcendence |
-| 11 | Mana |
-| 12 | Sight |
-| 13 | Recall |
-| 14 | Turning |
-| 15 | Strike |
-| 16 | Holiness |
-| 17 | Restoration |
-| 18 | Need |
-| 19 | Determination |
-| 20 | Return |
-| 21 | Supremacy |
-| 22 | Kai's Smite |
-| 23 | V'tull's Fury |
-| 24 | Phoen's Illumination |
-| 25 | Lorminstra's Blessing |
-| 26 | Voln Master |
+| 1 | Symbol of Recognition |
+| 2 | Symbol of Blessing |
+| 3 | Symbol of Thought |
+| 4 | Symbol of Diminishment |
+| 5 | Symbol of Courage |
+| 6 | Symbol of Protection |
+| 7 | Symbol of Submission |
+| 8 | Kai's Strike |
+| 9 | Symbol of Holiness |
+| 10 | Symbol of Recall |
+| 11 | Symbol of Sleep |
+| 12 | Symbol of Transcendence |
+| 13 | Symbol of Mana |
+| 14 | Symbol of Sight |
+| 15 | Symbol of Retribution |
+| 16 | Symbol of Supremacy |
+| 17 | Symbol of Restoration |
+| 18 | Symbol of Need |
+| 19 | Symbol of Renewal |
+| 20 | Symbol of Disruption |
+| 21 | Kai's Smite |
+| 22 | Symbol of Turning |
+| 23 | Symbol of Preservation |
+| 24 | Symbol of Dreams |
+| 25 | Symbol of Return |
+| 26 | Symbol of Seeking |
 
 ### Using Voln Symbols
 
 ```ruby
 # Check if you know a symbol
-if Society.rank >= 14
+if Society.rank >= 22
   echo "You know Symbol of Turning"
 end
 
@@ -120,7 +120,7 @@ end
 
 ## Council of Light
 
-The Council of Light combats the forces of darkness through magical means.
+The Council of Light is a secretive society whose members employ Signs - short-duration magical abilities that cost small amounts of spirit (or nothing).
 
 ### Accessing CoL Data
 
@@ -132,20 +132,36 @@ Societies.col               # Returns CouncilOfLight class
 Lich::Gemstone::Societies::CouncilOfLight
 ```
 
-### CoL Abilities
+### CoL Signs
 
-Council of Light abilities are gained through ranks:
+Council of Light members gain Signs as they progress through ranks:
 
-| Rank Range | Abilities |
-|------------|-----------|
-| 1-5 | Basic light manipulation |
-| 6-10 | Enhanced defensive abilities |
-| 11-15 | Offensive light powers |
-| 16-20 | Master abilities |
+| Rank | Sign |
+|------|------|
+| 1 | Sign of Recognition |
+| 2 | Sign of Signal |
+| 3 | Sign of Warding |
+| 4 | Sign of Striking |
+| 5 | Sign of Clotting |
+| 6 | Sign of Thought |
+| 7 | Sign of Defending |
+| 8 | Sign of Smiting |
+| 9 | Sign of Staunching |
+| 10 | Sign of Deflection |
+| 11 | Sign of Hypnosis |
+| 12 | Sign of Swords |
+| 13 | Sign of Shields |
+| 14 | Sign of Dissipation |
+| 15 | Sign of Healing |
+| 16 | Sign of Madness |
+| 17 | Sign of Possession |
+| 18 | Sign of Wracking |
+| 19 | Sign of Darkness |
+| 20 | Sign of Hopelessness |
 
 ## Guardians of Sunfist
 
-The Guardians of Sunfist are warriors dedicated to protecting Elanthia.
+The Guardians of Sunfist are a militant society; members employ Sigils - combat-oriented abilities fueled primarily by stamina.
 
 ### Accessing Sunfist Data
 
@@ -157,16 +173,32 @@ Societies.sunfist           # Returns GuardiansOfSunfist class
 Lich::Gemstone::Societies::GuardiansOfSunfist
 ```
 
-### Sigil Abilities
+### Sunfist Sigils
 
-Sunfist members use Sigils for their abilities:
+Sunfist members gain Sigils as they progress through ranks:
 
-| Rank Range | Sigil Types |
-|------------|-------------|
-| 1-5 | Basic combat sigils |
-| 6-10 | Enhanced sigils |
-| 11-15 | Advanced sigils |
-| 16-20 | Master sigils |
+| Rank | Sigil |
+|------|-------|
+| 1 | Sigil of Recognition |
+| 2 | Sigil of Location |
+| 3 | Sigil of Contact |
+| 4 | Sigil of Resolve |
+| 5 | Sigil of Minor Bane |
+| 6 | Sigil of Bandages |
+| 7 | Sigil of Defense |
+| 8 | Sigil of Offense |
+| 9 | Sigil of Distraction |
+| 10 | Sigil of Minor Protection |
+| 11 | Sigil of Focus |
+| 12 | Sigil of Intimidation |
+| 13 | Sigil of Mending |
+| 14 | Sigil of Concentration |
+| 15 | Sigil of Major Bane |
+| 16 | Sigil of Determination |
+| 17 | Sigil of Health |
+| 18 | Sigil of Power |
+| 19 | Sigil of Major Protection |
+| 20 | Sigil of Escape |
 
 ## Common Patterns
 
@@ -180,7 +212,7 @@ def use_society_ability
       fput "symbol of courage"
     end
   when "Council of Light"
-    fput "sigil of light"  # Example
+    fput "sign of striking"  # Example
   when "Guardians of Sunfist"
     fput "sigil of defense"  # Example
   else
@@ -228,8 +260,8 @@ def available_abilities
   when "Order of Voln"
     abilities << "Recognition" if rank >= 1
     abilities << "Blessing" if rank >= 2
-    abilities << "Turning" if rank >= 14
-    abilities << "Supremacy" if rank >= 21
+    abilities << "Supremacy" if rank >= 16
+    abilities << "Turning" if rank >= 22
   end
 
   abilities
@@ -237,7 +269,7 @@ end
 
 # Check if specific ability is available
 def has_voln_turning?
-  voln_member? && Society.rank >= 14
+  voln_member? && Society.rank >= 22
 end
 ```
 

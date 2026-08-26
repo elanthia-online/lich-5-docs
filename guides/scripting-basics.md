@@ -44,8 +44,8 @@ result = dothistimeout "look", 5, /Obvious exits/
 # Wait for specific text from the game
 waitfor "You are no longer stunned"
 
-# Wait with timeout (returns nil if timeout)
-line = waitfor? "Ready", 10
+# Wait with timeout (returns false if nothing matched in time)
+line = matchtimeout 10, "Ready"
 
 # Wait for roundtime to finish
 waitrt?
@@ -259,8 +259,11 @@ end
 # Wait until a condition is true
 wait_until { Char.mana >= 50 }
 
-# Wait until with timeout
-wait_until(timeout: 30) { Char.health >= Char.max_health }
+# Optional first argument is a message announced while waiting
+wait_until("Waiting for full health...") { Char.health >= Char.max_health }
+
+# Note: wait_until has no timeout - it blocks until the condition is true.
+# For time-limited waits on game text, use matchtimeout or dothistimeout.
 ```
 
 ## Best Practices

@@ -64,7 +64,7 @@ end
 ```ruby
 # Find a skill by name
 skill = PSMS.find_name("feint", "CMan")
-# => { :long_name => "combat_feint", :short_name => "feint", :cost => {...} }
+# => { :long_name => "feint", :short_name => "feint", :cost => { stamina: ... } }
 
 # Normalize a skill name for lookup
 PSMS.name_normal("Bull Rush")
@@ -153,7 +153,7 @@ Here's a complete example of using PSMs in a hunting script:
 ```ruby
 # Check resources before engaging
 def can_attack?
-  return false if Spell[9007].active?  # No attacking while dead
+  return false if dead?
   return false if stunned?
   return false unless PSMS.available?("bullrush")
   return false unless PSMS.assess("bullrush", "CMan", true)
@@ -184,3 +184,5 @@ end
 - {Lich::Gemstone::Weapon} - Weapon Techniques
 - {Lich::Gemstone::Armor} - Armor Specializations
 - {Lich::Gemstone::Warcry} - Warcries
+- {Lich::Gemstone::Ascension} - Ascension Abilities
+- {Lich::Gemstone::QStrike} - Quick Strikes

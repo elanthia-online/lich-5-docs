@@ -231,7 +231,7 @@ Both can check if a spell is active, but they work differently:
 ```ruby
 # Using Spell class
 Spell[506].active?      # Checks Spell's internal tracking
-Spell[506].timeleft     # Time in seconds
+Spell[506].timeleft     # Time in minutes (Spell[506].secsleft for seconds)
 
 # Using Effects module
 Effects::Spells.active?(506)   # Checks XML data from game

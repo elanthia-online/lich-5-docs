@@ -44,9 +44,12 @@ if Spell[506].active?
   echo "Haste is active"
 end
 
-# Check time left
+# Check time left (in MINUTES)
 time_left = Spell[506].timeleft
-echo "Haste has #{time_left} seconds remaining"
+echo "Haste has #{time_left.round(1)} minutes remaining"
+
+# Seconds, if you need them
+echo "Haste has #{Spell[506].secsleft.round} seconds remaining"
 
 # Check if spell is known
 if Spell[506].known?
@@ -59,7 +62,7 @@ end
 ```ruby
 # Get all active spells
 Spell.active.each do |spell|
-  echo "#{spell.name} (#{spell.num}) - #{spell.timeleft}s remaining"
+  echo "#{spell.name} (#{spell.num}) - #{spell.timeleft.round(1)} min remaining"
 end
 
 # Get all known spells
@@ -97,9 +100,9 @@ def safe_cast(spell_num, target = nil)
     return false
   end
 
-  # Check mana
-  if Char.mana < spell.mana_cost
-    echo "Not enough mana for #{spell.name}"
+  # Check resources (mana/spirit/stamina)
+  unless spell.affordable?
+    echo "Can't afford #{spell.name}"
     return false
   end
 
@@ -126,8 +129,8 @@ spell.stance        # Whether stance affects casting
 spell.channel       # Whether spell can be channeled
 spell.active?       # Is it currently active?
 spell.known?        # Do you know it?
-spell.timeleft      # Seconds remaining if active
-spell.affordable?   # Do you have enough mana?
+spell.timeleft      # MINUTES remaining if active (see also secsleft/minsleft)
+spell.affordable?   # Do you have the mana/spirit/stamina to cast it?
 ```
 
 ## Spell Circles
@@ -154,8 +157,8 @@ Each spell belongs to a circle based on its number:
 
 ```ruby
 # Get your ranks in each spell circle
-Spells.minor_spirit      # Minor Spirit ranks
-Spells.major_spirit      # Major Spirit ranks
+Spells.minor_spiritual   # Minor Spirit ranks
+Spells.major_spiritual   # Major Spirit ranks
 Spells.cleric            # Cleric ranks
 Spells.minor_elemental   # Minor Elemental ranks
 Spells.major_elemental   # Major Elemental ranks
@@ -184,8 +187,8 @@ def check_buffs
     spell = Spell[spell_num]
     next unless spell.known?
 
-    # Refresh if not active or low on time
-    if !spell.active? || spell.timeleft < 60
+    # Refresh if not active or less than 1 minute remaining (timeleft is in minutes)
+    if !spell.active? || spell.timeleft < 1
       if spell.affordable?
         waitrt?
         waitcastrt?
@@ -206,13 +209,14 @@ end
 ### Minimum Buff Times
 
 ```ruby
-def needs_refresh?(spell, min_time = 120)
+# min_minutes: timeleft is measured in minutes
+def needs_refresh?(spell, min_minutes = 2)
   return true unless spell.active?
-  spell.timeleft < min_time
+  spell.timeleft < min_minutes
 end
 
 # Refresh if under 2 minutes remaining
-if needs_refresh?(Spell[506], 120)
+if needs_refresh?(Spell[506], 2)
   Spell[506].cast
 end
 ```
