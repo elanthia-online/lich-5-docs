@@ -186,6 +186,18 @@ jobs:
       - name: Clean up cloned repository
         run: rm -rf lich-source
 
+      # Safety net: preserve generated output BEFORE the PR push so a failed
+      # push can never discard paid API work.
+      - name: Upload generation output as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-docs
+          path: |
+            documented/
+            output/latest/manifest.json
+          retention-days: 14
+
       # Human verification gate: changes go up as a PULL REQUEST, never a
       # direct push to main. Merging the PR triggers build-html.yml which
       # builds and deploys the site.

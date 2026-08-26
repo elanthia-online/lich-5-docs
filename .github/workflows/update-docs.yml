@@ -121,6 +121,19 @@ jobs:
       - name: Clean up cloned repository
         run: rm -rf lich-source
 
+      # Safety net: preserve generated output BEFORE the PR push so a failed
+      # push can never discard paid API work (lesson from run 32939336763,
+      # where $2.33 of generation died with the runner).
+      - name: Upload generation output as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-docs
+          path: |
+            documented/
+            output/latest/manifest.json
+          retention-days: 14
+
       - name: Open pull request for human review
         id: pr
         uses: peter-evans/create-pull-request@v7
