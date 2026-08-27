@@ -198,6 +198,19 @@ jobs:
             output/latest/manifest.json
           retention-days: 14
 
+      # Mint a short-lived installation token from the org's GitHub App.
+      # Replaces the old PR_TOKEN PAT: the GITHUB_TOKEN Actions issues by
+      # default cannot push anything GitHub judges to touch
+      # .github/workflows/, so a token with broader repo permissions is
+      # still required here - but this one expires in about an hour and
+      # isn't tied to any individual's account.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       # Human verification gate: changes go up as a PULL REQUEST, never a
       # direct push to main. Merging the PR triggers build-html.yml which
       # builds and deploys the site.
@@ -205,10 +218,7 @@ jobs:
         id: pr
         uses: peter-evans/create-pull-request@v7
         with:
-          # PR_TOKEN: PAT with contents+pull-requests+workflows write.
-          # The default GITHUB_TOKEN cannot push anything GitHub judges to
-          # touch .github/workflows/.
-          token: ${{ secrets.PR_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
           add-paths: |
             documented/**
             output/latest/manifest.json
