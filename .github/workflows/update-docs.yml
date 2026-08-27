@@ -15,6 +15,11 @@ name: Update Documentation (Opens PR)
 #
 # Repo setting required once: Settings -> Actions -> General ->
 # "Allow GitHub Actions to create and approve pull requests"
+#
+# Auth: pushes go through a short-lived token minted from the org's GitHub
+# App (see the "Generate GitHub App token" step below) rather than a
+# personal access token. Requires the APP_ID and APP_PRIVATE_KEY repo/org
+# secrets to be configured for the app installed on this repository.
 
 on:
   workflow_dispatch:
@@ -134,14 +139,24 @@ jobs:
             output/latest/manifest.json
           retention-days: 14
 
+      # Mint a short-lived installation token from the org's GitHub App.
+      # Replaces the old PR_TOKEN PAT: the GITHUB_TOKEN Actions issues by
+      # default cannot push anything GitHub judges to touch
+      # .github/workflows/ (this killed run 32939336763's push), so a token
+      # with broader repo permissions is still required here - but this one
+      # expires in about an hour and isn't tied to any individual's account.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Open pull request for human review
         id: pr
         uses: peter-evans/create-pull-request@v7
         with:
-          # PR_TOKEN: PAT with contents+pull-requests+workflows write.
-          # The default GITHUB_TOKEN cannot push anything GitHub judges to
-          # touch .github/workflows/ (this killed run 32939336763's push).
-          token: ${{ secrets.PR_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
           add-paths: |
             documented/**
             output/latest/manifest.json
