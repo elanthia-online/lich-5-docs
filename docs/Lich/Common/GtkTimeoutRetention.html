@@ -214,7 +214,7 @@
 </div>
 
       <div id="footer">
-  Generated on Wed Aug 26 16:57:09 2026 by
+  Generated on Thu Aug 27 01:00:20 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>
@@ -227,29 +227,20 @@
 (function() {
   'use strict';
 
-  // Calculate root path for assets
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
   function getRootPath() {
-    var path = window.location.pathname;
-    var rootPath = '';
-
-    if (path.includes('/Lich/')) {
-      var parts = path.split('/').filter(function(p) { return p; });
-      var docsIndex = parts.indexOf('lich-5-docs');
-      if (docsIndex >= 0) {
-        var subParts = parts.slice(docsIndex + 1);
-        rootPath = '../'.repeat(subParts.length - 1);
-      }
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
     }
-
-    if (!rootPath && !path.endsWith('/index.html') && !path.endsWith('/')) {
-      var pathParts = path.split('/').filter(function(p) { return p && p !== 'index.html'; });
-      var docsIdx = pathParts.indexOf('lich-5-docs');
-      if (docsIdx >= 0) {
-        rootPath = '../'.repeat(pathParts.length - docsIdx - 2);
-      }
-    }
-
-    return rootPath;
+    return '';
   }
 
   // Inject theme CSS
@@ -287,54 +278,11 @@
     injectInlineStyles();
   }
 
-  // Inject critical inline styles for immediate dark mode
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
   function injectInlineStyles() {
-    if (document.getElementById('theme-inline-css')) return;
-
-    var style = document.createElement('style');
-    style.id = 'theme-inline-css';
-    style.textContent = [
-      // Root elements
-      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
-      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
-      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
-      // Sidebar frames
-      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
-      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
-      // Table of Contents
-      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
-      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
-      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
-      // File listing badges on index page
-      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
-      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
-      // Defined in box
-      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
-      // Expand/collapse buttons and show/hide links
-      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
-      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
-      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
-      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
-      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
-      // Method summary badges
-      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
-      // Links
-      '[data-theme="dark"] a { color: #5dade2 !important; }',
-      // Tables
-      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
-      '[data-theme="dark"] table td { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
-      // Forms
-      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
-      // Text
-      '[data-theme="dark"] small { color: #888 !important; }',
-      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
-      '[data-theme="dark"] p, [data-theme="dark"] li, [data-theme="dark"] span { color: #b8b8b8 !important; }',
-      // Definition lists
-      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
-      // Catch-all for any remaining white backgrounds
-      '[data-theme="dark"] div, [data-theme="dark"] section, [data-theme="dark"] article, [data-theme="dark"] aside { background-color: inherit !important; }'
-    ].join('\n');
-    document.head.appendChild(style);
+    injectInlineStylesToDocument(document);
   }
 
   // Get saved theme or detect system preference
@@ -409,6 +357,17 @@
       // Content area
       '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
       '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
       // Catch-all
       '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
     ].join('\n');
