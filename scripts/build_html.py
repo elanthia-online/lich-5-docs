@@ -13,9 +13,11 @@ Usage:
 """
 
 import argparse
+import re
 import subprocess
 import sys
 import os
+import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from pathlib import Path
@@ -37,6 +39,62 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+# Receiver-style class method definitions (`def Char.name` inside
+# `class Char`) make YARD invent a nested namespace (Lich::Common::Char::Char)
+# and hang every method there, leaving the real class page empty. Upstream
+# lich-5 uses this style pervasively (Lich, Script, Char, Win32, Spell, ...).
+# The build rewrites them to the equivalent `def self.name` in a throwaway
+# shadow copy of the input tree - committed sources stay byte-identical to
+# upstream. In Ruby the two forms are identical inside the class body.
+_BLOCK_OPEN_RE = re.compile(r'^(\s*)(?:class|module)\s+((?:\w+::)*[A-Z]\w*)\b')
+_CLASS_SELF_RE = re.compile(r'^(\s*)class\s*<<\s*self\b')
+_END_RE = re.compile(r'^(\s*)end\b')
+_RECEIVER_DEF_RE = re.compile(r'^(\s*)def\s+([A-Z]\w*)\.')
+
+
+def fix_receiver_defs(source: str):
+    """
+    Rewrite `def Foo.bar` to `def self.bar` on lines nested inside
+    `class Foo` / `module Foo`.
+
+    Receiver defs whose receiver is NOT the innermost enclosing class or
+    module are left untouched (they legitimately target another constant).
+    Tracking is indentation-based: an `end` whose indent equals the opener's
+    indent closes the block, so def/if/begin bodies (indented deeper) never
+    pop the stack early.
+
+    Returns:
+        (transformed_source, rewrite_count)
+    """
+    lines = source.split('\n')
+    stack = []  # (indent, innermost class/module name or None for class << self)
+    count = 0
+
+    for i, line in enumerate(lines):
+        m = _CLASS_SELF_RE.match(line)
+        if m:
+            stack.append((len(m.group(1)), None))
+            continue
+
+        m = _BLOCK_OPEN_RE.match(line)
+        if m:
+            stack.append((len(m.group(1)), m.group(2).split('::')[-1]))
+            continue
+
+        m = _END_RE.match(line)
+        if m:
+            if stack and stack[-1][0] == len(m.group(1)):
+                stack.pop()
+            continue
+
+        m = _RECEIVER_DEF_RE.match(line)
+        if m and stack and stack[-1][1] == m.group(2):
+            lines[i] = line.replace('def %s.' % m.group(2), 'def self.', 1)
+            count += 1
+
+    return '\n'.join(lines), count
 
 
 def _get_timeout(timeout_name: str, default: int) -> int:
@@ -85,12 +143,16 @@ class YARDHTMLBuilder:
         if not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory not found: {self.input_dir}")
 
+    def _yard_command(self) -> str:
+        """Resolve the yard executable (handles yard.bat on Windows)."""
+        return shutil.which('yard') or 'yard'
+
     def check_yard_installed(self) -> bool:
         """Check if YARD is installed and available."""
         try:
             timeout = _get_timeout('yard_version_check', 10)
             result = subprocess.run(
-                ['yard', '--version'],
+                [self._yard_command(), '--version'],
                 capture_output=True,
                 text=True,
                 timeout=timeout
@@ -111,6 +173,40 @@ class YARDHTMLBuilder:
     def count_ruby_files(self) -> int:
         """Count Ruby files in input directory."""
         return len(list(self.input_dir.rglob("*.rb")))
+
+    def prepare_shadow_tree(self) -> Path:
+        """
+        Copy the input tree to a temp directory and rewrite receiver-style
+        class method defs (see fix_receiver_defs) in the copy.
+
+        The shadow directory keeps the input dir's basename and YARD runs
+        with the temp parent as cwd, so the '# File' source paths recorded
+        in the generated HTML are identical to a direct build.
+
+        Returns:
+            The temp parent directory (caller must clean it up).
+        """
+        tmp_parent = Path(tempfile.mkdtemp(prefix='yard-shadow-'))
+        shadow = tmp_parent / self.input_dir.name
+        shutil.copytree(self.input_dir, shadow)
+
+        total_rewrites = 0
+        touched_files = 0
+        for rb in shadow.rglob('*.rb'):
+            with open(rb, 'r', encoding='utf-8') as f:
+                source = f.read()
+            fixed, count = fix_receiver_defs(source)
+            if count:
+                with open(rb, 'w', encoding='utf-8') as f:
+                    f.write(fixed)
+                total_rewrites += count
+                touched_files += 1
+
+        logger.info(
+            f"Receiver-def fix: rewrote {total_rewrites} 'def Class.method' "
+            f"defs to 'def self.method' in {touched_files} files (shadow copy only)"
+        )
+        return tmp_parent
 
     def build_html(self) -> bool:
         """
@@ -138,10 +234,15 @@ class YARDHTMLBuilder:
         # --files: additional files to include (if any)
         # The files to document are specified as positional arguments
 
+        # Build in a shadow copy with receiver-style defs rewritten so YARD
+        # attaches class methods to the right class (see fix_receiver_defs).
+        # cwd is the shadow's parent and the input path stays relative, so
+        # '# File' paths in the HTML match a direct build of input_dir.
+        shadow_parent = self.prepare_shadow_tree()
         yard_cmd = [
-            'yard', 'doc',
-            str(self.input_dir / '**' / '*.rb'),  # Document all Ruby files recursively
-            '--output-dir', str(self.output_dir),
+            self._yard_command(), 'doc',
+            str(Path(self.input_dir.name) / '**' / '*.rb'),
+            '--output-dir', str(self.output_dir.resolve()),
             '--title', self.title,
             '--no-private',  # Don't document private methods
             '--protected',   # Document protected methods
@@ -149,7 +250,7 @@ class YARDHTMLBuilder:
 
         # Add README if provided
         if self.readme_file and self.readme_file.exists():
-            yard_cmd.extend(['--readme', str(self.readme_file)])
+            yard_cmd.extend(['--readme', str(self.readme_file.resolve())])
             logger.info(f"  Using README: {self.readme_file}")
 
         # Add guides if directory exists
@@ -157,7 +258,7 @@ class YARDHTMLBuilder:
             guide_files = list(self.guides_dir.glob('*.md'))
             if guide_files:
                 # YARD --files takes comma-separated list or multiple --files flags
-                yard_cmd.extend(['--files', ','.join(str(f) for f in guide_files)])
+                yard_cmd.extend(['--files', ','.join(str(f.resolve()) for f in guide_files)])
                 logger.info(f"  Including {len(guide_files)} guide(s) from {self.guides_dir}")
 
         try:
@@ -168,7 +269,8 @@ class YARDHTMLBuilder:
                 yard_cmd,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                cwd=str(shadow_parent)
             )
 
             # Log YARD output
@@ -207,6 +309,8 @@ class YARDHTMLBuilder:
         except Exception as e:
             logger.error(f"Error running YARD: {e}")
             return False
+        finally:
+            shutil.rmtree(shadow_parent, ignore_errors=True)
 
     def clean_output(self):
         """Remove existing output directory."""
