@@ -197,12 +197,975 @@ at most once every 60s via this throttle.</p>
 
 
 
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
 
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#cleanup-class_method" title="cleanup (class method)">.<strong>cleanup</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>rubocop:enable Lint/HashCompareByIdentity Removes @@index / @@streams entries whose thread is no longer alive.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clear-class_method" title="clear (class method)">.<strong>clear</strong>  &#x21d2; Array&lt;Object&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Reads all remaining lines from the buffer for the calling thread, returning them as an array and advancing the cursor to the end.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#gets-class_method" title="gets (class method)">.<strong>gets</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Reads the next line from the buffer for the calling thread, blocking until one is available.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#gets%3F-class_method" title="gets? (class method)">.<strong>gets?</strong>  &#x21d2; Object<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Reads the next line from the buffer for the calling thread, returning nil if no matching line is available instead of blocking.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#rewind-class_method" title="rewind (class method)">.<strong>rewind</strong>  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Resets the calling thread's read cursor to the oldest line in the buffer.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#streams-class_method" title="streams (class method)">.<strong>streams</strong>  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>rubocop:disable Lint/HashCompareByIdentity Returns the stream filter bitmask for the calling thread.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#streams=-class_method" title="streams= (class method)">.<strong>streams=</strong>(val)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Sets the stream filter bitmask for the calling thread.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#update-class_method" title="update (class method)">.<strong>update</strong>(line, stream = nil)  &#x21d2; self </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Appends a line to the buffer, optionally overriding its stream identifier.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="cleanup-class_method">
+  
+    .<strong>cleanup</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>rubocop:enable Lint/HashCompareByIdentity
+Removes @@index / @@streams entries whose thread is no longer alive.
+Snapshots the live thread ids once rather than recomputing them per
+entry, and holds the mutex so it cannot race with a concurrent reader
+mutating the same hashes.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+260
+261
+262
+263
+264
+265
+266
+267</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 260</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cleanup'>cleanup</span>
+  <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+    <span class='id identifier rubyid_live_ids'>live_ids</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:object_id</span><span class='rparen'>)</span>
+    <span class='cvar'>@@index</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid__v'>_v</span><span class='op'>|</span> <span class='op'>!</span><span class='id identifier rubyid_live_ids'>live_ids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_k'>k</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='cvar'>@@streams</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid__v'>_v</span><span class='op'>|</span> <span class='op'>!</span><span class='id identifier rubyid_live_ids'>live_ids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_k'>k</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='kw'>self</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clear-class_method">
+  
+    .<strong>clear</strong>  &#x21d2; <tt>Array&lt;Object&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Reads all remaining lines from the buffer for the calling thread, returning them
+as an array and advancing the cursor to the end.</p>
+<p>Filters the buffer by the calling thread's current stream mask, returning only lines
+that match. If the thread's cursor has fallen behind the buffer (e.g., due to buffer
+rotation), it is advanced to the oldest line. Registers the thread on first call with
+a default stream filter of <span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_clear'>clear</span>
+<span class='comment'># =&gt; [line1, line2, line3]</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Object&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>an array of line objects matching the calling thread's
+stream filter, or an empty array if no matching lines remain</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 152</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
+  <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@offset</span> <span class='op'>+</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span>
+      <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span>
+    <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup'>maybe_cleanup</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+  <span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_lines'>lines</span>
+    <span class='kw'>end</span>
+
+    <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='kw'>nil</span>
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>&lt;</span> <span class='cvar'>@@offset</span>
+        <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='cvar'>@@offset</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='cvar'>@@buffer</span><span class='lbracket'>[</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rbracket'>]</span>
+    <span class='rbrace'>}</span>
+    <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_stream'>stream</span> <span class='op'>&amp;</span> <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>!=</span> <span class='int'>0</span><span class='rparen'>)</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_lines'>lines</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="gets-class_method">
+  
+    .<strong>gets</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Reads the next line from the buffer for the calling thread, blocking until one
+is available.</p>
+<p>Filters the buffer by the calling thread's current stream mask, skipping lines that
+do not match. If the thread's cursor has fallen behind the buffer (e.g., due to
+buffer rotation), it is advanced to the oldest line. Registers the thread on first
+call with a default stream filter of <span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_gets'>gets</span>
+<span class='comment'># =&gt; line.stream =&gt; 1, line =&gt; &quot;You scan the area...\n&quot;</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a line object with .stream and text attributes</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 51</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gets'>gets</span>
+  <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
+  <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@offset</span> <span class='op'>+</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span>
+      <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span>
+    <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup'>maybe_cleanup</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
+      <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.05</span> <span class='kw'>while</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>&lt;</span> <span class='cvar'>@@offset</span>
+        <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='cvar'>@@offset</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='cvar'>@@buffer</span><span class='lbracket'>[</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rbracket'>]</span>
+    <span class='rbrace'>}</span>
+    <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='kw'>break</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_stream'>stream</span> <span class='op'>&amp;</span> <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>!=</span> <span class='int'>0</span><span class='rparen'>)</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_line'>line</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="gets?-class_method">
+  
+    .<strong>gets?</strong>  &#x21d2; <tt>Object</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Reads the next line from the buffer for the calling thread, returning nil if no
+matching line is available instead of blocking.</p>
+<p>Filters the buffer by the calling thread's current stream mask, skipping lines that
+do not match. If the thread's cursor has fallen behind the buffer (e.g., due to
+buffer rotation), it is advanced to the oldest line. Registers the thread on first
+call with a default stream filter of <span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_gets?'>gets?</span>
+<span class='comment'># =&gt; line.stream =&gt; 1, line =&gt; &quot;You scan the area...\n&quot; OR nil</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a line object with .stream and text attributes, or nil if
+no matching line is available</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 90</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gets?'>gets?</span>
+  <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
+  <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@offset</span> <span class='op'>+</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='rparen'>)</span>
+      <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span>
+    <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_maybe_cleanup'>maybe_cleanup</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
+      <span class='kw'>return</span> <span class='kw'>nil</span>
+    <span class='kw'>end</span>
+
+    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+      <span class='kw'>if</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>&lt;</span> <span class='cvar'>@@offset</span>
+        <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='cvar'>@@offset</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='cvar'>@@buffer</span><span class='lbracket'>[</span><span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='cvar'>@@offset</span><span class='rbracket'>]</span>
+    <span class='rbrace'>}</span>
+    <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='kw'>break</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_stream'>stream</span> <span class='op'>&amp;</span> <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>!=</span> <span class='int'>0</span><span class='rparen'>)</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_line'>line</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="rewind-class_method">
+  
+    .<strong>rewind</strong>  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Resets the calling thread's read cursor to the oldest line in the buffer.</p>
+<p>Registers the thread with a default stream filter of <span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span> if it
+has not yet accessed the buffer. Acquires the mutex to prevent race conditions
+during thread registration and cleanup.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rewind'>rewind</span>
+<span class='id identifier rubyid_first_line'>first_line</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_gets'><span class='object_link'><a href="#gets-class_method" title="Lich::Common::Buffer.gets (method)">gets</a></span></span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Buffer module</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 127</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_rewind'>rewind</span>
+  <span class='id identifier rubyid_thread_id'>thread_id</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span>
+  <span class='comment'># Hold the mutex: for a thread whose first Buffer call is rewind this
+</span>  <span class='comment'># adds new keys, which must not race a concurrent cleanup delete_if
+</span>  <span class='comment'># (Ruby raises on a key added during iteration).
+</span>  <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+    <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='cvar'>@@offset</span>
+    <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='id identifier rubyid_thread_id'>thread_id</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='kw'>self</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="streams-class_method">
+  
+    .<strong>streams</strong>  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>rubocop:disable Lint/HashCompareByIdentity
+Returns the stream filter bitmask for the calling thread.</p>
+<p>The result is a bitmask composed of stream constants (DOWNSTREAM_STRIPPED,
+DOWNSTREAM_RAW, etc.) that determines which lines the thread will receive from
+.gets, .gets?, and .clear. Returns nil if the thread has never accessed the buffer.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_streams'>streams</span> <span class='comment'>#=&gt; 1  (DOWNSTREAM_STRIPPED)
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_streams'>streams</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="#UPSTREAM-constant" title="Lich::Common::Buffer::UPSTREAM (constant)">UPSTREAM</a></span></span>
+<span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_streams'>streams</span> <span class='comment'>#=&gt; 8</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the stream filter bitmask, or nil if the thread is not
+registered</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+226
+227
+228</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 226</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_streams'>streams</span>
+  <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="streams=-class_method">
+  
+    .<strong>streams=</strong>(val)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the stream filter bitmask for the calling thread.</p>
+<p>The bitmask must be a non-zero Integer with at least one of the six stream bits set
+(bits 0-5 corresponding to the six stream constants). Acquires the mutex to prevent
+race conditions during thread registration and cleanup. Raises no exception on invalid
+input; instead logs an error message via respond and returns nil.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_streams'><span class='object_link'><a href="#streams-class_method" title="Lich::Common::Buffer.streams (method)">streams</a></span></span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span> <span class='op'>|</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="#UPSTREAM-constant" title="Lich::Common::Buffer::UPSTREAM (constant)">UPSTREAM</a></span></span>
+<span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_streams'><span class='object_link'><a href="#streams-class_method" title="Lich::Common::Buffer.streams (method)">streams</a></span></span> <span class='comment'>#=&gt; 9</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>val</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a non-zero bitmask composed of stream constants
+(DOWNSTREAM_STRIPPED, DOWNSTREAM_RAW, DOWNSTREAM_MOD, UPSTREAM, UPSTREAM_MOD,
+SCRIPT_OUTPUT)</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 244</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_streams='>streams=</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='lparen'>(</span><span class='op'>!</span><span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>or</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span> <span class='op'>&amp;</span> <span class='int'>63</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='int'>0</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--- Lich: error: invalid streams value\n\t</span><span class='embexpr_beg'>#{</span><span class='gvar'>$!</span><span class='period'>.</span><span class='id identifier rubyid_caller'>caller</span><span class='lbracket'>[</span><span class='int'>0</span><span class='op'>..</span><span class='int'>2</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\n\t</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>else</span>
+    <span class='comment'># Hold the mutex: setting streams for a thread that has not registered
+</span>    <span class='comment'># yet adds a new key, which must not race the cleanup delete_if sweep
+</span>    <span class='comment'># (Ruby raises on a key added during iteration).
+</span>    <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='cvar'>@@streams</span><span class='lbracket'>[</span><span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_val'>val</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="update-class_method">
+  
+    .<strong>update</strong>(line, stream = nil)  &#x21d2; <tt>self</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Appends a line to the buffer, optionally overriding its stream identifier.</p>
+<p>The line is duplicated and frozen before insertion to prevent external mutation.
+If the buffer exceeds the maximum size (3000 lines), the oldest line is discarded
+and the offset is incremented. Acquires the mutex for thread safety.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='const'>Object</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+<span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_stream'>stream</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="#DOWNSTREAM_STRIPPED-constant" title="Lich::Common::Buffer::DOWNSTREAM_STRIPPED (constant)">DOWNSTREAM_STRIPPED</a></span></span>
+<span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_update'>update</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='comment'># or
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_update'>update</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Buffer (module)">Buffer</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="#UPSTREAM-constant" title="Lich::Common::Buffer::UPSTREAM (constant)">UPSTREAM</a></span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a line object with text and optional .stream attribute</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>stream</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>optional stream identifier (a bitmask constant like
+DOWNSTREAM_STRIPPED) to set on the frozen copy; if nil, the line's existing
+stream is preserved</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>self</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Buffer module</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/buffer.rb', line 197</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_update'>update</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='id identifier rubyid_stream'>stream</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='cvar'>@@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span>
+    <span class='id identifier rubyid_frozen_line'>frozen_line</span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_stream'>stream</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_frozen_line'>frozen_line</span><span class='period'>.</span><span class='id identifier rubyid_stream'>stream</span> <span class='op'>=</span> <span class='id identifier rubyid_stream'>stream</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_frozen_line'>frozen_line</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+    <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_frozen_line'>frozen_line</span><span class='rparen'>)</span>
+    <span class='kw'>while</span> <span class='lparen'>(</span><span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='op'>&gt;</span> <span class='cvar'>@@max_size</span><span class='rparen'>)</span>
+      <span class='cvar'>@@buffer</span><span class='period'>.</span><span class='id identifier rubyid_shift'>shift</span>
+      <span class='cvar'>@@offset</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='kw'>end</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='kw'>self</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
 
 </div>
 
       <div id="footer">
-  Generated on Thu Aug 27 01:00:08 2026 by
+  Generated on Mon Aug 31 21:22:55 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>
