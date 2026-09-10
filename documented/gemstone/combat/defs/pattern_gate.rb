@@ -19,6 +19,18 @@ module Lich
   module Gemstone
     module Combat
       module Definitions
+        # Markup tolerance tokens for the live XML feed (round-6 sweep,
+        # 46 def kinds proven markup-unsafe against 11.5GB of real logs).
+        # Entity pronouns arrive wrapped in links - creature and player
+        # alike - as <pushBold/><a exist=...>her</a><popBold/>, and a
+        # possessive keeps its 's INSIDE the link, closing before the
+        # next word (<a ...>Nisugi's</a> blow). Interpolate MK_PRE before
+        # a bare pronoun and MK_POST after a pronoun or possessive 's.
+        # Both are fully optional, so stripped-text matching is unchanged.
+        # When the exist id matters, put MK_PRE inside the capture.
+        MK_PRE  = '(?:<pushBold/>)?(?:<a [^>]*>)?'
+        MK_POST = '(?:</a>)?(?:<popBold/>)?'
+
         module PatternGate
           module_function
 
@@ -52,22 +64,23 @@ module Lich
           # useful gate (they must be tried on every line).
           MIN_LITERAL = 4
 
-          # Builds a gate for a list of patterns that pre-filters lines before expensive regex matching.
+          # Builds a literal-substring gate for a list of patterns to accelerate pattern matching.
           #
-          # Extracts the longest literal substring from each pattern using {.longest_literal}.
-          # Patterns whose literal is at least {MIN_LITERAL} (4) characters long are added to
-          # a {Regexp.union} gate; shorter or literal-free patterns are returned in the
-          # always_scan list and must be tried on every line.
+          # Extracts the longest guaranteed-literal run from each pattern using {.longest_literal},
+          # then creates a fast Regexp.union gate that rejects lines lacking those substrings before
+          # attempting full pattern matches. Patterns with literals shorter than MIN_LITERAL (4 chars)
+          # are placed in the always_scan list and must be tried on every line. Returns a tuple
+          # that {.rejects?} uses to make reject-or-scan decisions.
           #
-          # @param patterns [Array<Regexp>] the patterns to gate
-          # @return [Array] a two-element array: [union_regex, always_scan] where union_regex
-          #   is a frozen Regexp (or nil if no literals met the threshold) and always_scan is
-          #   a frozen Array of patterns that bypassed the gate
+          # @param patterns [Array<Regexp>] regex patterns to gate
+          # @return [Array(Regexp, nil, Array<Regexp>)] tuple of [union_regex_or_nil, always_scan_patterns];
+          #   union_regex is frozen and matches iff some pattern's literal is present (nil if no
+          #   patterns have literals >= MIN_LITERAL); always_scan is a frozen array of patterns
+          #   that must be tried on every candidate line
           # @example
-          #   gate, always_scan = build([/lightning/i, /\\d+ damage/])
-          #   gate.match?("You cast lightning") #=> MatchData
-          #   always_scan.empty? #=> false (short literal)
-          # @api private
+          #   gate, always_scan = PatternGate.build([/\bwounds\s+(\.+)/, /^You \w+ a/])
+          #   gate.match?("serious wounds...") #=> #<MatchData "wounds">
+          #   always_scan.length #=> 0 (both literals met threshold)
           def build(patterns)
             literals = []
             always_scan = []
@@ -82,10 +95,17 @@ module Lich
             [literals.empty? ? nil : Regexp.union(literals.uniq).freeze, always_scan.freeze]
           end
 
-          # Convenience: true when the line can't possibly match any gated
-          # pattern (no literal present and no ungated patterns exist).
+          # Convenience: true when the line can't possibly match any pattern in
+          # this table, so the caller may skip the full scan. A line is only
+          # rejectable when BOTH the literal gate misses AND no ungated
+          # (always_scan) pattern matches. Any always_scan pattern that matches
+          # keeps the line in play; a non-empty always_scan does NOT blanket-
+          # disable rejection (that was the old bug - it reverted the whole
+          # table to full-scan the moment one short-literal pattern existed).
           def rejects?(gate, always_scan, line)
-            always_scan.empty? && (gate.nil? || !gate.match?(line))
+            return false if gate&.match?(line)
+
+            always_scan.none? { |rx| rx.match?(line) }
           end
         end
       end

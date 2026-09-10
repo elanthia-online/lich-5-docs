@@ -1,20 +1,19 @@
 # frozen_string_literal: true
 
+require_relative '../frontend'
+
 # Namespace for the Lich 5 scripting engine.
 #
-# Lich 5 is a Ruby scripting environment for text-based games GemStone IV and DragonRealms,
-# providing script authors with APIs to interact with the game, manage login credentials,
-# and build custom user interfaces.
+# Lich 5 is a Ruby scripting engine for text-based games (GemStone IV and DragonRealms).
+# It provides the core scripting runtime, character automation, game data access, and UI components.
 module Lich
-  # Namespace for common utilities and shared functionality across Lich 5.
+  # Namespace for common, reusable components shared across Lich 5.
   #
-  # Contains authentication, GUI, and data management modules used by the login system
-  # and other core features.
+  # Provides authentication, GUI helpers, and other utilities used by the Lich framework.
   module Common
-    # Namespace for GUI-related modules in Lich 5.
+    # Namespace for GUI components and login system helpers.
     #
-    # Provides login interface, account management, and master password management for the
-    # Lich launcher and login system.
+    # Provides account management, frontend selection, and related UI functionality.
     module GUI
       # Manages account-related operations for the Lich GUI login system
       # Provides functionality for adding, removing, and modifying accounts and characters
@@ -354,6 +353,44 @@ module Lich
             Lich.log "error: Error updating character: #{e.message}"
             false
           end
+        end
+
+        # Reassigns exactly one saved entry without changing account credentials,
+        # favorites or per-entry custom launch settings. Rejects stale selections
+        # and duplicate destinations rather than editing a different entry.
+        #
+        # @param data_dir [String] saved entry directory
+        # @param username [String] account name
+        # @param char_name [String] character name
+        # @param game_code [String] game instance
+        # @param old_frontend [String] frontend of the selected entry
+        # @param custom_launch [String, nil] exact selected custom command
+        # @param frontend [String] new configured frontend identifier
+        # @return [Boolean] whether the change was saved
+        def self.update_launch_settings(data_dir, username, char_name, game_code, old_frontend:, custom_launch:, frontend: old_frontend)
+          definition = Frontend.definition_for(frontend)
+          return false if definition.dig(:metadata, :native_launch_only) && !custom_launch.to_s.strip.empty?
+
+          yaml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(data_dir)
+          return false unless File.exist?(yaml_file)
+
+          yaml_data = YAML.load_file(yaml_file)
+          account = yaml_data.fetch('accounts', {}).find { |name, _| name.casecmp?(username) }&.last
+          candidates = account&.fetch('characters', [])&.select do |character|
+            character['char_name'] == char_name && character['game_code'] == game_code &&
+              character['custom_launch'] == custom_launch
+          end || []
+          selected = candidates.select { |character| character['frontend'] == old_frontend }
+          return false unless selected.one?
+
+          character = selected.first
+          return false if candidates.any? { |other| !other.equal?(character) && Frontend.canonical_name(other['frontend']) == definition[:id] }
+
+          character['frontend'] = definition[:id]
+          write_yaml_with_headers(yaml_file, yaml_data)
+        rescue StandardError => e
+          Lich.log "error: Could not change saved frontend: #{e.class}"
+          false
         end
 
         # Converts authentication response data to character format for storage

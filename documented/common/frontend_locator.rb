@@ -3,17 +3,17 @@
 require 'rexml/document'
 require 'open3'
 
-# Namespace for the Lich scripting engine and its core components.
+# Namespace for Lich 5, a Ruby scripting engine for text-based games.
 module Lich
-  # Namespace for shared utilities and common components across Lich.
+  # Namespace for shared common utilities.
   module Common
     # Resolves installed frontend executables from the shared Frontend catalog.
     # It has no GTK dependency and is safe for GUI, CLI, and --no-gtk startup.
     class FrontendLocator
       Resolution = Struct.new(:frontend_id, :executable_path, :source, keyword_init: true) do
-        # Initializes an immutable Resolution struct with frontend discovery metadata.
+        # Initializes a frozen Resolution with the given keyword attributes.
         #
-        # @param attributes [Hash] keyword arguments passed to struct: :frontend_id, :executable_path, :source
+        # @param attributes [Hash] keyword arguments: frontend_id, executable_path, source
         # @return [void]
         # @api private
         def initialize(**attributes)
@@ -112,23 +112,22 @@ module Lich
         @application_index_mutex = Mutex.new
       end
 
-      # Resolves a registered frontend to its executable path, with optional override and cache control.
+      # Resolves a known frontend to a launchable executable.
       #
-      # Queries the process-local discovery cache by default. Use refresh: true to bypass the cache
-      # and rediscover. An explicit override path is resolved immediately without caching.
-      #
-      # @param frontend_id [String, Symbol] registered frontend identifier (e.g., :stormfront, :genie)
-      # @param override [String, nil] explicit filesystem path to use instead of discovery
-      # @param refresh [Boolean] bypass and clear the process-local discovery cache for this frontend
-      # @return [Resolution, nil] a Resolution struct with frontend_id, executable_path, and source; nil if not installed
-      # @raise [ArgumentError] if frontend_id is blank or unknown, or if override path is not executable
-      # @example
-      #   resolution = locator.resolve(:stormfront)
-      #   resolution&.executable_path  # => "/usr/local/bin/stormfront"
-      #   locator.resolve(:genie, override: "/home/user/genie-custom")  # => Resolution with custom path
+      # @param frontend_id [String, Symbol] registered frontend identifier
+      # @param override [String, nil] explicit executable path for this call
+      # @param refresh [Boolean] bypass the process-local discovery cache
+      # @return [Resolution, nil] nil when the frontend is not installed
+      # @raise [ArgumentError] for blank or unknown identifiers and invalid overrides
       def resolve(frontend_id, override: nil, refresh: false)
         definition = Frontend.definition_for(frontend_id)
         return resolve_override(definition, override) unless override.nil?
+
+        configured = definition.dig(:metadata, :configured_executable)
+        if configured
+          configured_resolution = resolve_configured(definition, configured)
+          return configured_resolution if configured_resolution
+        end
 
         @cache_mutex.synchronize do
           if refresh
@@ -142,17 +141,17 @@ module Lich
         @cache_mutex.synchronize { @cache[definition[:id]] = discovered }
       end
 
-      # Returns an array of resolved frontends for all installed catalog entries.
+      # Returns resolutions for all frontends with installed executables.
       #
-      # When gui_selectable: true, filters results to only frontends marked as graphical and supported
-      # on the current platform. When nil or false, returns all installed frontends.
-      #
-      # @param gui_selectable [Boolean, nil] filter to graphical frontends supported on this platform
-      # @param refresh [Boolean] clear the process-local discovery cache before returning results
-      # @return [Array<Resolution>] resolutions for installed frontends; empty array if none found
+      # @param gui_selectable [Boolean, nil] when true, filters to frontends marked gui_selectable and supported on this platform; when nil or false, returns all installed frontends
+      # @param refresh [Boolean] clears the process-local discovery cache before scanning
+      # @return [Array<Resolution>] array of frontend resolutions, possibly empty
       # @example
-      #   locator.available(gui_selectable: true)  # => [Resolution(...stormfront), Resolution(...genie)]
-      #   locator.available(refresh: true)  # => fresh discovery, bypassing cache
+      #   FrontendLocator.available
+      #   # => [
+      #   #      #<struct Resolution frontend_id=:storm, executable_path="/usr/bin/StormFront", source=:path>,
+      #   #      #<struct Resolution frontend_id=:avalon, executable_path="/Applications/Avalon.app/Contents/MacOS/Avalon", source=:application>
+      #   #    ]
       def available(gui_selectable: nil, refresh: false)
         refresh! if refresh
         definitions = Frontend.definitions(gui_selectable: gui_selectable)
@@ -162,18 +161,14 @@ module Lich
         end
       end
 
-      # Returns whether a frontend is installed and marked for graphical launcher presentation on this platform.
-      #
-      # Combines two checks: the frontend must have gui_selectable: true in its catalog metadata,
-      # and its platform must be in the gui_platforms list (or gui_platforms must be nil, meaning all platforms).
-      # Additionally, the frontend must be installed (discoverable via the normal resolution pipeline).
+      # Returns true when a frontend is both installed and marked for graphical launcher presentation on this platform.
       #
       # @param frontend_id [String, Symbol] registered frontend identifier
-      # @param refresh [Boolean] bypass the process-local discovery cache
-      # @return [Boolean] true if both installed and graphically selectable; false otherwise
+      # @param refresh [Boolean] bypasses the process-local discovery cache
+      # @return [Boolean]
       # @example
-      #   locator.selectable?(:stormfront)  # => true (if installed and gui_selectable)
-      #   locator.selectable?(:invalid)  # => false
+      #   FrontendLocator.selectable?(:storm) #=> true
+      #   FrontendLocator.selectable?(:nonexistent) #=> false
       def selectable?(frontend_id, refresh: false)
         definition = Frontend.definition_for(frontend_id)
         return false unless definition.dig(:metadata, :gui_selectable)
@@ -182,19 +177,15 @@ module Lich
         !resolve(definition[:id], refresh: refresh).nil?
       end
 
-      # Returns whether a frontend has a native launcher on this platform and its executable is installed.
+      # Returns true when a frontend has native launcher support on this platform and its executable is installed.
       #
-      # Unlike selectable?, this does not apply graphical presentation metadata. It checks:
-      # whether the frontend's launcher_adapter is supported on the current platform
-      # (environment, avalon, simutronics, or embedded), and whether the frontend itself is installed.
-      # Embedded launchers always return true (they do not require an external executable).
+      # Differs from #selectable? by not applying graphical presentation filters—a frontend may be launchable but not selectable in the GUI.
       #
       # @param frontend_id [String, Symbol] registered frontend identifier
-      # @param refresh [Boolean] bypass the process-local discovery cache
-      # @return [Boolean] true if a native launcher exists on this platform and the frontend is installed
+      # @param refresh [Boolean] bypasses the process-local discovery cache
+      # @return [Boolean]
       # @example
-      #   locator.launchable?(:stormfront)  # => true (if installed with native launcher support)
-      #   locator.launchable?(:invalid)  # => false
+      #   FrontendLocator.launchable?(:storm) #=> true
       def launchable?(frontend_id, refresh: false)
         definition = Frontend.definition_for(frontend_id)
         return false unless native_launcher_supported?(definition)
@@ -203,10 +194,7 @@ module Lich
         !resolve(definition[:id], refresh: refresh).nil?
       end
 
-      # Clears the process-local discovery cache and application bundle index.
-      #
-      # All subsequent resolve/available/selectable?/launchable? calls will perform fresh discovery.
-      # No settings or state outside the current process are affected.
+      # Clears the process-local discovery cache. No settings are persisted.
       #
       # @return [void]
       def refresh!
@@ -232,14 +220,35 @@ module Lich
         nil
       end
 
-      def resolve_override(definition, override)
+      # Resolves and validates an explicitly configured executable path.
+      #
+      # @param definition [Hash] immutable frontend definition
+      # @param override [String] executable path
+      # @param source [Symbol] resolution source marker
+      # @return [Resolution] validated executable resolution
+      # @raise [ArgumentError] when the path is not executable for the frontend
+      # @api private
+      def resolve_override(definition, override, source: :override)
         path = expand_path(override)
         unless executable?(path, definition)
           raise ArgumentError, "frontend override is not executable: #{override}"
         end
 
-        resolution(definition, path, :override) ||
+        resolution(definition, path, source) ||
           raise(ArgumentError, "frontend override is not executable: #{override}")
+      end
+
+      # Resolves a persisted executable override, logging invalid paths.
+      #
+      # @param definition [Hash] immutable frontend definition
+      # @param configured [String] persisted executable path
+      # @return [Resolution, nil] configured resolution when valid
+      # @api private
+      def resolve_configured(definition, configured)
+        resolve_override(definition, configured, source: :configured)
+      rescue ArgumentError => error
+        log_discovery_error(configured, error)
+        nil
       end
 
       def conventional_candidates(definition)

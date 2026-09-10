@@ -6,17 +6,27 @@ require_relative '../authentication/cli_password'
 require_relative 'cli_conversion'
 require_relative 'cli_encryption_mode_change'
 require_relative '../authentication/cli'
+require_relative '../authentication/login_helpers'
+require_relative '../authentication/web_login'
+require_relative '../gui/game_selection'
+require_relative 'cli_option_validator'
 
+# @api private
+# Namespace for Lich 5, a Ruby scripting engine for text-based games
 module Lich
+  # @api private
+  # Namespace for common Lich 5 utilities
   module Common
+    # @api private
+    # Namespace for CLI-related utilities
     module CLI
-      # Provides orchestration for command line interface operations.
-      #
-      # @see Lich::Common::CLI for CLI-related functionality.
+      # Orchestrates CLI operations: early-exit handlers for password management,
+      # data conversion, and login flow. Uses CliOptionsRegistry for declarative
+      # option registration and handler execution.
       module CLIOrchestration
-        # Executes the command line interface orchestration.
-        #
-        # @return [void]
+        # Execute registered CLI operations
+        # Processes ARGV for early-exit CLI operations (password mgmt, conversion)
+        # Also handles conversion detection for login attempts
         def self.execute
           ActiveSessionsQuery.execute
 
@@ -26,6 +36,10 @@ module Lich
               handle_change_account_password
             when /^--add-account$/, /^-aa$/
               handle_add_account
+            when /^--refresh-characters$/, /^-rc$/
+              handle_refresh_characters
+            when /^--add-character$/, /^-ac$/
+              handle_add_character
             when /^--change-master-password$/, /^-cmp$/
               handle_change_master_password
             when /^--recover-master-password$/, /^-rmp$/
@@ -34,6 +48,8 @@ module Lich
               handle_convert_entries
             when /^--change-encryption-mode$/, /^-cem$/
               handle_change_encryption_mode
+            when /^--web-login-test$/
+              handle_web_login_test
             end
           end
 
@@ -44,10 +60,14 @@ module Lich
           end
         end
 
-        # Checks if conversion is required before a login attempt.
+        # Checks if legacy data conversion is required before a login attempt.
         #
-        # @return [void]
-        # @api private
+        # If conversion is needed, prints a conversion help message and exits with
+        # status code 1. This prevents login attempts when the entry store requires
+        # migration from legacy DAT format to YAML.
+        #
+        # @return [void] exits the process if conversion is needed; otherwise returns normally
+        # @see Lich::Common::CLI::CLIConversion.conversion_needed?
         def self.check_conversion_needed_for_login
           # Check if conversion is required
           if Lich::Common::CLI::CLIConversion.conversion_needed?(DATA_DIR)
@@ -56,11 +76,15 @@ module Lich
           end
         end
 
-        # Handles the change of an account password via command line arguments.
+        # Changes the password for an existing account in the entry store.
         #
-        # @param account [String] the account whose password is to be changed
-        # @param new_password [String] the new password for the account
-        # @return [Integer] exit status code
+        # Reads account name and new password from ARGV (--change-account-password or -cap
+        # followed by account and password arguments). Validates both arguments are present
+        # and exits with status 1 if either is missing. On success or error, exits the
+        # process via CLIPassword.change_account_password.
+        #
+        # @return [void] exits the process; never returns normally
+        # @raise [SystemExit] with status 1 if account or password argument is missing
         def self.handle_change_account_password
           idx = ARGV.index { |a| a =~ /^--change-account-password$|^-cap$/ }
           account = ARGV[idx + 1]
@@ -77,12 +101,16 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.change_account_password(account, new_password)
         end
 
-        # Handles the addition of a new account via command line arguments.
+        # Adds a new account to the entry store, with optional frontend preference.
         #
-        # @param account [String] the account to be added
-        # @param password [String] the password for the new account
-        # @param frontend [String, nil] optional frontend specification
-        # @return [Integer] exit status code
+        # Reads account name, password, and optional --frontend flag from ARGV.
+        # If no YAML entry file exists but legacy DAT format data is present,
+        # automatically converts to plaintext YAML (with warnings) before proceeding.
+        # Exits with status 1 if required account or password arguments are missing,
+        # or if YAML creation fails. Otherwise exits via CLIPassword.add_account.
+        #
+        # @return [void] exits the process; never returns normally
+        # @raise [SystemExit] with status 1 if account/password missing or YAML creation fails
         def self.handle_add_account
           idx = ARGV.index { |a| a =~ /^--add-account$|^-aa$/ }
           account = ARGV[idx + 1]
@@ -130,11 +158,90 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.add_account(account, password, frontend)
         end
 
-        # Handles the change of the master password via command line arguments.
+        # Refreshes the character list for an account from the game server.
         #
-        # @param old_password [String] the current master password
-        # @param new_password [String, nil] the new master password (optional)
-        # @return [Integer] exit status code
+        # Reads account name and optional --frontend flag from ARGV. Validates account
+        # name is provided; exits with validation error if missing. Validates frontend
+        # (if supplied) against known frontends. Exits via CLIPassword.refresh_characters.
+        #
+        # @return [void] exits the process; never returns normally
+        def self.handle_refresh_characters
+          idx = ARGV.index { |a| a =~ /^--refresh-characters$|^-rc$/ }
+          account = ARGV[idx + 1]
+
+          lich_script = File.join(LICH_DIR, 'lich.rbw')
+          usage = "Usage: ruby #{lich_script} --refresh-characters ACCOUNT [--frontend FRONTEND]\n" \
+                  "   or: ruby #{lich_script} -rc ACCOUNT [--frontend FRONTEND]"
+
+          account = CliOptionValidator.require_positional(account, name: 'ACCOUNT', usage: usage)
+
+          frontend = CliOptionValidator.extract_flag_value(
+            '--frontend',
+            usage: usage,
+            valid_values: Lich::Common::Authentication::LoginHelpers::VALID_FRONTENDS
+          )
+          exit Lich::Common::Authentication::CLIPassword.refresh_characters(account, frontend)
+        end
+
+        # Adds a new character to an account in the entry store.
+        #
+        # Reads account name, character name, and required --game-code flag from ARGV.
+        # Optional --frontend flag may also be provided. Validates all positional arguments
+        # and --game-code (which must be a valid game code). Exits via CLIPassword.add_character
+        # on success or validation error.
+        #
+        # @return [void] exits the process; never returns normally
+        def self.handle_add_character
+          idx = ARGV.index { |a| a =~ /^--add-character$|^-ac$/ }
+          account = ARGV[idx + 1]
+          char_name = ARGV[idx + 2]
+
+          lich_script = File.join(LICH_DIR, 'lich.rbw')
+          usage = "Usage: ruby #{lich_script} --add-character ACCOUNT CHAR_NAME --game-code CODE [--frontend FRONTEND]\n" \
+                  "   or: ruby #{lich_script} -ac ACCOUNT CHAR_NAME --game-code CODE [--frontend FRONTEND]"
+
+          account = CliOptionValidator.require_positional(account, name: 'ACCOUNT', usage: usage)
+          char_name = CliOptionValidator.require_positional(char_name, name: 'CHAR_NAME', usage: usage)
+
+          game_code = CliOptionValidator.extract_flag_value('--game-code', usage: usage)
+          if game_code.nil?
+            $stdout.puts 'error: --game-code is required'
+            $stdout.puts usage
+            exit 1
+          end
+
+          unless Lich::Common::Authentication::LoginHelpers.valid_game_code?(game_code)
+            CliOptionValidator.reject_invalid_value(
+              '--game-code',
+              game_code,
+              valid_values: Lich::Common::Authentication::LoginHelpers::VALID_GAME_CODES,
+              usage: usage
+            )
+          end
+
+          frontend = CliOptionValidator.extract_flag_value(
+            '--frontend',
+            usage: usage,
+            valid_values: Lich::Common::Authentication::LoginHelpers::VALID_FRONTENDS
+          )
+
+          exit Lich::Common::Authentication::CLIPassword.add_character(
+            account,
+            char_name,
+            game_code: game_code,
+            frontend: frontend
+          )
+        end
+
+        # Changes the master password for the entry store.
+        #
+        # Reads old password (required) and new password (optional) from ARGV.
+        # If new password is not provided on command line, the user will be prompted
+        # for confirmation. Exits with status 1 if old password is missing. Otherwise
+        # exits via CLIPassword.change_master_password.
+        #
+        # @return [void] exits the process; never returns normally
+        # @raise [SystemExit] with status 1 if old password argument is missing
         def self.handle_change_master_password
           idx = ARGV.index { |a| a =~ /^--change-master-password$|^-cmp$/ }
           old_password = ARGV[idx + 1]
@@ -152,10 +259,13 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.change_master_password(old_password, new_password)
         end
 
-        # Handles the recovery of the master password via command line arguments.
+        # Recovers access to the entry store by setting a new master password.
         #
-        # @param new_password [String, nil] the new master password (optional)
-        # @return [Integer] exit status code
+        # Reads optional new password from ARGV. If new password is not provided on
+        # command line, the user will be prompted interactively. Exits via
+        # CLIPassword.recover_master_password.
+        #
+        # @return [void] exits the process; never returns normally
         def self.handle_recover_master_password
           idx = ARGV.index { |a| a =~ /^--recover-master-password$|^-rmp$/ }
           new_password = ARGV[idx + 1]
@@ -164,10 +274,16 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.recover_master_password(new_password)
         end
 
-        # Handles the conversion of entries to a specified encryption mode.
+        # Converts the entry store to a new encryption mode (plaintext, standard, or enhanced).
         #
-        # @param encryption_mode_str [String] the encryption mode to convert to (e.g., "plaintext", "standard", "enhanced")
-        # @return [Integer] exit status code
+        # Reads encryption mode from ARGV (required: plaintext, standard, or enhanced).
+        # For enhanced mode, prompts for a new master password and stores it in the keychain
+        # before conversion. Exits with status 1 if encryption mode is missing or invalid,
+        # or if enhanced-mode master password creation or keychain storage fails. On success,
+        # exits with status 0 after printing confirmation.
+        #
+        # @return [void] exits the process; never returns normally
+        # @raise [SystemExit] with status 1 if mode is missing/invalid or master password setup fails
         def self.handle_convert_entries
           idx = ARGV.index('--convert-entries')
           encryption_mode_str = ARGV[idx + 1]
@@ -218,10 +334,14 @@ module Lich
           end
         end
 
-        # Handles the change of the encryption mode via command line arguments.
+        # Changes the encryption mode of the entry store and optionally updates the master password.
         #
-        # @param mode_arg [String] the new encryption mode to set
-        # @return [Integer] exit status code
+        # Reads encryption mode (required: plaintext, standard, or enhanced) and optional
+        # --master-password or -mp flag from ARGV. Exits with status 1 if encryption mode
+        # is missing. Otherwise exits via EncryptionModeChange.change_mode.
+        #
+        # @return [void] exits the process; never returns normally
+        # @raise [SystemExit] with status 1 if encryption mode argument is missing
         def self.handle_change_encryption_mode
           idx = ARGV.index { |a| a =~ /^--change-encryption-mode$|^-cem$/ }
           mode_arg = ARGV[idx + 1]
@@ -242,6 +362,71 @@ module Lich
           master_password = ARGV[mp_index + 1] if mp_index
 
           exit Lich::Common::CLI::EncryptionModeChange.change_mode(new_mode, master_password)
+        end
+
+        # Standalone probe of the HTTPS web-login fallback path (see
+        # docs/web-login-protocol-analysis.md). Exercises
+        # WebLogin.auth_with_timeout directly against play.net -- independent
+        # of the real login path (Authenticator.authenticate), which also
+        # uses WebLogin, either forced via --auth-provider=web or
+        # automatically as a fallback when EAccess is unreachable.
+        #
+        # @return [void] exits the process; never returns normally
+        def self.handle_web_login_test
+          idx = ARGV.index('--web-login-test')
+          account = ARGV[idx + 1]
+          char_name = ARGV[idx + 2]
+
+          lich_script = File.join(LICH_DIR, 'lich.rbw')
+          usage = "Usage: ruby #{lich_script} --web-login-test ACCOUNT CHAR_NAME --game-code CODE\n" \
+                  "Reads the account's password from data/entry.yaml (ACCOUNT must already be saved there).\n" \
+                  'This is a standalone probe of the HTTPS web-login fallback path -- it does NOT ' \
+                  'touch the normal EAccess login flow.'
+
+          account = CliOptionValidator.require_positional(account, name: 'ACCOUNT', usage: usage)
+          char_name = CliOptionValidator.require_positional(char_name, name: 'CHAR_NAME', usage: usage)
+
+          game_code = CliOptionValidator.extract_flag_value(
+            '--game-code',
+            usage: usage,
+            valid_values: Lich::Common::Authentication::LoginHelpers::VALID_GAME_CODES
+          )
+          if game_code.nil?
+            $stdout.puts 'error: --game-code is required'
+            $stdout.puts usage
+            exit 1
+          end
+
+          entries = Lich::Common::Authentication::EntryStore.load_saved_entries(DATA_DIR, false)
+          entry = entries.find { |e| e[:user_id].to_s.casecmp?(account) }
+          if entry.nil?
+            $stdout.puts "error: Account '#{account}' not found in #{Lich::Common::Authentication::EntryStore.yaml_file_path(DATA_DIR)}"
+            exit 1
+          end
+
+          $stdout.puts "Probing web login fallback for #{account} / #{char_name} (#{game_code})..."
+
+          begin
+            login_info = Lich::Common::Authentication::WebLogin.auth_with_timeout(
+              account: account,
+              password: entry[:password],
+              character: char_name,
+              game_code: game_code
+            )
+            $stdout.puts 'Success:'
+            # KEY is a live, usable one-time game-server credential -- printing
+            # it would leave a real secret in terminal scrollback/log capture
+            # for a probe that never consumes it. Only non-secret connection
+            # metadata is shown.
+            login_info.each { |k, v| $stdout.puts "  #{k.upcase}=#{k == 'key' ? '[scrubbed]' : v}" }
+            exit 0
+          rescue Lich::Common::Authentication::WebLogin::AuthenticationError => e
+            $stdout.puts "error: web login failed: #{e.error_code}"
+            exit 1
+          rescue StandardError => e
+            $stdout.puts "error: #{e.class}: #{e.message}"
+            exit 1
+          end
         end
       end
     end

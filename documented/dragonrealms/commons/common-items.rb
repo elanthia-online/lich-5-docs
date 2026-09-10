@@ -29,16 +29,23 @@
 
 require_relative '../custom_substitutions'
 
-# Namespace for Lich scripting engine extensions and game-specific modules.
+# Namespace for all Lich 5 scripting engine functionality.
 module Lich
   # Namespace for DragonRealms-specific scripting modules and utilities.
   module DragonRealms
-    # DragonRealms Common Items module.
+    # DragonRealms Common Items - low-level, stateless methods for item manipulation.
     #
-    # Low-level, stateless methods for interacting with items in the game world:
-    # getting, putting, wearing, removing, counting, searching, and querying hand
-    # contents. All methods in this module operate independently of game state beyond
-    # what the method itself queries or mutates.
+    # DRCI provides the foundational API for getting, wearing, storing, and querying
+    # items in the game world. All methods are module-level (stateless) and operate
+    # on item nouns or Item objects. This module depends only on DRC (common) and
+    # should not depend on higher-level modules like crafting or combat.
+    #
+    # Methods are organized by category: Retrieval, Storage, Wearing, Tying, Queries,
+    # Existence checks, Counting, Container operations, Trash disposal, Transfers,
+    # and Gem Pouch handling. See the module documentation for the full method index.
+    #
+    # @see DRC
+    # @see EquipmentManager
     module DRCI
       module_function
 
@@ -78,15 +85,17 @@ module Lich
         CustomSubstitutions.resolve(:custom_trash_storage, TRASH_STORAGE, type: :names)
       end
 
-      # Patterns that match successful item disposal via drop/put commands.
+      # Game response patterns indicating successful item disposal.
       #
-      # Used by {#dispose_trash} to recognize when an item has been successfully
-      # dropped or placed in a trash receptacle.
+      # Matches when an item is dropped, put away, spread, smashed, fed to a gelapod,
+      # or naturally destroyed (e.g., moonblade crumbling). Used by {.dispose_trash}
+      # and {.execute_dispose_command}.
       #
       # @example Matches
       #   "You drop the rock."
-      #   "You put the rock in the trash."
-      #   "As you open your hand to release the moonblade, it crumbles away."
+      #   "You put the apple on the ground."
+      #   "You spread the flour on the ground."
+      #   "You feed the apple to the domesticated gelapod."
       #
       # @see DROP_TRASH_FAILURE_PATTERNS
       # @see DROP_TRASH_RETRY_PATTERNS
@@ -101,13 +110,15 @@ module Lich
         /^You feed .* a bit warily to the domesticated gelapod/
       ].freeze
 
-      # Patterns that match failed item disposal attempts.
+      # Game response patterns indicating item disposal failure.
       #
-      # Used by {#dispose_trash} to recognize when an item cannot be disposed,
-      # usually due to game restrictions (cursed items, loitering rules, full containers).
+      # Matches when disposal is not possible due to missing item, full hands, cursed
+      # state, guarded location, non-empty containers, or game restrictions. Used by
+      # {.dispose_trash} and {.execute_dispose_command}.
       #
       # @example Matches
       #   "What were you referring to?"
+      #   "Perhaps you should be holding that first."
       #   "No littering in the bank."
       #   "You can't put that there."
       #
@@ -146,34 +157,38 @@ module Lich
         /perhaps try doing that again/
       ].freeze
 
-      # Patterns that match activation of worn trash-disposal containers.
+      # Game response patterns when activating a worn trashcan via verb (e.g., tap, drum).
       #
-      # Used by {#dispose_trash} when a worn_trashcan_verb (e.g., "tap", "drum")
-      # is executed to empty the container after item disposal.
+      # Indicates the worn container (e.g., shroud, compactor) has been activated to
+      # process the item inside. Used by {.dispose_trash} after putting item into a
+      # worn receptacle.
       #
       # @example Matches
-      #   "You drum your fingers on the shroud."
-      #   "You pull a lever on the refuse bin."
+      #   "You drum your fingers along the shroud."
+      #   "You pull a lever on the compactor."
+      #   "You poke your finger around inside."
       #
-      # @see #dispose_trash
+      # @see .dispose_trash
       WORN_TRASHCAN_VERB_PATTERNS = [
         /^You drum your fingers/,
         /^You pull a lever/,
         /^You poke your finger around/
       ].freeze
 
-      # Patterns that match successful item retrieval via GET command.
+      # Game response patterns indicating successful item retrieval.
       #
-      # Used by {#get_item_unsafe} to verify that an item was successfully
-      # picked up and placed in the character's hands.
+      # Matches when an item is picked up, drawn, plucked, or obtained by any method.
+      # Includes messages for items already held, for magically concealed retrieval,
+      # and for careful/deft removal. Used by {.get_item_unsafe} and related methods.
       #
       # @example Matches
       #   "You get the sword."
-      #   "You pick up the shield."
-      #   "You are already holding the dagger."
-      #   "With a flick of your wrist, you stealthily unsheath the blade."
+      #   "You draw your shield."
+      #   "You pick up the key."
+      #   "You are already holding the amulet."
       #
       # @see GET_ITEM_FAILURE_PATTERNS
+      # @see .get_item?
       GET_ITEM_SUCCESS_PATTERNS = [
         /you draw (?!\w+'s wounds)/i,
         /^You get/,
@@ -189,17 +204,20 @@ module Lich
         /^With a flick of your wrist, you stealthily unsheath/
       ].freeze
 
-      # Patterns that match failed item retrieval attempts.
+      # Game response patterns indicating item retrieval failure.
       #
-      # Used by {#get_item_unsafe} to recognize when an item cannot be retrieved,
-      # usually due to game restrictions (hands full, injured limbs, item decay).
+      # Matches when retrieval is impossible due to magical force, full hands, injured
+      # limbs, item capacity, cursed state, decay, or game restrictions. Used by
+      # {.get_item_unsafe} to determine if an item was successfully obtained.
       #
       # @example Matches
-      #   "You need both hands free to do that."
-      #   "You can't reach that from here."
-      #   "The leather jacket rapidly decays away."
+      #   "You need both hands free."
+      #   "A magical force keeps you from grasping it."
+      #   "Your left hand is too injured."
+      #   "That would push you over the item limit."
       #
       # @see GET_ITEM_SUCCESS_PATTERNS
+      # @see .get_item?
       GET_ITEM_FAILURE_PATTERNS = [
         /^A magical force keeps you from grasping/,
         /^You'll need both hands free/,
@@ -224,17 +242,21 @@ module Lich
         /^You should stop practicing your Athletics skill before you do that/
       ].freeze
 
-      # Patterns that match successful item wearing via WEAR command.
+      # Game response patterns indicating successful item donning.
       #
-      # Matches diverse equipping verbs (put, strap, sling, slip, etc.) used by
-      # different item types and armor pieces.
+      # Matches when an item is worn, put on, attached, strapped, slipped, placed,
+      # or worn by any verb. Includes messages for items already worn, complex items
+      # (boots, gloves), and special enchanted items (ice-veined leather, bearskin).
+      # Used by {.wear_item_unsafe?}.
       #
       # @example Matches
       #   "You put on the cloak."
-      #   "You strap the shield to your arm."
-      #   "You are already wearing the ring."
+      #   "You pull the amulet around your neck."
+      #   "You are already wearing the boots."
+      #   "You slip your feet into the boots."
       #
       # @see WEAR_ITEM_FAILURE_PATTERNS
+      # @see .wear_item?
       WEAR_ITEM_SUCCESS_PATTERNS = [
         /^You put/,
         /^You pull/,
@@ -267,16 +289,18 @@ module Lich
         /Gritting your teeth/ # Gritting your teeth, you grip each of your heavy combat boots in turn by the straps, and drive your feet into them for a secure fit.
       ].freeze
 
-      # Patterns that match failed item wearing attempts.
+      # Game response patterns indicating item donning failure.
       #
-      # Used by {#wear_item_unsafe?} to recognize when an item cannot be equipped,
-      # usually due to game restrictions (incompatible items, unloaded weapons).
+      # Matches when an item cannot be worn due to unloaded container, game
+      # restrictions, or invalid target. Used by {.wear_item_unsafe?}.
       #
       # @example Matches
       #   "You can't wear that."
+      #   "You should unload it first."
       #   "Wear what?"
       #
       # @see WEAR_ITEM_SUCCESS_PATTERNS
+      # @see .wear_item?
       WEAR_ITEM_FAILURE_PATTERNS = [
         /^You can't wear/,
         /^You (need to|should) unload/,
@@ -287,16 +311,18 @@ module Lich
         /^What were you/
       ].freeze
 
-      # Patterns that match successful item tying via TIE command.
+      # Game response patterns indicating successful item tying.
       #
-      # Used by {#tie_item?} to verify that an item (e.g., gem pouch, bundle)
-      # has been successfully tied or attached.
+      # Matches when an item (typically a container or bag) is tied, attached, or
+      # already tied. Used by {.tie_item?}.
       #
       # @example Matches
       #   "You tie the pouch to your belt."
-      #   "This item has already been tied off."
+      #   "You attach the cord to the bag."
+      #   "The pouch has already been tied off."
       #
       # @see TIE_ITEM_FAILURE_PATTERNS
+      # @see .tie_item?
       TIE_ITEM_SUCCESS_PATTERNS = [
         /^You .*tie/,
         /^You attach/,
@@ -304,16 +330,18 @@ module Lich
         /Tie it off when it's empty\?/
       ].freeze
 
-      # Patterns that match failed item tying attempts.
+      # Game response patterns indicating item tying failure.
       #
-      # Used by {#tie_item?} to recognize when an item cannot be tied,
-      # usually due to lack of attachment points or item design.
+      # Matches when an item cannot be tied due to lack of ties, busy state, injured
+      # limbs, or fit issues. Used by {.tie_item?}.
       #
       # @example Matches
-      #   "There's no more free ties on this container."
-      #   "This item doesn't seem to fit."
+      #   "There's no more free ties."
+      #   "You don't seem to be able to move."
+      #   "This doesn't seem to fit."
       #
       # @see TIE_ITEM_SUCCESS_PATTERNS
+      # @see .tie_item?
       TIE_ITEM_FAILURE_PATTERNS = [
         /^There's no more free ties/,
         /^Tie what/,
@@ -325,31 +353,33 @@ module Lich
         /doesn't seem to fit/
       ].freeze
 
-      # Patterns that match successful item untying via UNTIE command.
+      # Game response patterns indicating successful item untying.
       #
-      # Used by {#untie_item?} to verify that an item has been successfully
-      # untied or detached from a container.
+      # Matches when a tied item is removed or untied. Used by {.untie_item?}.
       #
       # @example Matches
       #   "You remove the pouch from your belt."
-      #   "You untie the bundle."
+      #   "You untie the cord."
       #
       # @see UNTIE_ITEM_FAILURE_PATTERNS
+      # @see .untie_item?
       UNTIE_ITEM_SUCCESS_PATTERNS = [
         /^You remove/,
         /You untie/i
       ].freeze
 
-      # Patterns that match failed item untying attempts.
+      # Game response patterns indicating item untying failure.
       #
-      # Used by {#untie_item?} to recognize when an item cannot be untied,
-      # usually due to character restrictions (busy, fumbling, moving).
+      # Matches when an item cannot be untied due to busy state, fumbled attempt,
+      # or invalid target. Used by {.untie_item?}.
       #
       # @example Matches
-      #   "You fumble with the ties and fail to get it loose."
+      #   "You fumble with the ties."
+      #   "You don't seem to be able to move."
       #   "Untie what?"
       #
       # @see UNTIE_ITEM_SUCCESS_PATTERNS
+      # @see .untie_item?
       UNTIE_ITEM_FAILURE_PATTERNS = [
         /^You don't seem to be able to move/,
         /^You fumble with the ties/,
@@ -359,17 +389,20 @@ module Lich
         /^What were you referring/
       ].freeze
 
-      # Patterns that match successful item removal via REMOVE command.
+      # Game response patterns indicating successful item removal from worn slots.
       #
-      # Matches diverse removal verbs (pull, slide, detach, untie, etc.) used by
-      # different worn item types (armor, shields, boots, gloves, etc.).
+      # Matches when a worn item is taken off, detached, loosened, slipped, untied,
+      # or pulled from the body. Includes messages for complex items (boots, gloves)
+      # and enchanted items. Used by {.remove_item_unsafe?}.
       #
       # @example Matches
-      #   "You pull off the gloves."
-      #   "The boots slide off your feet."
-      #   "You remove the cloak."
+      #   "You slip off the gloves."
+      #   "You detach the amulet."
+      #   "You pull off the boots."
+      #   "Grunting, you pull off your combat boots."
       #
       # @see REMOVE_ITEM_FAILURE_PATTERNS
+      # @see .remove_item?
       REMOVE_ITEM_SUCCESS_PATTERNS = [
         /^Dropping your shoulder/,
         /^The .* slide/,
@@ -397,16 +430,18 @@ module Lich
         /^A brisk chill leaves you as you/ # cold-enchanted items (e.g., ice-veined leather gloves)
       ].freeze
 
-      # Patterns that match failed item removal attempts.
+      # Game response patterns indicating item removal failure.
       #
-      # Used by {#remove_item_unsafe?} to recognize when an item cannot be removed,
-      # usually due to game restrictions (hand damage, not wearing item).
+      # Matches when an item cannot be removed due to full hands, injured limbs,
+      # item not worn, or movement restriction. Used by {.remove_item_unsafe?}.
       #
       # @example Matches
       #   "You aren't wearing that."
-      #   "You need a free hand to do that."
+      #   "You need a free hand."
+      #   "You don't seem to be able to move."
       #
       # @see REMOVE_ITEM_SUCCESS_PATTERNS
+      # @see .remove_item?
       REMOVE_ITEM_FAILURE_PATTERNS = [
         /^You'll need both hands free/,
         /^You need a free hand/,
@@ -491,14 +526,18 @@ module Lich
         /^You toss .* into/ # You toss the alcohol into the bowl and mix it in thoroughly
       ].freeze
 
-      # Patterns that match failed item storage via PUT or STOW commands.
+      # Game response patterns indicating item storage failure.
       #
-      # Used by {#put_away_item_unsafe?} to recognize when an item cannot be stowed,
-      # usually due to container limitations (full, closed, incompatible items).
+      # Matches when an item cannot be stowed or put into a container due to capacity,
+      # container design, cursed state, or game restrictions. Includes messages for
+      # items too large, too heavy, or incompatible with container. Used by
+      # {.put_away_item_unsafe?}.
       #
       # @example Matches
-      #   "There isn't any more room in the backpack."
-      #   "That doesn't belong in there."
+      #   "There isn't any more room in that."
+      #   "That's too heavy to go in there."
+      #   "The backpack is not designed to carry anything."
+      #   "Containers can't be placed in containers."
       #
       # @see PUT_AWAY_ITEM_SUCCESS_PATTERNS
       # @see PUT_AWAY_ITEM_RETRY_PATTERNS
@@ -547,37 +586,43 @@ module Lich
         /perhaps try doing that again/
       ].freeze
 
-      # Patterns that match successful item stowing via STOW command.
+      # Game response patterns indicating successful item stowing.
       #
       # Combines {GET_ITEM_SUCCESS_PATTERNS} and {PUT_AWAY_ITEM_SUCCESS_PATTERNS}
-      # since STOW both picks up and stores an item in a single command.
+      # to match both retrieval and storage phases of the STOW command. Used by
+      # {.stow_item_unsafe?} and {.stow_hand}.
       #
       # @see STOW_ITEM_FAILURE_PATTERNS
       # @see STOW_ITEM_RETRY_PATTERNS
+      # @see .stow_item?
       STOW_ITEM_SUCCESS_PATTERNS = [
         *GET_ITEM_SUCCESS_PATTERNS,
         *PUT_AWAY_ITEM_SUCCESS_PATTERNS
       ].freeze
 
-      # Patterns that match failed item stowing via STOW command.
+      # Game response patterns indicating item stowing failure.
       #
       # Combines {GET_ITEM_FAILURE_PATTERNS} and {PUT_AWAY_ITEM_FAILURE_PATTERNS}
-      # to cover both retrieval and storage failures.
+      # to match failures in either retrieval or storage phases of the STOW command.
+      # Used by {.stow_item_unsafe?} and {.stow_hand}.
       #
       # @see STOW_ITEM_SUCCESS_PATTERNS
       # @see STOW_ITEM_RETRY_PATTERNS
+      # @see .stow_item?
       STOW_ITEM_FAILURE_PATTERNS = [
         *GET_ITEM_FAILURE_PATTERNS,
         *PUT_AWAY_ITEM_FAILURE_PATTERNS
       ].freeze
 
-      # Patterns that trigger automatic retry of STOW command.
+      # Game response patterns that warrant retry during item stowing.
       #
-      # Contains {PUT_AWAY_ITEM_RETRY_PATTERNS} for messages like outdated items
-      # that require a second attempt to complete.
+      # Combines {PUT_AWAY_ITEM_RETRY_PATTERNS} for messages that indicate transient
+      # conditions (item updates, game state changes) where retry should succeed.
+      # Used by {.stow_item_unsafe?} and {.stow_hand}.
       #
       # @see STOW_ITEM_SUCCESS_PATTERNS
       # @see STOW_ITEM_FAILURE_PATTERNS
+      # @see .stow_item?
       STOW_ITEM_RETRY_PATTERNS = [
         *PUT_AWAY_ITEM_RETRY_PATTERNS
       ].freeze
@@ -668,14 +713,16 @@ module Lich
         /You must be holding the weapon to do that/
       ].freeze
 
-      # Patterns that match successful RUMMAGE command output.
+      # Game response patterns indicating successful container rummage.
       #
-      # Used by {#rummage_container} and {#list_container_contents} to extract
-      # container contents lists from the game response.
+      # Matches when container contents are successfully listed via RUMMAGE,
+      # including empty containers. Used by {.rummage_container} and
+      # {.list_container_contents}.
       #
       # @example Matches
-      #   "You rummage through the backpack and see a sword, a shield, and some rope."
-      #   "In the chest you see a pair of gloves."
+      #   "You rummage through the backpack and see a sword, shield, and amulet."
+      #   "In the pouch you see three gems."
+      #   "There is nothing interesting in there."
       #
       # @see RUMMAGE_FAILURE_PATTERNS
       RUMMAGE_SUCCESS_PATTERNS = [
@@ -684,13 +731,15 @@ module Lich
         /there is nothing/i
       ].freeze
 
-      # Patterns that match failed RUMMAGE command attempts.
+      # Game response patterns indicating rummage failure.
       #
-      # Used by {#rummage_container} and {#list_container_contents} to recognize
-      # when a container cannot be accessed or rummaged.
+      # Matches when container contents cannot be accessed due to inability to move,
+      # missing container, or invalid reference. Used by {.rummage_container} and
+      # {.list_container_contents}.
       #
       # @example Matches
       #   "I could not find what you were referring to."
+      #   "You don't seem to be able to move."
       #   "What were you referring to?"
       #
       # @see RUMMAGE_SUCCESS_PATTERNS
@@ -701,16 +750,20 @@ module Lich
         /^What were you referring to/
       ].freeze
 
-      # Patterns that match successful TAP command output.
+      # Game response patterns indicating successful item tap.
       #
-      # Used by {#tap}, {#exists?}, {#wearing?}, and {#inside?} to verify that
-      # an item exists and determine its location (worn, stowed, in a container, etc.).
+      # Matches when tapping an item returns information about its location (worn,
+      # stowed, inside container) or other status. Response text is parsed by
+      # {.wearing?}, {.inside?}, and {.exists?}. Used by {.tap}.
       #
       # @example Matches
-      #   "You tap the pouch and it's inside your backpack."
-      #   "You tap the ring and it's wearing."
+      #   "You tap a steel sword (wearing)."
+      #   "You tap a shield (inside your backpack)."
+      #   "You tap a key."
+      #   "You tap a person on the shoulder."
       #
       # @see TAP_FAILURE_PATTERNS
+      # @see .tap
       TAP_SUCCESS_PATTERNS = [
         /^You tap\s(?!into).*/, # The `.*` is needed to capture entire phrase. Methods parse it to know if an item is worn, stowed, etc.
         /^You (thump|drum) your finger/, # You tapped an item with fancy verbiage, ohh la la!
@@ -720,16 +773,18 @@ module Lich
         /^You suddenly forget what you were doing/ # "tap my tessera" messaging when hands are full
       ].freeze
 
-      # Patterns that match failed TAP command attempts.
+      # Game response patterns indicating item tap failure.
       #
-      # Used by {#tap}, {#exists?}, {#wearing?}, and {#inside?} to recognize
-      # when an item does not exist in inventory or a container.
+      # Matches when an item cannot be tapped due to inability to move, missing item,
+      # or invalid reference. Used by {.tap}.
       #
       # @example Matches
       #   "I could not find what you were referring to."
+      #   "You don't seem to be able to move."
       #   "What were you referring to?"
       #
       # @see TAP_SUCCESS_PATTERNS
+      # @see .tap
       TAP_FAILURE_PATTERNS = [
         /^You don't seem to be able to move/,
         /^I could not find/,
@@ -737,35 +792,40 @@ module Lich
         /^What were you referring to/
       ].freeze
 
-      # Patterns that match successful container opening via OPEN command.
+      # Game response patterns indicating successful container opening.
       #
-      # Used by {#open_container?} to verify that a container is now open
-      # and accessible.
+      # Matches when a container is opened or is already open. Used by
+      # {.open_container?}.
       #
       # @example Matches
       #   "You open the backpack."
-      #   "It's already open."
+      #   "The chest is already open."
+      #   "You unbutton the pouch."
       #
       # @see OPEN_CONTAINER_FAILURE_PATTERNS
+      # @see .open_container?
       OPEN_CONTAINER_SUCCESS_PATTERNS = [
         /^You open/,
         /^You slowly open/,
         /^The .* opens/,
         /^You unbutton/,
-        /(It's|is) already open/,
+        /([Ii]t's|is) already open/,
         /^You spread your arms, carefully holding your bag well away from your body/
       ].freeze
 
-      # Patterns that match failed container opening attempts.
+      # Game response patterns indicating container opening failure.
       #
-      # Used by {#open_container?} to recognize when a container cannot be opened,
-      # usually due to game restrictions or commands being invalid.
+      # Matches when a container cannot be opened due to magical/spell interference,
+      # location restrictions, busy state, or game restrictions. Used by
+      # {.open_container?}.
       #
       # @example Matches
-      #   "What were you referring to?"
+      #   "You don't want to ruin your spell just for that."
+      #   "This is probably not the time nor place for that."
       #   "Open what?"
       #
       # @see OPEN_CONTAINER_SUCCESS_PATTERNS
+      # @see .open_container?
       OPEN_CONTAINER_FAILURE_PATTERNS = [
         /^Please rephrase that command/,
         /^What were you referring to/,
@@ -779,15 +839,18 @@ module Lich
         /^Open what/
       ].freeze
 
-      # Patterns that match successful container closing via CLOSE command.
+      # Game response patterns indicating successful container closing.
       #
-      # Used by {#close_container?} to verify that a container is now closed.
+      # Matches when a container is closed or is already closed. Used by
+      # {.close_container?}.
       #
       # @example Matches
       #   "You close the backpack."
-      #   "It is already closed."
+      #   "The chest is already closed."
+      #   "You quickly close the pouch."
       #
       # @see CLOSE_CONTAINER_FAILURE_PATTERNS
+      # @see .close_container?
       CLOSE_CONTAINER_SUCCESS_PATTERNS = [
         /^You close/,
         /^You quickly close/,
@@ -795,14 +858,18 @@ module Lich
         /is already closed/
       ].freeze
 
-      # Patterns that match failed container closing attempts.
+      # Game response patterns indicating container closing failure.
       #
-      # Used by {#close_container?} to recognize when a container cannot be closed.
+      # Matches when a container cannot be closed due to magical/spell interference,
+      # location restrictions, busy state, or game restrictions. Used by
+      # {.close_container?}.
       #
       # @example Matches
-      #   "What were you referring to?"
+      #   "You don't want to ruin your spell just for that."
+      #   "This is probably not the time nor place for that."
       #
       # @see CLOSE_CONTAINER_SUCCESS_PATTERNS
+      # @see .close_container?
       CLOSE_CONTAINER_FAILURE_PATTERNS = [
         /^Please rephrase that command/,
         /^What were you referring to/,
@@ -815,15 +882,15 @@ module Lich
         /^You can't do that/
       ].freeze
 
-      # Patterns that match messages indicating a closed container.
+      # Game response patterns indicating a container is closed.
       #
-      # Used by {#list_container_contents} and {#put_away_item_unsafe?} to detect
-      # when a container must be opened before access is possible, triggering
-      # automatic retry with the container open.
+      # Matches messages that indicate an operation cannot proceed because the
+      # target container is closed. Used by retry logic in {.put_away_item_unsafe?},
+      # {.stow_hand}, and {.list_container_contents}.
       #
       # @example Matches
       #   "But that's closed."
-      #   "While it's closed, you can't reach in."
+      #   "While it's closed, you can't do that."
       #
       # @see OPEN_CONTAINER_SUCCESS_PATTERNS
       CONTAINER_IS_CLOSED_PATTERNS = [
@@ -832,30 +899,35 @@ module Lich
         /^While it's closed/
       ].freeze
 
-      # Patterns that match successful item lowering to the ground via LOWER command.
+      # Game response patterns indicating successful item lowering to ground.
       #
-      # Used by {#lower_item?} to verify that a held item has been successfully
-      # placed on the ground at the character's feet.
+      # Matches when a held item is lowered to the feet slot. Includes messages for
+      # items that crumble during lowering (e.g., moonblade). Used by {.lower_item?}.
       #
       # @example Matches
       #   "You lower the sword to the ground."
+      #   "As you open your hand to release the moonblade, it crumbles."
       #
       # @see LOWER_FAILURE_PATTERNS
+      # @see .lower_item?
       LOWER_SUCCESS_PATTERNS = [
         /^You lower/,
         # The next message is when item crumbles when leaves your hand, like a moonblade.
         /^As you open your hand to release the/
       ].freeze
 
-      # Patterns that match failed item lowering attempts.
+      # Game response patterns indicating item lowering failure.
       #
-      # Used by {#lower_item?} to recognize when an item cannot be lowered.
+      # Matches when an item cannot be lowered due to empty hands, movement
+      # restriction, or invalid reference. Used by {.lower_item?}.
       #
       # @example Matches
-      #   "You don't seem to be able to move."
       #   "But you aren't holding anything."
+      #   "You don't seem to be able to move."
+      #   "What were you referring to?"
       #
       # @see LOWER_SUCCESS_PATTERNS
+      # @see .lower_item?
       LOWER_FAILURE_PATTERNS = [
         /^You don't seem to be able to move/,
         /^But you aren't holding anything/,
@@ -864,28 +936,31 @@ module Lich
         /^I could not find what you were referring to/
       ].freeze
 
-      # Patterns that match successful item lifting from the ground via LIFT command.
+      # Game response patterns indicating successful item lifting from ground.
       #
-      # Used by {#lift?} to verify that an item lying at the character's feet
-      # has been successfully picked up.
+      # Matches when an item is picked up from the ground/feet slot. Used by {.lift?}.
       #
       # @example Matches
       #   "You pick up the sword."
       #
       # @see LIFT_FAILURE_PATTERNS
+      # @see .lift?
       LIFT_SUCCESS_PATTERNS = [
         /^You pick up/
       ].freeze
 
-      # Patterns that match failed item lifting attempts.
+      # Game response patterns indicating item lifting failure.
       #
-      # Used by {#lift?} to recognize when an item cannot be lifted from the ground.
+      # Matches when an item cannot be lifted from the ground due to missing items,
+      # weakness, or movement restriction. Used by {.lift?}.
       #
       # @example Matches
+      #   "There are no items lying at your feet."
       #   "You are not strong enough to pick that up."
       #   "What did you want to try and lift?"
       #
       # @see LIFT_SUCCESS_PATTERNS
+      # @see .lift?
       LIFT_FAILURE_PATTERNS = [
         /^There are no items lying at your feet/,
         /^What did you want to try and lift/,
@@ -893,16 +968,17 @@ module Lich
         /^You are not strong enough to pick that up/
       ].freeze
 
-      # Patterns that match successful item transfer via GIVE command.
+      # Game response patterns indicating successful item giving/trade.
       #
-      # Used by {#give_item?} to recognize when an item has been accepted by
-      # the target (player or NPC), including repair-service confirmations.
+      # Matches when an NPC or player accepts an offered item, typically during
+      # repairs, trades, or quests. Used by {.give_item?}.
       #
       # @example Matches
-      #   "They accept your offer."
-      #   "You hand them your ticket and are handed back a repair ticket."
+      #   "Ragge has accepted your offer."
+      #   "You hand Ragge your ticket and are handed back a sword."
       #
       # @see GIVE_ITEM_FAILURE_PATTERNS
+      # @see .give_item?
       GIVE_ITEM_SUCCESS_PATTERNS = [
         /has accepted your offer/,
         /your ticket and are handed back/,
@@ -911,16 +987,19 @@ module Lich
         /^You hand .* your ticket and are handed back/
       ].freeze
 
-      # Patterns that match failed item transfer or rejected offers.
+      # Game response patterns indicating item giving failure.
       #
-      # Used by {#give_item?} to recognize when an item transfer fails, including
-      # NPC refusals (non-repairable items) and player rejections.
+      # Matches when an NPC or player declines the offer, is unavailable, or the item
+      # is not in the required state for the transaction. Used by {.give_item?}.
       #
       # @example Matches
-      #   "They decline the offer."
-      #   "There isn't a scratch on that."
+      #   "I don't repair those here."
+      #   "has declined the offer."
+      #   "Your offer has expired."
+      #   "That isn't damaged!"
       #
       # @see GIVE_ITEM_SUCCESS_PATTERNS
+      # @see .give_item?
       GIVE_ITEM_FAILURE_PATTERNS = [
         /I don't repair those here/,
         /There isn't a scratch on that/,
@@ -938,14 +1017,16 @@ module Lich
       # GEM POUCH FILL PATTERNS
       #########################################
 
-      # Patterns that match successful gem pouch filling via FILL command.
+      # Game response patterns indicating successful gem pouch filling.
       #
-      # Used by {#fill_gem_pouch_with_container} to recognize when gems have been
-      # successfully transferred into a pouch.
+      # Matches when gems are transferred from a container into a pouch, or when
+      # the pouch contains no gems to transfer. Used by
+      # {.fill_gem_pouch_with_container}.
       #
       # @example Matches
-      #   "You fill your black pouch with gems."
-      #   "There aren't any gems in that container."
+      #   "You open the pouch."
+      #   "You fill your black gem pouch with the gems from the container."
+      #   "There aren't any gems to fill with."
       #
       # @see FILL_POUCH_FULL_PATTERN
       # @see FILL_POUCH_NEEDS_TIE_PATTERNS
@@ -956,40 +1037,46 @@ module Lich
         /^There aren't any gems/
       ].freeze
 
-      # Patterns indicating a gem pouch must be tied before further filling.
+      # Game response patterns indicating pouch must be tied before filling.
       #
-      # Used by {#fill_gem_pouch_with_container} to trigger tying when a partially-filled
-      # pouch needs to be secured before additional gems can be added.
+      # Matches when a gem pouch requires tying before additional gems can be added.
+      # Used by {.fill_gem_pouch_with_container} to trigger tying or treating the
+      # pouch as full and swapping it out.
       #
       # @example Matches
-      #   "You'd better tie it up before putting more in."
+      #   "You'd better tie it up before putting more gems in."
+      #   "You'll need to tie it up before we can continue."
       #
+      # @see FILL_POUCH_FULL_PATTERN
       # @see FILL_POUCH_SUCCESS_PATTERNS
       FILL_POUCH_NEEDS_TIE_PATTERNS = [
         /^You'd better tie it up before putting/,
         /^You'll need to tie it up before/
       ].freeze
 
-      # Pattern matching a full gem pouch that cannot accept more gems.
+      # Game response pattern indicating gem pouch is at capacity.
       #
-      # Used by {#fill_gem_pouch_with_container} to trigger pouch-swap operations
-      # when the current pouch reaches capacity.
+      # Matches when a gem pouch cannot hold more gems. Triggers swapping out
+      # the full pouch for a spare in {.fill_gem_pouch_with_container}.
       #
       # @example Matches
-      #   "Your black pouch is too full to fit that in."
+      #   "The pouch is too full to fit another gem."
       #
       # @see FILL_POUCH_SUCCESS_PATTERNS
+      # @see FILL_POUCH_NEEDS_TIE_PATTERNS
       FILL_POUCH_FULL_PATTERN = /is too full to fit/.freeze
 
-      # Patterns that match failed gem pouch filling attempts.
+      # Game response patterns indicating gem pouch filling failure.
       #
-      # Used by {#fill_gem_pouch_with_container} to recognize command errors
-      # or invalid container references.
+      # Matches when gems cannot be transferred due to invalid command or reference.
+      # Used by {.fill_gem_pouch_with_container}.
       #
       # @example Matches
+      #   "Please rephrase that command."
       #   "What were you referring to?"
       #
       # @see FILL_POUCH_SUCCESS_PATTERNS
+      # @see FILL_POUCH_FULL_PATTERN
       FILL_POUCH_FAILURE_PATTERNS = [
         /^Please rephrase that command/,
         /^What were you referring to/
@@ -999,21 +1086,21 @@ module Lich
       # INVENTORY BELT PATTERNS
       #########################################
 
-      # Pattern matching the start of INVENTORY BELT output.
+      # Game response pattern marking the start of INVENTORY BELT output.
       #
-      # Used by {#check_belt_for_pouch?} to identify the beginning of belt
-      # inventory listing for parsing.
+      # Used as the start marker in {.check_belt_for_pouch?} to parse belt
+      # contents via {Lich::Util.issue_command}.
       #
       # @see INV_BELT_END_PATTERN
-      # @see #check_belt_for_pouch?
+      # @see .check_belt_for_pouch?
       INV_BELT_START_PATTERN = /^All of your items worn attached to the belt:/.freeze
-      # Pattern matching the end of INVENTORY BELT output.
+      # Game response pattern marking the end of INVENTORY BELT output.
       #
-      # Used by {#check_belt_for_pouch?} to identify the end of belt
-      # inventory listing for parsing.
+      # Used as the end marker in {.check_belt_for_pouch?} to parse belt
+      # contents via {Lich::Util.issue_command}.
       #
       # @see INV_BELT_START_PATTERN
-      # @see #check_belt_for_pouch?
+      # @see .check_belt_for_pouch?
       INV_BELT_END_PATTERN = /^\[Use INVENTORY HELP/.freeze
 
       #########################################
@@ -1320,17 +1407,19 @@ module Lich
       # COUNT ITEMS
       #########################################
 
-      # Patterns that match item part-count responses from COUNT command.
+      # Game response patterns for parsing COUNT command output.
       #
-      # Used by {#count_item_parts} to extract numeric counts from game output
-      # when counting stackable items like crafting materials and ammunition.
+      # Matches when counting parts/uses/scrolls remaining in an item. Captures
+      # the numeric count value via named group `count`. Used by
+      # {.count_item_parts} to sum parts across multiple stacks.
       #
       # @example Matches
-      #   "There are 45 leather left."
-      #   "You count out 120 pieces of stone there."
-      #   "The wand has 8 uses remaining."
+      #   "There are 45 parts left."
+      #   "The leather has 10 uses remaining."
+      #   "There are enough left to create 3 more items."
+      #   "You count out 20 pieces of material there."
       #
-      # @see #count_item_parts
+      # @see .count_item_parts
       COUNT_PART_PATTERNS = [
         /and see there (?:is|are) (?<count>.+) left\./,
         /There (?:is|are) (?:only )?(?<count>.+) parts? left/,
@@ -1496,16 +1585,16 @@ module Lich
           (!DRC.right_hand || stow_hand('right'))
       end
 
-      # Pattern matching when a braided item is too long to stow.
+      # Game response pattern indicating a braided item is too long to stow.
       #
-      # Used by {#stow_hand} to detect oversized braids that must be disposed
-      # as trash before the hand can be emptied.
+      # Matches when a braid (hairstyle) is too long to fit in the default stow
+      # container. Captures the braid name via named group `braid_name` for disposal.
+      # Used by {.stow_hand} to detect and dispose of oversized braids.
       #
       # @example Matches
-      #   "The braided silver chain is too long to fit through any of the openings."
+      #   "The braided rope is too long."
       #
-      # @see #stow_hand
-      # @see #dispose_trash
+      # @see .stow_hand
       BRAID_TOO_LONG_PATTERN = /The braided (?<braid_name>.+) is too long/.freeze
 
       # Stows whatever is in the specified hand.
@@ -1613,7 +1702,7 @@ module Lich
 
       # Gets an item with "my " prefix on item and container names.
       #
-      # Delegates to {#get_item_safe?} for implementation.
+      # Predicate-named convenience wrapper for {.get_item_safe?}.
       #
       # @param item [String] item noun to get
       # @param container [String, nil] container noun, or nil for default
@@ -2250,15 +2339,16 @@ module Lich
         end
       end
 
-      # Pattern matching successful item acceptance from another player.
+      # Game response pattern indicating successful item offer acceptance.
       #
-      # Used by {#accept_item?} to extract the name of the player whose offer
-      # was accepted and verify the transaction completed.
+      # Matches when a player accepts another player's item offer. Captures the
+      # offering player's name via named group `name`. Used by {.accept_item?}.
       #
       # @example Matches
-      #   "You accept Falicor's offer and are now holding a steel sword."
+      #   "You accept Thorgrim's offer and are now holding a sword."
       #
-      # @see #accept_item?
+      # @see .accept_item?
+      # @see .give_item?
       ACCEPT_SUCCESS_PATTERN = /You accept (?<name>\w+)'s offer and are now holding/.freeze
 
       # Accepts a pending item offer from another player.

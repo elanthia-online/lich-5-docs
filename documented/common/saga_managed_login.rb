@@ -1,15 +1,13 @@
 # frozen_string_literal: true
 
 require_relative 'authentication/cli'
-require_relative 'front-end'
+require_relative 'frontend'
 require_relative 'saga_launch_policy'
 require_relative 'saga_managed_launcher'
 
-# Namespace for the Lich game scripting engine.
-# @api private
+# Root namespace for the Lich game scripting engine.
 module Lich
-  # Namespace for shared utilities and common functionality.
-  # @api private
+  # Namespace for shared authentication and login logic.
   module Common
     # Routes saved CLI/TUI login intent to Saga when Saga owns authentication.
     #
@@ -18,11 +16,13 @@ module Lich
     # requests and fail before authentication.
     module SagaManagedLogin
       Decision = Struct.new(:action, :target, :error, keyword_init: true) do
-        # Freezes a decision outcome after initialization.
+        # Initializes a login decision with the given action, optional target, and optional error.
         #
-        # @param action [Symbol] the decision action: +:launch+, +:passthrough+, or +:error+
-        # @param target [Hash, nil] account, character, and game_code identifiers when action is +:launch+
-        # @param error [String, nil] error message when action is +:error+
+        # The Decision is frozen after initialization and cannot be modified.
+        #
+        # @param action [String, Symbol] the decision action (e.g., :launch, :passthrough, :error)
+        # @param target [Hash, nil] the resolved Saga target hash containing account, character, and game_code
+        # @param error [String, nil] an error message if the decision is :error
         # @return [void]
         def initialize(action:, target: nil, error: nil)
           super(action: action, target: target, error: error)

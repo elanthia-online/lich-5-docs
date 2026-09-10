@@ -1,18 +1,16 @@
 # frozen_string_literal: true
 
-require_relative 'front-end'
+require_relative 'frontend'
 
-# Namespace for the Lich 5 Ruby scripting engine.
+# Namespace for Lich, a Ruby scripting engine for text-based games.
 module Lich
-  # Namespace for common utilities shared across Lich.
+  # Namespace for common utilities and policies shared across Lich.
   module Common
     # Defines launch-ownership combinations accepted by Saga entry points.
     module SagaLaunchPolicy
-      # Error message raised when a script attempts to combine Saga-managed and
-      # custom launch ownership models.
+      # Error message raised when Saga and Custom Launch are used together.
       #
-      # @return [String]
-      # @see .custom_launch_conflict?
+      # @return [String] the conflict error message
       CUSTOM_LAUNCH_CONFLICT = '--saga and --custom-launch cannot be used together; Saga launches must use the Saga-managed launch contract.'
 
       class << self

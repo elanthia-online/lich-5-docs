@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich scripting engine.
+# Namespace for the Lich 5 scripting engine and game client framework.
 module Lich
-  # Namespace for GemStone IV and DragonRealms game-specific functionality.
+  # Namespace for GemStone IV and DragonRealms game-specific code.
   module Gemstone
-    # Namespace for Infomon, the game information monitor subsystem.
+    # Namespace for the Infomon module, which parses and tracks character, item, and combat state from the game server's XML stream.
     module Infomon
       # this module handles all of the logic for parsing game lines that infomon depends on
       module XMLParser
-        # Regular expression patterns for parsing XML game output.
+        # Compiled regular expression patterns for parsing game server XML output.
         #
-        # Includes patterns for NPC death messages, container stow settings, and ready item
-        # configurations. Patterns are organized into anchored (line-start) and midline lists
-        # to optimize scanning performance.
+        # This module contains frozen regexp constants and lists used by {.parse} to recognize
+        # death messages, group/arrival notifications, STOW and READY container/item output,
+        # and status prompts. Patterns are organized by anchoring strategy to enable efficient
+        # single-line fast-path scanning.
         #
         # @see XMLParser.parse
         module Pattern
@@ -66,7 +67,7 @@ module Lich
             /As(?: the)?/,
             /An intangible ripple of pure energy courses through the air as/,
             /A monstrous, too-wide smile spreads across/,
-            /With a final discordant squeal,/,
+            /With a final (?:discordant|silent) squeal,/,
             /A rush of silent thunder explodes outward from/,
             /Rage flickers in/,
             /A plaintive look passes across/,
@@ -85,6 +86,11 @@ module Lich
             /Half-formed arms grasp futilely at empty air and melting mouths work soundlessly as/,
             /Electric blue light pours from/,
             /Acid belches from/,
+            /Upon expiration,/,
+            /Emitting one final squeal,/,
+            /A shocked expression passes over the/,
+            /A shock of disbelief briefly registers on the/,
+            /Freezing in mid-air, the/,
           )
           NpcDeathPostfix = Regexp.union(
             /body as it rises, disappearing into the heavens/,
@@ -164,9 +170,9 @@ module Lich
             /gives a last angry stare and falls to the ground dead/,
             /shudders violently as it dies/,
             /is a charred ashen figure of its former self lying upon the (?:floor|ground)/,
-            /rears up its head, then (?:falls to the (?:floor|ground) and )?curls up into a ball, dead/,
+            /rears up (?:his|her|its) head, then (?:falls to the (?:floor|ground) and )?curls up into a ball, dead/,
             /rolls over on its back, emits a final screech and dies/,
-            /arches its back in a tortured spasm and dies/,
+            /arches (?:his|her|its) back in a tortured spasm and dies/,
             /shudders violently before scattering into a disorganized pile/,
             /shudders violently, before falling to the ground in a disorganized pile/,
             /gurgles eerily and collapses into the water/,
@@ -268,7 +274,7 @@ module Lich
             /drops to the floor, quite dead/,
             /thrashes violently and then dies/,
             /rasps a final scream and dies/,
-            /(?:rolls over on its back, )?emits a final hiss and dies/,
+            /(?:rolls over on (?:his|her|its) back, )?emits a final hiss and dies/,
             /coughs, causing a greenish fluid to dribble down <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> lips as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> falls/,
             /cries out in cold agony one last time and dies/,
             /collapses, <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> eyes fading to a lifeless gaze and stone shell cracking into a barely discernible form/,
@@ -378,8 +384,8 @@ module Lich
             /face muscles slacken, (?:hi[ms]|her|s?he|its?) hard-bitten features disappearing in death/,
             /muscles collapse and (?:hi[ms]|her|s?he|its?) shrinks into a pitiful pile of rags and bones, (?:hi[ms]|her|s?he|its?) hard-bitten features disappearing in death/,
             /body goes stiff and cold as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> dies/,
-            /slams to the deck, dead as a salmon bear snack/,
-            /collapses to the deck, dead as a pickled herring/,
+            /slams to the (?:deck|floor|ground), dead as a salmon bear snack/,
+            /collapses to the (?:deck|floor|ground), dead as a pickled herring/,
             /thuds to the deck in a plume of dust/,
             /clatters to the ground into a heap of jumbled bones/,
             /glares forward, then collapses in a motionless heap/,
@@ -418,13 +424,12 @@ module Lich
             /screams (?:emotionlessly )?one last time and lies still/,
             /collapses into a heap of quivering jelly/,
             /tries to crawl away on the (?:floor|ground|deck) but collapses and goes still/,
-            /collapses to the ground, dead as a pickled herring/,
             /crashes to the ground in a plume of dust/,
-            /flattens out on the ground, dead as a salted flounder/,
-            /spins to the ground, dead as an iced halibut/,
+            /flattens out on the (?:floor|ground), dead as a salted flounder/,
+            /spins to the (?:floor|ground), dead as an iced halibut/,
             /falls lifeless to the ground with a heavy thump/,
-            /slams to the ground, dead as a salmon bear snack/,
-            /crashes to the ground, dead as a carp on a rock/,
+            /slams to the (?:floor|ground), dead as a salmon bear snack/,
+            /crashes to the (?:floor|ground), dead as a carp on a rock/,
             /thuds to the ground in a plume of dust/,
             /collapses to the ground as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> flickers in and out of existence/,
             /falls to the ground motionless as small motes of light encompass <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> body/,
@@ -461,7 +466,7 @@ module Lich
             /staggers dramatically, a phantasmal hand trailing wisps of fog as it rises to <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> chest.  With a last, surprised blink, <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> collapses and rapidly begins losing cohesion/,
             /twitches and writhes spasmodically before collapsing to the (?:floor|ground)/,
             /writhes in black agony and dies/,
-            /slumps to the floor, the darkly lined tattoos traversing <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> skin lose the luminescence that had seemed to radiate from them/,
+            /slumps to the (?:floor|ground), the darkly lined tattoos traversing <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> skin lose the luminescence that had seemed to radiate from them/,
             /eyes as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> grasps at the <a exist="[^"]+" noun="phylactery">gnarled bone phylactery<\/a> hanging around <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> neck and collapses to the ground/,
             /skin as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> movement completely ceases/,
             /as <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> stone skin cracks open in a myriad of deep gashes/,
@@ -497,6 +502,23 @@ module Lich
             /crashes to the floor in a plume of dust/,
             /falls lifeless to the floor with a heavy thump/,
             /screams, shudders one last time and dies/,
+            /vainly struggles to remain standing, then falls to the ground motionless/,
+            /grunts and lays still, the life going out of <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> warm brown eyes/,
+            /lets out a harsh denial, the sound violent and agonizing, but <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> cry is cut off along with <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> life/,
+            /lets out a ragged gasp, collapsing to one knee and looking sightlessly to the heavens.  <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:He|She)<\/a><popBold\/> dies with a knowing smile on <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> face/,
+            /emits a rancid cloud from <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> hind end/,
+            /falls over and remains still/,
+            /face before <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> falls over lifeless/,
+            /face, the expression almost human, before the light leaves <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> eyes and <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> falls over dead/,
+            /suddenly ceases all movement and plunges lifeless to the ground/,
+            /gasps a final prayer, then falls to the ground dead/,
+            /thrashes one last time and goes still/,
+            /dies and collapses to the floor/,
+            /moans in agony and then goes still/,
+            /spasms in death and then goes still/,
+            /staggers, then falls to the floor and dies/,
+            /dies unceremoniously/,
+            /slumps to <pushBold\/><a exist="[^"]+" noun="[^"]+">(?:hi[ms]|her|s?he|its?)<\/a><popBold\/> side and dies/,
           )
           NpcDeathMessage = /^(?:<pushBold\/>)?#{NpcDeathPrefix}\s(?:<pushBold\/>)?(?:(?:an?|some|the)\s)?<a exist="(?<npc_id>[^"]+)" noun="[^"]+">[^<]+<\/a><popBold\/>(?:'s)?,?\s#{NpcDeathPostfix}[\.!"]\s?\r?\n?$/
 
@@ -535,20 +557,28 @@ module Lich
           AllMidline = Regexp.union(MidlineList)
         end
 
-        # Parses a single line of XML game output and updates game state accordingly.
+        # Parses a single line or multi-line block of game server XML output and dispatches to appropriate handlers.
         #
-        # Detects NPC deaths, group arrivals, stow container configurations, ready item
-        # assignments, and status prompt markers. Uses a fast-path optimization: for
-        # single-line output, scans anchored patterns only at line start; for multiline
-        # buffered strings (containing interior newlines), falls back to full union to
-        # catch anchored patterns like death messages on inner lines.
+        # Uses an optimized two-tier strategy: for single-line input or buffered blocks with no
+        # embedded newlines, attempts anchored patterns (line-start ^) only at {\A} and scans just
+        # mid-line patterns via {AllMidline}. For multi-line strings (e.g. buffered combat blocks),
+        # falls back to the full union {All} so inner-line anchors (e.g. NPC death messages) still
+        # match. Recognized patterns trigger side effects (NPC status updates, group notifications,
+        # container/item roster updates, parser state transitions) and return a status symbol.
         #
-        # @param line [String] a line of XML output from the game server
-        # @return [Symbol] `:ok` if the line matched and was processed, `:noop` if no
-        #   pattern matched (safe to forward to other handlers)
-        # @note Rescues `StandardError` and logs to Lich.log with full backtrace; always
-        #   returns a symbol even on error (does not re-raise)
-        # @api private
+        # Matches trigger:
+        # - Death messages: update NPC status to 'dead'
+        # - Group/arrival: notify {Group::Observer}, append player nouns to {XMLData.arrival_pcs}
+        # - Overwatch: delegate to {Overwatch::Observer}
+        # - STOW/READY output: populate {StowList} or {ReadyList}, set \"checked\" flag
+        # - Status prompt: transition parser state to {Infomon::Parser::State::Ready}
+        #
+        # @param line [String] a line or block of XML text from the game server
+        # @return [Symbol] :ok if a pattern matched and was processed, :noop if no pattern matched,
+        #   or on error during processing
+        # @raise none; all errors are logged and return :ok to prevent stream disruption
+        # @note Errors are logged to {Lich.log} and also printed as server responses.
+        # @see Pattern, NpcDeathMessage, Group::Observer, Overwatch::Observer, StowList, ReadyList
         def self.parse(line)
           # Fast path: attempt the anchored union only at line start and scan just
           # the mid-line patterns. A non-terminal newline means a combined

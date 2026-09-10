@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich scripting engine.
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Namespace for Lich's command-line interface and main entry point.
+  # Namespace for the Lich launcher and CLI.
   module Main
     # Renders user-facing CLI help text by topic.
     module HelpText
       # Valid help topic names.
       #
-      # @see .render
+      # @api private
       HELP_TOPICS = %w[login accounts automation paths advanced].freeze
 
       # Returns formatted help text for the requested topic.
@@ -63,10 +63,9 @@ module Lich
         end
       end
 
-      # Renders the default help text with common commands and available topics.
+      # Returns the default help text shown when no topic is specified.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output with usage examples and available topics
       def self.default_help
         <<~TEXT
           Lich 5
@@ -92,10 +91,9 @@ module Lich
         TEXT
       end
 
-      # Renders help text for the login topic, including game/frontend/launch options.
+      # Returns help text for the login topic.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output covering login options, game selection, frontend selection, and advanced launch modes
       def self.login_help
         <<~TEXT
           Lich Help: login
@@ -148,10 +146,9 @@ module Lich
         TEXT
       end
 
-      # Renders help text for the accounts topic, including password and encryption management.
+      # Returns help text for the accounts topic.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output covering account management commands, encryption modes, and game codes
       def self.accounts_help
         <<~TEXT
           Lich Help: accounts
@@ -161,6 +158,8 @@ module Lich
 
           Commands:
             --add-account ACCOUNT PASSWORD
+            --refresh-characters ACCOUNT [--frontend FRONTEND]
+            --add-character ACCOUNT CHAR_NAME --game-code CODE [--frontend FRONTEND]
             --change-account-password ACCOUNT NEWPASSWORD
             --change-master-password OLDPASSWORD [NEWPASSWORD]
             --recover-master-password [NEWPASSWORD]
@@ -172,18 +171,25 @@ module Lich
             standard
             enhanced
 
+          Game codes (--game-code):
+            GS3  GemStone IV              DR   DragonRealms
+            GST  GemStone IV Prime Test   DRX  DragonRealms Platinum
+            GSF  GemStone IV Shattered    DRT  DragonRealms Prime Test
+                                          DRF  DragonRealms Fallen
+
           Examples:
             lich --add-account MYACCOUNT MYPASSWORD --frontend stormfront
+            lich --refresh-characters MYACCOUNT
+            lich --add-character MYACCOUNT NewCharName --game-code DR
             lich --change-account-password MYACCOUNT NEWPASSWORD
             lich --convert-entries enhanced
             lich --change-encryption-mode enhanced --master-password SECRET
         TEXT
       end
 
-      # Renders help text for the automation topic, including session inspection commands.
+      # Returns help text for the automation topic.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output covering active session discovery and configuration
       def self.automation_help
         <<~TEXT
           Lich Help: automation
@@ -198,13 +204,26 @@ module Lich
           Examples:
             lich --active-sessions
             lich --session-info Mychar
+
+          Notes:
+            Active session discovery coordinates through TEMP_DIR by default. If
+            each character uses a separate --temp-dir, pass a shared
+            --active-session-dir=PATH so all characters coordinate through one
+            directory instead of isolated per-character ones.
+
+            Passing --active-session-dir=PATH also enables the active sessions
+            service for that launch, even if it isn't persistently enabled.
+            This is a per-launch opt-in only -- it persists no setting, so
+            omitting the flag on a later launch reverts to the persisted
+            setting (disabled by default). The service itself still writes
+            coordination files (a lock and a discovery record) into the
+            directory while it runs.
         TEXT
       end
 
-      # Renders help text for the paths topic, including directory and file options.
+      # Returns help text for the paths topic.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output covering directory and file path configuration options
       def self.paths_help
         <<~TEXT
           Lich Help: paths
@@ -223,17 +242,18 @@ module Lich
             --lib-dir=PATH
             --hosts-dir=PATH
             --hosts-file=PATH
+            --active-session-dir=PATH
 
           Examples:
             lich --script-dir=/my/scripts
             lich --data-dir=/my/data --temp-dir=/tmp/lich
+            lich --temp-dir=/tmp/lich-Mychar --active-session-dir=/tmp/lich-sessions
         TEXT
       end
 
-      # Renders help text for the advanced topic, including GUI, networking, and compatibility options.
+      # Returns help text for the advanced topic.
       #
-      # @return [String] formatted help output
-      # @api private
+      # @return [String] formatted help output covering compatibility options, GUI control, and network binding
       def self.advanced_help
         <<~TEXT
           Lich Help: advanced
