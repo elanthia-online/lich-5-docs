@@ -1,31 +1,20 @@
 # frozen_string_literal: true
 
 require_relative '../front-end'
-require_relative '../ruby_executable'
 
 # login_helpers.rb: Core lich file for collection of utilities to extend Lich capabilities.
 # Entries added here should always be accessible from Lich::Common::Authentication::LoginHelpers.method namespace.
 
-# Namespace for the Lich 5 scripting engine and its core subsystems.
-#
-# Lich provides a Ruby-based scripting interface for text-based games,
-# including authentication, session management, and in-game automation.
-#
-# @see Lich::Common
-# @see Lich::Messaging
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Namespace for common utilities shared across Lich subsystems.
-  #
-  # @see Lich::Common::Authentication
+  # Namespace for common utilities shared across Lich components.
   module Common
-    # Namespace for authentication, login, and session-related utilities.
-    #
-    # @see Lich::Common::Authentication::LoginHelpers
+    # Namespace for authentication and login-related utilities.
     module Authentication
-      # Collection of utilities for login argument parsing, character lookup, and session spawning.
+      # Collection of utilities for login argument parsing, character data lookup, and game instance resolution.
       #
-      # This module provides methods for resolving CLI arguments, finding saved characters,
-      # constructing login entries, and spawning authenticated Lich sessions.
+      # Provides methods for CLI argument parsing, saved character discovery across YAML and legacy formats,
+      # and frontend/instance resolution for login workflows.
       module LoginHelpers
         # Load up / require gem 'os' for operating system detection work
         Lich::Util.install_gem_requirements({ 'os' => true })
@@ -64,19 +53,30 @@ module Lich
 
         # Frontend pattern for regex matching
         FRONTEND_PATTERN = /^--(?:frontend=)?(?<fe>avalon|stormfront|wizard|genie|frostbite|wrayth|saga)$/i.freeze
-        # Pattern for matching direct game instance codes as command-line flags.
+        # Matches long-form frontend identifier arguments with registry-backed custom names.
         #
-        # Matches standalone game-code flags like `--GS3`, `--GST`, `--DR`, `--DRX`, etc.
-        # The named capture group `:inst` extracts the code portion (without the leading `--`).
+        # Captures the frontend identifier portion in the `fe` named group.
+        # The identifier must begin with an alphanumeric character and may contain
+        # alphanumerics, underscores, and hyphens (up to 64 characters total).
         #
-        # @example Match GemStone instance codes
-        #   "--GS3".match?(INSTANCE_PATTERN) #=> true
-        #   "--GST".match?(INSTANCE_PATTERN) #=> true
-        # @example Match DragonRealms instance codes
-        #   "--DR".match?(INSTANCE_PATTERN) #=> true
-        #   "--DRX".match?(INSTANCE_PATTERN) #=> true
+        # @example
+        #   "--frontend=my-custom-client" =~ REGISTERED_FRONTEND_PATTERN  #=> 0 (match)
+        #   "--frontend=_invalid" =~ REGISTERED_FRONTEND_PATTERN          #=> nil (no match)
         # @see FRONTEND_PATTERN
-        # @see CUSTOM_LAUNCH_PATTERN
+        # @see .resolve_frontend_arg
+        REGISTERED_FRONTEND_PATTERN = /^--frontend=(?<fe>[a-z0-9][a-z0-9_-]{0,63})$/i.freeze
+        # Matches game instance code arguments with optional single-character suffix.
+        #
+        # Captures the full instance code (e.g., "GS3", "GST", "DR", "DRX") in the `inst` named group.
+        # Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes (DR followed by 0–1 characters).
+        #
+        # @example
+        #   "--GS3" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "GS3")
+        #   "--gst" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "gst", case-insensitive)
+        #   "--DRX" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "DRX")
+        #   "--GST2" =~ INSTANCE_PATTERN   #=> nil (no match; max 1 suffix char)
+        # @see VALID_GAME_CODES
+        # @see .resolve_instance
         INSTANCE_PATTERN = /^--(?<inst>GS.?$|DR.?$)/i.freeze
 
         # Custom launch pattern for regex matching
@@ -126,78 +126,81 @@ module Lich
           'DRT' => 'DragonRealms Test'
         }.freeze
 
-        # Resolves the realm name for a game code.
+        # Returns the realm name associated with a game code, with fallback to the default.
         #
-        # Looks up the realm (e.g., 'prime', 'platinum', 'test') corresponding to a game code
-        # like 'GS3' or 'GST'. If the code is not found, returns the default realm from GameConfig.
+        # Maps legacy Gemstone game codes (GSX, GSF, GST) to their corresponding realm names.
+        # Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DEFAULT_REALM.
         #
-        # @param code [String, Symbol] the game code to resolve (e.g., 'GS3', 'GST', 'GSX')
-        # @return [String] the realm name, or GameConfig::DEFAULT_REALM if unknown
+        # @param code [String, Symbol] the game code (e.g., "GS3", "GST", "GSX", "DR")
+        # @return [String] the realm name (e.g., "platinum", "shattered", "test"), or the configured default
         # @example
-        #   realm_from_game_code('GST') #=> "test"
-        #   realm_from_game_code('GSX') #=> "platinum"
+        #   LoginHelpers.realm_from_game_code("GSX")   #=> "platinum"
+        #   LoginHelpers.realm_from_game_code("GST")   #=> "test"
+        #   LoginHelpers.realm_from_game_code("GS3")   #=> (GameConfig::DEFAULT_REALM)
         # @see GAME_CODE_TO_REALM
-        # @see GameConfig::DEFAULT_REALM
+        # @see .realm_to_game_code
         def self.realm_from_game_code(code)
           GAME_CODE_TO_REALM.fetch(code.to_s.upcase, GameConfig::DEFAULT_REALM)
         end
 
-        # Resolves the game code for a realm name.
+        # Returns the game code associated with a realm name, or nil if not found.
         #
-        # Looks up the game code (e.g., 'GS3', 'GST') corresponding to a realm
-        # like 'prime' or 'platinum'. Returns nil if the realm is not recognized.
+        # Performs a direct lookup in the realm-to-code mapping; no fallback is applied.
         #
-        # @param realm [String] the realm name (e.g., 'prime', 'platinum', 'test')
-        # @return [String, nil] the game code, or nil if realm is unknown
+        # @param realm [String] the realm name (e.g., "prime", "platinum", "shattered", "test")
+        # @return [String, nil] the game code (e.g., "GS3", "GSX", "GSF", "GST"), or nil if the realm is not mapped
         # @example
-        #   realm_to_game_code('prime') #=> "GS3"
-        #   realm_to_game_code('platinum') #=> "GSX"
+        #   LoginHelpers.realm_to_game_code("prime")     #=> "GS3"
+        #   LoginHelpers.realm_to_game_code("platinum")  #=> "GSX"
+        #   LoginHelpers.realm_to_game_code("unknown")   #=> nil
         # @see REALM_TO_GAME_CODE
+        # @see .realm_from_game_code
         def self.realm_to_game_code(realm)
           REALM_TO_GAME_CODE[realm]
         end
 
-        # Resolves the human-readable game name for a game code.
+        # Returns the human-readable game name for a game code, with fallback to the default.
         #
-        # Looks up the display name (e.g., "GemStone IV", "DragonRealms") corresponding
-        # to a game code. If the code is not found, returns the default game name from GameConfig.
+        # Maps game codes to their display names (e.g., "GS3" → "GemStone IV").
+        # Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.
         #
-        # @param game_code [String] the game code (e.g., 'GS3', 'GST', 'DR', 'DRX')
-        # @return [String] the human-readable game name, or GameConfig::DEFAULT_GAME_NAME if unknown
+        # @param game_code [String] the game code (e.g., "GS3", "GST", "DR", "DRX")
+        # @return [String] the human-readable game name (e.g., "GemStone IV", "DragonRealms"), or the configured default
         # @example
-        #   game_name_from_game_code('GS3') #=> "GemStone IV"
-        #   game_name_from_game_code('DR') #=> "DragonRealms"
+        #   LoginHelpers.game_name_from_game_code("GS3")  #=> "GemStone IV"
+        #   LoginHelpers.game_name_from_game_code("DRX")  #=> "DragonRealms Platinum"
+        #   LoginHelpers.game_name_from_game_code("FAKE") #=> (GameConfig::DEFAULT_GAME_NAME)
         # @see GAME_CODE_TO_NAME
-        # @see GameConfig::DEFAULT_GAME_NAME
         def self.game_name_from_game_code(game_code)
           GAME_CODE_TO_NAME.fetch(game_code, GameConfig::DEFAULT_GAME_NAME)
         end
 
-        # Checks whether a realm name is valid for elogin.
+        # Returns whether a realm name is valid for elogin.
         #
         # @param realm [String] the realm name to validate
-        # @return [Boolean] true if realm is in VALID_REALMS, false otherwise
+        # @return [Boolean] true if the realm is in VALID_REALMS; false otherwise
         # @example
-        #   valid_realm?("prime") #=> true
-        #   valid_realm?("unknown") #=> false
+        #   LoginHelpers.valid_realm?("prime")     #=> true
+        #   LoginHelpers.valid_realm?("test")      #=> true
+        #   LoginHelpers.valid_realm?("unknown")   #=> false
         # @see VALID_REALMS
         def self.valid_realm?(realm)
           VALID_REALMS.include?(realm)
         end
 
-        # Checks whether the current Lich runtime meets or exceeds a minimum version.
+        # Checks whether the running Lich version is at least the specified semantic version.
         #
-        # Compares the LICH_VERSION constant (if defined) against the provided semantic version.
-        # Returns false if LICH_VERSION is not defined in the runtime.
+        # Returns false immediately if LICH_VERSION is not defined (e.g., in test contexts where
+        # the constant is unavailable). Uses Gem::Version comparison for robust semantic versioning.
         #
-        # @param major [Integer] the major version component
-        # @param minor [Integer] the minor version component (default 0)
-        # @param patch [Integer] the patch version component (default 0)
-        # @return [Boolean] true if LICH_VERSION >= [major, minor, patch], false otherwise or if undefined
+        # @param major [Integer] major version number
+        # @param minor [Integer] minor version number (default: 0)
+        # @param patch [Integer] patch version number (default: 0)
+        # @return [Boolean] true if LICH_VERSION is defined and >= the specified version; false otherwise
         # @example
-        #   lich_version_at_least?(5, 12, 0) #=> true (for Lich 5.12.0+)
-        #   lich_version_at_least?(6, 0, 0) #=> false (for Lich 5.x)
-        # @see format_launch_flag
+        #   LoginHelpers.lich_version_at_least?(5, 12, 0)  #=> true  (if running Lich 5.12.0+)
+        #   LoginHelpers.lich_version_at_least?(6)          #=> false (if running Lich 5.x)
+        # @note Always returns false when LICH_VERSION is not defined
         def self.lich_version_at_least?(major, minor = 0, patch = 0)
           return false unless defined?(LICH_VERSION)
 
@@ -607,16 +610,13 @@ module Lich
         # @param argv [Array<String>] e.g. ARGV
         # @return [Array(String, String, String)] [game_code, frontend, custom_launch]
         def self.resolve_login_args(argv)
-          frontend = :__unset
+          frontend = resolve_frontend_arg(argv)
           custom_launch = :__unset
           instance = resolve_instance(argv)
 
           argv.each do |arg|
-            case arg
-            when FRONTEND_PATTERN
-              frontend = Frontend.canonical_name(Regexp.last_match[:fe])
-            when CUSTOM_LAUNCH_PATTERN
-              custom_launch = Regexp.last_match[:cl]
+            if (match = arg.match(CUSTOM_LAUNCH_PATTERN))
+              custom_launch = match[:cl]
             end
           end
 
@@ -628,6 +628,25 @@ module Lich
           end
 
           [instance, frontend, custom_launch]
+        end
+
+        # Resolves the final recognized frontend selector from CLI arguments.
+        # Legacy shorthand flags and registry-backed long-form identifiers share
+        # this path so login matching and detachable runtime identity agree.
+        #
+        # @param argv [Array<String>] command line arguments
+        # @return [String, Symbol] canonical frontend id, or :__unset
+        def self.resolve_frontend_arg(argv)
+          frontend = :__unset
+          argv.each do |arg|
+            if (match = arg.match(FRONTEND_PATTERN))
+              frontend = Frontend.canonical_name(match[:fe])
+            elsif (match = arg.match(REGISTERED_FRONTEND_PATTERN))
+              candidate = Frontend.canonical_name(match[:fe])
+              frontend = candidate if Frontend.registered_frontends.include?(candidate)
+            end
+          end
+          frontend
         end
 
         # Resolves which frontend should be used when matching a saved entry for
@@ -662,9 +681,10 @@ module Lich
         # @param detachable_client [Boolean] whether a detachable client port is configured
         # @return [String] frontend identity for Frontend.client
         def self.resolve_headless_frontend(argv, detachable_client: false)
-          return 'saga' if argv.any? { |arg| arg.match?(/^--saga$/i) }
+          requested_frontend = resolve_frontend_arg(argv)
+          return 'saga' if requested_frontend == 'saga'
           return 'unknown' unless detachable_client
-          return 'genie' if argv.any? { |arg| arg.match?(/^--genie$/i) }
+          return requested_frontend unless requested_frontend == :__unset
 
           'profanity'
         end
@@ -689,52 +709,6 @@ module Lich
             when 'DRT' then '--drt'
             else nil
             end
-          end
-        end
-
-        # Spawns a Lich login session using a saved entry.
-        #
-        # This constructs and launches a Ruby + Lich command line with proper login arguments.
-        # It is aware of the Lich version and formats launch flags (e.g., `--gst`, `--GSX`) accordingly.
-        # Only the character name and game instance are passed - all sensitive data is handled by Lich internally.
-        #
-        # @param entry [Hash] the login entry (must include :char_name and :game_code)
-        # @param lich_path [String, nil] optional path to lich.rbw; defaults to LICH_DIR/lich.rbw
-        # @param startup_scripts [Array<String>] optional scripts to autostart post-login
-        # @param instance_override [String, Symbol, nil] optional instance override (e.g., 'GST', 'GSX')
-        # @param frontend_override [String, nil] optional frontend (e.g., 'avalon', 'wizard')
-        # @param custom_launch_filter [String, nil] optional custom launch filter for entry selection
-        # @return [Process::Waiter, nil] detached process handle if successful, nil otherwise
-        def self.spawn_login(entry, lich_path: nil, startup_scripts: [], instance_override: nil, frontend_override: nil, custom_launch_filter: nil)
-          ruby_path = Lich::Common::RubyExecutable.resolve
-          lich_path ||= File.join(LICH_DIR, 'lich.rbw')
-
-          spawn_cmd = [
-            "#{ruby_path}",
-            "#{lich_path}",
-            '--login', entry[:char_name]
-          ]
-          if instance_override
-            flag = format_launch_flag(instance_override)
-            spawn_cmd << flag if flag
-          end
-          spawn_cmd << "--#{frontend_override}" unless frontend_override.nil?
-          spawn_cmd << "--custom-launch=#{custom_launch_filter}" if custom_launch_filter
-          spawn_cmd << "--start-scripts=#{startup_scripts.join(',')}" if startup_scripts.any?
-
-          Lich::Messaging.msg('info', "Spawning login: #{spawn_cmd}")
-
-          begin
-            pid = Process.spawn(*spawn_cmd)
-            Process.detach(pid)
-          rescue Errno::ENOENT => e
-            Lich::Messaging.msg('error', "Executable not found: #{e.message}")
-            Lich.log "error: Executable not found: #{e.message}"
-            nil
-          rescue StandardError => e
-            Lich::Messaging.msg('error', "Failed to launch login session: #{e.class} - #{e.message}")
-            Lich.log "error: Failed to launch login session: #{e.class} - #{e.message}"
-            nil
           end
         end
       end

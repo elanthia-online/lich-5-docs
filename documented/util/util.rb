@@ -12,9 +12,13 @@ module Lich
     # Normalizes and performs a lookup for an effect based on the provided value.
     #
     # Depending on the type of `val`, this method will:
-    # - For String: Check if the normalized string matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).
+    # - For String: Check if the normalized string matches any key in the effect's hash (case-insensitive, underscores/colons replaced with spaces).
     # - For Integer: Check if the effect is active for the given integer value.
-    # - For Symbol: Check if the normalized symbol matches any key in the effect's hash (case-insensitive, underscores replaced with spaces).
+    # - For Symbol: Check if the normalized symbol matches any key in the effect's hash (case-insensitive, underscores/colons replaced with spaces).
+    #
+    # Both the lookup value and the effect's hash keys are normalized the same way, so a
+    # punctuation-free lookup (e.g. PSM feat names like "covert_art_escape_artist") still
+    # matches an effect key that contains punctuation (e.g. "Covert Art: Escape Artist").
     #
     # @param effect [String] The name of the effect class (without the "Effects::" prefix).
     # @param val [String, Integer, Symbol] The value to look up; can be a string, integer, or symbol.
@@ -23,13 +27,12 @@ module Lich
     def self.normalize_lookup(effect, val)
       caller_type = "Effects::#{effect}"
       case val
-      when String
-        (eval caller_type).to_h.transform_keys(&:to_s).transform_keys(&:downcase).include?(val.downcase.gsub('_', ' '))
+      when String, Symbol
+        normalize = ->(str) { str.to_s.downcase.gsub(':', ' ').gsub('_', ' ').squeeze(' ').strip }
+        (eval caller_type).to_h.transform_keys { |k| normalize.call(k) }.include?(normalize.call(val))
       when Integer
         #      seek = mappings.fetch(val, nil)
         (eval caller_type).active?(val)
-      when Symbol
-        (eval caller_type).to_h.transform_keys(&:to_s).transform_keys(&:downcase).include?(val.to_s.downcase.gsub('_', ' '))
       else
         fail "invalid lookup case #{val.class.name}"
       end
@@ -220,34 +223,42 @@ module Lich
       return result
     end
 
-    # Issues a command to the game with XML downstream enabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.
+    # Executes a game command and captures output between start and end patterns, suppressing output to the front-end.
     #
-    # @param command [String] the command to send to the game
-    # @param start_pattern [Regexp] pattern marking the start of output capture
-    # @param end_pattern [Regexp] pattern marking the end of output capture; defaults to /\<prompt/
-    # @param include_end [Boolean] whether to include the line matching end_pattern in the result; defaults to true
-    # @param timeout [Integer] timeout in seconds for the command; defaults to 5
-    # @param silent [Boolean] whether to silence script output; defaults to true
-    # @return [Array<String>] lines of output captured between start and end patterns, stripped of trailing whitespace
+    # Wraps {.issue_command} with XML downstream enabled and quiet output suppression.
+    # Output lines matching the start and end patterns are silenced at the front-end,
+    # though state-toggling tags (e.g., mono mode) embedded in those lines are preserved.
+    #
+    # @param command [String] The command to send to the game.
+    # @param start_pattern [Regexp] Pattern marking the start of output capture.
+    # @param end_pattern [Regexp] Pattern marking the end of output capture. Defaults to /<prompt/.
+    # @param include_end [Boolean] Whether to include the end line in the result. Defaults to true.
+    # @param timeout [Integer] Timeout in seconds for the command. Defaults to 5.
+    # @param silent [Boolean] Whether to silence script output. Defaults to true.
+    # @return [Array<String>] Lines of output captured between start and end patterns.
     # @example
-    #   lines = Util.quiet_command_xml('score', /^\s+HP\:/, /\<prompt/, include_end: true, timeout: 5, silent: true)
+    #   lines = Util.quiet_command_xml("status", /^Status:\s/, /<prompt/, include_end: true)
     # @see .issue_command
     # @see .quiet_command
     def self.quiet_command_xml(command, start_pattern, end_pattern = /<prompt/, include_end = true, timeout = 5, silent = true)
       return issue_command(command, start_pattern, end_pattern, include_end: include_end, timeout: timeout, silent: silent, usexml: true, quiet: true)
     end
 
-    # Issues a command to the game with XML downstream disabled and captures output between start and end patterns, suppressing all intermediate lines from the frontend.
+    # Executes a game command and captures output between start and end patterns, suppressing output to the front-end.
     #
-    # @param command [String] the command to send to the game
-    # @param start_pattern [Regexp] pattern marking the start of output capture
-    # @param end_pattern [Regexp] pattern marking the end of output capture
-    # @param include_end [Boolean] whether to include the line matching end_pattern in the result; defaults to true
-    # @param timeout [Integer] timeout in seconds for the command; defaults to 5
-    # @param silent [Boolean] whether to silence script output; defaults to true
-    # @return [Array<String>] lines of output captured between start and end patterns, stripped of trailing whitespace
+    # Wraps {.issue_command} with XML downstream disabled and quiet output suppression.
+    # Output lines matching the start and end patterns are silenced at the front-end,
+    # though state-toggling tags embedded in those lines are preserved.
+    #
+    # @param command [String] The command to send to the game.
+    # @param start_pattern [Regexp] Pattern marking the start of output capture.
+    # @param end_pattern [Regexp] Pattern marking the end of output capture.
+    # @param include_end [Boolean] Whether to include the end line in the result. Defaults to true.
+    # @param timeout [Integer] Timeout in seconds for the command. Defaults to 5.
+    # @param silent [Boolean] Whether to silence script output. Defaults to true.
+    # @return [Array<String>] Lines of output captured between start and end patterns.
     # @example
-    #   lines = Util.quiet_command('exp', /^\s+Exp\:/, /\<prompt/, include_end: false, timeout: 5, silent: true)
+    #   lines = Util.quiet_command("info", /^Name:/, /^Mana/, include_end: false)
     # @see .issue_command
     # @see .quiet_command_xml
     def self.quiet_command(command, start_pattern, end_pattern, include_end = true, timeout = 5, silent = true)

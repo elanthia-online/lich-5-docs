@@ -6,11 +6,11 @@ require_relative 'parameter_objects'
 require_relative 'login_tab_utils'
 require_relative 'theme_utils'
 
-# Namespace for the Lich 5 scripting engine and related utilities.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for common Lich 5 functionality shared across components.
+  # Namespace for common Lich components shared across the scripting engine.
   module Common
-    # Namespace for Lich 5 GUI components and login-related interfaces.
+    # Namespace for Lich GUI components and login system interfaces.
     module GUI
       # Handles the "Saved Entry" tab functionality for the Lich GUI login system
       # Enhanced with integrated favorites functionality for seamless user experience
@@ -83,6 +83,14 @@ module Lich
 
           # Show brief refresh notification
           show_refresh_notification
+        end
+
+        # Reloads the frontend catalog used by the add-character selector.
+        #
+        # @return [void]
+        def refresh_frontends
+          @add_character_frontend_selector&.reload!
+          nil
         end
 
         # Returns the tab widget for adding to a notebook
@@ -716,6 +724,7 @@ module Lich
 
           # Frontend options
           frontend_selector = FrontendSelector.new(refresh: false)
+          @add_character_frontend_selector = frontend_selector
 
           # Add character button
           add_char_button = Gtk::Button.new(label: "Add to this account")

@@ -4,29 +4,37 @@ require 'timeout'
 require_relative 'bundler_recovery'
 require_relative 'dependency_recovery'
 
-# Root namespace for the Lich5 scripting engine and its public API.
+# Namespace for the Lich5 scripting engine.
+#
+# Lich provides Ruby scripting capabilities for text-based games GemStone IV
+# and DragonRealms. This module contains core subsystems like GemCheck,
+# script registration, command handling, and integration with game servers.
 module Lich
   # Verifies bundled gems are installed at Lich startup and alerts the
   # user via a native OS dialog (with a log-file fallback) when any
   # are missing. Runs once during boot, before scripts load.
   module GemCheck
-    # User-facing alert message displayed on Windows when required gems are missing.
+    # Alert message shown to Windows users when required gems are missing.
     #
-    # Instructs users to update Ruby using the Ruby4Lich5 installer.
+    # Instructs the user to update to the latest Ruby version using the
+    # Ruby4Lich5 installer.
     #
     # @return [String]
     WINDOWS_MESSAGE = "You're missing required Ruby gems!\n\n" \
                       "Please update to the latest Ruby version using the\n" \
                       "Ruby4Lich5 installer."
-    # User-facing alert message displayed on macOS and Linux when required gems are missing.
+    # Alert message shown to Unix/Linux/macOS users when required gems are missing.
     #
-    # Instructs users to run 'bundle install' from their Lich5 folder.
+    # Instructs the user to run `bundle install` from the Lich5 folder.
     #
     # @return [String]
     UNIX_MESSAGE    = "You're missing required Ruby gems!\n\n" \
                       "Please run 'bundle install' from your Lich5 folder."
     TITLE           = 'Lich5: Missing Ruby Gems'
-    # URL to the latest Lich5 release on GitHub, presented to Windows users as a download link.
+    # URL to the latest Lich5 release on GitHub.
+    #
+    # Shown to Windows users in the missing-gem alert dialog as the download link
+    # when they choose to open it.
     #
     # @return [String]
     RELEASE_URL     = 'https://github.com/elanthia-online/lich-5/releases/latest'
@@ -521,18 +529,44 @@ module Lich
       body.split("\n").map(&:inspect).join(' & return & ')
     end
 
+    # Reports missing gems on stderr, and additionally in a GUI dialog when
+    # there is no terminal that report could have reached.
+    #
+    # The dialog is only ever *waited on*, never merely shown: a launcher start
+    # has no other channel, so {run_with_timeout} keeps the process alive long
+    # enough for the dialog to be read. From a terminal that wait is what makes
+    # the failure look like a hang -- the dialog is easily missed (another
+    # workspace, behind other windows, or not rendering at all), it blocks for
+    # {ALERT_TIMEOUT_SECONDS}, and the child's output is discarded, so the user
+    # waits two minutes and never learns why. Worst for the early-exit CLI
+    # commands (`--help`, `--version`, `--active-sessions`, ...): they are
+    # dispatched well after this check runs, so while it blocks they cannot be
+    # reached at all.
+    #
+    # Both streams are probed because a terminal launch may redirect either
+    # one.
+    #
     # @param body [String]
     # @return [void]
     def alert_linux(body)
+      # Always say it on stderr, whether or not a dialog follows. It costs
+      # nothing, it is the whole message rather than a pointer to it, and when
+      # stderr is captured (a launcher's output, a service log) it is the only
+      # record that survives -- the dialog text goes nowhere else.
+      warn("!!ALERT!! #{body}")
+
+      # Only wait on a dialog when there was no terminal to have said it in.
+      return if $stdout.isatty || $stderr.isatty
+
       if cmd_available?('zenity')
         run_with_timeout(['zenity', '--info', '--title', TITLE, '--text', body], ALERT_TIMEOUT_SECONDS)
       elsif cmd_available?('kdialog')
         run_with_timeout(['kdialog', '--title', TITLE, '--msgbox', body], ALERT_TIMEOUT_SECONDS)
       elsif cmd_available?('xmessage')
         run_with_timeout(['xmessage', '-center', body], ALERT_TIMEOUT_SECONDS)
-      else
-        warn "!!ALERT!! #{body}"
       end
+      # No dialog tool available needs no fallback branch any more -- the
+      # unconditional warn above is the fallback.
     end
 
     # @param cmd [String] executable name to probe

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require 'rbconfig'
-require_relative 'front-end'
+require_relative 'frontend'
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for common utilities shared across the Lich engine.
+  # Namespace for common utilities shared across Lich components.
   module Common
     # Selects the Ruby executable used to start another Lich process.
     module RubyExecutable

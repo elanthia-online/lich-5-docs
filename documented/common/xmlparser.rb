@@ -4,20 +4,28 @@ xmlparser.rb: Core lich file that defines the data extracted from SIMU's XML.
 
 require File.join(LIB_DIR, 'common', 'xml_entities.rb')
 
-# Namespace for the Lich game scripting engine.
 module Lich
-  # Namespace for common utilities shared across game backends.
   module Common
-    # Parses the game server's XML stream and extracts game state: character stats,
-    # room contents, inventory, active spells, and combat data.
+    # Parses the XML game server stream into game state and script-visible attributes.
     #
-    # Implements the Ox SAX parser interface (start_element, attr, attrs_done, end_element,
-    # cdata, error) to process the server stream in real time. Tracks creature status,
-    # item containers, and collision-free room roster updates. Maintains dual-game support
-    # (GemStone IV and DragonRealms) with game-specific adaptations.
+    # This parser drives the Lich engine's understanding of the player's character,
+    # room, inventory, spell durations, creatures, and other real-time game state.
+    # The server sends a continuous stream of XML fragments describing each command's
+    # effects (room arrival, cast success, inventory change, etc.). XMLParser accumulates
+    # these fragments, hands them to the Ox SAX parser, and routes the resulting events
+    # to tag_start, tag_end, text, and attr callbacks that update game state and fire
+    # hooks for scripts to observe.
     #
-    # @see Lich::Gemstone::Creature
-    # @see Lich::DragonRealms::Creature
+    # Most instance attributes are exposed as attr_reader; accessing XMLData.attribute
+    # from a script returns the parsed value. The parser also maintains internal caches
+    # for staging incomplete operations (e.g., container fills that span multiple text
+    # nodes) and coordinates with related systems like Creature, GameObj, and Claim.
+    #
+    # Supports both GemStone IV and DragonRealms game streams, with game-specific
+    # handling for room-object identification, creature status flagging, and player
+    # roster tracking.
+    #
+    # @api private
     class XMLParser
       attr_reader :mana, :max_mana, :health, :max_health, :spirit, :max_spirit, :last_spirit,
                   :stamina, :max_stamina, :stance_text, :stance_value, :mind_text, :mind_value,
@@ -38,15 +46,15 @@ module Lich
 
       @@warned_deprecated_spellfront = 0
 
-      # Initializes the parser with empty buffers and default state.
+      # Initializes the parser with empty game state and default values.
       #
-      # All instance variables are initialized to their zero/empty equivalents:
-      # numeric stats (health, mana, stamina) to 0; strings to empty String; collections
-      # to empty Array or Hash. This allows safe reads before the first game tag arrives.
-      # Server time is set to the current time; server_time_offset will be computed
-      # when the first <prompt> tag arrives.
+      # All mutable state is reset to sane defaults: strings to empty, arrays to [],
+      # integers to 0, nil to nil. Room ID defaults to 0 (not nil) so that checks like
+      # room_id.zero? and room_id > N in map layers do not raise NoMethodError before
+      # a <nav> tag arrives. The parser is not ready for use until the game sends its
+      # first settingsInfo tag naming the instance (game name and character name).
       #
-      # @return [void]
+      # @api private
       def initialize
         @buffer = String.new
         # @unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
@@ -225,16 +233,17 @@ module Lich
         z
       end
 
-      # Clears parser state after a malformed or truncated fragment.
+      # Clears mid-parse state after a fragment error or sync loss.
       #
-      # Resets tag/id stacks, the current stream buffer, and any in-flight state
-      # (pending creature status, room NPC names, collected creature ids) that could
-      # cause mismatches or data corruption if applied to the next fragment.
-      # Discards staged GameObj container refreshes that would be published as
-      # authoritative by the next <prompt> tag. Called automatically by the error
-      # handler and may be called directly to recover from severe parsing issues.
+      # Drops any in-flight XML tag stack, active style context, staged GameObj
+      # refreshes (incomplete container fills, room component updates), and cached
+      # creature status/name pairings that were not yet committed. This prevents a
+      # truncated or malformed fragment from leaving stale data that would pollute
+      # the next arrival's state.
       #
-      # @return [void]
+      # Called automatically by tag_start and text when they catch an exception,
+      # and between server fragments by Game.process_xml_data.
+      #
       # @api private
       def reset
         @active_tags = Array.new
@@ -260,14 +269,18 @@ module Lich
         @dr_crtr_ids = []
       end
 
-      # Tests whether the parser is in a safe state to send a game command.
+      # Checks whether it is safe for a script to send a command right now.
       #
-      # For DragonRealms, returns false if the server stream is actively being received
-      # (in_stream), or if bold text or a style tag is open - these indicate that
-      # game output is mid-stream and a command response may collide with it.
-      # GemStone IV always returns true (the game maintains command/response ordering).
+      # In DragonRealms, returns false if the parser is mid-stream (in_stream true),
+      # mid-bold block (@bold true), or in an active inline style; returns true if safe.
+      # GemStone IV always returns true (no flow control needed).
       #
-      # @return [Boolean] true if safe to send a command now; false if mid-stream (DR only)
+      # This gate prevents scripts from sending commands that would land in the middle
+      # of a room component update or other structured multi-line server response,
+      # which could corrupt the parser's state or break the command-response pairing.
+      #
+      # @return [Boolean] true if a command may be sent safely; false otherwise
+      #
       # @api private
       def safe_to_respond?
         if @game =~ /^DR/
@@ -277,29 +290,30 @@ module Lich
         end
       end
 
-      # Encodes the character's wound injuries into a binary GSL format string.
+      # Encodes wound injury levels into a binary GSL (Gemstone Scripting Language) tag.
       #
-      # Formats 14 body parts (nsys, leftEye, rightEye, back, abdomen, chest, leftHand,
-      # rightHand, leftLeg, rightLeg, leftArm, rightArm, neck, head) into a 0b0NNNNNNNNNNNNNNNN
-      # binary string where each 2-bit field holds the wound severity (0-3).
-      # Severity 0 = no wound; higher values = worsening condition.
+      # Constructs a 16-body-part bitfield for the GSL `\034GSV` vital stats packet,
+      # encoding the wound rank (0-3) of each tracked injury location. The bit order is
+      # fixed: nsys, leftEye, rightEye, back, abdomen, chest, leftHand, rightHand,
+      # leftLeg, rightLeg, leftArm, rightArm, neck, head. Called when injuries update
+      # or when fake GSL tags are sent to the Wizard frontend.
       #
-      # @return [String] binary GSL string (e.g. "0b0000100010000...")
-      # @see #make_scar_gsl
+      # @return [void]
+      #
       # @api private
       def make_wound_gsl
         @wound_gsl = sprintf("0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b", @injuries['nsys']['wound'], @injuries['leftEye']['wound'], @injuries['rightEye']['wound'], @injuries['back']['wound'], @injuries['abdomen']['wound'], @injuries['chest']['wound'], @injuries['leftHand']['wound'], @injuries['rightHand']['wound'], @injuries['leftLeg']['wound'], @injuries['rightLeg']['wound'], @injuries['leftArm']['wound'], @injuries['rightArm']['wound'], @injuries['neck']['wound'], @injuries['head']['wound'])
       end
 
-      # Encodes the character's scar injuries into a binary GSL format string.
+      # Encodes scar injury levels into a binary GSL tag.
       #
-      # Formats 14 body parts (nsys, leftEye, rightEye, back, abdomen, chest, leftHand,
-      # rightHand, leftLeg, rightLeg, leftArm, rightArm, neck, head) into a 0b0NNNNNNNNNNNNNNNN
-      # binary string where each 2-bit field holds the scar severity (0-3).
-      # Severity 0 = no scar; higher values = worsening condition.
+      # Constructs a 16-body-part bitfield for the GSL `\034GSV` vital stats packet,
+      # encoding the scar rank (0-3) of each tracked injury location in the same order
+      # as make_wound_gsl. Called when scars update or when fake GSL tags are sent to
+      # the Wizard frontend.
       #
-      # @return [String] binary GSL string (e.g. "0b0000010001000...")
-      # @see #make_wound_gsl
+      # @return [void]
+      #
       # @api private
       def make_scar_gsl
         @scar_gsl = sprintf("0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b", @injuries['nsys']['scar'], @injuries['leftEye']['scar'], @injuries['rightEye']['scar'], @injuries['back']['scar'], @injuries['abdomen']['scar'], @injuries['chest']['scar'], @injuries['leftHand']['scar'], @injuries['rightHand']['scar'], @injuries['leftLeg']['scar'], @injuries['rightLeg']['scar'], @injuries['leftArm']['scar'], @injuries['rightArm']['scar'], @injuries['neck']['scar'], @injuries['head']['scar'])
@@ -325,26 +339,30 @@ module Lich
       #   }
       # end
 
-      # Number of seconds in a decade (10 years); used as the expiry duration for
-      # infinite-duration spell effects.
+      # Sentinel duration for indefinite spell effects.
+      #
+      # Equal to 315,360,000 seconds (10 years). Used as a placeholder expiry time
+      # when a PSM 3.0 progress bar spell has "Indefinite" or "OM" (Omen/Manna)
+      # duration, representing an effect that does not expire during a session.
       #
       # @see #parse_psm3_progressbar
       DECADE = 10 * 31_536_000
 
-      # Parses a PSM 3.0 progress bar (dialog) and stores its expiry time.
+      # Parses a PSM 3.0 progress bar (spell/buff/debuff/cooldown effect) into the dialogs cache.
       #
-      # Extracts the spell/effect name and remaining duration from a <progressBar> tag,
-      # converting time strings ("HH:MM:SS" or "Indefinite") into absolute Time objects.
-      # Stores the entry twice: keyed by name (for display) and by numeric id (for deduplication).
-      # Indefinite effects are assigned an expiry of +1 decade; invalid or missing duration
-      # returns early without updating the dialog.
+      # Stores the effect's expiry time (Time.now + duration) in @dialogs[kind] keyed
+      # by both the effect name string and its numeric id. If the duration is "Indefinite"
+      # or "OM", sets expiry to DECADE (10 years). Otherwise, parses HH:MM:SS format
+      # and computes the expiry as current time plus that many seconds. The result is
+      # immediately visible to scripts via XMLData.dialogs.
       #
-      # @param kind [String] the dialog kind (e.g. "Buffs", "Active Spells", "Cooldowns")
-      # @param attributes [Hash] XML attributes including "id" (numeric), "text" (spell name),
-      #   "time" (duration string: "HH:MM:SS", "Indefinite", "OM", or "Fading")
+      # @param kind [String] the dialog/effect category, e.g. "Buffs", "Cooldowns"
+      # @param attributes [Hash{String => String}] XML attributes of the progressBar tag:
+      #   - "id": numeric effect id (parsed to_i)
+      #   - "text": effect name (e.g., "Heroism")
+      #   - "time": duration as "HH:MM:SS" or "Indefinite" or "OM"
       # @return [void]
-      # @example
-      #   parse_psm3_progressbar("Buffs", {"id" => "42", "text" => "Aura", "time" => "00:05:30"})
+      #
       # @api private
       def parse_psm3_progressbar(kind, attributes)
         @dialogs[kind] ||= {}
@@ -360,25 +378,26 @@ module Lich
         @dialogs[kind][name] = @dialogs[kind][id] = Time.now + (hour.to_i * 3600) + (minute.to_i * 60) + second.to_i
       end
 
-      # The four dialog types tracked in PSM 3.0 (player status module).
+      # Dialog category IDs that track active spell/buff effects in PSM 3.0.
       #
-      # These strings appear as <dialogData id="..."> tags and partition active effects
-      # into Buffs (positive), Active Spells (combat spells), Debuffs (negative), and
-      # Cooldowns (ability recovery times).
+      # When a progressBar tag appears with an id that is one of these categories,
+      # its effect name and expiry are cached in @dialogs. Other categories (e.g.,
+      # "Quest Progress") are not parsed by parse_psm3_progressbar.
+      #
+      # @see #parse_psm3_progressbar
       PSM_3_DIALOG_IDS = ["Buffs", "Active Spells", "Debuffs", "Cooldowns"]
 
       # assess stream parsing
       ASSESS_RANGES = { 'melee' => :melee, 'pole weapon' => :pole, 'missile' => :missile }.freeze
-      # Pattern that matches the positional relationship between a creature and its target
-      # in an assess stream line.
+      # Regex pattern matching the relation and target in an assess (combat situation) line.
       #
-      # Captures the relation (e.g. "flanking", "facing") and the target name.
-      # Used by #parse_assess_line to extract tactical positioning from the combat situation
-      # stream.
+      # Captures the positional relation of one combatant to another (e.g., "flanking",
+      # "behind", "advancing on") and the target's name. Used by parse_assess_line to
+      # break down a creature description into structured fields.
       #
-      # @example
-      #   "flanking a merchant" =~ ASSESS_RELATION
-      #   #=> Regexp::MatchData with relation="flanking", target="a merchant"
+      # @example Match a flanking relation
+      #   ASSESS_RELATION.match("flanking a goblin") #=> MatchData with relation='flanking', target='a goblin'
+      #
       # @see #parse_assess_line
       ASSESS_RELATION = /^(?<relation>moving to flank|flanking|facing|behind|in front of|beside|advancing on|next to|to (?:the )?(?:left|right) of)\s+(?<target>.+)$/.freeze
 
@@ -462,25 +481,27 @@ module Lich
         @sax_attributes[name] = XmlEntities.decode(value)
       end
 
-      # Ox SAX callback: signals the end of attribute accumulation for the current element.
+      # Fires after all attributes for an XML element have been accumulated.
       #
-      # Flushes the accumulated attributes and element name to tag_start, triggering
-      # handler logic. Called after start_element and all attr callbacks for a tag,
-      # before text or child elements.
+      # Delegates to tag_start with the accumulated element name and attributes hash,
+      # matching the old REXML-style single tag_start(name, hash) call. Part of the
+      # Ox SAX parser callback sequence: start_element -> attr (repeated) -> attrs_done
+      # -> text/children -> end_element.
       #
       # @return [void]
+      #
       # @api private
       def attrs_done
         tag_start(@sax_element, @sax_attributes)
       end
 
-      # Ox SAX callback: invoked when an XML element closes.
+      # Fires when an XML closing tag is encountered.
       #
-      # Routes the close event to tag_end, which pops the tag stack and triggers
-      # end-of-element handlers (e.g., committing staged GameObj refreshes).
+      # Delegates to tag_end(name), mirroring the Ox SAX parser interface.
       #
-      # @param name [String] the element name (e.g. "prompt", "compass")
+      # @param name [String] the element name (tag) being closed
       # @return [void]
+      #
       # @api private
       def end_element(name)
         tag_end(name)
@@ -498,35 +519,44 @@ module Lich
       # The caller clears this between fragments.
       attr_reader :sax_parse_errors
 
-      # Ox SAX callback: collects XML parse errors.
+      # Records a non-fatal parse error from Ox SAX.
       #
-      # Ox does not raise on malformed input; instead it auto-balances and reports
-      # errors here. Errors are accumulated so that the game layer can distinguish
-      # between SIMU's intentional relaxed XML and a genuinely truncated (desynced)
-      # fragment once parsing completes.
+      # Ox does not raise on malformed XML; instead, it calls this method, auto-balances
+      # the structure, and continues parsing. The parser accumulates these messages so
+      # Game.process_xml_data can distinguish between SIMU's intentional almost-XML
+      # and a genuinely truncated or desynced fragment once parsing completes. Messages
+      # are cleared between fragments by the reset method.
       #
       # @param message [String] the error description
-      # @param line [Integer] the line number in the fragment
-      # @param column [Integer] the column number in the fragment
+      # @param line [Integer] 1-indexed line number in the fragment
+      # @param column [Integer] 0-indexed column number
       # @return [void]
+      #
       # @api private
       def error(message, line, column)
         @sax_parse_errors << "#{message} (line #{line}, column #{column})"
       end
 
-      # Processes an opening XML tag and its attributes.
+      # Routes an opening XML tag to game-state updates and side effects.
       #
-      # Core handler for all incoming game state tags (nav, compass, progressBar, etc.).
-      # Updates instance variables (room_id, stats, containers, creature status) and
-      # triggers cascading state changes (clearing room roster on nav, committing containers
-      # on prompt). Handles game-specific logic branches for GemStone IV vs DragonRealms.
-      # Routes creature data to Creature.register or defers status flags for later application.
-      # Catches errors, logs them, resets parser state, and continues.
+      # Called once per element by the Ox SAX parser (via attrs_done). Pushes the tag
+      # name and id attribute onto stacks, then handles 100+ tag types to extract and
+      # cache game state: room arrival (nav), room components (compDef/component), spell
+      # durations (progressBar), creature status (crtrStatus), inventory (inv),
+      # player status, injuries, server time, roundtime, and numerous UI elements.
       #
-      # @param name [String] the element tag name
-      # @param attributes [Hash] the element's attributes as key-value pairs
+      # Complex operations span multiple callbacks: container fills begin here and close
+      # at the prompt; creature name/status pairings are staged here and committed at
+      # tag_end; and room-object names (DragonRealms only) are captured during bold text
+      # and paired to creature ids at the next prompt.
+      #
+      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+      # discard in-flight state.
+      #
+      # @param name [String] the element tag name (lowercase)
+      # @param attributes [Hash{String => String}] the element's attributes
       # @return [void]
-      # @note Automatically called by attrs_done after attribute accumulation completes.
+      #
       # @api private
       def tag_start(name, attributes)
         # This is called once per element by REXML in games.rb
@@ -1110,18 +1140,28 @@ module Lich
         end
       end
 
-      # Processes text content between XML tags.
+      # Routes text nodes to game-state updates and message capture.
       #
-      # Handles multiple state machines in parallel: game stats (mind state, stance),
-      # room/inventory content (objects, NPCs, PCs), container filling, and the assess
-      # (combat) stream. Decodes standard XML entities and routes text to the appropriate
-      # accumulator (room_description, inventory, active spells, etc.) based on the current
-      # tag/stream context. Registers creatures and items, annotates status, and handles
-      # game-specific parsing branches (DR active spell durations, familiar room tracking, etc.).
-      # Catches errors and resets on failure.
+      # Called once per text node by the Ox SAX parser. First decodes standard XML
+      # entities (since Ox runs with convert_special: false). Then dispatches to
+      # state handlers based on active tag stack and current stream context:
+      # - Inventory items: builds object name and surrounding text
+      # - Room components: registers NPCs, items, players, and descriptions
+      # - Spell tracking: extracts spell names and durations from percWindow stream
+      # - Familiar room: tracks the familiar's location and contents
+      # - Bounty/society tasks: appends to multi-line content
+      # - Assess stream: builds combat situation descriptions
       #
-      # @param text_string [String] the decoded text node content
+      # In DragonRealms, captures bold NPC names in stream order so they can be paired
+      # to creature status ids at the next prompt. In GemStone, applies creature status
+      # immediately via the bold <a exist> tag path.
+      #
+      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+      # discard in-flight state.
+      #
+      # @param text_string [String] the text node content (may span multiple lines)
       # @return [void]
+      #
       # @api private
       def text(text_string)
         # Called by Ox once per text node. Decode the standard XML entities (Ox
@@ -1196,9 +1236,17 @@ module Lich
             @prompt = text_string
           elsif @active_tags.include?('right')
             GameObj.new_right_hand(@obj_exist, @obj_noun, text_string)
+            # DR only: an item now held in hand is no longer worn or in a
+            # container, so drop any stale placement of it. DR has no passive
+            # container stream to self-correct this, and its containers are
+            # rebuilt only on an explicit INV LIST/SEARCH. Gated so GemStone
+            # (which relies on its own inv stream) is unaffected. Empty hands
+            # carry no exist id (@obj_exist nil), making this a safe no-op.
+            GameObj.remove_inv_item(@obj_exist) if XMLData.game =~ /^DR/
             $_CLIENT_.puts "\034GSm#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
           elsif @active_tags.include?('left')
             GameObj.new_left_hand(@obj_exist, @obj_noun, text_string)
+            GameObj.remove_inv_item(@obj_exist) if XMLData.game =~ /^DR/ # see 'right' above
             $_CLIENT_.puts "\034GSl#{sprintf('%-45s', text_string)}\r\n" if @send_fake_tags
           elsif @active_tags.include?('spell')
             @prepared_spell = text_string
@@ -1380,18 +1428,24 @@ module Lich
         end
       end
 
-      # Processes a closing XML tag and triggers end-of-element handlers.
+      # Routes a closing XML tag to final object creation and stream commitment.
       #
-      # Pops the tag and id stacks when a close matches the currently-open tag (ignoring
-      # stray synthetic closes). Commits staged GameObj refresh buffers (room objects,
-      # NPCs, exits) when their components close. Sends GSL format updates and room count
-      # increments at the appropriate boundaries (compass close, stream close). Handles
-      # DR compass double-pulse and disabled-room-window branches. Catches errors and resets
-      # on failure.
+      # Called once per element close by the Ox SAX parser (via end_element). Pops the
+      # tag name from the stack and handles closing logic: committing staged room
+      # components (room objs, players, description) when their container closes,
+      # finalizing inventory items with stored location and surrounding text, and
+      # incrementing room counters on compass close.
       #
-      # @param name [String] the element tag name being closed
+      # Prevents spurious handler invocation on synthetic closes (Ox-synthesized ends
+      # for desynced orphan tags) by checking that the closing tag name matches the
+      # top of the active stack; mismatches are silently ignored.
+      #
+      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+      # discard in-flight state.
+      #
+      # @param name [String] the element tag name being closed (lowercase)
       # @return [void]
-      # @note Ignores closes with no matching open tag (see comment on line 1233).
+      #
       # @api private
       def tag_end(name)
         # Called once per element close. Ox synthesizes an end for a stray closing

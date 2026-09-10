@@ -1,36 +1,43 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich scripting engine.
+# Namespace for the Lich game scripting engine.
 module Lich
-  # Namespace for DragonRealms game-specific functionality.
+  # Namespace for DragonRealms-specific functionality.
   module DragonRealms
-    # Common crafting utilities for blacksmithing, tailoring, artificing, remedies, and shaping in DragonRealms.
-    # Provides pattern matching constants for bput responses and high-level crafting workflows.
+    # Common crafting utilities for the DragonRealms scripting engine.
+    #
+    # Provides pattern constants for game command responses and methods for
+    # acquiring/storing crafting materials, managing tools and consumables,
+    # finding crafting rooms, and performing crafting operations.
     module DRCC
       module_function
 
       # Pattern constants for bput responses
       LOOK_CRUCIBLE_NOT_FOUND = '^I could not find'
       LOOK_CRUCIBLE_EMPTY = '^There is nothing in there'
-      # Pattern matching crucible contents from a look command.
-      # Captures the items list in the named group `:items`.
+      # Matches the response when looking into a crucible that contains items.
       #
+      # Captures the item list in the `items` named group.
+      #
+      # @return [Regexp]
       # @example
-      #   "In the brass crucible you see some molten bronze." =~ LOOK_CRUCIBLE_SEE_PATTERN
-      #   #=> 0; match[:items] => "some molten bronze"
-      # @see LOOK_CRUCIBLE_NOT_FOUND, LOOK_CRUCIBLE_EMPTY
+      #   "In the large crucible you see some bronze and an ingot." =~ LOOK_CRUCIBLE_SEE_PATTERN #=> 0
+      # @see LOOK_CRUCIBLE_NOT_FOUND
+      # @see LOOK_CRUCIBLE_EMPTY
       LOOK_CRUCIBLE_SEE_PATTERN = /^In the .* crucible you see (?<items>.*)\./.freeze
       LOOK_CRUCIBLE_MOLTEN = 'crucible you see some molten'
 
       LOOK_ANVIL_NOT_FOUND = '^I could not find'
       LOOK_ANVIL_CLEAN = 'surface looks clean and ready'
-      # Pattern matching anvil contents from a look command.
-      # Captures the items list in the named group `:items`.
+      # Matches the response when looking on an anvil that contains items.
       #
+      # Captures the item list in the `items` named group.
+      #
+      # @return [Regexp]
       # @example
-      #   "You look on the anvil you see an ingot." =~ LOOK_ANVIL_SEE_PATTERN
-      #   #=> match[:items] => "an ingot"
-      # @see LOOK_ANVIL_CLEAN, LOOK_ANVIL_NOT_FOUND
+      #   "On the anvil you see a bar and a tongs." =~ LOOK_ANVIL_SEE_PATTERN #=> 0
+      # @see LOOK_ANVIL_NOT_FOUND
+      # @see LOOK_ANVIL_CLEAN
       LOOK_ANVIL_SEE_PATTERN = /anvil you see (?<items>.*)\./.freeze
 
       CLEAN_ANVIL_DRAG = 'You drag the'
@@ -40,154 +47,155 @@ module Lich
       PUT_BUCKET_SUCCESS = 'You drop'
 
       BOOK_CHAPTER_TURN_SUCCESS = 'You turn'
-      # Pattern matched when the player cannot turn a book due to being engaged in combat.
+      # Matches when the character cannot perform a crafting action because engaged in combat.
       #
+      # @return [String]
       # @example
-      #   "You are too distracted to be doing that right now" =~ BOOK_CHAPTER_DISTRACTED
-      #   #=> 0
-      # @see BOOK_CHAPTER_TURN_SUCCESS, BOOK_CHAPTER_ALREADY
+      #   "You are too distracted to be doing that right now"
       BOOK_CHAPTER_DISTRACTED = 'You are too distracted to be doing that right now'
       BOOK_CHAPTER_ALREADY = 'The .* is already turned'
-      # Pattern matched when a book chapter turn succeeds, with capture of the book name.
+      # Matches a successful turn to a chapter in a crafting reference book (newer format).
       #
+      # @return [Regexp]
       # @example
-      #   "You turn your crafting book to chapter 5." =~ BOOK_CHAPTER2_SUCCESS
-      #   #=> 0
+      #   "You turn your book to chapter 3." =~ BOOK_CHAPTER2_SUCCESS #=> 0
       # @see BOOK_CHAPTER2_ALREADY
+      # @see find_recipe2
       BOOK_CHAPTER2_SUCCESS = /^You turn your .* to chapter/
-      # Pattern matched when the book is already at the requested chapter.
+      # Matches when the crafting book is already at the requested chapter (newer format).
       #
+      # @return [Regexp]
       # @example
-      #   "The crafting book is already turned to chapter 5." =~ BOOK_CHAPTER2_ALREADY
-      #   #=> 0
+      #   "The book is already turned to chapter 3." =~ BOOK_CHAPTER2_ALREADY #=> 0
       # @see BOOK_CHAPTER2_SUCCESS
       BOOK_CHAPTER2_ALREADY = /^The .* is already turned to chapter/
-      # Pattern matched when a book page turn succeeds.
+      # Matches a successful turn to a specific page in a crafting reference book.
       #
+      # @return [Regexp]
       # @example
-      #   "You turn your crafting book to page 10." =~ BOOK_PAGE_SUCCESS
-      #   #=> 0
+      #   "You turn your book to page 42." =~ BOOK_PAGE_SUCCESS #=> 0
       # @see BOOK_PAGE_ALREADY
       BOOK_PAGE_SUCCESS = /^You turn your .* to page/
-      # Pattern matched when the book is already at the requested page.
+      # Matches when the crafting book is already at the requested page.
       #
+      # @return [Regexp]
       # @example
-      #   "You are already on page 10." =~ BOOK_PAGE_ALREADY
-      #   #=> 0
+      #   "You are already on page 42." =~ BOOK_PAGE_ALREADY #=> 0
       # @see BOOK_PAGE_SUCCESS
       BOOK_PAGE_ALREADY = /^You are already on page/
-      # Pattern matched when turning a book to a discipline section succeeds.
+      # Matches a successful turn to a discipline section in a crafting reference book.
       #
+      # @return [Regexp]
       # @example
-      #   "You turn the crafting book to the section on engineering." =~ BOOK_DISCIPLINE_SUCCESS
-      #   #=> 0
-      # @see BOOK_CHAPTER2_SUCCESS
+      #   "You turn the book to the section on Armorsmithing." =~ BOOK_DISCIPLINE_SUCCESS #=> 0
       BOOK_DISCIPLINE_SUCCESS = /^You turn the .* to the section on/
-      # Pattern matched when studying a book completes and the roundtime message appears.
+      # Matches roundtime that follows a successful crafting book study action.
       #
+      # @return [Regexp]
       # @example
-      #   "Roundtime: 5 seconds" =~ BOOK_STUDY_SUCCESS
-      #   #=> 0
+      #   "Roundtime: 30 seconds." =~ BOOK_STUDY_SUCCESS #=> 0
       BOOK_STUDY_SUCCESS = /^Roundtime/
 
-      # Pattern matched when successfully untying or removing an item from a belt.
+      # Matches a successful untie/removal of an item from a belt.
       #
+      # @return [Regexp]
       # @example
-      #   "You untie a pliers from your crafting belt." =~ BELT_UNTIE_SUCCESS
-      #   #=> 0
-      # @see BELT_UNTIE_ALREADY, BELT_UNTIE_NOT_FOUND, BELT_UNTIE_WOUNDED
+      #   "You untie a tongs from your crafting belt." =~ BELT_UNTIE_SUCCESS #=> 0
+      # @see BELT_UNTIE_ALREADY
+      # @see BELT_UNTIE_NOT_FOUND
+      # @see BELT_UNTIE_WOUNDED
       BELT_UNTIE_SUCCESS = /^You (remove|untie)/
-      # Pattern matched when the item is already removed from the belt.
+      # Matches when an item is already untied/removed from a belt.
       #
+      # @return [Regexp]
       # @example
-      #   "You are already holding a pliers." =~ BELT_UNTIE_ALREADY
-      #   #=> 0
+      #   "You are already carrying the tongs." =~ BELT_UNTIE_ALREADY #=> 0
       # @see BELT_UNTIE_SUCCESS
       BELT_UNTIE_ALREADY = /^You are already/
-      # Pattern matched when the item to untie cannot be found on the belt.
+      # Matches when the character cannot find an item to untie from a belt.
       #
+      # @return [Regexp]
       # @example
-      #   "Untie what?" =~ BELT_UNTIE_NOT_FOUND
-      #   #=> 0
+      #   "Untie what?" =~ BELT_UNTIE_NOT_FOUND #=> 0
       # @see BELT_UNTIE_SUCCESS
       BELT_UNTIE_NOT_FOUND = /^Untie what/
-      # Pattern matched when wounds prevent untying from the belt.
+      # Matches when wounds prevent untying an item from a belt.
       #
+      # @return [Regexp]
       # @example
-      #   "Your wounds hinder your ability to do that." =~ BELT_UNTIE_WOUNDED
-      #   #=> 0
+      #   "Your wounds hinder your ability to do that." =~ BELT_UNTIE_WOUNDED #=> 0
       # @see BELT_UNTIE_SUCCESS
       BELT_UNTIE_WOUNDED = /^Your wounds hinder your ability to do that/
 
-      # Pattern matched when successfully picking up a crafting item.
+      # Matches a successful pickup of a crafting item.
       #
+      # @return [Regexp]
       # @example
-      #   "You get a pliers from your backpack." =~ GET_CRAFTING_SUCCESS
-      #   #=> 0
-      # @see GET_CRAFTING_ALREADY, GET_CRAFTING_PICKUP, GET_CRAFTING_HEAVY, GET_CRAFTING_TIED
+      #   "You get a tongs from your crafting bag." =~ GET_CRAFTING_SUCCESS #=> 0
+      # @see GET_CRAFTING_ALREADY
+      # @see GET_CRAFTING_NOT_FOUND_WHAT
+      # @see GET_CRAFTING_PICKUP
       GET_CRAFTING_SUCCESS = /^You get/
-      # Pattern matched when the crafting item is already in hand.
+      # Matches when an item is already in hand.
       #
+      # @return [Regexp]
       # @example
-      #   "You are already holding a pliers." =~ GET_CRAFTING_ALREADY
-      #   #=> 0
+      #   "You are already carrying a tongs." =~ GET_CRAFTING_ALREADY #=> 0
       # @see GET_CRAFTING_SUCCESS
       GET_CRAFTING_ALREADY = /^You are already/
-      # Pattern matched when the item is not found in the specified location.
+      # Matches when the character cannot find a requested crafting item (first variant).
       #
+      # @return [Regexp]
       # @example
-      #   "What do you want to get?" =~ GET_CRAFTING_NOT_FOUND_WHAT
-      #   #=> 0
+      #   "What do you mean, a tongs?" =~ GET_CRAFTING_NOT_FOUND_WHAT #=> 0
       # @see GET_CRAFTING_NOT_FOUND_WERE
       GET_CRAFTING_NOT_FOUND_WHAT = /^What do you/
-      # Pattern matched when the item cannot be found (alternate form).
+      # Matches when the character cannot find a requested crafting item (second variant).
       #
+      # @return [Regexp]
       # @example
-      #   "What were you referring to?" =~ GET_CRAFTING_NOT_FOUND_WERE
-      #   #=> 0
+      #   "What were you referring to?" =~ GET_CRAFTING_NOT_FOUND_WERE #=> 0
       # @see GET_CRAFTING_NOT_FOUND_WHAT
       GET_CRAFTING_NOT_FOUND_WERE = /^What were you/
-      # Pattern matched when picking up a crafting item from the ground.
+      # Matches a pickup of a crafting item (variant of GET_CRAFTING_SUCCESS).
       #
+      # @return [Regexp]
       # @example
-      #   "You pick up a pliers." =~ GET_CRAFTING_PICKUP
-      #   #=> 0
-      # @see GET_CRAFTING_SUCCESS
+      #   "You pick up a tongs." =~ GET_CRAFTING_PICKUP #=> 0
       GET_CRAFTING_PICKUP = /^You pick up/
-      # Pattern matched when an item is too heavy to lift.
+      # Matches when an item is too heavy to pick up in one attempt.
       #
+      # @return [Regexp]
       # @example
-      #   "You can't quite lift it." =~ GET_CRAFTING_HEAVY
-      #   #=> 0
-      # @see GET_CRAFTING_SUCCESS
+      #   "You can't quite lift it." =~ GET_CRAFTING_HEAVY #=> 0
       GET_CRAFTING_HEAVY = /can't quite lift it/
-      # Pattern matched when an item must be untied before being retrieved.
+      # Matches when an item must be untied before being picked up.
       #
+      # @return [Regexp]
       # @example
-      #   "You should untie this from your belt first." =~ GET_CRAFTING_TIED
-      #   #=> 0
-      # @see UNTIE_SUCCESS
+      #   "You should untie that from your belt first." =~ GET_CRAFTING_TIED #=> 0
       GET_CRAFTING_TIED = /^You should untie/
 
-      # Pattern matched when successfully untying an item.
+      # Matches a successful untie of an item.
       #
+      # @return [Regexp]
       # @example
-      #   "You untie a pliers." =~ UNTIE_SUCCESS
-      #   #=> 0
-      # @see UNTIE_NOT_FOUND, UNTIE_WOUNDED
+      #   "You untie a tongs." =~ UNTIE_SUCCESS #=> 0
+      # @see UNTIE_NOT_FOUND
+      # @see UNTIE_WOUNDED
       UNTIE_SUCCESS = /^You (remove|untie)/
-      # Pattern matched when the item to untie cannot be found.
+      # Matches when the character cannot find an item to untie.
       #
+      # @return [Regexp]
       # @example
-      #   "Untie what?" =~ UNTIE_NOT_FOUND
-      #   #=> 0
+      #   "Untie what?" =~ UNTIE_NOT_FOUND #=> 0
       # @see UNTIE_SUCCESS
       UNTIE_NOT_FOUND = /^Untie what/
-      # Pattern matched when wounds prevent untying an item.
+      # Matches when wounds prevent untying an item.
       #
+      # @return [Regexp]
       # @example
-      #   "Your wounds hinder your ability to do that." =~ UNTIE_WOUNDED
-      #   #=> 0
+      #   "Your wounds hinder your ability to do that." =~ UNTIE_WOUNDED #=> 0
       # @see UNTIE_SUCCESS
       UNTIE_WOUNDED = /^Your wounds hinder your ability to do that/
 
@@ -197,12 +205,13 @@ module Lich
       PUT_BAG_TUCK = 'You tuck'
       PUT_BAG_PUT = 'You put your'
       PUT_BAG_NOT_FOUND = 'What were you referring to'
-      # Pattern matched when an item is too large to fit in a container.
+      # Matches when an item is too large to fit in a container.
       #
+      # @return [Regexp]
       # @example
-      #   "The pliers is too large to fit in your backpack." =~ PUT_BAG_TOO_BIG
-      #   #=> match at "too large to fit"
-      # @see PUT_BAG_WEIRD, PUT_BAG_NO_ROOM
+      #   "That is too big to fit in your crafting bag." =~ PUT_BAG_TOO_BIG #=> 0
+      # @see PUT_BAG_TUCK
+      # @see PUT_BAG_NO_ROOM
       PUT_BAG_TOO_BIG = /is too \w+ to fit/
       PUT_BAG_WEIRD = "Weirdly, you can't manage"
       PUT_BAG_NO_ROOM = "There's no room"
@@ -224,20 +233,24 @@ module Lich
 
       CONSUMABLE_GET_SUCCESS = 'You get'
       CONSUMABLE_GET_NOT_FOUND = 'What were'
-      # Pattern that extracts a numeric count (uses, yards, etc.) from a message.
-      # Captures the number in group 1.
+      # Matches and captures a count of uses from a consumable item response.
       #
+      # Captures the numeric count in group 1.
+      #
+      # @return [Regexp]
       # @example
-      #   "The oil has 25 uses remaining".match(COUNT_USES_PATTERN)[1] #=> "25"
-      # @see COUNT_USES_MESSAGES, #check_consumables
+      #   "The oil has 5 uses remaining"[COUNT_USES_PATTERN, 1] #=> "5"
+      # @see COUNT_USES_MESSAGES
       COUNT_USES_PATTERN = /(\d+)/.freeze
-      # Array of regex patterns used to extract the remaining uses from consumable items.
-      # Each pattern should contain a capture group for the numeric count.
+      # Array of patterns used to match consumable item use-count responses.
       #
+      # Patterns capture the numeric count in group 1.
+      #
+      # @return [Array<String>]
       # @example
-      #   COUNT_USES_MESSAGES.any? { |msg| "The oil has 5 uses remaining" =~ msg }
-      #   #=> true
-      # @see COUNT_USES_PATTERN, #check_consumables
+      #   COUNT_USES_MESSAGES[0] #=> "The .* has (\\d+) uses remaining"
+      # @see COUNT_USES_PATTERN
+      # @see check_consumables
       COUNT_USES_MESSAGES = [
         'The .* has (\d+) uses remaining',
         'You count out (\d+) yards of material there'
@@ -250,127 +263,139 @@ module Lich
 
       BUNDLE_SUCCESS = 'You notate the'
       BUNDLE_EXPIRED = 'This work order has expired'
-      # Pattern matched when bundling fails because the item quality is too low for the work order.
+      # Matches when bundling a crafted item fails due to insufficient quality.
       #
+      # @return [String]
       # @example
-      #   "The work order requires items of a higher quality" =~ BUNDLE_QUALITY
-      #   #=> 0
-      # @see BUNDLE_WRONG_TYPE, BUNDLE_EXPIRED
+      #   "The work order requires items of a higher quality."
       BUNDLE_QUALITY = 'The work order requires items of a higher quality'
-      # Pattern matched when bundling fails because the item type does not match the work order.
+      # Matches when bundling a crafted item fails due to incorrect item type.
       #
+      # @return [String]
       # @example
-      #   "That isn't the correct type of item for this work order." =~ BUNDLE_WRONG_TYPE
-      #   #=> 0
-      # @see BUNDLE_QUALITY, BUNDLE_EXPIRED
+      #   "That isn't the correct type of item for this work order."
       BUNDLE_WRONG_TYPE = "That isn't the correct type of item for this work order."
       BUNDLE_NOT_HOLDING = 'You need to be holding'
 
-      # Pattern matched when tapping a fount that is located inside a bag.
+      # Matches a successful tap of a fount inside a container.
       #
+      # @return [Regexp]
       # @example
-      #   "You tap the fount inside your backpack." =~ FOUNT_TAP_IN_BAG
-      #   #=> 0
-      # @see FOUNT_TAP_ON_BAG, FOUNT_TAP_NOT_FOUND
+      #   "You tap the water fount inside your crafting bag." =~ FOUNT_TAP_IN_BAG #=> 0
+      # @see FOUNT_TAP_ON_BAG
+      # @see FOUNT_TAP_NOT_FOUND
       FOUNT_TAP_IN_BAG = /You tap .* inside your .*/
-      # Pattern matched when tapping a fount that is on the player's person (but not in a bag).
+      # Matches a successful tap of a fount on a container.
       #
+      # @return [Regexp]
       # @example
-      #   "You tap the fount on your belt." =~ FOUNT_TAP_ON_BAG
-      #   #=> 0
-      # @see FOUNT_TAP_IN_BAG, FOUNT_TAP_NOT_FOUND
+      #   "You tap the water fount on your crafting bag." =~ FOUNT_TAP_ON_BAG #=> 0
+      # @see FOUNT_TAP_IN_BAG
+      # @see FOUNT_TAP_NOT_FOUND
       FOUNT_TAP_ON_BAG = /You tap .*your .*/
-      FOUNT_TAP_NOT_FOUND = /I could not find what you were referring to./
-      FOUNT_TAP_ON_BRAZIER = /You tap .* atop a .*brazier./
-      # Pattern that extracts remaining uses from analyzing a fount or other crafting tool.
-      # Captures the numeric uses in the named group `:uses`.
+      # Matches when the character cannot find the fount to tap.
       #
+      # @return [Regexp]
       # @example
-      #   "This appears to be a crafting tool and it has approximately 42 uses remaining".match(FOUNT_ANALYZE_PATTERN)[:uses]
-      #   #=> "42"
-      # @see #fount, #order_enchant
+      #   "I could not find what you were referring to." =~ FOUNT_TAP_NOT_FOUND #=> 0
+      # @see FOUNT_TAP_IN_BAG
+      FOUNT_TAP_NOT_FOUND = /I could not find what you were referring to./
+      # Matches a successful tap of a fount on a brazier.
+      #
+      # @return [Regexp]
+      # @example
+      #   "You tap the water fount atop a large brazier." =~ FOUNT_TAP_ON_BRAZIER #=> 0
+      # @see FOUNT_TAP_IN_BAG
+      FOUNT_TAP_ON_BRAZIER = /You tap .* atop a .*brazier./
+      # Matches the analyze response for a fount, capturing remaining uses.
+      #
+      # Captures the use count in the `uses` named group.
+      #
+      # @return [Regexp]
+      # @example
+      #   "This appears to be a crafting tool and it has approximately 42 uses remaining" =~ FOUNT_ANALYZE_PATTERN #=> 0
       FOUNT_ANALYZE_PATTERN = /This appears to be a crafting tool and it has approximately (?<uses>\d+) uses remaining/.freeze
 
       BRAZIER_NOTHING = 'There is nothing on there'
-      # Pattern matching brazier contents from a look command.
-      # Captures the items list in the named group `:items`.
+      # Matches the response when looking on a brazier that contains items.
       #
+      # Captures the item list in the `items` named group.
+      #
+      # @return [Regexp]
       # @example
-      #   "On the brass brazier you see some molten silver and a quill.".match(BRAZIER_SEE_PATTERN)[:items]
-      #   #=> "some molten silver and a quill"
-      # @see BRAZIER_NOTHING, #clean_brazier?
+      #   "On the large brazier you see some bronze and a brush." =~ BRAZIER_SEE_PATTERN #=> 0
+      # @see BRAZIER_NOTHING
       BRAZIER_SEE_PATTERN = /On the (?:.*)brazier you see (?<items>.*)\./.freeze
       BRAZIER_CLEAN_PREPARE = 'You prepare to clean off the brazier'
       BRAZIER_CLEAN_NOTHING = 'There is nothing'
       BRAZIER_CLEAN_NOT_LIT = 'The brazier is not currently lit'
-      # Pattern matched when cleaning a lit brazier causes a flame hazard.
+      # Matches when cleaning a lit brazier causes a dangerous flame response.
       #
+      # @return [String]
       # @example
-      #   "a massive ball of flame jets forward and singes everything nearby" =~ BRAZIER_CLEAN_FLAME
-      #   #=> 0
-      # @see BRAZIER_CLEAN_PREPARE, BRAZIER_CLEAN_NOT_LIT
+      #   "a massive ball of flame jets forward and singes everything nearby"
       BRAZIER_CLEAN_FLAME = 'a massive ball of flame jets forward and singes everything nearby'
       BRAZIER_GET_SUCCESS = 'You get'
 
-      # Pattern matched when rummaging for materials yields no results.
+      # Matches when rummaging through a container yields no matching materials.
       #
+      # @return [Regexp]
       # @example
-      #   "Looking for crafting materials but there is nothing in there like that." =~ RUMMAGE_NOTHING
-      #   #=> 0
-      # @see RUMMAGE_SUCCESS_PATTERN, #count_raw_metal
+      #   "You look through the crafting materials but there is nothing in there like that." =~ RUMMAGE_NOTHING #=> 0
+      # @see RUMMAGE_CLOSED
+      # @see RUMMAGE_NOT_FOUND
       RUMMAGE_NOTHING = /crafting materials but there is nothing in there like that\.$/
-      # Pattern matched when attempting to rummage in a closed container.
+      # Matches when the character attempts to rummage through a closed container.
       #
+      # @return [Regexp]
       # @example
-      #   "While it's closed you can't rummage through that." =~ RUMMAGE_CLOSED
-      #   #=> 0
-      # @see RUMMAGE_SUCCESS_PATTERN, #count_raw_metal
+      #   "While it's closed, you can't rummage through that." =~ RUMMAGE_CLOSED #=> 0
+      # @see RUMMAGE_NOTHING
       RUMMAGE_CLOSED = /While it\'s closed/
-      # Pattern matched when the container cannot be found.
+      # Matches when the container for rummaging cannot be found.
       #
+      # @return [Regexp]
       # @example
-      #   "I don't know what you are referring to." =~ RUMMAGE_NOT_FOUND
-      #   #=> 0
-      # @see RUMMAGE_SUCCESS_PATTERN, #count_raw_metal
+      #   "I don't know what you are referring to." =~ RUMMAGE_NOT_FOUND #=> 0
+      # @see RUMMAGE_CLOSED
       RUMMAGE_NOT_FOUND = /I don\'t know what you are referring to/
-      # Pattern matched when attempting to rummage while invisible.
+      # Matches when the character is invisible and cannot rummage effectively.
       #
+      # @return [Regexp]
       # @example
-      #   "You feel about blindly, unable to see what you're looking for." =~ RUMMAGE_INVISIBLE
-      #   #=> 0
-      # @see RUMMAGE_SUCCESS_PATTERN, #count_raw_metal
+      #   "You feel about blindly since you are invisible." =~ RUMMAGE_INVISIBLE #=> 0
       RUMMAGE_INVISIBLE = /You feel about/
-      # Pattern matched when rummaging would have no effect (e.g., container is empty or already sorted).
+      # Matches when rummaging would serve no purpose.
       #
+      # @return [Regexp]
       # @example
-      #   "That would accomplish nothing." =~ RUMMAGE_NOTHING_ACCOMPLISH
-      #   #=> 0
-      # @see RUMMAGE_SUCCESS_PATTERN
+      #   "That would accomplish nothing." =~ RUMMAGE_NOTHING_ACCOMPLISH #=> 0
       RUMMAGE_NOTHING_ACCOMPLISH = /That would accomplish nothing/
-      # Pattern that extracts the materials list from a successful rummage.
-      # Captures the materials in the named group `:materials`.
+      # Matches a successful rummage through a container, capturing the materials found.
       #
+      # Captures the material list in the `materials` named group.
+      #
+      # @return [Regexp]
       # @example
-      #   "You are looking for crafting materials and see 3 pieces of bronze ingot, 2 pieces of iron ingot.".match(RUMMAGE_SUCCESS_PATTERN)[:materials]
-      #   #=> "3 pieces of bronze ingot, 2 pieces of iron ingot"
-      # @see #count_raw_metal
+      #   "You look through the crafting materials and see 3 pieces of bronze, 2 pieces of iron." =~ RUMMAGE_SUCCESS_PATTERN #=> 0
+      # @see count_raw_metal
       RUMMAGE_SUCCESS_PATTERN = /looking for crafting materials and see (?<materials>.*)\.$/
 
       TAP_CRUCIBLE_NOT_FOUND = 'I could not'
-      # Pattern matched when successfully tapping a crucible.
+      # Matches a successful tap of a crucible.
       #
+      # @return [Regexp]
       # @example
-      #   "You tap the brass crucible." =~ TAP_CRUCIBLE_SUCCESS
-      #   #=> 0
-      # @see TAP_CRUCIBLE_NOT_FOUND, #find_empty_crucible
+      #   "You tap the crucible." =~ TAP_CRUCIBLE_SUCCESS #=> 0
+      # @see empty_crucible?
       TAP_CRUCIBLE_SUCCESS = /You tap.*crucible/
       TAP_ANVIL_NOT_FOUND = 'I could not'
-      # Pattern matched when successfully tapping an anvil.
+      # Matches a successful tap of an anvil.
       #
+      # @return [Regexp]
       # @example
-      #   "You tap the sturdy anvil." =~ TAP_ANVIL_SUCCESS
-      #   #=> 0
-      # @see TAP_ANVIL_NOT_FOUND, #find_anvil
+      #   "You tap the anvil." =~ TAP_ANVIL_SUCCESS #=> 0
+      # @see clean_anvil?
       TAP_ANVIL_SUCCESS = /You tap.*anvil/
       TAP_GRINDSTONE_NOT_FOUND = 'I could not'
       TAP_GRINDSTONE_SUCCESS = 'You tap.*grindstone'
@@ -379,14 +404,17 @@ module Lich
 
       SIGIL_COUNT_NOTHING = 'but there is nothing in there like that'
 
-      # Determines if the current crucible is empty, and clears any remaining contents if needed.
-      # If the crucible contains molten materials, tilts it; if it contains items, retrieves and discards them.
-      # Returns true only if the crucible ends in an empty state.
+      # Checks whether the current crucible is empty, removing any items found.
       #
-      # @return [Boolean] true if the crucible is empty or has been emptied, false if the crucible cannot be found
-      # @example
-      #   DRCC.empty_crucible? #=> true
-      # @see #find_empty_crucible
+      # Attempts to tap the crucible; if that succeeds and no other characters are
+      # present, returns true. Otherwise, iterates through the crucible contents,
+      # removing and disposing of each item, then recursively checks again. Handles
+      # molten material by tilting the crucible.
+      #
+      # @return [Boolean] true if the crucible is empty or can be emptied, false if
+      #   the crucible cannot be found or if it belongs to another player
+      # @note May spend roundtime on cleanup actions
+      # @see find_empty_crucible
       def empty_crucible?
         case result = DRC.bput('look in cruc',
                                LOOK_CRUCIBLE_NOT_FOUND,
@@ -418,15 +446,18 @@ module Lich
         end
       end
 
-      # Locates an empty crucible in the blacksmithing area for the given hometown.
-      # First checks if the current crucible is empty and free of other players.
-      # If not, searches through available crucibles and cleans the anvil when found.
+      # Locates an empty crucible suitable for blacksmithing in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
+      # First attempts to use the current crucible if one can be tapped and it is
+      # empty with no other players present. If that fails, searches through the
+      # town's configured crucible locations for one that meets the criteria, then
+      # verifies the anvil is also clean before returning.
+      #
+      # @param hometown [String] the town name (e.g., "Crossing", "Theren")
       # @return [void]
-      # @example
-      #   DRCC.find_empty_crucible("Crossing")
-      # @see #empty_crucible?, #clean_anvil?
+      # @note Performs room navigation and cleanup as needed
+      # @see empty_crucible?
+      # @see clean_anvil?
       def find_empty_crucible(hometown)
         return if DRC.bput('tap crucible', TAP_CRUCIBLE_NOT_FOUND, TAP_CRUCIBLE_SUCCESS) =~ TAP_CRUCIBLE_SUCCESS && (DRRoom.pcs - DRRoom.group_members).empty? && empty_crucible?
 
@@ -436,14 +467,16 @@ module Lich
         DRCC.clean_anvil?
       end
 
-      # Determines if the current anvil is clean, and removes any clutter if needed.
-      # If the anvil is uncluttered and ready, returns true.
-      # If items are present, attempts to clean them via drag or individual retrieval.
+      # Checks whether the current anvil is clean, removing any items found.
       #
-      # @return [Boolean] true if the anvil is clean or has been cleaned, false if the anvil cannot be found or cleaning fails
-      # @example
-      #   DRCC.clean_anvil? #=> true
-      # @see #find_anvil, LOOK_ANVIL_CLEAN
+      # Attempts to look on the anvil. If clean, returns true. If items are found,
+      # attempts to clean the anvil using the appropriate method (drag or manual
+      # removal), and recursively checks until clean.
+      #
+      # @return [Boolean] true if the anvil is clean or can be cleaned, false if the
+      #   anvil cannot be found or items belong to another player
+      # @note May spend roundtime on cleaning actions
+      # @see find_anvil
       def clean_anvil?
         case result = DRC.bput('look on anvil', LOOK_ANVIL_NOT_FOUND, LOOK_ANVIL_CLEAN, LOOK_ANVIL_SEE_PATTERN)
         when /surface looks clean and ready/i
@@ -477,28 +510,34 @@ module Lich
         end
       end
 
-      # Locates an available spinning wheel for tailoring in the given hometown.
+      # Locates and navigates to an empty spinning wheel for tailoring in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
+      # Searches through the town's configured spinning wheel locations for an empty
+      # room and navigates there.
+      #
+      # @param hometown [String] the town name
       # @return [void]
-      # @example
-      #   DRCC.find_wheel("Crossing")
-      # @api private
+      # @note Performs room navigation
+      # @see find_sewing_room
+      # @see find_loom_room
       def find_wheel(hometown)
         wheels = get_data('crafting')['tailoring'][hometown]['spinning-rooms']
         idle_room = get_data('crafting')['tailoring'][hometown]['idle-room']
         DRCT.find_sorted_empty_room(wheels, idle_room)
       end
 
-      # Locates a clean anvil in the blacksmithing area for the given hometown.
-      # First checks if the current anvil is clean and free of other players.
-      # If not, searches through available anvils and checks the crucible when found.
+      # Locates an empty anvil suitable for blacksmithing in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
+      # First attempts to use the current anvil if one can be tapped, is clean, and
+      # no other players are present. If that fails, searches through the town's
+      # configured anvil locations for one that meets the criteria, then verifies
+      # the crucible is also empty before returning.
+      #
+      # @param hometown [String] the town name
       # @return [void]
-      # @example
-      #   DRCC.find_anvil("Crossing")
-      # @see #clean_anvil?, #find_empty_crucible
+      # @note Performs room navigation and cleanup as needed
+      # @see clean_anvil?
+      # @see empty_crucible?
       def find_anvil(hometown)
         return if DRC.bput('tap anvil', TAP_ANVIL_NOT_FOUND, TAP_ANVIL_SUCCESS) =~ TAP_ANVIL_SUCCESS && (DRRoom.pcs - DRRoom.group_members).empty? && clean_anvil?
 
@@ -508,14 +547,15 @@ module Lich
         DRCC.empty_crucible?
       end
 
-      # Locates an available grindstone in the blacksmithing area for the given hometown.
-      # Returns unless a grindstone is not found in the current location.
+      # Locates and navigates to a grindstone for blacksmithing in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
+      # If no grindstone can be tapped at the current location, searches through
+      # the town's configured grindstone locations and navigates to an empty one.
+      #
+      # @param hometown [String] the town name
       # @return [void]
-      # @example
-      #   DRCC.find_grindstone("Crossing")
-      # @api private
+      # @note Performs room navigation
+      # @see find_press_grinder_room
       def find_grindstone(hometown)
         return unless DRC.bput('tap grindstone', TAP_GRINDSTONE_NOT_FOUND, TAP_GRINDSTONE_SUCCESS) == TAP_GRINDSTONE_NOT_FOUND
 
@@ -524,15 +564,18 @@ module Lich
         DRCT.find_sorted_empty_room(grindstones, idle_room)
       end
 
-      # Locates a sewing room for tailoring in the given hometown, or walks to an override location if provided.
+      # Locates and navigates to a sewing room for tailoring in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
-      # @param override [String, nil] an optional room ID to walk to directly, bypassing the search
+      # If an override room ID is provided, navigates directly there. Otherwise,
+      # searches through the town's configured sewing room locations for an empty
+      # room and navigates there.
+      #
+      # @param hometown [String] the town name
+      # @param override [Integer, nil] optional room ID to navigate to instead of searching
       # @return [void]
-      # @example
-      #   DRCC.find_sewing_room("Crossing")
-      #   DRCC.find_sewing_room("Crossing", "12345")
-      # @api private
+      # @note Performs room navigation
+      # @see find_loom_room
+      # @see find_shaping_room
       def find_sewing_room(hometown, override = nil)
         if override
           DRCT.walk_to(override)
@@ -543,15 +586,17 @@ module Lich
         end
       end
 
-      # Locates a loom room for tailoring in the given hometown, or walks to an override location if provided.
+      # Locates and navigates to a loom room for tailoring in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
-      # @param override [String, nil] an optional room ID to walk to directly, bypassing the search
+      # If an override room ID is provided, navigates directly there. Otherwise,
+      # searches through the town's configured loom room locations for an empty room
+      # and navigates there.
+      #
+      # @param hometown [String] the town name
+      # @param override [Integer, nil] optional room ID to navigate to instead of searching
       # @return [void]
-      # @example
-      #   DRCC.find_loom_room("Crossing")
-      #   DRCC.find_loom_room("Crossing", "12345")
-      # @api private
+      # @note Performs room navigation
+      # @see find_sewing_room
       def find_loom_room(hometown, override = nil)
         if override
           DRCT.walk_to(override)
@@ -562,15 +607,17 @@ module Lich
         end
       end
 
-      # Locates a shaping room for shaping in the given hometown, or walks to an override location if provided.
+      # Locates and navigates to a shaping room for alchemy/shaping in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
-      # @param override [String, nil] an optional room ID to walk to directly, bypassing the search
+      # If an override room ID is provided, navigates directly there. Otherwise,
+      # searches through the town's configured shaping room locations for an empty
+      # room and navigates there.
+      #
+      # @param hometown [String] the town name
+      # @param override [Integer, nil] optional room ID to navigate to instead of searching
       # @return [void]
-      # @example
-      #   DRCC.find_shaping_room("Crossing")
-      #   DRCC.find_shaping_room("Crossing", "12345")
-      # @api private
+      # @note Performs room navigation
+      # @see find_press_grinder_room
       def find_shaping_room(hometown, override = nil)
         if override
           DRCT.walk_to(override)
@@ -581,14 +628,15 @@ module Lich
         end
       end
 
-      # Locates a press/grinder room for remedies in the given hometown.
-      # Returns unless a grinder is not found in the current location.
+      # Locates and navigates to a press-grinder room for alchemy remedies in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
+      # If no grinder can be tapped at the current location, navigates to the first
+      # configured press-grinder room in the town.
+      #
+      # @param hometown [String] the town name
       # @return [void]
-      # @example
-      #   DRCC.find_press_grinder_room("Crossing")
-      # @api private
+      # @note Performs room navigation
+      # @see find_grindstone
       def find_press_grinder_room(hometown)
         return unless DRC.bput('tap grinder', TAP_GRINDER_NOT_FOUND, TAP_GRINDER_SUCCESS) == TAP_GRINDER_NOT_FOUND
 
@@ -596,16 +644,17 @@ module Lich
         DRCT.walk_to(pressgrinderrooms[0])
       end
 
-      # Locates a brazier room for artificing in the given hometown, or walks to an override location if provided.
-      # Searches for a clean brazier and an empty crafting area.
+      # Locates and navigates to an enchanting room for artificing in the given town.
       #
-      # @param hometown [String] the town name, e.g. "Crossing"
-      # @param override [String, nil] an optional room ID to walk to directly, bypassing the search
+      # If an override room ID is provided, navigates directly there. Otherwise,
+      # searches through the town's configured brazier room locations for an empty
+      # clean room (no other players present, brazier is clean) and navigates there.
+      #
+      # @param hometown [String] the town name
+      # @param override [Integer, nil] optional room ID to navigate to instead of searching
       # @return [void]
-      # @example
-      #   DRCC.find_enchanting_room("Crossing")
-      #   DRCC.find_enchanting_room("Crossing", "12345")
-      # @see #clean_brazier?
+      # @note Performs room navigation and cleanup as needed
+      # @see clean_brazier?
       def find_enchanting_room(hometown, override = nil)
         if override
           DRCT.walk_to(override)
@@ -616,17 +665,21 @@ module Lich
         end
       end
 
-      # Looks up a recipe by partial or exact name from a list of recipes.
-      # If multiple matches are found, prompts the user to select the desired recipe.
-      # Exact matches take precedence over partial matches.
+      # Searches recipes for one matching the given item name.
       #
-      # @param recipes [Array<Hash>] array of recipe hashes, each with a 'name' key
-      # @param item_name [String] the partial or full name of the recipe to find
-      # @return [Hash, nil] the matching recipe hash, or nil if no recipes match
+      # Attempts a case-insensitive regex match first. If exactly one recipe matches,
+      # returns it. If zero or multiple matches are found (and no exact match), prompts
+      # the user to select from the list. Returns nil if no recipes match.
+      #
+      # @param recipes [Array<Hash>] array of recipe hashes from base-recipes.yaml
+      # @param item_name [String] the item name to search for
+      # @return [Hash, nil] the matching recipe hash, or nil if no match or user selection fails
       # @example
-      #   recipes = [{"name" => "a metal ring cap", "noun" => "cap"}]
-      #   DRCC.recipe_lookup(recipes, "metal ring") #=> {"name" => "a metal ring cap", "noun" => "cap"}
-      # @api private
+      #   recipes = get_data('recipes').crafting_recipes('armorsmithing')
+      #   recipe = DRCC.recipe_lookup(recipes, "cap")
+      # @note Displays user prompts and beeps on failure
+      # @see find_recipe
+      # @see find_recipe2
       def recipe_lookup(recipes, item_name)
         match_names = recipes.map { |x| x['name'] }.select { |x| x =~ /#{item_name}/i }
         case match_names.length
@@ -652,17 +705,21 @@ module Lich
         end
       end
 
-      # Finds the page number of a recipe in a crafting book by chapter and item name.
-      # Turns the book to the specified chapter and searches the page content.
-      # Returns the first matching page number, or nil if not found.
+      # Finds and reads a recipe in a crafting reference book (older format).
       #
-      # @param chapter [Integer, String] the chapter number to turn to
-      # @param match_string [String] the recipe name or keyword to search for
-      # @param book [String] the book name, defaults to 'book'
-      # @return [String, nil] the page number of the matching recipe, or nil if not found
+      # Turns the book to the specified chapter, then reads the page contents and
+      # searches for the match string. Returns the page number on which the recipe
+      # was found, or nil if not found. If the character is engaged in combat, prints
+      # a warning and attempts to exit.
+      #
+      # @param chapter [Integer] the chapter number to turn to
+      # @param match_string [String] the recipe name or pattern to search for
+      # @param book [String] the book noun (default: "book")
+      # @return [String, nil] the page number as a string, or nil if not found
       # @example
-      #   DRCC.find_recipe(5, "metal pike") #=> "23"
-      # @api private
+      #   page = DRCC.find_recipe(3, "metal cap", "book")
+      # @note Handles combat engagement gracefully
+      # @see find_recipe2
       def find_recipe(chapter, match_string, book = 'book')
         case DRC.bput("turn my #{book} to chapter #{chapter}", BOOK_CHAPTER_TURN_SUCCESS, BOOK_CHAPTER_DISTRACTED, BOOK_CHAPTER_ALREADY)
         when BOOK_CHAPTER_DISTRACTED
@@ -676,18 +733,22 @@ module Lich
         match&.[](:page)
       end
 
-      # Finds and studies a recipe in a crafting book by chapter and item name, with optional discipline.
-      # Turns the book to the specified chapter (and discipline if provided), searches the page content,
-      # and studies the recipe. Does not return a page number.
+      # Finds and studies a recipe in a crafting reference book (newer format).
       #
-      # @param chapter [Integer, String] the chapter number to turn to
-      # @param match_string [String] the recipe name or keyword to search for
-      # @param book [String] the book name, defaults to 'book'
-      # @param discipline [String, nil] an optional discipline section to turn to first
+      # Optionally turns the book to a discipline section, then turns to the specified
+      # chapter and reads to find the recipe. Upon finding the recipe, extracts the
+      # page number, turns to that page, and studies the book. Returns nil on completion.
+      # If the character is engaged in combat, prints a warning and attempts to exit.
+      #
+      # @param chapter [Integer] the chapter number to turn to
+      # @param match_string [String] the recipe name or pattern to search for
+      # @param book [String] the book noun (default: "book")
+      # @param discipline [String, nil] optional discipline section name to turn to first
       # @return [void]
       # @example
-      #   DRCC.find_recipe2(3, "metal pike", "book", "armorsmithing")
-      # @api private
+      #   DRCC.find_recipe2(3, "metal cap", "book", "Armorsmithing")
+      # @note Handles combat engagement gracefully and generates roundtime
+      # @see find_recipe
       def find_recipe2(chapter, match_string, book = 'book', discipline = nil)
         DRC.bput("turn my #{book} to discipline #{discipline}", BOOK_DISCIPLINE_SUCCESS) unless discipline.nil?
         case DRC.bput("turn my #{book} to chapter #{chapter}", BOOK_CHAPTER2_SUCCESS, BOOK_CHAPTER2_ALREADY, BOOK_CHAPTER_DISTRACTED)
@@ -704,22 +765,25 @@ module Lich
         DRC.bput("study my #{book}", BOOK_STUDY_SUCCESS)
       end
 
-      # Retrieves a crafting item from a belt, bag, or ground.
-      # First checks if the item is on a belt and unties it if present.
-      # Then attempts to retrieve the item from the bag or from your hands.
-      # If the item is not found and skip_exit is false, stops the script with an error.
-      # If the item is too heavy or tied, recursively attempts to address the issue.
+      # Acquires a crafting item, handling various storage and retrieval scenarios.
       #
-      # @param name [String] the name of the item to retrieve, e.g. "pliers"
-      # @param bag [String] the name of the primary container, e.g. "backpack"
-      # @param bag_items [Array<String>] list of items stored in the bag
-      # @param belt [Hash, nil] a belt configuration hash with 'name' and 'items' keys, or nil
-      # @param skip_exit [Boolean] if true, returns silently on item not found; defaults to false
+      # First attempts to retrieve from a belt if configured and the item is listed
+      # there. Falls back to retrieving from a bag or from general inventory. Handles
+      # cases where the item is tied, too heavy to pick up easily, or missing. If
+      # wounded, invokes the safe-room script before retrying. Returns nil if the item
+      # cannot be found and skip_exit is false (default behavior exits the calling script).
+      #
+      # @param name [String] the item noun
+      # @param bag [String, nil] the bag noun, or nil to skip bag retrieval
+      # @param bag_items [Array<String>, nil] list of item nouns to check for in the bag
+      # @param belt [Hash, nil] belt hash with 'name' and 'items' keys, or nil to skip belt
+      # @param skip_exit [Boolean] if true, returns nil silently when item is not found;
+      #   if false (default), stops the script
       # @return [void]
+      # @note Generates roundtime and may perform room navigation
       # @example
-      #   belt_config = {"name" => "crafting belt", "items" => ["pliers"]}
-      #   DRCC.get_crafting_item("pliers", "backpack", ["pliers"], belt_config)
-      # @see #stow_crafting_item
+      #   DRCC.get_crafting_item("tongs", "bag", ["tongs", "oil"], {"name" => "belt", "items" => ["tongs"]})
+      # @see stow_crafting_item
       def get_crafting_item(name, bag, bag_items, belt, skip_exit = false)
         waitrt?
         if belt && belt['items'].find { |item| /\b#{name}/i =~ item || /\b#{item}/i =~ name }
@@ -762,18 +826,21 @@ module Lich
       end
 
       # Stows a crafting item into a belt or bag.
-      # If a belt is configured and the item matches belt items, attempts to tie the item to the belt.
-      # Otherwise, puts the item into the bag. Falls back to stow command if the item is too large.
-      # Returns true on success, false on failure to tie to belt or put in bag.
       #
-      # @param name [String] the name of the item to stow, or nil
-      # @param bag [String] the name of the primary container, e.g. "backpack"
-      # @param belt [Hash, nil] a belt configuration hash with 'name' and 'items' keys, or nil
-      # @return [Boolean] true if the item was stowed, false if tying to belt failed or put failed
+      # First checks whether the item should be attached to the belt. If so, attempts
+      # to tie it there. If not (or if belt is nil), puts the item into the specified
+      # bag. Falls back to the general stow command if the item is too large for the
+      # bag. Returns nil if a belt-tie fails (with an error message), true on success.
+      #
+      # @param name [String, nil] the item noun, or nil to return early
+      # @param bag [String] the bag noun
+      # @param belt [Hash, nil] belt hash with 'name' and 'items' keys, or nil to skip belt
+      # @return [Boolean, nil] true on success, nil if name is falsy, or false if
+      #   put fails in an unexpected way
+      # @note Generates roundtime
       # @example
-      #   belt_config = {"name" => "crafting belt", "items" => ["pliers"]}
-      #   DRCC.stow_crafting_item("pliers", "backpack", belt_config) #=> true
-      # @see #get_crafting_item
+      #   DRCC.stow_crafting_item("tongs", "bag", {"name" => "belt", "items" => ["tongs"]})
+      # @see get_crafting_item
       def stow_crafting_item(name, bag, belt)
         return unless name
 
@@ -798,21 +865,27 @@ module Lich
         true
       end
 
-      # Calculates the total crafting cost in the town's local currency.
-      # Sums the cost of stock materials (if applicable) and purchasable parts, then adds 1000 for consumables.
-      # Converts to the town's currency (kronars, lirums, or dokoras) using appropriate exchange rates.
+      # Calculates the total copper cost to craft items based on recipe, materials, and parts.
       #
-      # @param recipe [Hash] a recipe hash from base-recipes with at least a 'volume' key
-      # @param hometown [String] the town name, e.g. "Crossing"
-      # @param parts [Array<String>, nil] array of part names to purchase, or nil
+      # Computes the cost of stock material (if applicable) and any purchasable parts,
+      # then converts the total to the local currency. Non-purchasable parts (e.g.,
+      # gems, found materials) are excluded. Adds a fixed 1000 copper surcharge for
+      # consumables (water, coal, etc.).
+      #
+      # @param recipe [Hash] recipe hash from base-recipes.yaml, e.g.
+      #   {"name" => "a metal cap", "noun" => "cap", "volume" => 8, "type" => "armorsmithing", ...}
+      # @param hometown [String] the town name (e.g., "Crossing")
+      # @param parts [Array<String>, nil] list of part names required, or nil/false
       # @param quantity [Integer] number of items to craft
-      # @param material [Hash, nil] a stock material hash from base-crafting with 'stock-value', 'stock-volume', and 'stock-name' keys, or nil
-      # @return [Integer] the total crafting cost in the town's currency
+      # @param material [Hash, nil] stock material hash from base-crafting, e.g.
+      #   {"stock-volume" => 5, "stock-number" => 11, "stock-name" => "bronze", "stock-value" => 562},
+      #   or nil/false if using no stock material (e.g., alchemy, artificing)
+      # @return [Integer] total copper cost, converted to local town currency
       # @example
-      #   recipe = {"volume" => 20, "type" => "armorsmithing"}
-      #   material = {"stock-value" => 50, "stock-volume" => 5, "stock-name" => "bronze"}
-      #   DRCC.crafting_cost(recipe, "Crossing", nil, 1, material) #=> 1200
-      # @see #repair_own_tools
+      #   recipe = get_data('recipes').crafting_recipes('armorsmithing')["a metal cap"]
+      #   material = get_data('crafting')['stock']["bronze"]
+      #   cost = DRCC.crafting_cost(recipe, "Crossing", ["sufil", "muljin"], 5, material)
+      # @see PARTS_CANNOT_PURCHASE
       def crafting_cost(recipe, hometown, parts, quantity, material)
         # To use this method, you'll need to pass:
         # recipe => This is a hash drawn directly from base-recipes eg {name: 'a metal ring cap', noun: 'cap', volume: 8, type: 'armorsmithing',etc}
@@ -854,21 +927,28 @@ module Lich
         end
       end
 
-      # Repairs a list of crafting tools using oil and wire brush, tracking immune tools to prevent over-repair.
-      # Maintains a UserVars.immune_list hash of tools that have been recently repaired (7000 second cooldown).
-      # Retrieves oil and brush for each tool, applies them in sequence, and stows the results.
-      # Handles wounds by routing to safe-room and resuming repair.
+      # Repairs one or more crafting tools using wire brush and oil.
       #
-      # @param info [Hash] tool information hash with keys 'finisher-room', 'finisher-number', 'wire-brush-number'
-      # @param tools [String, Array<String>] tool name(s) to repair
-      # @param bag [String] the name of the primary container
-      # @param bag_items [Array<String>] list of items stored in the bag
-      # @param belt [Hash, nil] a belt configuration hash
+      # Maintains an immune list of tools recently repaired successfully (7000-second
+      # cooldown per Proper Forging Tool Care). For each eligible tool, retrieves it,
+      # then iterates through wire brush and oil, applying each in sequence until the
+      # tool no longer needs repair. Handles cases where tools are too heavy, wounds
+      # prevent repair, or combatant engagement. Restocks consumables as needed.
+      #
+      # @param info [Hash] location info with 'finisher-room', 'finisher-number', and
+      #   optional 'wire-brush-number' (default 10)
+      # @param tools [String, Array<String>] tool noun(s) to repair
+      # @param bag [String] the bag noun for storing items
+      # @param bag_items [Array<String>] list of item nouns in the bag
+      # @param belt [Hash, nil] belt hash with 'name' and 'items' keys
       # @return [void]
+      # @note Uses UserVars.immune_list and Flags['proper-repair'] for state tracking;
+      #   generates significant roundtime
       # @example
-      #   info = {"finisher-room" => 123, "finisher-number" => 45, "wire-brush-number" => 10}
-      #   DRCC.repair_own_tools(info, "pliers", "backpack", [], nil)
-      # @see #get_crafting_item, #stow_crafting_item, #check_consumables
+      #   info = { "finisher-room" => 5678, "finisher-number" => 9, "wire-brush-number" => 10 }
+      #   DRCC.repair_own_tools(info, ["tongs", "tongs"], "bag", ["oil", "wire brush"], belt)
+      # @see check_consumables
+      # @see get_crafting_item
       def repair_own_tools(info, tools, bag, bag_items, belt)
         UserVars.immune_list ||= {} # declaring a hash unless hash already
         tools = tools.to_a # Convert single tool string to array
@@ -919,21 +999,26 @@ module Lich
         nil
       end
 
-      # Checks if a consumable item has sufficient remaining uses, and orders more if needed.
-      # Retrieves the item, counts its uses via the count command, and disposes/reorders if uses are below the threshold.
-      # Always stows the item and returns to the original room on completion.
+      # Checks the remaining uses on a consumable item and restocks if necessary.
       #
-      # @param name [String] the consumable item name, e.g. "oil"
-      # @param room [Integer, String] the stock room ID to order from
-      # @param number [Integer] the stock number to order
-      # @param bag [String] the name of the primary container
-      # @param bag_items [Array<String>] list of items stored in the bag
-      # @param belt [Hash, nil] a belt configuration hash
-      # @param count [Integer] minimum number of uses required; defaults to 3
+      # Attempts to retrieve the consumable from the bag and count its uses. If the
+      # use count is below the required threshold, disposes of the current item,
+      # navigates to the stock room, orders a replacement, and verifies the restock.
+      # Finally, returns to the original room and stows the item.
+      #
+      # @param name [String] the consumable item noun (e.g., "oil", "wire brush")
+      # @param room [Integer] the stock/shop room ID
+      # @param number [Integer] the shop NPC number to order from
+      # @param bag [String] the bag noun
+      # @param bag_items [Array<String>] list of item nouns in the bag
+      # @param belt [Hash, nil] belt hash, or nil to skip belt handling
+      # @param count [Integer] minimum required uses (default: 3)
       # @return [void]
+      # @note Performs room navigation and generates roundtime during ordering
       # @example
-      #   DRCC.check_consumables("oil", 12345, 67, "backpack", [], nil, 5)
-      # @see #repair_own_tools
+      #   DRCC.check_consumables("oil", 5678, 3, "bag", ["oil", "brush"], belt, 5)
+      # @see get_crafting_item
+      # @see repair_own_tools
       def check_consumables(name, room, number, bag, bag_items, belt, count = 3)
         current = Room.current.id
         case DRC.bput("get my #{name} from my #{bag}", CONSUMABLE_GET_SUCCESS, CONSUMABLE_GET_NOT_FOUND)
@@ -952,21 +1037,28 @@ module Lich
         DRCT.walk_to(current)
       end
 
-      # Retrieves and adjusts tongs to the requested configuration (shovel or tongs), tracking state via @tongs_status.
-      # Supports three usage modes: 'shovel', 'tongs', or 'reset shovel'/'reset tongs' to initialize state.
-      # Returns true if the tongs are in the requested configuration, false if not adjustable or retrieval fails.
-      # Routes to safe-room if wounds prevent adjustment.
+      # Acquires and adjusts tongs to the requested configuration (tongs or shovel mode).
       #
-      # @param usage [String] the desired tongs configuration: 'shovel', 'tongs', 'reset shovel', or 'reset tongs'
-      # @param bag [String] the name of the primary container
-      # @param bag_items [Array<String>] list of items stored in the bag
-      # @param belt [Hash, nil] a belt configuration hash
-      # @param adjustable_tongs [Boolean] whether the tongs can be adjusted; defaults to false
-      # @return [Boolean] true if tongs are in the requested configuration, false otherwise
+      # Manages tongs state via @tongs_status instance variable. Supports two primary
+      # use cases ('tongs' and 'shovel') plus two reset modes ('reset tongs' and
+      # 'reset shovel') to determine initial state. Returns false if the tongs are not
+      # adjustable but a different configuration is needed. Returns true when tongs are
+      # in the requested state and in hand. If wounds prevent adjustment, calls safe-room
+      # and retries. Non-adjustable tongs are always usable in their fixed mode.
+      #
+      # @param usage [String] the desired configuration: 'tongs', 'shovel', 'reset tongs',
+      #   or 'reset shovel'
+      # @param bag [String] the bag noun
+      # @param bag_items [Array<String>] list of item nouns in the bag
+      # @param belt [Hash, nil] belt hash, or nil to skip belt handling
+      # @param adjustable_tongs [Boolean] whether the tongs support adjustment
+      #   (default: false)
+      # @return [Boolean] true if tongs are in the requested state and ready, false if
+      #   the request cannot be fulfilled
+      # @note Generates roundtime and may perform room navigation on wound handling
       # @example
-      #   DRCC.get_adjust_tongs?("reset shovel", "backpack", [], nil)
-      #   #=> true (if tongs are adjustable)
-      # @see #get_crafting_item, #stow_crafting_item
+      #   DRCC.get_adjust_tongs?("shovel", "bag", ["tongs"], belt, true)
+      # @see get_crafting_item
       def get_adjust_tongs?(usage, bag, bag_items, belt, adjustable_tongs = false)
         case usage
         when 'shovel' # looking for a shovel
@@ -1028,18 +1120,23 @@ module Lich
         end
       end
 
-      # Bundles a crafted item with a logbook work order and discards rejected items.
-      # Attempts to retrieve the logbook, bundle the item, and handle various failure modes.
-      # Disposes of items that fail quality, type, or expiration checks.
-      # Stows the logbook when complete.
+      # Bundles a crafted item with a work-order logbook and disposes of it on failure.
       #
-      # @param logbook [String] the logbook type, e.g. "engineering"
-      # @param noun [String] the crafted item noun to bundle
-      # @param container [String] the container to retrieve items from
+      # Retrieves the specified logbook, attempts to bundle the item with it. If the
+      # bundle succeeds or fails due to expired/low-quality/wrong-type work orders,
+      # disposes of the item. If the bundle fails because the item is not held,
+      # attempts to retrieve the item from the container and retry. Finally, stows or
+      # disposes of the logbook.
+      #
+      # @param logbook [String] the logbook type noun (e.g., "armorsmith", "weaponsmith")
+      # @param noun [String] the crafted item noun
+      # @param container [String] the container noun to retrieve items from if needed
       # @return [void]
+      # @note Generates roundtime
       # @example
-      #   DRCC.logbook_item("engineering", "mechanism", "backpack")
-      # @see #get_crafting_item, #stow_crafting_item
+      #   DRCC.logbook_item("armorsmith", "cap", "bag")
+      # @see DRCI.get_item?
+      # @see DRCI.dispose_trash
       def logbook_item(logbook, noun, container)
         DRCI.get_item?("#{logbook} logbook")
         bundle_result = DRC.bput("bundle my #{noun} with my logbook",
@@ -1066,18 +1163,22 @@ module Lich
         DRCI.put_away_item?("#{logbook} logbook", container) || DRCI.put_away_item?("#{logbook} logbook")
       end
 
-      # Orders multiple enchanting stock items from a stock room and stows them.
-      # Iterates for the specified count, ordering each item and stowing both hands on completion.
+      # Orders enchanting materials (sigil-scrolls, founts, etc.) from a shop.
       #
-      # @param stock_room [Integer, String] the stock room ID to order from
+      # Iterates the specified number of times, ordering one item per iteration and
+      # stowing the result into the bag or belt. Stops if both hands become full.
+      #
+      # @param stock_room [Integer] the shop room ID
       # @param stock_needed [Integer] the number of items to order
-      # @param stock_number [Integer] the stock number to order
-      # @param bag [String] the name of the primary container
-      # @param belt [Hash, nil] a belt configuration hash
+      # @param stock_number [Integer] the shop NPC number
+      # @param bag [String] the bag noun
+      # @param belt [Hash, nil] belt hash with 'name' and 'items' keys
       # @return [void]
+      # @note Performs room navigation and generates roundtime during ordering
       # @example
-      #   DRCC.order_enchant(12345, 3, 67, "backpack", nil)
-      # @see #fount
+      #   DRCC.order_enchant(1234, 5, 2, "bag", belt)
+      # @see fount
+      # @see check_for_existing_sigil?
       def order_enchant(stock_room, stock_needed, stock_number, bag, belt)
         stock_needed.times do
           DRCT.order_item(stock_room, stock_number)
@@ -1087,21 +1188,26 @@ module Lich
         end
       end
 
-      # Checks if a fount has sufficient uses for the requested crafting quantity, and orders more if needed.
-      # Taps the fount (in bag, on person, or on brazier), analyzes it, and reorders if uses are insufficient.
-      # Clears hands and orders stock via #order_enchant as needed.
+      # Acquires and maintains a fount (crafting tool for artificing).
       #
-      # @param stock_room [Integer, String] the stock room ID to order from
-      # @param stock_needed [Integer] the number of new founts to order if insufficient
-      # @param stock_number [Integer] the stock number to order
-      # @param quantity [Integer] the number of crafting operations to be performed
-      # @param bag [String] the name of the primary container
-      # @param bag_items [Array<String>] list of items stored in the bag
-      # @param belt [Hash, nil] a belt configuration hash
+      # Checks the fount's remaining uses. If uses are insufficient for the requested
+      # quantity, disposes of the fount and orders replacements. Attempts to tap the
+      # fount in the bag or on a brazier and analyzes the uses. Handles both locations
+      # (bag and brazier) gracefully.
+      #
+      # @param stock_room [Integer] the shop room ID
+      # @param stock_needed [Integer] the number of replacement founts to order if needed
+      # @param stock_number [Integer] the shop NPC number
+      # @param quantity [Integer] the number of uses required
+      # @param bag [String] the bag noun
+      # @param bag_items [Array<String>] list of item nouns in the bag
+      # @param belt [Hash, nil] belt hash, or nil to skip belt handling
       # @return [void]
+      # @note Performs room navigation and generates roundtime during ordering
       # @example
-      #   DRCC.fount(12345, 2, 67, 5, "backpack", ["fount"], nil)
-      # @see #order_enchant, #check_consumables
+      #   DRCC.fount(1234, 3, 2, 10, "bag", ["fount"], belt)
+      # @see order_enchant
+      # @see FOUNT_ANALYZE_PATTERN
       def fount(stock_room, stock_needed, stock_number, quantity, bag, bag_items, belt)
         case DRC.bput('tap my fount', FOUNT_TAP_IN_BAG, FOUNT_TAP_ON_BAG, FOUNT_TAP_NOT_FOUND)
         when FOUNT_TAP_IN_BAG, FOUNT_TAP_ON_BAG
@@ -1128,14 +1234,17 @@ module Lich
         end
       end
 
-      # Determines if the current brazier is clean, and removes any items on it if needed.
-      # If the brazier is empty, returns true. If items are present, attempts to clean the brazier
-      # and empties any remaining contents.
+      # Checks whether the current brazier is clean, removing any items found.
       #
-      # @return [Boolean] true if the brazier is clean or has been cleaned, false if check cannot be determined
-      # @example
-      #   DRCC.clean_brazier? #=> true
-      # @see #empty_brazier, #find_enchanting_room
+      # Looks on the brazier. If clean, returns true. If items are found, prepares
+      # to clean and executes the clean command (handling flame hazards), then empties
+      # any remaining items and returns true.
+      #
+      # @return [Boolean] true if the brazier is clean or has been cleaned, false only
+      #   in edge cases
+      # @note May generate roundtime and trigger hazardous flame responses
+      # @see empty_brazier
+      # @see find_enchanting_room
       def clean_brazier?
         case DRC.bput('look on brazier', BRAZIER_NOTHING, BRAZIER_SEE_PATTERN)
         when /There is nothing on there/i
@@ -1150,13 +1259,16 @@ module Lich
         end
       end
 
-      # Removes all items from the current brazier and discards them.
-      # Uses a look command to retrieve items, then gets and disposes of each one.
+      # Removes and disposes of all items currently on a brazier.
+      #
+      # Looks on the brazier, parses the item list, and removes each item one by one,
+      # disposing of each in sequence.
       #
       # @return [void]
+      # @note Generates roundtime during item retrieval and disposal
       # @example
       #   DRCC.empty_brazier
-      # @see #clean_brazier?
+      # @see clean_brazier?
       def empty_brazier
         result = DRC.bput('look on brazier', BRAZIER_SEE_PATTERN, BRAZIER_CLEAN_NOTHING)
         match = result.match(BRAZIER_SEE_PATTERN)
@@ -1171,21 +1283,26 @@ module Lich
         end
       end
 
-      # Checks if sufficient sigil-scrolls are in inventory, and orders more if needed.
-      # Counts existing sigil-scrolls in the bag, compares against the quantity needed, and orders the difference.
-      # Returns true if the quantity is met (via inventory or order), false if the sigil type is not available for purchase.
+      # Checks inventory for sigil-scrolls and orders replacements if needed.
       #
-      # @param sigil [String] the sigil type, e.g. "primary" or "secondary"
-      # @param stock_number [Integer] the stock number to order
-      # @param quantity [Integer] the number of sigil-scrolls required
-      # @param bag [String] the name of the primary container
-      # @param belt [Hash, nil] a belt configuration hash
-      # @param info [Hash] stock information with 'stock-room' key
-      # @return [Boolean] true if sigil quantity is satisfied, false if unavailable for purchase
+      # Counts existing sigil-scrolls in the bag. If the count meets or exceeds the
+      # required quantity, returns true immediately. Otherwise, checks whether the
+      # sigil is a known type (primary or secondary). If known but insufficient in
+      # quantity, calculates the shortfall and orders replacements. If the sigil type
+      # is unknown, prints a message about manual harvesting and returns false.
+      #
+      # @param sigil [String] the sigil type name (e.g., "water", "fire")
+      # @param stock_number [Integer] the shop NPC number
+      # @param quantity [Integer] the required number of sigil-scrolls
+      # @param bag [String] the bag noun
+      # @param belt [Hash, nil] belt hash, or nil to skip belt handling
+      # @param info [Hash] location info with 'stock-room' key
+      # @return [Boolean] true if the required quantity is available or has been
+      #   ordered, false if the sigil type is unknown
+      # @note Performs room navigation and generates roundtime if ordering is needed
       # @example
-      #   info = {"stock-room" => 12345}
-      #   DRCC.check_for_existing_sigil?("primary", 67, 3, "backpack", nil, info) #=> true
-      # @see #order_enchant
+      #   have_sigils = DRCC.check_for_existing_sigil?("water", 2, 5, "bag", belt, info)
+      # @see order_enchant
       def check_for_existing_sigil?(sigil, stock_number, quantity, bag, belt, info)
         merged = Regexp.union($PRIMARY_SIGILS_PATTERN, $SECONDARY_SIGILS_PATTERN)
 
@@ -1210,18 +1327,25 @@ module Lich
         end
       end
 
-      # Counts and displays raw metals in a container via rummage.
-      # Parses the rummage output to extract volume and piece counts for each metal type.
-      # Handles various error conditions (closed container, not found, invisible).
-      # Returns a hash of metal => [total_volume, piece_count], or a specific metal's data if type is provided.
+      # Rummages through a container and counts raw metal inventory by type.
       #
-      # @param container [String] the container noun to rummage, e.g. "workbench"
-      # @param type [String, nil] an optional metal type to return (e.g., "bronze"); if nil, returns all metals
-      # @return [Hash, Array, nil] a hash of metals with volumes and counts, or an array [volume, count] for a specific type, or nil on error
+      # Uses the rummage command to search a container for metals. Parses the response
+      # and aggregates metals by type, calculating total volume and piece count.
+      # Handles container-not-found, closed-container, invisibility, and no-materials
+      # cases. Prints a summary message for each metal type found.
+      #
+      # @param container [String] the container noun
+      # @param type [String, nil] optional specific metal type to return; if nil,
+      #   returns a hash of all metals
+      # @return [Hash, String, nil] if type is nil, returns a hash like
+      #   {"bronze" => [15, 3], "iron" => [10, 2]} (volume and piece count per metal);
+      #   if type is specified, returns that metal's [volume, count] array or nil;
+      #   returns nil on error (closed, not found, invisible, etc.)
+      # @note Prints messaging to the character and generates roundtime
       # @example
-      #   DRCC.count_raw_metal("workbench") #=> {"bronze" => [150, 3], "iron" => [100, 2]}
-      #   DRCC.count_raw_metal("workbench", "bronze") #=> [150, 3]
-      # @see #RUMMAGE_SUCCESS_PATTERN
+      #   all_metals = DRCC.count_raw_metal("bin")
+      #   bronze_only = DRCC.count_raw_metal("bin", "bronze")
+      # @see RUMMAGE_SUCCESS_PATTERN
       def count_raw_metal(container, type = nil)
         result = DRC.bput("rummage /M #{container}", RUMMAGE_NOTHING, RUMMAGE_CLOSED, RUMMAGE_NOT_FOUND, RUMMAGE_INVISIBLE, RUMMAGE_NOTHING_ACCOMPLISH, RUMMAGE_SUCCESS_PATTERN)
 
@@ -1265,20 +1389,25 @@ module Lich
         type.nil? ? h : h[type]
       end
 
-      # Creates a specified number of mechanisms using a press in the shaping room.
-      # Sets the press speed, then for each mechanism: retrieves ingot, pushes fuel with shovel,
-      # pushes ingot into press, pulls mechanism from press, and stows the result.
-      # Combines mechanisms if both hands are full.
+      # Creates multiple mechanisms via the shaping press.
       #
-      # @param settings [OpenStruct] crafting settings with keys: hometown, crafting_container, crafting_items_in_container, forging_belt
-      # @param material [String] the material type, e.g. "bronze"
-      # @param number [Integer] the number of mechanisms to create
-      # @param speed [Integer] the press speed (1-12); defaults to 6
+      # Navigates to a shaping room, sets the press to the specified speed, then
+      # iterates to create the requested number of mechanisms. For each mechanism,
+      # retrieves an ingot, pushes fuel, presses the ingot, pulls the result with
+      # the press, and stows the completed mechanism. Combines mechanisms if holding
+      # multiple. Returns any remaining ingots to storage.
+      #
+      # @param settings [OpenStruct] the character settings object with
+      #   .hometown, .crafting_container, .crafting_items_in_container, .forging_belt
+      # @param material [String] the metal type for ingots (e.g., "bronze", "steel")
+      # @param number [Integer] the quantity of mechanisms to create
+      # @param speed [Integer] the press speed 1-12 (default: 6)
       # @return [void]
+      # @note Performs room navigation and generates significant roundtime
       # @example
-      #   settings = OpenStruct.new(hometown: "Crossing", crafting_container: "backpack", crafting_items_in_container: [], forging_belt: nil)
-      #   DRCC.create_mechanisms(settings, "bronze", 3, 8)
-      # @see #find_shaping_room, #get_crafting_item, #stow_crafting_item
+      #   DRCC.create_mechanisms(settings, "steel", 10, 8)
+      # @see find_shaping_room
+      # @see get_crafting_item
       def create_mechanisms(settings, material, number, speed = 6)
         DRCC.find_shaping_room(settings.hometown)
         case DRC.bput("turn press to #{speed}", /You dial the device to \d+ and ready it for pressing/, /The press cannot be turned to a speed greater than 12/, /The press cannot be turned to a volume less than 1/)
@@ -1302,6 +1431,80 @@ module Lich
         end
         DRCC.get_crafting_item("#{material} ingot", nil, nil, nil, true)
         DRCC.stow_crafting_item("#{material} ingot", settings.crafting_container, nil) if DRC.right_hand
+      end
+
+      # --- Private forge helpers ---------------------------------------------
+      # Shared settings resolution and navigation for the blacksmithing private
+      # forge, so smith / forge / makesteel behave identically. Callers should
+      # prefer these over inlining the logic.
+
+      # Default copper reserved to rent/enter a private forge when the
+      # forge_private_forge_cost setting is unset.
+      DEFAULT_PRIVATE_FORGE_COST = 50_000
+
+      # Patterns for entering a private forge through its door/sentry.
+      PRIVATE_FORGE_ENTRY_SUCCESS = ['You head through', 'You walk', 'You go', 'Obvious exits'].freeze
+      PRIVATE_FORGE_ENTRY_BLOCKED = ["You don't have enough", 'The sentry blocks', 'cannot enter', 'You need to pay'].freeze
+
+      # Resolve the town a crafter should work in: the crafting-specific override
+      # if set, otherwise their hometown. Mirrors the convention used by every
+      # crafting script.
+      #
+      # @param settings the character settings object
+      # @return [String] the town name
+      def crafting_hometown(settings)
+        settings.force_crafting_town || settings.hometown
+      end
+
+      # Whether the character wants to use a private forge. Accepts the legacy
+      # forge-only setting name for backward compatibility.
+      #
+      # @param settings the character settings object
+      # @return [Boolean]
+      def use_private_forge?(settings)
+        settings.use_private_forge || settings.forge_use_private_forge || false
+      end
+
+      # Copper to reserve for private forge rental/entry.
+      #
+      # @param settings the character settings object
+      # @return [Integer]
+      def private_forge_cost(settings)
+        settings.forge_private_forge_cost || DEFAULT_PRIVATE_FORGE_COST
+      end
+
+      # The room id of a town's private forge, or nil when it has none.
+      #
+      # @param hometown [String]
+      # @return [Integer, nil]
+      def private_forge_room(hometown)
+        get_data('crafting')['blacksmithing'][hometown]['private_forge']
+      end
+
+      # Blacksmithing towns that define a private forge.
+      #
+      # @return [Array<String>]
+      def towns_with_private_forge
+        get_data('crafting')['blacksmithing'].select { |_town, data| data['private_forge'] }.keys
+      end
+
+      # Ensure funds and navigate into the town's private forge.
+      #
+      # @param hometown [String]
+      # @param settings the character settings object
+      # @return [Boolean] true if we ended up in the private forge, false when the
+      #   town has no private forge, funds could not be secured, or entry was blocked.
+      def go_to_private_forge(hometown, settings)
+        room = private_forge_room(hometown)
+        return false unless room
+        return false unless DRCM.ensure_copper_on_hand(private_forge_cost(settings), settings, hometown)
+
+        DRCT.walk_to(room)
+        return true if Room.current.id == room
+
+        # Not in the room yet -- try to enter through the door/sentry.
+        DRC.bput('go door', *PRIVATE_FORGE_ENTRY_SUCCESS, *PRIVATE_FORGE_ENTRY_BLOCKED, 'What were you')
+        Room.current.id == room
       end
     end
   end

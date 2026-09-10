@@ -4,15 +4,7 @@ require 'singleton'
 require 'ostruct'
 require_relative '../common/creature/creature_base'
 
-# Namespace for the Lich 5 scripting engine.
-#
-# Lich provides a Ruby runtime for scripting GemStone IV and DragonRealms
-# with access to game server feeds, character state, and combat tracking.
 module Lich
-  # Namespace for GemStone IV–specific scripting features.
-  #
-  # Includes creature tracking, combat state, bestiary templates, and
-  # GemStone combat mechanics (Unarmed Combat System, injury modeling).
   module Gemstone
     # Static creature template data (ID-less reference information)
     class CreatureTemplate
@@ -20,26 +12,22 @@ module Lich
       @@loaded = false
 
       attr_reader :name, :url, :picture, :level, :family, :type,
-                  :undead, :otherclass, :areas, :bcs, :max_hp,
+                  :undead, :boss, :boss_type, :otherclass, :areas, :bcs, :max_hp,
                   :speed, :height, :size, :attack_attributes,
                   :defense_attributes, :treasure, :messaging,
-                  :special_other, :abilities, :alchemy
+                  :special_other, :abilities, :alchemy, :equipment
 
-      # Adjectives that appear as a prefix to some creature names in bestiary
-      # lookups. When looking up a template, boon adjectives are stripped to
-      # normalize lookups (e.g. "dashing orc" -> "orc").
+      # Adjectives that boon creatures may spawn with, stripped during template name
+      # lookups to handle creature names like "adroit goblin" (stored and matched as "goblin").
       #
-      # Includes weather effects (blurry, ethereal), conditions (diseased, sickly),
-      # dispositions (aggressive, raging), and visual states (glowing, shimmering).
-      #
-      # @see .fix_template_name, BOON_REGEX
+      # @see .fix_template_name
       BOON_ADJECTIVES = %w[
         adroit afflicted apt barbed belligerent blurry canny combative dazzling deft diseased drab
         dreary ethereal flashy flexile flickering flinty frenzied ghastly ghostly gleaming glittering
         glorious glowing grotesque hardy illustrious indistinct keen lanky luminous lustrous muculent
-        nebulous oozing pestilent radiant raging ready resolute robust rune-covered shadowy shifting
-        shimmering shining sickly green sinuous slimy sparkling spindly spiny stalwart steadfast stout
-        tattoed tenebrous tough twinkling unflinching unyielding wavering wispy
+        nebulous oozing pestilent radiant raging ready resolute robust rune-covered shadowy shielded
+        shifting shimmering shining sickly green sinuous slimy sparkling spindly spiny stalwart steadfast stout
+        tattoed tattooed tenebrous tough twinkling unflinching unyielding wavering wispy
       ]
 
       def initialize(data)
@@ -51,9 +39,18 @@ module Lich
         @type = data[:type]
         @undead = data[:undead]
         # Tri-state (true/false/nil) - nil means uncatalogued/unknown, not false.
-        @has_blood = data[:has_blood]
-        @has_bones = data[:has_bones]
+        @blood = data[:blood]
+        @bones = data[:bones]
+        @limbs = data[:limbs]
+        @witherable = data[:witherable]
+        @sympathy = data[:sympathy]
         @muggable = data[:muggable]
+        @sleepable = data[:sleepable]
+        @boss = data[:boss]
+        # nil | "pack" | "miniboss" | "boss" - bestiary classification
+        # ("boss" = the once-per-30-days uniques). Zone-dependent for a
+        # few creatures; the template carries the highest tier.
+        @boss_type = data[:boss_type]
         @otherclass = data[:otherclass] || []
         @areas = data[:areas] || []
         @bcs = data[:bcs]
@@ -78,6 +75,8 @@ module Lich
         @special_other = data[:special_other]
         @abilities = data[:abilities] || []
         @alchemy = data[:alchemy] || []
+        # Items seen on the creature via LOOK, as plain strings.
+        @equipment = data[:equipment] || []
       end
 
       # Load all templates from files
@@ -132,18 +131,18 @@ module Lich
       # Optimized to use single compiled regex instead of 50+ sequential matches
       BOON_REGEX = /^(#{BOON_ADJECTIVES.join('|')})\s+/i.freeze
 
-      # Normalizes a creature name for template lookup by removing boon adjectives
-      # and converting to lowercase.
+      # Cleans a creature name by removing a leading boon adjective and lowercasing.
       #
-      # The lookup key is always lowercase; boon adjectives ("dashing", "ethereal",
-      # "raging", etc.) are stripped as a prefix to match how multiple in-game
-      # instances of the same creature type may differ visually but share one template.
+      # Produces the lookup key for template storage and retrieval: "Adroit Orc" becomes "orc".
+      # Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).
       #
-      # @param template_name [String] the creature name from the game or template
-      # @return [String] normalized lookup key (lowercase, boon adjectives removed)
+      # @param template_name [String] the creature name to normalize
+      # @return [String] the normalized name, lowercased and stripped of leading boon adjective
       # @example
-      #   fix_template_name("Ethereal Orc") #=> "orc"
-      #   fix_template_name("Raging Stone Elemental") #=> "stone elemental"
+      #   CreatureTemplate.fix_template_name("Adroit Orc") #=> "orc"
+      #   CreatureTemplate.fix_template_name("Orc") #=> "orc"
+      # @see BOON_ADJECTIVES
+      # @see BOON_REGEX
       def self.fix_template_name(template_name)
         name = template_name.dup.downcase
         name.sub!(BOON_REGEX, '')
@@ -184,18 +183,109 @@ module Lich
         @@templates.values.uniq
       end
 
+      # All game uids the creature is found at, expanded from the stored
+      # ranges (memoized - ranges stay compact on disk).
+      def uids
+        @uids ||= @areas.flat_map { |a| Array(a[:uids]).flat_map(&:to_a) }.uniq.sort
+      end
+
+      # Whether the creature is found at the given game room uid. Checks
+      # the ranges directly, so no expansion cost.
+      def found_at_uid?(uid)
+        @areas.any? { |a| Array(a[:uids]).any? { |r| r.cover?(uid) } }
+      end
+
+      # Templates for the creatures found at the given game room uid.
+      def self.at_uid(uid)
+        all.select { |t| t.found_at_uid?(uid) }
+      end
+
+      # ---- consumer views (need the Lich mapdb loaded) ----------------
+      # Everything below converts uid -> Lich room id at call time via
+      # Map.ids_from_uid, so stored data survives mapdb renumbering. Gaps
+      # in the game's uid numbering never matter here: each uid converts
+      # individually, and uids the mapdb doesn't know yet simply drop out
+      # until someone maps those rooms.
+
+      # Every Lich room id the creature is found in, across all areas -
+      # ranges combined, deduped, sorted.
+      def rooms
+        @rooms ||= uids.flat_map { |u| Lich::Common::Map.ids_from_uid(u) }.uniq.sort
+      end
+
+      # {area name => [Lich room ids]} - the per-area display view
+      # (eBestiary and friends).
+      def rooms_by_area
+        @rooms_by_area ||= @areas.to_h do |a|
+          ids = Array(a[:uids]).flat_map { |r| r.flat_map { |u| Lich::Common::Map.ids_from_uid(u) } }
+          [a[:name], ids.uniq.sort]
+        end
+      end
+
+      # Rooms bordering the creature's rooms: connected by an edge - in
+      # either direction - to a room the creature is found in, without
+      # being one themselves (bigshot's perimeter list). The reverse-edge
+      # pass scans the map once; the result is memoized.
+      def boundary_rooms
+        @boundary_rooms ||= begin
+          inside = {}
+          rooms.each { |id| inside[id] = true }
+          border = {}
+          inside.each_key do |id|
+            room = Lich::Common::Map[id] or next
+            (room.wayto || {}).each_key do |dest|
+              d = dest.to_i
+              border[d] = true unless inside[d]
+            end
+          end
+          Lich::Common::Map.list.compact.each do |room|
+            next if inside[room.id] || border[room.id]
+
+            border[room.id] = true if (room.wayto || {}).keys.any? { |dest| inside[dest.to_i] }
+          end
+          border.keys.sort
+        end
+      end
+
       # Returns whether the bestiary template says the creature has blood.
       #
       # @return [Boolean, nil] true or false when catalogued; nil when unknown.
       def has_blood?
-        @has_blood
+        @blood
       end
 
       # Returns whether the bestiary template says the creature has bones.
       #
       # @return [Boolean, nil] true or false when catalogued; nil when unknown.
       def has_bones?
-        @has_bones
+        @bones
+      end
+
+      # Returns whether Limb Disruption (708) has limbs to target on this
+      # creature ("The X has no limbs left!" on a fresh target = false).
+      #
+      # @return [Boolean, nil] true or false when catalogued; nil when unknown.
+      def has_limbs?
+        @limbs
+      end
+
+      # Returns whether Wither (1115) has a body to attack on this
+      # creature. Not about limbs - the spell strikes all thirteen
+      # locations, chest and abdomen most often - and not about
+      # corporeality either: it works on non-corporeal undead (wraiths,
+      # spectres, lost souls) and fails on the golem and elemental
+      # families.
+      #
+      # @return [Boolean, nil] true or false when catalogued; nil when unknown.
+      def witherable?
+        @witherable
+      end
+
+      # Returns whether Sympathy (1120) can affect this creature.
+      #
+      # @return [Boolean, nil] true or false when catalogued; nil when unknown.
+      def sympathy?
+        @sympathy
       end
 
       # Returns whether the bestiary template says the creature can be mugged.
@@ -203,6 +293,14 @@ module Lich
       # @return [Boolean, nil] true or false when catalogued; nil when unknown.
       def muggable?
         @muggable
+      end
+
+      # Returns whether the creature can be put to sleep. False comes from
+      # the game's own refusal ("does not seem to be affected").
+      #
+      # @return [Boolean, nil] true or false when catalogued; nil when unknown.
+      def sleepable?
+        @sleepable
       end
 
       private
@@ -244,26 +342,33 @@ module Lich
                     :ucs_smote, :ucs_updated
       attr_writer :ucs_position, :ucs_tierup
 
-      # Valid GemStone body parts for injury tracking.
+      # Valid body locations for injury and amputation tracking.
       #
-      # Used by {#add_injury} to validate injury locations. Keys correspond to
-      # the body part names used in the bestiary and combat parsing.
+      # Matches the 17 body parts exposed by limb-targeting messages and the
+      # Limb Disruption (708) spell.
       #
-      # @see #add_injury, #injured?, #injured_locations
+      # @see #injured?, #amputate!
       BODY_PARTS = %w[abdomen back chest head leftArm leftEye leftFoot leftHand leftLeg neck nerves rightArm rightEye rightFoot rightHand rightLeg]
 
       UCS_TTL = 120        # UCS data expires after 2 minutes
       UCS_SMITE_TTL = 15   # Smite effect expires after 15 seconds
 
-      # Initializes a creature instance for runtime tracking.
+      # Seconds per stun round. Critical tables express stun in *rounds*
+      # (a rank-5 crit's `stunned: 5` means five rounds), while their
+      # `roundtime` field is already in seconds - the two units live side by
+      # side in the same CritRanks hash, so never mix them.
+      STUN_ROUND_SECONDS = 5
+
+      # Initializes a tracked creature instance.
       #
-      # Sets up the creature's identity, injury log, HP tracking, and UCS (Unarmed
-      # Combat System) state. Status tracking is delegated to the shared
-      # {Lich::Common::CreatureBase} mixin.
+      # Sets up mutable runtime state: injury tracking per body part (initialized to 0),
+      # damage taken, UCS (Unarmed Combat System) position/tierup/smote tracking, and
+      # stun estimates from critical hits. Status tracking is delegated to the
+      # CreatureBase mixin.
       #
-      # @param id [Integer] the creature's unique id in the room
-      # @param noun [String] the creature noun (e.g. "orc", "spider")
-      # @param name [String] the display name, may include boon adjectives
+      # @param id [Integer] the creature's game ID (cast to integer)
+      # @param noun [String] the creature's lowercase noun form (e.g. "orc", "goblin")
+      # @param name [String] the creature's display name, possibly with boon adjectives
       # @return [void]
       def initialize(id, noun, name)
         @id = id.to_i
@@ -279,6 +384,9 @@ module Lich
         @ucs_tierup = nil
         @ucs_smote = nil
         @ucs_updated = nil
+        @amputated = []
+        @stun_rounds = nil
+        @stun_estimated_until = nil
       end
 
       # Get the template for this creature. Sentinel-cached so a creature with
@@ -373,11 +481,100 @@ module Lich
         @ucs_tierup
       end
 
+      # Records a crit-table stun estimate, in rounds.
+      #
+      # This is deliberately *not* stored as a timed entry in @status. The
+      # authoritative stun boolean is owned by <crtrStatus> and the combat
+      # message parser (see STATUS_DURATIONS, where 'stunned' is nil on
+      # purpose); expiring it on a table-derived timer would clear stun while
+      # a resisted-or-stacked creature is still stunned, and report
+      # `muckled?` false when acting is still unsafe. So the estimate lives
+      # alongside the boolean and is advisory only.
+      #
+      # Stun does not cleanly stack, so a new estimate extends but never
+      # shortens an existing one.
+      #
+      # @param rounds [Integer] stun rounds from the critical table.
+      # @param at [Time] when the game applied the crit (prompt time, not
+      #   parse time - the async parser can lag the server).
+      # @return [void]
+      def add_stun_estimate(rounds, at: Time.now)
+        rounds = rounds.to_i
+        return if rounds <= 0
+
+        expires_at = at + (rounds * STUN_ROUND_SECONDS)
+        return if @stun_estimated_until && @stun_estimated_until >= expires_at
+
+        @stun_rounds = rounds
+        @stun_estimated_until = expires_at
+        debug_log("+stun estimate: #{rounds} round#{'s' unless rounds == 1} (~#{rounds * STUN_ROUND_SECONDS}s)")
+      end
+
+      # Estimated stun rounds from the last crit, or nil when the estimate has
+      # lapsed or stun is no longer active.
+      #
+      # @return [Integer, nil]
+      def stun_rounds
+        return nil unless stun_estimate_active?
+        @stun_rounds
+      end
+
+      # Estimated seconds of stun remaining.
+      #
+      # Advisory: derived from the critical table, not observed. Returns 0.0
+      # when no estimate is active. Callers deciding whether it is safe to act
+      # should gate on `muckled?`/`has_status?('stunned')` and use this only to
+      # size the window.
+      #
+      # @return [Float]
+      def stunned_for
+        return 0.0 unless stun_estimate_active?
+        [@stun_estimated_until - Time.now, 0.0].max.round(1)
+      end
+
+      # Clears any crit-derived stun estimate (creature shook off the stun).
+      #
+      # @return [void]
+      def clear_stun_estimate
+        @stun_rounds = nil
+        @stun_estimated_until = nil
+      end
+
+      # Marks a body part as amputated.
+      #
+      # Distinct from @injuries, which accumulates rank: an amputated limb is
+      # gone rather than wounded, cannot be wounded further, and stays gone.
+      #
+      # @param body_part [String, Symbol] one of BODY_PARTS.
+      # @return [void]
+      def amputate!(body_part)
+        unless BODY_PARTS.include?(body_part.to_s)
+          raise ArgumentError, "Invalid body part: #{body_part}"
+        end
+        return if @amputated.include?(body_part.to_s)
+
+        @amputated << body_part.to_s
+        debug_log("+amputated: #{body_part}")
+      end
+
+      # @return [Boolean] whether a body part has been amputated.
+      def amputated?(body_part)
+        @amputated.include?(body_part.to_s)
+      end
+
+      # @return [Array<String>] every amputated body part.
+      def amputated_parts
+        @amputated.dup
+      end
+
       # Add injury to body part
       def add_injury(body_part, amount = 1)
         unless BODY_PARTS.include?(body_part.to_s)
           raise ArgumentError, "Invalid body part: #{body_part}"
         end
+        # An amputated limb cannot accrue further wound rank - it is gone.
+        return if amputated?(body_part)
+
         @injuries[body_part.to_sym] += amount
       end
 
@@ -445,6 +642,24 @@ module Lich
         hp_percent <= threshold
       end
 
+      # Statuses that satisfy Coup de Grace's "incapacitated in some way"
+      # requirement, unlocking the (rank * 10)% threshold instead of
+      # (rank * 5)%. Positional states (prone/kneeling/sitting) are
+      # deliberately excluded.
+      COUP_INCAP_STATUSES = %w[stunned immobilized webbed sleeping bound].freeze
+
+      # Check if creature currently qualifies for Coup de Grace at the given
+      # trained rank: at or below (rank * 10)% of max HP when incapacitated,
+      # (rank * 5)% otherwise, hard-capped at 200 HP either way. The cap is
+      # what binds on large creatures, so this compares raw HP, not percent.
+      def coup_eligible?(rank)
+        return false unless rank.to_i > 0
+        return false unless current_hp && max_hp && max_hp > 0
+        incap = COUP_INCAP_STATUSES.any? { |s| has_status?(s) }
+        threshold = [(max_hp * rank.to_i * (incap ? 10 : 5)) / 100.0, 200].min
+        current_hp <= threshold
+      end
+
       # Check if creature is dead (0 HP)
       def dead?
         current_hp == 0
@@ -500,8 +715,24 @@ module Lich
           created_at: @created_at,
           ucs_position: ucs_position,
           ucs_tierup: ucs_tierup,
-          ucs_smote: smote?
+          ucs_smote: smote?,
+          amputated: amputated_parts,
+          stun_rounds: stun_rounds,
+          stunned_for: stunned_for
         }
+      end
+
+      private
+
+      # Whether a crit-derived stun estimate is still meaningful.
+      #
+      # Gated on the authoritative status as well as the clock: once the feed
+      # or a removal message says the creature is no longer stunned, the
+      # estimate is stale regardless of remaining time.
+      def stun_estimate_active?
+        return false unless @stun_estimated_until
+        return false if @stun_estimated_until <= Time.now
+        has_status?('stunned')
       end
     end
 
@@ -614,19 +845,21 @@ module Lich
       end
     end
 
-    # Treasure drop configuration for a creature template.
+    # Treasure drops available on a creature template.
     #
-    # Tracks what loot a creature may carry: coins, gems, containers, skin,
-    # magic items, and other valuables. Also records whether blunt weapons are
-    # required to harvest the skin.
+    # Tracks currency (coins/gems), loot boxes, corpse harvest items (skin),
+    # and equipment by category (magic items, armaments, transmogs).
+    #
+    # @example
+    #   treasure = Treasure.new(coins: true, gems: false, blunt_required: true)
+    #   treasure.has_coins? #=> true
+    #   treasure.to_h #=> {coins: true, gems: false, ...}
     class Treasure
-      # Initializes treasure configuration from template data.
+      # Initializes treasure configuration from a creature template data hash.
       #
-      # Sets defaults for all treasure types (false/nil) then merges in data from
-      # the template.
+      # Merges provided data into defaults (all false/nil), allowing partial specs.
       #
-      # @param data [Hash] template treasure data; keys are :coins, :gems, :boxes,
-      #   :skin, :magic_items, :other, :blunt_required
+      # @param data [Hash] treasure attributes; unspecified keys retain defaults
       # @return [void]
       def initialize(data = {})
         @data = {
@@ -636,65 +869,72 @@ module Lich
           skin: nil,
           magic_items: nil,
           other: nil,
+          armaments: nil,
+          transmogs: nil,
           blunt_required: false
         }.merge(data)
       end
 
-      # Returns whether this creature may carry coins.
+      # Returns whether the creature drops coins.
       #
       # @return [Boolean]
       def has_coins? = !!@data[:coins]
-      # Returns whether this creature may carry gems.
+      # Returns whether the creature drops gems.
       #
       # @return [Boolean]
       def has_gems? = !!@data[:gems]
-      # Returns whether this creature may carry boxes.
+      # Returns whether the creature drops loot boxes.
       #
       # @return [Boolean]
       def has_boxes? = !!@data[:boxes]
-      # Returns whether this creature has harvestable skin.
+      # Returns whether the creature's corpse yields harvestable skin.
       #
       # @return [Boolean]
       def has_skin? = !!@data[:skin]
-      # Returns whether blunt weapons are required to harvest the skin.
+      # Returns whether the creature carries armaments (weapons/armor).
+      #
+      # @return [Boolean]
+      def has_armaments? = !!(@data[:armaments] && !Array(@data[:armaments]).empty?)
+      # Returns whether the creature carries transmog items.
+      #
+      # @return [Boolean]
+      def has_transmogs? = !!(@data[:transmogs] && !Array(@data[:transmogs]).empty?)
+      # Returns whether the creature must be killed with blunt damage for item drops.
       #
       # @return [Boolean]
       def blunt_required? = !!@data[:blunt_required]
 
-      # Returns the raw treasure data hash.
+      # Returns the treasure configuration as a hash.
       #
-      # @return [Hash]
+      # @return [Hash] the underlying treasure data
       def to_h = @data
     end
 
-    # Creature messaging templates for contextual creature descriptions.
+    # Creature combat and ambient message templates with placeholder substitution.
     #
-    # Stores and renders dynamic messaging for creatures: arrival/death text,
-    # spell casting, combat actions, and creature sounds. Supports placeholder
-    # substitution (pronouns, directions, weapon types) and random variation
-    # via arrays of alternatives.
+    # Stores creature-specific combat messages (attacks, spells, special abilities)
+    # and ambient messages, with placeholders ({Pronoun}, {direction}, etc.) that
+    # can be matched against actual game output or rendered with substitutions.
+    # Arrays of message variants (common for e.g. attack messages) are merged and
+    # matched against any variant; PlaceholderTemplate objects handle regex generation
+    # and matching for templated variants.
     class Messaging
       attr_accessor :description, :arrival, :flee, :death,
-                    :spell_prep, :frenzy, :sympathy, :bite,
-                    :claw, :attack, :enrage, :mstrike
+                    :decay, :search, :spell_prep, :frenzy,
+                    :sympathy, :bite, :claw, :attack,
+                    :attacks, :enrage, :mstrike, :stand,
+                    :stun_break, :ambient
 
-      # Placeholder substitution options for message templates.
-      #
-      # Maps placeholder names (used in curly braces within messaging templates)
-      # to their allowed values. Capitalized variants (e.g. Pronoun) use title case;
-      # lowercase variants use lowercase. RAW: values are regex patterns matched
-      # without escaping.
-      #
-      # @example
-      #   # Template: "The {Pronoun} swings a {weapon}"
-      #   # Placeholders:
-      #   #   Pronoun -> randomly one of ["He", "She", "It", ...]
-      #   #   weapon -> RAW regex pattern for any weapon name
-      # @see PlaceholderTemplate, #normalize
+      # Every form a placeholder can take in a real game line. The lists
+      # are alternatives in the generated regex, so a form that is missing
+      # here makes an otherwise-correct message unmatchable - "its" and
+      # "their" (possessives) and "out" (a flee direction) were absent.
       PLACEHOLDER_MAP = {
-        Pronoun: %w[He Her His It She],
-        pronoun: %w[he her his it she],
-        direction: %w[north south east west up down northeast northwest southeast southwest],
+        Pronoun: %w[He She It His Her Its Their Him Them Himself Herself Itself Themselves],
+        pronoun: %w[he she it his her its their him them himself herself itself themselves],
+        Reflexive: %w[Himself Herself Itself Themselves],
+        reflexive: %w[himself herself itself themselves],
+        direction: %w[north south east west up down out northeast northwest southeast southwest],
         weapon: %w[RAW:.+?]
       }
 
@@ -704,15 +944,15 @@ module Lich
         end
       end
 
-      # Recursively normalizes a messaging value into a renderable form.
+      # Converts a raw message value into a normalized form.
       #
-      # Detects and converts placeholder templates (strings containing {name} patterns)
-      # into {PlaceholderTemplate} objects. Arrays are recursively normalized. Plain
-      # strings and other values pass through unchanged.
+      # Recursively processes arrays. Strings containing {...} placeholders are
+      # wrapped in PlaceholderTemplate for later regex matching and substitution;
+      # other values pass through unchanged.
       #
-      # @param value [String, Array, Object] the raw value from template data
-      # @return [PlaceholderTemplate, Array, Object] normalized value
-      # @see PlaceholderTemplate
+      # @param value [String, Array, nil] a raw message, array of messages, or nil
+      # @return [String, Array, PlaceholderTemplate, nil] the normalized value
+      # @api private
       def normalize(value)
         if value.is_a?(Array)
           value.map { |v| normalize(v) }
@@ -725,20 +965,17 @@ module Lich
         end
       end
 
-      # Renders a messaging field with optional placeholder substitutions.
+      # Renders a message field with optional placeholder substitutions.
       #
-      # Retrieves the named field (e.g. :description, :arrival) and renders it:
-      # if it is a PlaceholderTemplate, substitutes placeholders (falling back to
-      # random options); if it is an array, joins each rendered element with newlines;
-      # otherwise returns the plain value.
+      # Fetches a message by field name and renders it. PlaceholderTemplate values
+      # are rendered with substitutions; arrays join with newlines. Returns the
+      # rendered string (including nil if the field does not exist).
       #
-      # @param field [Symbol] the messaging field name (e.g. :description, :death)
-      # @param subs [Hash] optional placeholder -> value substitutions, e.g.
-      #   { pronoun: "He", direction: "north" }
-      # @return [String, Object] rendered message or plain value
+      # @param field [Symbol, String] the message field to render (e.g. :attack, :flee)
+      # @param subs [Hash] substitutions for placeholders ({pronoun: "he", ...})
+      # @return [String] the rendered message, with placeholders replaced
       # @example
-      #   msg = Messaging.new(description: "{pronoun} has red skin")
-      #   msg.display(:description, pronoun: "She") #=> "She has red skin"
+      #   messaging.display(:attack, {pronoun: "he"}) #=> "The orc swings his sword."
       def display(field, subs = {})
         msg = send(field)
         if msg.is_a?(Array)
@@ -750,35 +987,24 @@ module Lich
         end
       end
 
-      # Matches a messaging field against a string and returns captured groups.
-      #
-      # If the field is a PlaceholderTemplate, converts it to a regex and matches;
-      # returns captured placeholders as a hash, or nil if no match. For non-template
-      # fields, returns an empty hash if the field equals the string, nil otherwise.
-      #
-      # @param field [Symbol] the messaging field name (e.g. :arrival, :attack)
-      # @param str [String] the string to match
-      # @return [Hash, nil] captured placeholder values, empty hash if exact match,
-      #   nil if no match
-      # @example
-      #   msg = Messaging.new(arrival: "A {noun} arrives from the {direction}")
-      #   msg.match(:arrival, "A goblin arrives from the north")
-      #   #=> { noun: "goblin", direction: "north" }
+      # Returns the placeholder captures ({} for a literal hit) when +str+
+      # is one of the field's messages, else nil. Arrays are the common
+      # case - most creatures have several variants of a message - so a
+      # match against any variant counts.
       def match(field, str)
-        msg = send(field)
-        if msg.is_a?(PlaceholderTemplate)
-          msg.match(str)
-        else
-          msg == str ? {} : nil
+        Array(send(field)).each do |msg|
+          hit = msg.is_a?(PlaceholderTemplate) ? msg.match(str) : (msg == str ? {} : nil)
+          return hit if hit
         end
+        nil
       end
     end
 
-    # Defense configuration for a creature template.
+    # Creature defensive statistics and special defenses.
     #
-    # Tracks all defensive mechanics: armor/shield/guard/magic defense values,
-    # TD (Target Defense) for each caster class, spell immunities, and passive
-    # defensive spells/abilities.
+    # Armor and spell TD values, immunities, defensive spell/ability lists.
+    # Ranges (e.g., TD spread) are parsed from strings into Range objects;
+    # numeric values are stored as-is.
     class DefenseAttributes
       attr_accessor :asg, :melee, :ranged, :bolt, :udf,
                     :bar_td, :cle_td, :emp_td, :pal_td,
@@ -786,13 +1012,15 @@ module Lich
                     :mjs_td, :mns_td, :mnm_td, :immunities,
                     :defensive_spells, :defensive_abilities, :special_defenses
 
-      # Initializes defense attributes from template data.
+      # Initializes defense attributes from creature template data.
       #
-      # Parses all defense values, including armor-type defenses (ASG, melee, ranged,
-      # bolt, UDF) and caster-specific TDs (BAR, CLR, EMP, PAL, RAN, SOR, WIZ, etc.).
-      # TD values are converted from string ranges ("10..15") to Range objects as needed.
+      # Parses range values ("10..15" strings into Range objects). All numeric
+      # TD values are converted using parse_td; lists are stored as-is or empty arrays.
       #
-      # @param data [Hash] template defense data
+      # @param data [Hash] defense attributes including :asg, :melee, :ranged, :bolt,
+      #   :udf, :bar_td, :cle_td, :emp_td, :pal_td, :ran_td, :sor_td, :wiz_td,
+      #   :mje_td, :mne_td, :mjs_td, :mns_td, :mnm_td, :immunities,
+      #   :defensive_spells, :defensive_abilities, :special_defenses
       # @return [void]
       def initialize(data)
         @asg = data[:asg]
@@ -827,19 +1055,17 @@ module Lich
       end
     end
 
-    # Renders and matches dynamic message templates with placeholder substitution.
+    # Message template with placeholders for rendering and regex matching.
     #
-    # Used by {Messaging} to support dynamic text: templates contain placeholders
-    # like {pronoun}, {direction}, and {weapon} which are substituted with game
-    # values at display time. Supports random variation when substitutions are not
-    # provided, regex matching to extract captured groups, and caching of compiled
-    # regexes for performance.
+    # Stores a template string with {...} placeholders and a map of placeholder
+    # names to their valid options (e.g., {pronoun} => ["he", "she", "it", ...]).
+    # Supports rendering with substitutions and regex generation for matching actual
+    # game output against the template variants.
     class PlaceholderTemplate
-      # Initializes a placeholder template and caches for rendering/matching.
+      # Initializes a placeholder template.
       #
-      # @param template [String] the template text with {name} placeholders
-      # @param placeholders [Hash] map of placeholder name -> [options] for random
-      #   substitution or regex generation
+      # @param template [String, Array] the message template (e.g. "The {pronoun} attacks.")
+      # @param placeholders [Hash] map of placeholder names (Symbols) to valid option arrays
       # @return [void]
       def initialize(template, placeholders = {})
         @template = template
@@ -847,33 +1073,31 @@ module Lich
         @regex_cache = {}
       end
 
-      # Returns the template string.
+      # Returns the template string or array.
       #
-      # @return [String]
+      # @return [String, Array] the template
       def template
         @template
       end
 
-      # Returns the placeholder definitions.
+      # Returns the placeholder map.
       #
-      # @return [Hash]
+      # @return [Hash] the placeholder definitions
       def placeholders
         @placeholders
       end
 
-      # Renders the template with placeholders substituted or filled randomly.
+      # Renders the template as a displayable string.
       #
-      # For each placeholder, uses the supplied substitution value if present,
-      # otherwise picks a random option from the placeholder definition, defaulting
-      # to an empty string if no options exist.
+      # Substitutes each placeholder with the provided value (or a random option
+      # from the placeholder's valid set, or empty string if none available).
       #
-      # @param subs [Hash] optional substitutions, e.g. { pronoun: "He" }
-      # @return [String] rendered text
+      # @param subs [Hash] substitution values keyed by placeholder name (Symbol)
+      # @return [String] the rendered message
       # @example
-      #   tmpl = PlaceholderTemplate.new("A {adjective} orc",
-      #     adjective: ["red", "blue"])
-      #   tmpl.to_display(adjective: "green") #=> "A green orc"
-      #   tmpl.to_display() #=> "A red orc" or "A blue orc"
+      #   tpl = PlaceholderTemplate.new("The {pronoun} strikes.", {pronoun: ["he", "she"]})
+      #   tpl.to_display({pronoun: "he"}) #=> "The he strikes."
+      #   tpl.to_display({}) #=> "The [random he or she] strikes."
       def to_display(subs = {})
         line = @template.dup
         @placeholders.each do |key, options|
@@ -883,20 +1107,19 @@ module Lich
         line
       end
 
-      # Compiles the template to a regex pattern for matching.
+      # Generates a compiled regex that matches the template's possible expansions.
       #
-      # Converts the template string to a regex where each placeholder becomes a
-      # named capture group or raw regex pattern. Results are cached by substitution
-      # hash to avoid rebuilding on repeated calls.
+      # Each placeholder becomes a non-capturing group of its options (or a group named
+      # after the placeholder for later extraction). Results are cached per literal set.
+      # Handles array templates by creating a union of their regexes.
       #
-      # @param literals [Hash] optional specific literal values for placeholders;
-      #   defaults to all options from the placeholder definition
-      # @return [Regexp] compiled regex pattern with named captures
+      # @param literals [Hash] literal values for placeholders (override options)
+      # @return [Regexp] a compiled regex matching template variants
       # @example
-      #   tmpl = PlaceholderTemplate.new("The {noun} arrives from {direction}",
-      #     noun: ["orc", "goblin"], direction: ["north", "south"])
-      #   tmpl.to_regex().match("The orc arrives from north")
-      #   #=> #<MatchData "The orc arrives from north" noun:"orc" direction:"north">
+      #   tpl = PlaceholderTemplate.new("The {pronoun} strikes.", {pronoun: ["he", "she"]})
+      #   tpl.to_regex.match("The he strikes.") #=> <MatchData>
+      #   tpl.to_regex.match("The she strikes.") #=> <MatchData>
+      #   tpl.to_regex.match("The it strikes.") #=> nil
       def to_regex(literals = {})
         # Use cache to avoid rebuilding regex on every call
         cache_key = literals.hash
@@ -910,6 +1133,18 @@ module Lich
                 end
 
         @regex_cache[cache_key] = regex
+      end
+
+      # Public: Messaging#match calls this on the template it holds. It
+      # sat below the `private` keyword, so every templated message
+      # raised NoMethodError on match - the placeholder machinery could
+      # render a line but never recognize one.
+      def match(str, literals = {})
+        regex = to_regex(literals)
+        m = regex.match(str)
+        return nil unless m
+
+        m.names.any? ? m.named_captures.transform_keys(&:to_sym) : m.captures
       end
 
       private
@@ -926,13 +1161,6 @@ module Lich
           end
         end
         Regexp.new("#{pattern}")
-      end
-
-      def match(str, literals = {})
-        regex = to_regex(literals)
-        m = regex.match(str)
-        return nil unless m
-        m.names.any? ? m.named_captures.transform_keys(&:to_sym) : m.captures
       end
     end
   end

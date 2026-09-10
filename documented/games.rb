@@ -6,13 +6,18 @@ require_relative 'common/shutdown_log'
 # Original module carve out from lich.rbw
 # Refactored on 2025-04-01
 
-# Namespace for the Lich5 scripting engine, providing game-specific functionality
-# for GemStone IV and DragonRealms text-based games.
+# Root namespace for the Lich 5 scripting engine.
+#
+# Lich 5 is a Ruby scripting engine for the text-based games GemStone IV and
+# DragonRealms. This module provides game connection management, XML parsing,
+# script execution, and extensibility for game-specific functionality.
 module Lich
   # Base module for game-specific functionality
   # Unknown game type module
   module Unknown
-    # Placeholder module for unknown game types.
+    # Namespace for unknown game type implementations.
+    #
+    # @api private
     module Game
       # Placeholder for unknown game types
     end
@@ -23,7 +28,8 @@ module Lich
     # Placeholder for common game functionality
   end
 
-  # Namespace for game-agnostic formatting and processing shared by all game instances.
+  # Base module providing common game functionality shared between GemStone IV
+  # and DragonRealms.
   module GameBase
     # Game-agnostic formatting for the Lich-injected room annotations
     # (room number, obvious exits, and StringProc exits). Both the GemStone
@@ -159,10 +165,11 @@ module Lich
     module GameInstanceFactory
       # Creates a game-specific instance based on the game type identifier.
       #
-      # @param game_type [String] the game identifier, matching /^GS/ for GemStone or /^DR/ for DragonRealms
-      # @return [Lich::Gemstone::GameInstance, Lich::DragonRealms::GameInstance, Lich::GameBase::GameInstance::Base] a game instance for the type, or base implementation if unknown
+      # @param game_type [String] the game identifier (e.g. "GS" for GemStone, "DR" for DragonRealms)
+      # @return [Gemstone::GameInstance, DragonRealms::GameInstance, GameInstance::Base] the appropriate game instance for the type
       # @example
-      #   GameInstanceFactory.create("GS") #=> Gemstone::GameInstance
+      #   factory = GameInstanceFactory.create("GS") #=> Gemstone::GameInstance
+      #   factory = GameInstanceFactory.create("DR") #=> DragonRealms::GameInstance
       def self.create(game_type)
         case game_type
         when /^GS/
@@ -213,39 +220,36 @@ module Lich
           raise NotImplementedError, "#{self.class} must implement #modify_room_display"
         end
 
-        # Injects room information lines (exits, StringProcs, room numbers) into the display.
+        # Prepends room exit and StringProc navigation lines to the server output.
         #
-        # This method is overridden by game-specific implementations to format and place
-        # room annotations according to game and frontend conventions.
+        # Subclasses must override to provide game-specific room display processing.
         #
-        # @param alt_string [String] the server string being rewritten
-        # @return [String] the rewritten server string
-        # @raise [NotImplementedError] when called on the base class
+        # @param alt_string [String] the outbound server string being rewritten
+        # @return [String] the modified server string with room lines prepended
+        # @raise [NotImplementedError] in the base class
         # @api private
         def process_room_display(alt_string)
           raise NotImplementedError, "#{self.class} must implement #process_room_display"
         end
 
-        # Returns the current nesting depth of the combat stream.
+        # Returns the current depth of combat stream nesting.
         #
-        # @return [Integer] the number of active combat streams
-        # @api private
+        # @return [Integer] the number of active combat streams (0 when not in combat)
         def combat_count
           @combat_count
         end
 
-        # Returns whether an atmospheric stream is currently active.
+        # Returns the current atmospheric stream flag state.
         #
-        # @return [Boolean] true if an atmospherics pushStream is open
-        # @api private
+        # @return [Boolean] true if an atmospheric stream is open and awaiting closure
         def atmospherics
           @atmospherics
         end
 
-        # Sets the atmospheric stream state.
+        # Sets the atmospheric stream flag state.
         #
-        # @param value [Boolean] whether an atmospherics stream is active
-        # @return [Boolean] the assigned value
+        # @param value [Boolean] true to mark an atmospheric stream as open, false to close it
+        # @return [Boolean] the new state
         # @api private
         def atmospherics=(value)
           @atmospherics = value
@@ -289,15 +293,13 @@ module Lich
     # XML string cleaner module
     module XMLCleaner
       class << self
-        # Escapes nested single and double quotes within XML attribute values.
+        # Escapes nested single and double quotes inside XML attribute values.
         #
-        # Converts matching quote pairs to XML entities (&apos;, &quot;) to repair
-        # malformed tags where a quote inside an attribute value prematurely closes it.
+        # Processes both patterns: single quotes inside single-quoted attributes and double
+        # quotes inside double-quoted attributes. Logs detected malformations and repairs.
         #
-        # @param server_string [String] the server string, modified in place
-        # @return [String] the server string with nested quotes escaped
-        # @example
-        #   XMLCleaner.clean_nested_quotes("<a x='Tsetem's Items'>") #=> "<a x='Tsetem&apos;s Items'>"
+        # @param server_string [String] the XML string to repair, modified in place
+        # @return [String] the repaired server string
         # @api private
         def clean_nested_quotes(server_string)
           # Fix nested single quotes
@@ -321,12 +323,13 @@ module Lich
           server_string
         end
 
-        # Removes or escapes invalid characters that cause XML parsing failures.
+        # Removes invalid control characters (e.g., bell character \a) from the stream.
         #
-        # Strips bell characters (\a) that are not valid in XML.
+        # The Ox parser tolerates bare ampersands and does not need character entity
+        # escaping, but still rejects the bell character. Logs any removals.
         #
-        # @param server_string [String] the server string, modified in place
-        # @return [String] the server string with invalid characters removed
+        # @param server_string [String] the server string to clean, modified in place
+        # @return [String] the cleaned server string
         # @api private
         def fix_invalid_characters(server_string)
           # Note: a bare '&' is intentionally not escaped here. REXML raised on it
@@ -343,13 +346,13 @@ module Lich
           server_string
         end
 
-        # Repairs malformed XML tags in the server string.
+        # Repairs malformed XML tags: open-ended component/dynaStream tags, dangling
+        # closing tags, and unclosed wound (nerves) tags from empath appraisals.
         #
-        # Fixes open-ended dynaStream/component tags, removes extraneous closing tags,
-        # and removes unclosed wound tags from empath appraisals.
+        # Logs detected and repaired malformations.
         #
-        # @param server_string [String] the server string, modified in place
-        # @return [String] the server string with XML tags repaired
+        # @param server_string [String] the XML string to repair, modified in place
+        # @return [String] the repaired server string
         # @api private
         def fix_xml_tags(server_string)
           # Fix open-ended XML tags
@@ -426,8 +429,9 @@ module Lich
 
     # Base Game class with common functionality
     class Game
-      # Raised when the game parser queue exceeds its capacity and cannot accept
-      # more server fragments without losing data.
+      # Raised when the game server message queue exceeds capacity.
+      #
+      # @api private
       class ServerQueueOverflow < StandardError; end
 
       # Seconds to wait for readable game socket data before one read timeout.
@@ -446,37 +450,37 @@ module Lich
       class << self
         attr_reader :thread, :reader_thread, :server_queue, :buffer, :_buffer, :game_instance
 
-        # Returns whether the autostart sequence has completed.
+        # Returns whether the autostart script has already been launched.
         #
-        # @return [Boolean] true if autostart scripts have been launched
-        # @api private
+        # @return [Boolean] true if autostart has completed, false otherwise
         def autostarted?
           @@autostarted
         end
 
-        # Prefixes each line of a string with the frontend origin sentinel.
+        # Prepends the origin sentinel marker to each line for frontends that support tagged output.
         #
-        # @param string [String] the input string, possibly multiline
-        # @return [String] the string with each line prefixed with Frontend::ORIGIN_SENTINEL
+        # @param string [String] the multiline string to prefix
+        # @return [String] the prefixed string, each line beginning with the sentinel
         # @api private
         def prefix_origin_sentinel(string)
           string.gsub(/^.+$/) { |line| "#{Frontend::ORIGIN_SENTINEL}#{line}" }
         end
 
-        # Returns whether a new settings record needs to be initialized for the character.
+        # Returns whether the settings XML needs initialization (e.g., for new characters).
         #
-        # Set to true when the server sends a malformed settingsInfo tag (from first connection
-        # with a client that is not Wrayth/StormFront).
+        # Set to true when a malformed settingsInfo tag is detected and repaired.
         #
-        # @return [Boolean] true if gameloader's PostLoad should seed a valid client record
+        # @return [Boolean] true if settings initialization is required
         # @api private
         def settings_init_needed?
           @@settings_init_needed
         end
 
-        # Initializes or resets all socket, queue, and buffer state.
+        # Initializes or resets all game connection buffers, queues, and internal state.
         #
-        # Called at startup and after reconnects to clear stale data.
+        # Called on startup and on reconnection. Sets up socket-independent state tracking
+        # (autostart flag, settings init flag, script tracking). Socket configuration happens
+        # in .open after this completes.
         #
         # @return [void]
         # @api private
@@ -506,7 +510,7 @@ module Lich
 
         # Creates and assigns a game-specific instance based on the game type.
         #
-        # @param game_type [String] the game identifier ("GS", "DR", or unknown)
+        # @param game_type [String] the game identifier ("GS" or "DR")
         # @return [void]
         # @api private
         def set_game_instance(game_type)
@@ -596,10 +600,11 @@ module Lich
           end
         end
 
-        # Starts the wrap thread that issues an initial "look" command after login.
+        # Starts a background thread that sends the initial 'look' command after connection.
         #
-        # Also performs database vacuum if due. Sends "look" unless autostart has already
-        # run (or 6 seconds have elapsed with no server activity).
+        # Waits 6 seconds for the autostart script to launch; if it doesn't start by then,
+        # sends 'look' to prompt the server for a room description. Also vacuums the database
+        # on startup if maintenance is due.
         #
         # @return [void]
         # @api private
@@ -621,10 +626,9 @@ module Lich
           end
         end
 
-        # Returns whether the game socket is closed or nil.
+        # Returns whether the game socket is closed or uninitialized.
         #
         # @return [Boolean] true if the socket is nil or closed
-        # @api private
         def closed?
           @socket.nil? || @socket.closed?
         end
@@ -634,9 +638,7 @@ module Lich
           @remote_eof == true
         end
 
-        # Resets all queue and parser performance statistics to initial state.
-        #
-        # Called at startup and can be called during operation to clear accumulated metrics.
+        # Resets the parser queue and timing statistics to initial values.
         #
         # @return [nil]
         # @api private
@@ -665,13 +667,14 @@ module Lich
           nil
         end
 
-        # Returns a snapshot of queue and parser performance metrics.
+        # Returns performance metrics for the game server message queue and XML parser.
         #
-        # @param reset [Boolean] whether to reset statistics after returning them
-        # @return [Hash] a dict with keys: depth, last_depth, max_depth, enqueued, dequeued,
-        #   last_wait, max_wait, avg_wait (in seconds), plus corresponding _ms variants in
-        #   milliseconds, reader hook/enqueue/process stats (last/max/avg milliseconds),
-        #   parser stats, timestamps (last_enqueue_at, last_dequeue_at), and thread status
+        # Includes queue depth, throughput, latency (in seconds and milliseconds), and
+        # thread status. Values are cumulative since the last reset.
+        #
+        # @param reset [Boolean] if true, zeroes all stats after returning them
+        # @return [Hash] statistics including :depth, :max_depth, :enqueued, :dequeued,
+        #   :max_wait_ms, :avg_wait_ms, :reader_hook_max_ms, :parser_process_avg_ms, etc.
         # @api private
         def server_queue_stats(reset: false)
           depth = @server_queue&.length.to_i
@@ -725,10 +728,11 @@ module Lich
           stats
         end
 
-        # Closes the game socket and kills the reader and parser threads.
+        # Closes the game socket and stops the reader and parser threads.
+        #
+        # Does not raise if already closed; errors are silently absorbed.
         #
         # @return [void]
-        # @api private
         def close
           if @socket
             @socket.close rescue nil
@@ -754,12 +758,13 @@ module Lich
           nil
         end
 
-        # Sends a command to the game server and logs it to the client buffer.
+        # Sends a command to the game server, logging it to the client and $_CLIENTBUFFER_.
         #
-        # Records the command in $_CLIENTBUFFER_, echoes to the user unless the script is silent,
-        # updates $_LASTUPSTREAM_, and forwards to the game via _puts.
+        # Routes the command through the socket reader hook, records it in $_LASTUPSTREAM_,
+        # and optionally echoes it to the screen (suppressed if the calling script has
+        # silent: true). Prepends the configured command prefix.
         #
-        # @param str [String] the command to send (without command prefix)
+        # @param str [String] the command to send (prefix-less)
         # @return [void]
         # @api private
         def puts(str)
@@ -779,23 +784,26 @@ module Lich
           $_LASTUPSTREAM_ = "[#{script_name}]#{$SEND_CHARACTER}#{str}"
         end
 
-        # Retrieves the next line from the main game buffer.
+        # Reads the next line from the main game buffer.
         #
-        # @return [String, nil] the next buffered server line, or nil when buffer is empty
-        # @api private
+        # @return [String, nil] the next available line, or nil if the buffer is empty
         def gets
           @buffer.gets
         end
 
-        # Retrieves the next line from the testing/debug buffer.
+        # Reads the next line from the internal test/debug buffer.
         #
-        # @return [String, nil] the next buffered line from _buffer, or nil when empty
+        # Used only during testing; otherwise identical to .gets.
+        #
+        # @return [String, nil] the next available line, or nil if the buffer is empty
         # @api private
         def _gets
           @_buffer.gets
         end
 
-        # Initializes the server queue and starts the socket reader and parser threads.
+        # Starts the socket reader thread and server processor thread.
+        #
+        # Called by .open after the socket is configured. Resets queue statistics.
         #
         # @return [void]
         # @api private
@@ -806,9 +814,7 @@ module Lich
           start_server_processor_thread
         end
 
-        # Records metrics when a server string is added to the queue.
-        #
-        # Increments enqueue count, updates queue depth and max depth, and records the timestamp.
+        # Records a message enqueue event and updates queue depth statistics.
         #
         # @return [nil]
         # @api private
@@ -821,12 +827,12 @@ module Lich
           nil
         end
 
-        # Adds a server string to the processing queue with a monotonic timestamp.
+        # Pushes a server message onto the parser queue with timing metadata.
         #
-        # @param server_string [String] the server string to queue
-        # @param enqueued_monotonic_at [Numeric] the monotonic time when enqueued
+        # @param server_string [String] the message to enqueue
+        # @param enqueued_monotonic_at [Numeric] monotonic clock timestamp when enqueued
         # @return [void]
-        # @raise [ServerQueueOverflow] if the queue exceeds SERVER_QUEUE_CAPACITY
+        # @raise [ServerQueueOverflow] if the queue exceeds capacity
         # @api private
         def enqueue_server_string(server_string, enqueued_monotonic_at)
           @server_queue.push([server_string, enqueued_monotonic_at], true)
@@ -835,11 +841,13 @@ module Lich
           raise ServerQueueOverflow, "game parser queue exceeded #{SERVER_QUEUE_CAPACITY} records"
         end
 
-        # Records performance metrics for socket read and hook processing.
+        # Records socket reader thread timing metrics (hook, enqueue, and process times).
         #
-        # @param hook_time [Numeric] seconds spent running SocketReadHook
-        # @param enqueue_time [Numeric] seconds spent enqueueing to server_queue
-        # @param process_time [Numeric] total seconds for the read/hook/enqueue cycle
+        # Accumulates both last, max, and total times for averaging.
+        #
+        # @param hook_time [Numeric] seconds spent in the socket read hook
+        # @param enqueue_time [Numeric] seconds spent pushing to the queue
+        # @param process_time [Numeric] seconds spent on total reader processing
         # @return [nil]
         # @api private
         def record_server_reader_timing(hook_time:, enqueue_time:, process_time:)
@@ -857,12 +865,11 @@ module Lich
           nil
         end
 
-        # Records metrics when a server string is removed from the queue.
+        # Records a message dequeue event and updates latency statistics.
         #
-        # Increments dequeue count, updates queue depth, and calculates queue wait time
-        # if a monotonic timestamp was provided.
+        # If enqueued_monotonic_at is provided, computes and records the queue wait time.
         #
-        # @param enqueued_monotonic_at [Numeric, nil] the monotonic timestamp when enqueued
+        # @param enqueued_monotonic_at [Numeric, nil] the monotonic timestamp when the item was enqueued
         # @return [nil]
         # @api private
         def record_server_queue_dequeue(enqueued_monotonic_at = nil)
@@ -881,9 +888,9 @@ module Lich
           nil
         end
 
-        # Records performance metrics for XML parsing and processing.
+        # Records the XML parsing time for a server message.
         #
-        # @param parse_time [Numeric] seconds spent parsing/processing the server string
+        # @param parse_time [Numeric] seconds spent parsing the message
         # @return [nil]
         # @api private
         def record_server_parser_timing(parse_time)
@@ -893,10 +900,13 @@ module Lich
           nil
         end
 
-        # Extracts a server string and its monotonic timestamp from a queue item.
+        # Unpacks a queued item into [server_string, enqueued_monotonic_at] tuple.
         #
-        # @param item [String, Array] either a server string or a 2-element array of [string, monotonic_time]
-        # @return [Array(String, Numeric, nil)] a 2-element array of [server_string, monotonic_time_or_nil]
+        # Items are stored as arrays with timing metadata, but handles raw strings
+        # for backward compatibility by pairing them with nil timestamp.
+        #
+        # @param item [Array, String] the queued item
+        # @return [Array<(String, Numeric, nil)>] [server_string, timestamp_or_nil]
         # @api private
         def unwrap_server_queue_item(item)
           if item.is_a?(Array) && item.length == 2 && item[1].is_a?(Numeric)
@@ -906,10 +916,13 @@ module Lich
           end
         end
 
-        # Starts the background thread that reads lines from the game socket and enqueues them.
+        # Starts the background thread that reads raw data from the game socket.
         #
-        # Handles socket timeouts, connection errors, and stream desync detection. Records
-        # performance metrics and runs SocketReadHook callbacks on each line received.
+        # Reads lines from the socket with timeout handling, runs the socket read hook,
+        # and enqueues messages for the parser. Handles consecutive timeouts (disconnects
+        # after max threshold), connection errors, and stream desync. Records EOF when the
+        # server closes the connection. Retries transient errors unless the socket is closed
+        # or a fatal condition detected.
         #
         # @return [void]
         # @api private
@@ -1009,9 +1022,10 @@ module Lich
           @reader_thread.priority = 5
         end
 
-        # Starts the background thread that dequeues server strings and processes them.
+        # Starts the background thread that dequeues and parses server messages.
         #
-        # Pops items from server_queue, parses XML, and runs downstream hooks.
+        # Pops messages from the server queue and calls process_server_string for each.
+        # Logs and shuts down the connection on unrecoverable parsing errors.
         #
         # @return [void]
         # @api private
@@ -1058,10 +1072,15 @@ module Lich
           READ_TIMEOUT_SECONDS * timeout_count
         end
 
-        # Main entry point for processing a server string: validates game state, cleans
-        # the string, parses XML, triggers downstream hooks, and manages autostart.
+        # Processes a raw server string through cleaning, XML parsing, game-specific
+        # parsing, and downstream hooks.
         #
-        # @param server_string [String] the raw server string to process
+        # Detects game type from XML and lazily loads game-specific modules. Routes the
+        # string to the game instance's clean_serverstring and process_game_specific_data
+        # methods, parses it as XML into XMLData, inventories items, and fires downstream
+        # hooks. Handles autostart, CLI script starting, and socket reader hooks.
+        #
+        # @param server_string [String] the raw server string (one XML line)
         # @return [void]
         # @api private
         def process_server_string(server_string)
@@ -1103,16 +1122,21 @@ module Lich
           # Process XML data
           process_xml_data(server_string) unless server_string =~ /^<settings /
 
+          # Passively capture the inventoryManager extended feed (read-only tap;
+          # returns the string unchanged and never raises -- see
+          # Lich::Common::Inventory.observe). Runs on this parser thread.
+          Lich::Common::Inventory.observe(server_string) if defined?(Lich::Common::Inventory)
+
           # Run downstream hooks
           process_downstream_hooks(server_string)
         end
 
-        # Executes the autostart sequence: checks for version updates, syncs script repos,
-        # and launches the autostart script.
+        # Initializes the game on first login: checks for version updates, syncs script
+        # repositories in a background thread, and launches the autostart script.
         #
-        # Runs once when the first <app char.../> tag is received. Version check and repo sync
-        # run in background threads to avoid blocking XML parsing. Sets @@autostarted to true
-        # when complete.
+        # Displays a Ruby version warning if the installed version is below the recommended
+        # minimum. Blocks up to 10 seconds waiting for XMLData.name to be populated before
+        # syncing repositories.
         #
         # @return [void]
         # @api private
@@ -1150,11 +1174,11 @@ module Lich
           display_ruby_warning if defined?(RECOMMENDED_RUBY) && Gem::Version.new(RUBY_VERSION) < Gem::Version.new(RECOMMENDED_RUBY)
         end
 
-        # Displays a formatted terminal table warning if the current Ruby version is below
-        # the recommended minimum.
+        # Displays a formatted warning table when the Ruby version is below the recommended
+        # minimum.
         #
-        # Called from handle_autostart if a RECOMMENDED_RUBY version is defined and the
-        # running version is older.
+        # Includes the current version, recommended version, and a link to game-specific
+        # documentation for upgrading.
         #
         # @return [void]
         # @api private
@@ -1181,10 +1205,9 @@ module Lich
           end
         end
 
-        # Launches scripts passed via the --start-scripts command-line argument.
+        # Starts user-specified scripts passed via the --start-scripts command-line argument.
         #
-        # Parses comma-separated script names and calls Script.start on each. Sets @cli_scripts
-        # to true to prevent repeated launches. Logs the character login info.
+        # Parses comma-separated script names from the argument and launches each via Script.start.
         #
         # @return [void]
         # @api private
@@ -1198,14 +1221,17 @@ module Lich
           Lich.log("info: logged in as #{XMLData.game}:#{XMLData.name}")
         end
 
-        # Parses the server string as XML using Ox in SAX mode and updates XMLData.
+        # Parses a server string as XML into XMLData and repairs common malformations.
         #
-        # Handles stream desync detection (truncated fragments), repairs malformed attributes
-        # (nested quotes, settingsInfo bugs), and splits the parsed output into lines for
-        # downstream processing. Calls game-specific processing and fires Script hooks.
+        # Uses Ox in SAX mode with permissive parsing (no strict validation). Detects
+        # stream desync via Ox error callbacks and resets XMLData on truncation.
+        # Repairs malformed attribute values (settingsInfo space-not-found bug, nested quotes
+        # in dialog titles) via repair_malformed_attributes_and_reparse. Runs game-specific
+        # parsing and downstream script hooks after successful parse.
         #
-        # @param server_string [String] the raw or partially pre-cleaned server string
+        # @param server_string [String] the raw server XML string
         # @return [void]
+        # @raise [GameStreamDesyncError] if a truncation-class Ox error is detected (logged and handled)
         # @api private
         def process_xml_data(server_string)
           begin
@@ -1303,13 +1329,13 @@ module Lich
           @@settings_init_needed = true
         end
 
-        # Runs downstream hooks and sends the modified server string to connected clients.
+        # Runs the DownstreamHook chain and processes room information and client output.
         #
-        # Processes room information, applies frontend-specific conversions (genie/frostbite
-        # room number formatting, GSL translation), calls game-specific room display methods,
-        # and sends to all connected detachable clients or the main client.
+        # Executes game-specific frontend conversions (genie/frostbite room number formatting,
+        # StormFront-to-Wiz stream conversion), injects the origin sentinel if supported,
+        # and sends the rewritten string to the client.
         #
-        # @param server_string [String] the server string to process and transmit
+        # @param server_string [String] the server string after XML parsing
         # @return [void]
         # @api private
         def process_downstream_hooks(server_string)
@@ -1343,13 +1369,13 @@ module Lich
           end
         end
 
-        # Detects and processes room-name style tags to trigger room display modifications.
+        # Detects room-name lines and flags them for room display modification.
         #
-        # Sets @room_number_after_ready to true when a roomName style tag is detected,
-        # signaling that the next prompt should trigger game-instance room display processing.
+        # Sets @room_number_after_ready to true when a style=roomName tag is detected,
+        # signaling that the next prompt should trigger room display rewriting.
         #
-        # @param alt_string [String] the server string to examine
-        # @return [void]
+        # @param alt_string [String] the outbound server string
+        # @return [String] the unmodified server string
         # @api private
         def process_room_information(alt_string)
           if alt_string =~ /^(<pushStream id="familiar" ifClosedStyle="watching"\/>)?(?:<resource picture="\d+"\/>|<popBold\/>)?<style id="roomName"\s+\/>/
@@ -1361,12 +1387,12 @@ module Lich
           end
         end
 
-        # Transmits a server string to all connected clients.
+        # Sends the final outbound string to the connected frontend client(s).
         #
-        # Sends to detachable clients if any are registered and alive, otherwise sends to
-        # the main $_CLIENT_ connection.
+        # Prioritizes detachable (multi-client) registry over the default client.
+        # Skips dead clients and handles empty registry gracefully.
         #
-        # @param alt_string [String] the server string to send
+        # @param alt_string [String] the string to send
         # @return [void]
         # @api private
         def send_to_client(alt_string)
@@ -1379,15 +1405,14 @@ module Lich
           end
         end
 
-        # Evaluates a thread error to determine whether the server thread should retry.
+        # Evaluates whether a reader thread error is recoverable and logs appropriately.
         #
-        # Logs recognized connection disruptions (timeouts, resets) at info level; logs
-        # other errors at error level with backtrace. Timeouts after max retries, connection
-        # errors, stream desync, and queue overflow are fatal (no retry). Unknown errors retry
-        # if the socket/client are still alive.
+        # Timeout and connection errors are fatal (returns false). Stream desync and queue
+        # overflow are fatal (returns false). Unknown errors are tentatively retryable unless
+        # the socket/client is closed or a fatal error pattern is detected.
         #
-        # @param error [StandardError] the error to evaluate
-        # @return [Boolean] true if a retry is safe, false if fatal
+        # @param error [StandardError] the exception from the reader thread
+        # @return [Boolean] true if the reader should retry, false if it should exit
         # @api private
         def handle_thread_error(error)
           if recognized_connection_disruption?(error)
@@ -1429,11 +1454,10 @@ module Lich
           end
         end
 
-        # Maps an error to a shutdown reason symbol for shutdown coordination.
+        # Maps an exception type to a shutdown reason code for logging.
         #
-        # @param error [StandardError] the error that caused thread exit
-        # @return [Symbol] one of :game_timeout, :connection_reset, :connection_pipe,
-        #   :connection_aborted, :game_stream_desync, or :unrecoverable_game_thread_error
+        # @param error [StandardError] the exception that caused thread exit
+        # @return [Symbol] a shutdown reason code (:game_timeout, :connection_reset, etc.)
         # @api private
         def shutdown_reason_for_thread_exit(error)
           case error
@@ -1454,10 +1478,12 @@ module Lich
           end
         end
 
-        # Records the shutdown reason with ShutdownCoordinator for orderly exit handling.
+        # Records the reason and source of game shutdown to the ShutdownCoordinator.
         #
-        # @param reason [Symbol] the shutdown reason (e.g., :game_timeout)
-        # @param source [Symbol] the source thread (e.g., :game_reader, :game_parser)
+        # Logs a warning if recording fails; does not raise.
+        #
+        # @param reason [Symbol] the shutdown reason code
+        # @param source [Symbol] the subsystem that detected shutdown (:game_reader, :game_parser)
         # @param detail [Class, nil] optional exception class for context
         # @return [void]
         # @api private
@@ -1469,21 +1495,21 @@ module Lich
           shutdown_log.warning("failed to record shutdown reason #{reason.inspect}: #{e.class}: #{e.message}")
         end
 
-        # Returns the logger for shutdown-related messages.
+        # Returns the shutdown logging utility.
         #
-        # @return [Lich::Common::ShutdownLog] the shutdown logger
+        # @return [Lich::Common::ShutdownLog] the logger for shutdown events
         # @api private
         def shutdown_log
           Lich::Common::ShutdownLog
         end
 
-        # Detects whether an error is a normal consequence of orderly user shutdown.
+        # Returns whether an error represents an orderly user-initiated shutdown.
         #
-        # Returns true if the error is a stream-closed error (EBADF, "stream closed", etc.)
-        # and ShutdownCoordinator reports an orderly exit is in progress and the socket is closed.
+        # True only when ShutdownCoordinator indicates orderly exit, the socket is closed,
+        # and the error is a close-related exception (EBADF, stream closed, bad file descriptor).
         #
-        # @param error [StandardError] the error to evaluate
-        # @return [Boolean] true if this is a normal shutdown error
+        # @param error [StandardError] the exception to evaluate
+        # @return [Boolean] true if this is an expected orderly-shutdown error
         # @api private
         def intentional_shutdown_close_error?(error)
           return false unless defined?(Lich::Common::ShutdownCoordinator)
@@ -1494,10 +1520,12 @@ module Lich
             error.to_s =~ /stream closed in another thread|closed stream|bad file descriptor/i
         end
 
-        # Tests whether an error represents a known connection disruption.
+        # Returns whether an error is a known connection disruption or stream problem.
         #
-        # @param error [StandardError] the error to test
-        # @return [Boolean] true for timeouts, resets, aborts, or stream desync
+        # Recognizes timeout, connection reset, pipe, abort, and stream desync errors.
+        #
+        # @param error [StandardError] the exception to evaluate
+        # @return [Boolean] true if the error is a recognized connection issue
         # @api private
         def recognized_connection_disruption?(error)
           error.is_a?(Errno::ETIMEDOUT) ||
@@ -1511,8 +1539,11 @@ module Lich
 
         # Formats a connection disruption error for logging.
         #
-        # @param error [StandardError] the error to format
-        # @return [String] a log message with error class and first line of message
+        # GameStreamDesyncError gets special formatting (first line only); other errors
+        # are formatted as "Class: message".
+        #
+        # @param error [StandardError] the exception to format
+        # @return [String] a log-ready error description
         # @api private
         def connection_disruption_log_message(error)
           return "GameStreamDesyncError: #{error.message.lines.first&.strip}" if error.is_a?(GameStreamDesyncError)
@@ -1536,16 +1567,17 @@ module Lich
     # Base class for character status tracking
     class CharacterStatus
       class << self
-        # Sets the character's injury display mode (wounds, scars, or both).
+        # Sets the GemStone character injury display mode (wounds, scars, or both).
         #
         # Sends the _injury command and waits up to 7.5 seconds for XMLData.injury_mode
-        # to reflect the change.
+        # to reflect the change. Does nothing if the character is already in the requested mode.
         #
-        # @param mode [String] 'scar'/'scars', 'wound'/'wounds', or 'both' (default)
+        # @param mode [String] the injury mode: 'scar'/'scars' (1), 'wound'/'wounds' (0), or 'both' (2)
         # @return [void]
-        # @raise [ArgumentError] if mode is not one of the recognized values
+        # @raise [ArgumentError] if mode is not 'scar', 'wound', or 'both'
         # @example
-        #   Lich::Gemstone::CharacterStatus.fix_injury_mode('scar')
+        #   CharacterStatus.fix_injury_mode('wound')
+        #   CharacterStatus.fix_injury_mode('both')
         def fix_injury_mode(mode = 'both') # Default mode 'both' handles wounds (precedence) then scars
           case mode
           when 'scar', 'scars'
@@ -1568,11 +1600,12 @@ module Lich
           end
         end
 
-        # Handles calls to unknown injury area methods on CharacterStatus.
+        # Handles calls to undefined injury body part methods.
         #
-        # Returns a formatted error message listing valid areas.
+        # Returns a formatted error message listing valid parts (arms, limbs, torso, etc.)
+        # extracted from XMLData.injuries.
         #
-        # @return [nil] (the result of the Lich::Messaging._respond call)
+        # @return [nil] (the respond method returns nil on success)
         # @api private
         def method_missing(_method_name = nil)
           result = Lich::Messaging.mono(Lich::Messaging.msg_format("bold", "#{self.name.split('::').last}: Invalid area, try one of these: arms, limbs, torso, #{XMLData.injuries.keys.join(', ')}"))
@@ -1635,12 +1668,13 @@ module Lich
         "https://gswiki.play.net/Lich:Software/Installation"
       end
 
-      # Parses GemStone XML and line data for Infomon (character status tracking).
+      # Parses GemStone-specific data via Infomon (vitals, experience, combat state).
       #
-      # Passes raw server_string to Infomon::XMLParser and stripped lines to Infomon::Parser.
+      # Runs Infomon's XML and line parsers to update character state (experience,
+      # vitals, wounds, scars). Processes both raw and stripped versions of the server string.
       #
-      # @param server_string [String] the raw XML server string
-      # @param stripped_server [String, nil] the server string with XML removed
+      # @param server_string [String] the raw server XML string
+      # @param stripped_server [String, nil] optional pre-stripped text version
       # @return [void]
       # @api private
       def process_game_specific_data(server_string, stripped_server = nil)
@@ -1653,13 +1687,13 @@ module Lich
         end
       end
 
-      # Injects Lich room ID and/or UID into the GemStone room-name line.
+      # Rewrites the GemStone room-name line to inject or hide Lich ID and/or UID.
       #
-      # Reads the GemStone room UID from the title, looks up the Lich room ID, and
-      # substitutes based on display settings (display_lichid, display_uid).
+      # Injects Lich room ID before the closing bracket, and/or replaces the game's inline
+      # UID with Lich's UID format depending on display settings (;display lichid, ;display uid).
       #
-      # @param alt_string [String] the room-name server string, modified in place
-      # @return [String] the modified string
+      # @param alt_string [String] the outbound room-name server string, modified in place
+      # @return [String] the rewritten string
       # @api private
       def modify_room_display(alt_string)
         uid_from_string = alt_string.match(/] \((?<uid>\d+)\)/)
@@ -1717,11 +1751,15 @@ module Lich
 
     # DragonRealms-specific game instance
     class GameInstance < GameBase::GameInstance::Base
-      # Cleans a DragonRealms server string: buffers split room components, removes
-      # superfluous tags, fixes encoding, and handles combat/atmospheric streams.
+      # Cleans a DragonRealms server string: buffers split room components, fixes encoding
+      # and malformed XML tags, handles combat/atmospherics.
       #
-      # @param server_string [String] the server string to clean
-      # @return [String, nil] the cleaned server string, or nil if buffering a split component
+      # Buffers the "...wait N seconds." part of split room object/player components,
+      # removes superfluous combat wrapping, fixes encoding and duplicate tags, and
+      # processes combat/atmospheric stream markers.
+      #
+      # @param server_string [String] the raw server string
+      # @return [String, nil] the cleaned server string, or nil if buffering (should skip)
       # @api private
       def clean_serverstring(server_string)
         # Buffer split room objs components (server sends "...wait N seconds." separately)
@@ -1753,11 +1791,13 @@ module Lich
         server_string
       end
 
-      # Handles DragonRealms combat stream nesting: closes pushStream/combat with popStream
-      # when certain end tags are encountered.
+      # Manages DragonRealms combat stream nesting: closes pending streams and removes duplicates.
       #
-      # @param server_string [String] the server string, modified in place
-      # @return [String] the processed server string
+      # When exiting combat, wraps end tags (prompt, clearStream, etc.) with closing
+      # combat stream markers. Removes orphaned opening tags when not in combat.
+      #
+      # @param server_string [String] the server string with combat tags
+      # @return [String] the modified string
       # @api private
       def handle_combat_tags(server_string)
         if @combat_count > 0
@@ -1776,11 +1816,13 @@ module Lich
         server_string
       end
 
-      # Handles DragonRealms atmospheric stream state: prepends popStream when atmospherics
-      # flag is set, and manages broken familiar/pet-pig tags.
+      # Manages DragonRealms atmospheric stream state (familiar and spell effects).
       #
-      # @param server_string [String] the server string, modified in place
-      # @return [String] the processed server string
+      # Closes pending atmospheric streams and strips misplaced stream tags that break
+      # prompt processing (familiar narration and pet pig effects).
+      #
+      # @param server_string [String] the server string with atmospheric tags
+      # @return [String] the modified string
       # @api private
       def handle_atmospherics(server_string)
         if @atmospherics
@@ -1799,19 +1841,20 @@ module Lich
         server_string
       end
 
-      # Returns the DragonRealms Lich installation documentation URL.
+      # Returns the DragonRealms-specific documentation URL.
       #
-      # @return [String] the GitHub wiki URL for Lich installation
+      # @return [String] the Lich 5 GitHub wiki URL
       # @api private
       def get_documentation_url
         "https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich"
       end
 
-      # Parses DragonRealms XML and line data for DRParser (dynamic data display).
+      # Parses DragonRealms-specific data via DRParser (vitals, experience, room info).
       #
-      # Passes raw server_string to DRParser for inline modifications.
+      # Runs DRParser to update character state and optionally inject inline exp display.
+      # The parser may modify server_string in place.
       #
-      # @param server_string [String] the raw XML server string, modified in place by the parser
+      # @param server_string [String] the raw server XML string, possibly modified in place
       # @return [void]
       # @api private
       def process_game_specific_data(server_string, _stripped_server = nil)
@@ -1952,7 +1995,7 @@ module Lich
     # Game class for DragonRealms
     class Game < GameBase::Game
       class << self
-        # Initializes the DragonRealms game class: sets up buffers and the game instance.
+        # Initializes the DragonRealms game instance and buffers.
         #
         # @return [void]
         # @api private
