@@ -150,6 +150,7 @@ downstream hooks to process game output and track combat events.</p>
   <span class='label'>track_wounds:</span> <span class='kw'>true</span><span class='comma'>,</span>
   <span class='label'>track_statuses:</span> <span class='kw'>true</span><span class='comma'>,</span>
   <span class='label'>track_ucs:</span> <span class='kw'>true</span><span class='comma'>,</span>          <span class='comment'># Track UCS (position, tierup, smite)
+</span>  <span class='label'>emit_attacks:</span> <span class='kw'>false</span><span class='comma'>,</span>      <span class='comment'># Emit whole parsed events (:attack blob) for recorder-class subscribers
 </span>  <span class='label'>max_threads:</span> <span class='int'>2</span><span class='comma'>,</span>           <span class='comment'># Keep threading for performance
 </span>  <span class='label'>debug:</span> <span class='kw'>false</span><span class='comma'>,</span>
   <span class='label'>buffer_size:</span> <span class='int'>200</span><span class='comma'>,</span>         <span class='comment'># Increase for large combat chunks
@@ -157,6 +158,22 @@ downstream hooks to process game output and track combat events.</p>
 </span>  <span class='label'>cleanup_interval:</span> <span class='int'>100</span><span class='comma'>,</span>    <span class='comment'># Cleanup creature registry every N chunks
 </span>  <span class='label'>cleanup_max_age:</span> <span class='int'>600</span>      <span class='comment'># Remove creatures older than N seconds (10 minutes)
 </span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="DEBUG_LEVELS-constant" class="">DEBUG_LEVELS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Debug levels, in the order they were introduced. <code>true</code> is kept
+as an alias for :verbose so settings saved before levels existed
+still resolve.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>summary</span><span class='words_sep'> </span><span class='tstring_content'>verbose</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="COMBAT_RELEVANT_PATTERN-constant" class="">COMBAT_RELEVANT_PATTERN =
           <div class="docstring">
@@ -174,7 +191,10 @@ literals compiles to an efficient multi-substring search.</p>
         </dt>
         <dd><pre class="code"><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span>
   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>points of damage</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>              <span class='comment'># Creatures
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> damage!</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='comment'># roll-based short form (&quot;... 6 damage!&quot;)
+</span>  <span class='comment'># has no &quot;points of&quot; - chunks holding
+</span>  <span class='comment'># only these were dropped entirely
+</span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>              <span class='comment'># Creatures
 </span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>**</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>                       <span class='comment'># Flares
 </span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>AS:</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>                      <span class='comment'># Attack rolls
 </span>  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>swing</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>thrust</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>cast</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gesture</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
@@ -186,8 +206,9 @@ literals compiles to an efficient multi-substring search.</p>
         <dt id="COMBAT_RESOLUTION_PATTERN-constant" class="">COMBAT_RESOLUTION_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Regex pattern matching combat resolution outcomes: hit, miss, parry, block, dodge.</p>
-<p>Case-insensitive word-boundary match used to identify combat resolution lines in game output.</p>
+    <p>Pattern matching combat resolution outcomes: hit, miss, parry, block, or dodge.</p>
+<p>Case-insensitive word-boundary match used to detect attack resolution lines
+in game output when the full COMBAT_RELEVANT_PATTERN is too broad.</p>
 
   </div>
 </div>
@@ -197,9 +218,8 @@ literals compiles to an efficient multi-substring search.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>A matching line from game output</p></div></h5>
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You hit the ogre!</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>or</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The troll parries your attack.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You hit the goblin.</span><span class='tstring_end'>&quot;</span></span> <span class='comment'>#=&gt; match
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Your swing misses.</span><span class='tstring_end'>&quot;</span></span> <span class='comment'>#=&gt; match</span></code></pre>
     
   </div>
 
@@ -208,6 +228,8 @@ literals compiles to an efficient multi-substring search.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#COMBAT_RELEVANT_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RELEVANT_PATTERN (constant)">COMBAT_RELEVANT_PATTERN</a></span></li>
+    
+      <li><span class='object_link'><a href="#combat_relevant%3F-class_method" title="Lich::Gemstone::Combat::Tracker.combat_relevant? (method)">combat_relevant?</a></span></li>
     
   </ul>
 
@@ -338,7 +360,7 @@ literals compiles to an efficient multi-substring search.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#debug%3F-class_method" title="debug? (class method)">.<strong>debug?</strong>  &#x21d2; Boolean </a>
+      <a href="#debug%3F-class_method" title="debug? (class method)">.<strong>debug?</strong>(level = nil)  &#x21d2; Symbol, ... </a>
     
 
     
@@ -352,7 +374,7 @@ literals compiles to an efficient multi-substring search.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Check if debug mode is enabled.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if debug mode is enabled, or whether a specific level is.</p></div></span>
   
 </li>
 
@@ -426,7 +448,7 @@ literals compiles to an efficient multi-substring search.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#enable_debug!-class_method" title="enable_debug! (class method)">.<strong>enable_debug!</strong>  &#x21d2; void </a>
+      <a href="#enable_debug!-class_method" title="enable_debug! (class method)">.<strong>enable_debug!</strong>(level = :verbose)  &#x21d2; void </a>
     
 
     
@@ -484,7 +506,51 @@ literals compiles to an efficient multi-substring search.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the fallback maximum HP value used for creatures without template data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the configured fallback max HP for creatures without templates.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#off-class_method" title="off (class method)">.<strong>off</strong>(handler_or_name)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Unsubscribe a handler returned by <span class='object_link'><a href="#on-class_method" title="Lich::Gemstone::Combat::Tracker.on (method)">Tracker.on</a></span>, or by its name:.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#on-class_method" title="on (class method)">.<strong>on</strong>(*types, name: nil, &amp;block)  &#x21d2; Proc </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Subscribe to parsed combat events (see Combat::Observers for event types, payloads, and the subscriber contract - callbacks may run on worker threads; never send game commands from one).</p></div></span>
   
 </li>
 
@@ -589,12 +655,12 @@ literals compiles to an efficient multi-substring search.</p>
       <pre class="lines">
 
 
-64
-65
-66</pre>
+68
+69
+70</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 68</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_buffer'>buffer</span>
   <span class='ivar'>@buffer</span>
@@ -630,12 +696,12 @@ literals compiles to an efficient multi-substring search.</p>
       <pre class="lines">
 
 
-64
-65
-66</pre>
+68
+69
+70</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 68</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_settings'>settings</span>
   <span class='ivar'>@settings</span>
@@ -711,12 +777,12 @@ literals compiles to an efficient multi-substring search.</p>
       <pre class="lines">
 
 
-215
-216
-217</pre>
+277
+278
+279</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 215</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 277</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_combat_relevant?'>combat_relevant?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#COMBAT_RELEVANT_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RELEVANT_PATTERN (constant)">COMBAT_RELEVANT_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="#COMBAT_RESOLUTION_PATTERN-constant" title="Lich::Gemstone::Combat::Tracker::COMBAT_RESOLUTION_PATTERN (constant)">COMBAT_RESOLUTION_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
@@ -858,24 +924,24 @@ Reinitializes processor if thread count changes.</p>
       <pre class="lines">
 
 
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247</pre>
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 233</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 295</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='id identifier rubyid_new_settings'>new_settings</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
@@ -900,7 +966,7 @@ Reinitializes processor if thread count changes.</p>
       <div class="method_details ">
   <h3 class="signature " id="debug?-class_method">
   
-    .<strong>debug?</strong>  &#x21d2; <tt>Boolean</tt> 
+    .<strong>debug?</strong>(level = nil)  &#x21d2; <tt>Symbol</tt>, ... 
   
 
   
@@ -908,24 +974,46 @@ Reinitializes processor if thread count changes.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Check if debug mode is enabled</p>
+    <p>Check if debug mode is enabled, or whether a specific level is.</p>
+<p>Called bare it returns the active level (truthy), which keeps every
+existing <code>if Tracker.debug?</code> guard working unchanged.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>level</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>:verbose or :summary to test one level</p></div>
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
     <li>
       
       
-        <span class='type'>(<tt>Boolean</tt>)</span>
+        <span class='type'>(<tt>Symbol</tt>, <tt>Boolean</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>true if debug logging is active</p></div>
+        <div class='inline'><p>active level, or whether <code>level</code> is on</p></div>
       
     </li>
   
@@ -937,15 +1025,23 @@ Reinitializes processor if thread count changes.</p>
       <pre class="lines">
 
 
-121
-122
-123</pre>
+151
+152
+153
+154
+155
+156
+157</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 121</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 151</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_debug?'>debug?</span>
-  <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:debug</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='gvar'>$combat_debug</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_debug?'>debug?</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_current'>current</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:debug</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='gvar'>$combat_debug</span>
+  <span class='id identifier rubyid_current'>current</span> <span class='op'>=</span> <span class='symbol'>:verbose</span> <span class='kw'>if</span> <span class='id identifier rubyid_current'>current</span> <span class='op'>==</span> <span class='kw'>true</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_current'>current</span> <span class='kw'>unless</span> <span class='id identifier rubyid_level'>level</span>
+
+  <span class='id identifier rubyid_current'>current</span> <span class='op'>==</span> <span class='id identifier rubyid_level'>level</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -977,21 +1073,21 @@ Reinitializes processor if thread count changes.</p>
       <pre class="lines">
 
 
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116</pre>
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 105</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 126</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_disable!'>disable!</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@enabled</span>
@@ -1022,6 +1118,7 @@ Reinitializes processor if thread count changes.</p>
 </h3><div class="docstring">
   <div class="discussion">
     <p class="note returns_void">This method returns an undefined value.</p><p>Disable debug logging</p>
+<p>Restores the thread count debug mode took over.</p>
 
   </div>
 </div>
@@ -1034,17 +1131,23 @@ Reinitializes processor if thread count changes.</p>
       <pre class="lines">
 
 
-136
-137
-138
-139</pre>
+189
+190
+191
+192
+193
+194
+195</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 136</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 189</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_disable_debug!'>disable_debug!</span>
-  <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='kw'>false</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Debug mode disabled</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
+  <span class='id identifier rubyid_restore'>restore</span> <span class='op'>=</span> <span class='ivar'>@pre_debug_threads</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="#DEFAULT_SETTINGS-constant" title="Lich::Gemstone::Combat::Tracker::DEFAULT_SETTINGS (constant)">DEFAULT_SETTINGS</a></span></span><span class='lbracket'>[</span><span class='symbol'>:max_threads</span><span class='rbracket'>]</span>
+  <span class='ivar'>@pre_debug_threads</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>max_threads:</span> <span class='id identifier rubyid_restore'>restore</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Debug mode disabled (max_threads: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_restore'>restore</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1077,21 +1180,21 @@ Persists enabled state to DB.</p>
       <pre class="lines">
 
 
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98</pre>
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 87</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 108</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enable!'>enable!</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@enabled</span>
@@ -1113,7 +1216,7 @@ Persists enabled state to DB.</p>
       <div class="method_details ">
   <h3 class="signature " id="enable_debug!-class_method">
   
-    .<strong>enable_debug!</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>enable_debug!</strong>(level = :verbose)  &#x21d2; <tt>void</tt> 
   
 
   
@@ -1122,11 +1225,35 @@ Persists enabled state to DB.</p>
 </h3><div class="docstring">
   <div class="discussion">
     <p class="note returns_void">This method returns an undefined value.</p><p>Enable debug logging</p>
+<p>Forces inline processing (max_threads: 0) for the duration, so
+debug output appears in true order relative to the game text
+instead of interleaving from the async worker.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>level</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:verbose</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>:verbose for the line-by-line parse trace,
+:summary for one line per persisted event</p></div>
+      
+    </li>
+  
+</ul>
+
 
 </div><table class="source_code">
   <tr>
@@ -1134,17 +1261,39 @@ Persists enabled state to DB.</p>
       <pre class="lines">
 
 
-128
-129
-130
-131</pre>
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 128</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 168</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_enable_debug!'>enable_debug!</span>
-  <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>enabled:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Debug mode enabled</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>def</span> <span class='id identifier rubyid_enable_debug!'>enable_debug!</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span> <span class='op'>=</span> <span class='symbol'>:verbose</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_level'>level</span> <span class='op'>=</span> <span class='symbol'>:verbose</span> <span class='kw'>if</span> <span class='id identifier rubyid_level'>level</span> <span class='op'>==</span> <span class='kw'>true</span>
+  <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#DEBUG_LEVELS-constant" title="Lich::Gemstone::Combat::Tracker::DEBUG_LEVELS (constant)">DEBUG_LEVELS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Unknown debug level </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_level'>level</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> (expected </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#DEBUG_LEVELS-constant" title="Lich::Gemstone::Combat::Tracker::DEBUG_LEVELS (constant)">DEBUG_LEVELS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:inspect</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> or </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
+  <span class='comment'># Only capture on the first enable - a second call while already
+</span>  <span class='comment'># in debug would otherwise record the forced 0 as the value to
+</span>  <span class='comment'># restore, stranding the character inline.
+</span>  <span class='ivar'>@pre_debug_threads</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:max_threads</span><span class='rbracket'>]</span> <span class='kw'>unless</span> <span class='id identifier rubyid_debug?'>debug?</span>
+  <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>debug:</span> <span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='label'>enabled:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>max_threads:</span> <span class='int'>0</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Debug mode enabled (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_level'>level</span><span class='embexpr_end'>}</span><span class='tstring_content'>, inline processing)</span><span class='tstring_end'>&quot;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1192,18 +1341,18 @@ Persists enabled state to DB.</p>
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79</pre>
+92
+93
+94
+95
+96
+97
+98
+99
+100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 92</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
   <span class='comment'># Before login data is available we can&#39;t load per-character
@@ -1230,7 +1379,7 @@ Persists enabled state to DB.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the fallback maximum HP value used for creatures without template data.</p>
+    <p>Returns the configured fallback max HP for creatures without templates.</p>
 
   </div>
 </div>
@@ -1247,7 +1396,7 @@ Persists enabled state to DB.</p>
       
       
         &mdash;
-        <div class='inline'><p>the configured fallback max HP (default 350)</p></div>
+        <div class='inline'><p>the fallback max HP value</p></div>
       
     </li>
   
@@ -1259,17 +1408,122 @@ Persists enabled state to DB.</p>
       <pre class="lines">
 
 
-153
-154
-155
-156</pre>
+209
+210
+211
+212</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 153</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 209</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fallback_hp'>fallback_hp</span>
   <span class='id identifier rubyid_initialize!'>initialize!</span> <span class='kw'>unless</span> <span class='ivar'>@initialized</span>
   <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:fallback_max_hp</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="off-class_method">
+  
+    .<strong>off</strong>(handler_or_name)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Unsubscribe a handler returned by <span class='object_link'><a href="#on-class_method" title="Lich::Gemstone::Combat::Tracker.on (method)">on</a></span>, or by its name:.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+83
+84
+85</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 83</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_off'>off</span><span class='lparen'>(</span><span class='id identifier rubyid_handler_or_name'>handler_or_name</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_off'><span class='object_link'><a href="Observers.html#off-class_method" title="Lich::Gemstone::Combat::Observers.off (method)">off</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_handler_or_name'>handler_or_name</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="on-class_method">
+  
+    .<strong>on</strong>(*types, name: nil, &amp;block)  &#x21d2; <tt>Proc</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Subscribe to parsed combat events (see Combat::Observers for
+event types, payloads, and the subscriber contract - callbacks
+may run on worker threads; never send game commands from one).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code>Combat::Tracker.on(:damage) { |type, data| queue &lt;&lt; data }
+Combat::Tracker.on(:damage, name: &#39;mybar&#39;) { ... } # idempotent</code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Proc</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>handler; pass to <span class='object_link'><a href="#off-class_method" title="Lich::Gemstone::Combat::Tracker.off (method)">off</a></span> to unsubscribe</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+78
+79
+80</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 78</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_on'>on</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_types'>types</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_on'><span class='object_link'><a href="Observers.html#on-class_method" title="Lich::Gemstone::Combat::Observers.on (method)">on</a></span></span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_types'>types</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1320,29 +1574,29 @@ Triggers periodic cleanup of old creature instances.</p>
       <pre class="lines">
 
 
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180
-181
-182
-183
-184</pre>
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 165</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 221</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_process'>process</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1411,13 +1665,13 @@ Triggers periodic cleanup of old creature instances.</p>
       <pre class="lines">
 
 
-145
-146
-147
-148</pre>
+201
+202
+203
+204</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 145</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 201</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_fallback_hp'>set_fallback_hp</span><span class='lparen'>(</span><span class='id identifier rubyid_hp_value'>hp_value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_configure'>configure</span><span class='lparen'>(</span><span class='label'>fallback_max_hp:</span> <span class='id identifier rubyid_hp_value'>hp_value</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
@@ -1468,24 +1722,24 @@ Triggers periodic cleanup of old creature instances.</p>
       <pre class="lines">
 
 
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266</pre>
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 252</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/tracker.rb', line 314</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stats'>stats</span>
   <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>enabled:</span> <span class='kw'>false</span> <span class='rbrace'>}</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1512,7 +1766,7 @@ Triggers periodic cleanup of old creature instances.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:58 2026 by
+  Generated on Thu Sep 10 03:55:19 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

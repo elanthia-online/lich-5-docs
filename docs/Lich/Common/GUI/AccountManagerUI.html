@@ -114,6 +114,22 @@ Enhanced with data change notification capability for cross-tab synchronization<
   
 
 </div>
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="FRONTEND_ID_COLUMN-constant" class="">FRONTEND_ID_COLUMN =
+          
+        </dt>
+        <dd><pre class="code"><span class='int'>7</span></pre></dd>
+      
+    </dl>
+  
+
 
 
 
@@ -297,6 +313,28 @@ Enhanced with data change notification capability for cross-tab synchronization<
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#refresh_frontends-instance_method" title="#refresh_frontends (instance method)">#<strong>refresh_frontends</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Refreshes frontend dropdowns already mounted in account-management forms.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#register_for_notifications-instance_method" title="#register_for_notifications (instance method)">#<strong>register_for_notifications</strong>(tab_communicator)  &#x21d2; void </a>
     
 
@@ -409,6 +447,7 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <pre class="lines">
 
 
+35
 36
 37
 38
@@ -419,7 +458,7 @@ Enhanced with data change notification capability for cross-tab synchronization<
 43</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 36</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 35</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='ivar'>@data_dir</span> <span class='op'>=</span> <span class='id identifier rubyid_data_dir'>data_dir</span>
@@ -428,6 +467,7 @@ Enhanced with data change notification capability for cross-tab synchronization<
   <span class='ivar'>@tab_communicator</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@notifications_registered</span> <span class='op'>=</span> <span class='kw'>false</span>
   <span class='ivar'>@tab_indices</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='ivar'>@frontend_selectors</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -483,16 +523,16 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <pre class="lines">
 
 
+23
 24
 25
 26
 27
 28
-29
-30</pre>
+29</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 24</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 23</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_create_management_window'>create_management_window</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='comment'># Create instance with data directory
@@ -570,26 +610,6 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <pre class="lines">
 
 
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
 142
 143
 144
@@ -809,10 +829,14 @@ Enhanced with data change notification capability for cross-tab synchronization<
 358
 359
 360
-361</pre>
+361
+362
+363
+364
+365</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 122</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 142</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_accounts_tab'>create_accounts_tab</span><span class='lparen'>(</span><span class='id identifier rubyid_notebook'>notebook</span><span class='comma'>,</span> <span class='id identifier rubyid_insert_at_position'>insert_at_position</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='comment'># Store notebook reference for use in callbacks
@@ -823,9 +847,10 @@ Enhanced with data change notification capability for cross-tab synchronization<
   <span class='id identifier rubyid_accounts_box'>accounts_box</span><span class='period'>.</span><span class='id identifier rubyid_border_width'>border_width</span> <span class='op'>=</span> <span class='int'>10</span>
 
   <span class='comment'># Create accounts treeview with favorites support
-</span>  <span class='id identifier rubyid_accounts_store'>accounts_store</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>TreeStore</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
+</span>  <span class='id identifier rubyid_accounts_store'>accounts_store</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>TreeStore</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
   <span class='ivar'>@accounts_store</span> <span class='op'>=</span> <span class='id identifier rubyid_accounts_store'>accounts_store</span> <span class='comment'># Store reference for refresh operations
 </span>  <span class='id identifier rubyid_accounts_view'>accounts_view</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>TreeView</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_accounts_store'>accounts_store</span><span class='rparen'>)</span>
+  <span class='ivar'>@accounts_view</span> <span class='op'>=</span> <span class='id identifier rubyid_accounts_view'>accounts_view</span>
 
   <span class='comment'># Enable sortable columns
 </span>  <span class='id identifier rubyid_accounts_view'>accounts_view</span><span class='period'>.</span><span class='id identifier rubyid_set_headers_clickable'>set_headers_clickable</span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>
@@ -853,12 +878,9 @@ Enhanced with data change notification capability for cross-tab synchronization<
   <span class='id identifier rubyid_col'>col</span><span class='period'>.</span><span class='id identifier rubyid_clickable'>clickable</span> <span class='op'>=</span> <span class='kw'>true</span>
   <span class='id identifier rubyid_accounts_view'>accounts_view</span><span class='period'>.</span><span class='id identifier rubyid_append_column'>append_column</span><span class='lparen'>(</span><span class='id identifier rubyid_col'>col</span><span class='rparen'>)</span>
 
-  <span class='comment'># Frontend column - sortable
-</span>  <span class='id identifier rubyid_col'>col</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>TreeViewColumn</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Frontend</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_renderer'>renderer</span><span class='comma'>,</span> <span class='label'>text:</span> <span class='int'>3</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_col'>col</span><span class='period'>.</span><span class='id identifier rubyid_resizable'>resizable</span> <span class='op'>=</span> <span class='kw'>true</span>
-  <span class='id identifier rubyid_col'>col</span><span class='period'>.</span><span class='id identifier rubyid_set_sort_column_id'>set_sort_column_id</span><span class='lparen'>(</span><span class='int'>3</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_col'>col</span><span class='period'>.</span><span class='id identifier rubyid_clickable'>clickable</span> <span class='op'>=</span> <span class='kw'>true</span>
-  <span class='id identifier rubyid_accounts_view'>accounts_view</span><span class='period'>.</span><span class='id identifier rubyid_append_column'>append_column</span><span class='lparen'>(</span><span class='id identifier rubyid_col'>col</span><span class='rparen'>)</span>
+  <span class='ivar'>@inline_frontend_model</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>ListStore</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_reload_inline_frontends'>reload_inline_frontends</span>
+  <span class='id identifier rubyid_add_launch_choice_column'>add_launch_choice_column</span><span class='lparen'>(</span><span class='id identifier rubyid_accounts_view'>accounts_view</span><span class='comma'>,</span> <span class='id identifier rubyid_accounts_store'>accounts_store</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Frontend</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='ivar'>@inline_frontend_model</span><span class='comma'>,</span> <span class='symbol'>:frontend</span><span class='rparen'>)</span>
 
   <span class='comment'># Favorites column with clickable star (not sortable)
 </span>  <span class='id identifier rubyid_favorites_renderer'>favorites_renderer</span> <span class='op'>=</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>CellRendererText</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -955,9 +977,9 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <span class='id identifier rubyid_account'>account</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span>
       <span class='id identifier rubyid_character'>character</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span> <span class='comment'># Character is in column 1, not 2
 </span>      <span class='id identifier rubyid__game_name'>_game_name</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>2</span><span class='rbracket'>]</span> <span class='comment'># Game name is in column 2, not character
-</span>      <span class='id identifier rubyid_frontend_display'>frontend_display</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>3</span><span class='rbracket'>]</span> <span class='comment'># Frontend display name
 </span>      <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>4</span><span class='rbracket'>]</span> <span class='comment'># Game code is in hidden column 4
 </span>      <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>6</span><span class='rbracket'>]</span> <span class='comment'># Custom launch is in hidden column 6
+</span>      <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="#FRONTEND_ID_COLUMN-constant" title="Lich::Common::GUI::AccountManagerUI::FRONTEND_ID_COLUMN (constant)">FRONTEND_ID_COLUMN</a></span></span><span class='rbracket'>]</span> <span class='comment'># Stable frontend identifier in hidden column 7
 </span>
       <span class='kw'>if</span> <span class='id identifier rubyid_character'>character</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_character'>character</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
         <span class='comment'># This is an account node
@@ -997,20 +1019,6 @@ Enhanced with data change notification capability for cross-tab synchronization<
         <span class='id identifier rubyid_dialog'>dialog</span><span class='period'>.</span><span class='id identifier rubyid_destroy'>destroy</span>
 
         <span class='kw'>if</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>==</span> <span class='const'>Gtk</span><span class='op'>::</span><span class='const'>ResponseType</span><span class='op'>::</span><span class='const'>YES</span>
-          <span class='comment'># Convert display name back to internal frontend format for precise removal
-</span>          <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>case</span> <span class='id identifier rubyid_frontend_display'>frontend_display</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
-                     <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom</span><span class='tstring_end'>&#39;</span></span>
-                       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stormfront</span><span class='tstring_end'>&#39;</span></span> <span class='comment'># Custom launches use stormfront as base
-</span>                     <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&#39;</span></span>
-                       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stormfront</span><span class='tstring_end'>&#39;</span></span> <span class='comment'># Wrayth is display name for stormfront
-</span>                     <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wizard</span><span class='tstring_end'>&#39;</span></span>
-                       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wizard</span><span class='tstring_end'>&#39;</span></span>
-                     <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>avalon</span><span class='tstring_end'>&#39;</span></span>
-                       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>avalon</span><span class='tstring_end'>&#39;</span></span>
-                     <span class='kw'>else</span>
-                       <span class='id identifier rubyid_frontend_display'>frontend_display</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
-                     <span class='kw'>end</span>
-
           <span class='comment'># Remove character with frontend precision
 </span>          <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="AccountManager.html" title="Lich::Common::GUI::AccountManager (module)">AccountManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_remove_character'><span class='object_link'><a href="AccountManager.html#remove_character-class_method" title="Lich::Common::GUI::AccountManager.remove_character (method)">remove_character</a></span></span><span class='lparen'>(</span><span class='ivar'>@data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
             <span class='ivar'>@msgbox</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Character removed successfully.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -1101,11 +1109,6 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <pre class="lines">
 
 
-469
-470
-471
-472
-473
 474
 475
 476
@@ -1263,10 +1266,15 @@ Enhanced with data change notification capability for cross-tab synchronization<
 628
 629
 630
-631</pre>
+631
+632
+633
+634
+635
+636</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 469</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 474</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_add_account_tab'>create_add_account_tab</span><span class='lparen'>(</span><span class='id identifier rubyid_notebook'>notebook</span><span class='rparen'>)</span>
   <span class='comment'># Create tab content
@@ -1356,7 +1364,7 @@ Enhanced with data change notification capability for cross-tab synchronization<
 </span>      <span class='kw'>if</span> <span class='id identifier rubyid_auth_data'>auth_data</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_auth_data'>auth_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_auth_data'>auth_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
         <span class='comment'># Show frontend selection dialog
 </span>        <span class='id identifier rubyid_selected_frontend'>selected_frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_show_frontend_selection_dialog'>show_frontend_selection_dialog</span>
-        <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_selected_frontend'>selected_frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='comment'># User cancelled
+        <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_selected_frontend'>selected_frontend</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='comment'># User cancelled
 </span>
         <span class='comment'># Convert character data to the format expected by YAML storage
 </span>        <span class='id identifier rubyid_character_list'>character_list</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="AccountManager.html" title="Lich::Common::GUI::AccountManager (module)">AccountManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_convert_auth_data_to_characters'><span class='object_link'><a href="AccountManager.html#convert_auth_data_to_characters-class_method" title="Lich::Common::GUI::AccountManager.convert_auth_data_to_characters (method)">convert_auth_data_to_characters</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_auth_data'>auth_data</span><span class='comma'>,</span> <span class='id identifier rubyid_selected_frontend'>selected_frontend</span><span class='rparen'>)</span>
@@ -1478,10 +1486,6 @@ Enhanced with data change notification capability for cross-tab synchronization<
       <pre class="lines">
 
 
-367
-368
-369
-370
 371
 372
 373
@@ -1574,10 +1578,15 @@ Enhanced with data change notification capability for cross-tab synchronization<
 460
 461
 462
-463</pre>
+463
+464
+465
+466
+467
+468</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 367</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 371</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_add_character_tab'>create_add_character_tab</span><span class='lparen'>(</span><span class='id identifier rubyid_notebook'>notebook</span><span class='rparen'>)</span>
   <span class='comment'># Create tab content
@@ -1618,6 +1627,7 @@ Enhanced with data change notification capability for cross-tab synchronization<
   <span class='id identifier rubyid_frontend_box'>frontend_box</span><span class='period'>.</span><span class='id identifier rubyid_pack_start'>pack_start</span><span class='lparen'>(</span><span class='const'>Gtk</span><span class='op'>::</span><span class='const'>Label</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Frontend:</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='comma'>,</span> <span class='label'>expand:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>fill:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>padding:</span> <span class='int'>0</span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_frontend_selector'>frontend_selector</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="FrontendSelector.html" title="Lich::Common::GUI::FrontendSelector (class)">FrontendSelector</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="FrontendSelector.html#initialize-instance_method" title="Lich::Common::GUI::FrontendSelector#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>refresh:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='ivar'>@frontend_selectors</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_frontend_selector'>frontend_selector</span>
   <span class='id identifier rubyid_frontend_box'>frontend_box</span><span class='period'>.</span><span class='id identifier rubyid_pack_start'>pack_start</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_selector'>frontend_selector</span><span class='period'>.</span><span class='id identifier rubyid_widget'>widget</span><span class='comma'>,</span> <span class='label'>expand:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>fill:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>padding:</span> <span class='int'>0</span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_add_box'>add_box</span><span class='period'>.</span><span class='id identifier rubyid_pack_start'>pack_start</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_box'>frontend_box</span><span class='comma'>,</span> <span class='label'>expand:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>fill:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>padding:</span> <span class='int'>0</span><span class='rparen'>)</span>
@@ -1724,11 +1734,6 @@ Provides buttons for changing encryption password and encryption mode</p>
       <pre class="lines">
 
 
-638
-639
-640
-641
-642
 643
 644
 645
@@ -1837,10 +1842,15 @@ Provides buttons for changing encryption password and encryption mode</p>
 748
 749
 750
-751</pre>
+751
+752
+753
+754
+755
+756</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 638</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 643</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_encryption_management_tab'>create_encryption_management_tab</span><span class='lparen'>(</span><span class='id identifier rubyid_notebook'>notebook</span><span class='rparen'>)</span>
   <span class='comment'># Create encryption management content
@@ -1998,7 +2008,18 @@ Reloads and repopulates the accounts tree view</p>
 112
 113
 114
-115</pre>
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126</pre>
     </td>
     <td>
       <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 103</span>
@@ -2007,14 +2028,69 @@ Reloads and repopulates the accounts tree view</p>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@accounts_store</span>
 
   <span class='kw'>begin</span>
+    <span class='id identifier rubyid_expanded_accounts'>expanded_accounts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='ivar'>@accounts_view</span>
+      <span class='ivar'>@accounts_store</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid__model'>_model</span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_iter'>iter</span><span class='op'>|</span>
+        <span class='id identifier rubyid_expanded_accounts'>expanded_accounts</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@accounts_view</span><span class='period'>.</span><span class='id identifier rubyid_row_expanded?'>row_expanded?</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
+      <span class='kw'>end</span>
+    <span class='kw'>end</span>
     <span class='comment'># Clear existing data
 </span>    <span class='ivar'>@accounts_store</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
 
     <span class='comment'># Repopulate with current data
 </span>    <span class='id identifier rubyid_populate_accounts_view'>populate_accounts_view</span><span class='lparen'>(</span><span class='ivar'>@accounts_store</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='ivar'>@accounts_view</span>
+      <span class='ivar'>@accounts_store</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid__model'>_model</span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_iter'>iter</span><span class='op'>|</span>
+        <span class='ivar'>@accounts_view</span><span class='period'>.</span><span class='id identifier rubyid_expand_row'>expand_row</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>1</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_expanded_accounts'>expanded_accounts</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_iter'>iter</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='kw'>end</span>
+    <span class='kw'>end</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
     <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Error refreshing accounts display: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="refresh_frontends-instance_method">
+  
+    #<strong>refresh_frontends</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Refreshes frontend dropdowns already mounted in account-management
+forms. Dialog-local selectors are created from the latest catalog.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+131
+132
+133
+134
+135</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager_ui.rb', line 131</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_refresh_frontends'>refresh_frontends</span>
+  <span class='ivar'>@frontend_selectors</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:reload!</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_reload_inline_frontends'>reload_inline_frontends</span> <span class='kw'>if</span> <span class='ivar'>@inline_frontend_model</span>
+  <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2153,7 +2229,7 @@ Called when the accounts tab is selected to ensure @notebook exists</p>
       <span class='comment'># Refresh accounts view to reflect favorite changes
 </span>      <span class='id identifier rubyid_refresh_accounts_display'>refresh_accounts_display</span> <span class='kw'>if</span> <span class='ivar'>@accounts_store</span>
       <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Account manager refreshed for favorite change: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_data'>data</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>when</span> <span class='symbol'>:character_added</span><span class='comma'>,</span> <span class='symbol'>:character_removed</span><span class='comma'>,</span> <span class='symbol'>:account_added</span><span class='comma'>,</span> <span class='symbol'>:account_removed</span>
+    <span class='kw'>when</span> <span class='symbol'>:character_added</span><span class='comma'>,</span> <span class='symbol'>:character_removed</span><span class='comma'>,</span> <span class='symbol'>:character_updated</span><span class='comma'>,</span> <span class='symbol'>:account_added</span><span class='comma'>,</span> <span class='symbol'>:account_removed</span>
       <span class='comment'># Refresh accounts view for structural changes
 </span>      <span class='id identifier rubyid_refresh_accounts_display'>refresh_accounts_display</span> <span class='kw'>if</span> <span class='ivar'>@accounts_store</span>
       <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Account manager refreshed for data change: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_change_type'>change_type</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -2238,7 +2314,7 @@ Allows other tabs to be notified when data changes occur</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:11 2026 by
+  Generated on Thu Sep 10 03:55:40 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

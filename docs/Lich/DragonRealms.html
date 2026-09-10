@@ -134,15 +134,21 @@
         <dt id="DR_LEARNING_RATES-constant" class="">DR_LEARNING_RATES =
           <div class="docstring">
   <div class="discussion">
-    <p>Learning rate progression levels in DragonRealms, from slowest to fastest.</p>
-<p>These levels are used to interpret the &quot;learning&quot; component of skill experience
-displays and are ordered from &quot;clear&quot; (no experience gain) to &quot;mind lock&quot; (maximum
-learning rate).</p>
+    <p>Learning rates for skills in DragonRealms, ordered from slowest to fastest.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>DR_LEARNING_RATES</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span>  <span class='comment'>#=&gt; &quot;clear&quot;
+</span><span class='const'>DR_LEARNING_RATES</span><span class='lbracket'>[</span><span class='op'>-</span><span class='int'>1</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;mind lock&quot;</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -154,11 +160,18 @@ learning rate).</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of learning rate names</p></div>
+        <div class='inline'><p>skill learning rate names, from 'clear' through 'mind lock'</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#DR_LONGEST_LEARNING_RATE_LENGTH-constant" title="Lich::DragonRealms::DR_LONGEST_LEARNING_RATE_LENGTH (constant)">DR_LONGEST_LEARNING_RATE_LENGTH</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -217,9 +230,7 @@ learning rate).</p>
         <dt id="DR_BALANCE_VALUES-constant" class="">DR_BALANCE_VALUES =
           <div class="docstring">
   <div class="discussion">
-    <p>Combat balance modifiers in DragonRealms, reflecting body control and stance.</p>
-<p>These values describe how well-balanced a combatant is, independent of positional
-advantage against an opponent. Used to interpret combat status messages.</p>
+    <p>Balance quality descriptors used in combat positioning.</p>
 
   </div>
 </div>
@@ -236,11 +247,18 @@ advantage against an opponent. Used to interpret combat status messages.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of balance descriptions</p></div>
+        <div class='inline'><p>balance descriptors ordered from worst to best</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#DR_POSITION_VALUES-constant" title="Lich::DragonRealms::DR_POSITION_VALUES (constant)">DR_POSITION_VALUES</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -302,17 +320,28 @@ value.</p>
         <dt id="DR_SKILLS_DATA-constant" class="">DR_SKILLS_DATA =
           <div class="docstring">
   <div class="discussion">
-    <p>Canonical skill hierarchy and guild-specific skill aliases for DragonRealms.</p>
-<p>Contains two top-level keys:</p>
+    <p>Skill tree structure and guild-specific skill aliases for DragonRealms.</p>
+<p>Contains two sections:</p>
 <ul>
-<li><code>skillsets</code>: a [Hash] mapping skill categories (&quot;Armor&quot;, &quot;Lore&quot;, &quot;Weapon&quot;, &quot;Magic&quot;, &quot;Survival&quot;) to arrays of individual skill names</li>
-<li><code>guild_skill_aliases</code>: a [Hash] mapping guild names to their primary magic overrides (e.g., &quot;Cleric&quot; maps &quot;Primary Magic&quot; to &quot;Holy Magic&quot;)</li>
+<li><code>skillsets</code>: Maps skill category names ('Armor', 'Lore', 'Weapon', 'Magic',
+'Survival') to arrays of individual skills within that category.</li>
+<li><code>guild_skill_aliases</code>: Maps guild names to hashes of skill name substitutions.
+For example, Clerics use 'Holy Magic' where the base skill is 'Primary Magic'.</li>
 </ul>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>DR_SKILLS_DATA</span><span class='lbracket'>[</span><span class='symbol'>:skillsets</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Magic</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>        <span class='comment'>#=&gt; [&quot;Primary Magic&quot;, &quot;Arcana&quot;, ...]
+</span><span class='const'>DR_SKILLS_DATA</span><span class='lbracket'>[</span><span class='symbol'>:guild_skill_aliases</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Cleric</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; {&quot;Primary Magic&quot;=&gt;&quot;Holy Magic&quot;}</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -324,7 +353,7 @@ value.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable nested structure with symbolized and stringified keys</p></div>
+        <div class='inline'><p>skill tree with :skillsets and :guild_skill_aliases keys</p></div>
       
     </li>
   
@@ -433,7 +462,7 @@ value.</p>
         <dt id="KRONAR_BANKS-constant" class="">KRONAR_BANKS =
           <div class="docstring">
   <div class="discussion">
-    <p>Towns in DragonRealms where Kronars (the primary currency) can be exchanged.</p>
+    <p>Towns with banks that accept Kronar currency.</p>
 
   </div>
 </div>
@@ -450,7 +479,7 @@ value.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of town names</p></div>
+        <div class='inline'><p>bank location names</p></div>
       
     </li>
   
@@ -463,7 +492,7 @@ value.</p>
         <dt id="LIRUM_BANKS-constant" class="">LIRUM_BANKS =
           <div class="docstring">
   <div class="discussion">
-    <p>Towns in DragonRealms where Lirums (the eastern currency) can be exchanged.</p>
+    <p>Towns with banks that accept Lirum currency.</p>
 
   </div>
 </div>
@@ -480,7 +509,7 @@ value.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of town names</p></div>
+        <div class='inline'><p>bank location names</p></div>
       
     </li>
   
@@ -493,7 +522,7 @@ value.</p>
         <dt id="DOKORA_BANKS-constant" class="">DOKORA_BANKS =
           <div class="docstring">
   <div class="discussion">
-    <p>Towns in DragonRealms where Dokoras (the southern currency) can be exchanged.</p>
+    <p>Towns with banks that accept Dokora currency.</p>
 
   </div>
 </div>
@@ -510,7 +539,7 @@ value.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of town names</p></div>
+        <div class='inline'><p>bank location names</p></div>
       
     </li>
   
@@ -523,14 +552,22 @@ value.</p>
         <dt id="BANK_TITLES-constant" class="">BANK_TITLES =
           <div class="docstring">
   <div class="discussion">
-    <p>Room titles of bank deposit windows in DragonRealms towns, indexed by town name.</p>
-<p>Maps each town to an array of full room titles (e.g., &quot;[[Provincial Bank, Teller]]&quot;).
-Used to locate and identify bank deposit windows when depositing or checking balances.</p>
+    <p>In-game room titles for bank deposit and teller windows by location.</p>
+<p>Keys are town names; values are arrays of room titles where banking transactions
+can occur. Rooms are specified in the Lich room reference format [[location, descriptor]].</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>BANK_TITLES</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Leth Deriel</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; [&quot;[[Imperial Depository, Domestic Branch]]&quot;]</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -542,11 +579,18 @@ Used to locate and identify bank deposit windows when depositing or checking bal
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from town name to room title array</p></div>
+        <div class='inline'><p>mapping town names to room title arrays</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#VAULT_TITLES-constant" title="Lich::DragonRealms::VAULT_TITLES (constant)">VAULT_TITLES</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -576,15 +620,22 @@ Used to locate and identify bank deposit windows when depositing or checking bal
         <dt id="VAULT_TITLES-constant" class="">VAULT_TITLES =
           <div class="docstring">
   <div class="discussion">
-    <p>Room titles of vault carousel chambers in DragonRealms towns, indexed by town name.</p>
-<p>Maps each town with a vault carousel to its full room title
-(e.g., &quot;[[Crossing, Carousel Chamber]]&quot;). Used to locate and identify vault chambers
-when managing long-term item storage.</p>
+    <p>In-game room titles for vault carousel chambers by location.</p>
+<p>Keys are town names; values are arrays of room titles where vault storage can
+be accessed. Not all towns with banks have vaults.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>VAULT_TITLES</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Crossing</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; [&quot;[[Crossing, Carousel Chamber]]&quot;]</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -596,11 +647,18 @@ when managing long-term item storage.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from town name to room title array</p></div>
+        <div class='inline'><p>mapping town names to vault room title arrays</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#BANK_TITLES-constant" title="Lich::DragonRealms::BANK_TITLES (constant)">BANK_TITLES</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -639,16 +697,23 @@ In those situations, we set use this value.</p>
         <dt id="HOMETOWN_REGEX_MAP-constant" class="">HOMETOWN_REGEX_MAP =
           <div class="docstring">
   <div class="discussion">
-    <p>Case-insensitive regex patterns for matching DragonRealms hometown abbreviations and aliases.</p>
-<p>Maps each canonical hometown name to a pattern that matches common abbreviations and
-full names. Patterns are anchored to word boundaries and support apostrophe/optional-character
-variations in names. For example, 'Therenborough' matches /^(theren(borough)?)$/i to accept
-both &quot;theren&quot; and &quot;therenborough&quot;.</p>
+    <p>Regular expressions that match player-input abbreviations and variations for each town.</p>
+<p>Keys are canonical town names; values are case-insensitive regexes that accept
+common abbreviations and alternate spellings. Used to normalize user input.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>HOMETOWN_REGEX_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Therenborough</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>theren</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; true
+</span><span class='const'>HOMETOWN_REGEX_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Langenfirth</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>lang</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -660,7 +725,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from canonical town name to regex pattern</p></div>
+        <div class='inline'><p>mapping canonical names to abbreviation patterns</p></div>
       
     </li>
   
@@ -669,9 +734,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#HOMETOWN_LIST-constant" title="Lich::DragonRealms::HOMETOWN_LIST (constant)">HOMETOWN_LIST</a></span></li>
-    
-      <li><span class='object_link'><a href="#HOMETOWN_REGEX-constant" title="Lich::DragonRealms::HOMETOWN_REGEX (constant)">HOMETOWN_REGEX</a></span></li>
+      <li>HOMETOWN_REGEX</li>
     
   </ul>
 
@@ -738,8 +801,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
         <dt id="ORDINALS-constant" class="">ORDINALS =
           <div class="docstring">
   <div class="discussion">
-    <p>English ordinal words from &quot;first&quot; through &quot;twentieth&quot;.</p>
-<p>Used to parse and convert written ordinal expressions (&quot;first&quot;, &quot;third&quot;, &quot;tenth&quot;) in game text.</p>
+    <p>English ordinal words from first to twentieth.</p>
 
   </div>
 </div>
@@ -756,7 +818,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of ordinal words</p></div>
+        <div class='inline'><p>ordinal number names</p></div>
       
     </li>
   
@@ -769,8 +831,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
         <dt id="CURRENCIES-constant" class="">CURRENCIES =
           <div class="docstring">
   <div class="discussion">
-    <p>The three playable currencies in DragonRealms.</p>
-<p>Kronars are primary in western towns; Lirums in the east; Dokoras in the south.</p>
+    <p>Currency types recognized in DragonRealms.</p>
 
   </div>
 </div>
@@ -787,7 +848,7 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable array of currency names</p></div>
+        <div class='inline'><p>currency names</p></div>
       
     </li>
   
@@ -800,10 +861,10 @@ both &quot;theren&quot; and &quot;therenborough&quot;.</p>
         <dt id="ENC_MAP-constant" class="">ENC_MAP =
           <div class="docstring">
   <div class="discussion">
-    <p>Encumbrance levels in DragonRealms, mapped to numeric burden values.</p>
-<p>Maps descriptive encumbrance states (&quot;None&quot;, &quot;Light Burden&quot;, &quot;Overburdened&quot;, etc.)
-to a numeric scale from 0 (no burden) to 11 (maximum burden). Used to interpret
-encumbrance status messages and assess character mobility.</p>
+    <p>Character encumbrance levels and their numeric indices.</p>
+<p>Keys are encumbrance descriptors from game output (e.g., &quot;You are carrying
+a light burden&quot;); values are numeric severity levels from 0 (no burden) to 11
+(extreme burden).</p>
 
   </div>
 </div>
@@ -820,7 +881,7 @@ encumbrance status messages and assess character mobility.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from encumbrance description to numeric level</p></div>
+        <div class='inline'><p>mapping encumbrance descriptions to levels</p></div>
       
     </li>
   
@@ -846,14 +907,22 @@ encumbrance status messages and assess character mobility.</p>
         <dt id="NUM_MAP-constant" class="">NUM_MAP =
           <div class="docstring">
   <div class="discussion">
-    <p>English number words mapped to their integer values.</p>
-<p>Covers cardinal numbers from &quot;zero&quot; through &quot;ninety&quot; (including teens and common tens).
-Used to parse written numbers in game text and convert them to integers.</p>
+    <p>English number words mapped to their integer equivalents.</p>
+<p>Covers zero through twenty and tens (thirty, forty, etc. up to ninety).</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>NUM_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>five</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>  <span class='comment'>#=&gt; 5
+</span><span class='const'>NUM_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>twenty</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; 20</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -865,7 +934,7 @@ Used to parse written numbers in game text and convert them to integers.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from word to integer value</p></div>
+        <div class='inline'><p>mapping number words to integers</p></div>
       
     </li>
   
@@ -954,15 +1023,23 @@ global ($box_regex) for third-party scripts.</p>
         <dt id="MANA_MAP-constant" class="">MANA_MAP =
           <div class="docstring">
   <div class="discussion">
-    <p>Mana adjectives grouped by mana development tier in DragonRealms.</p>
-<p>Maps each development level (&quot;weak&quot;, &quot;developing&quot;, &quot;improving&quot;, &quot;good&quot;) to an array
-of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may appear &quot;dim&quot;,
-&quot;glowing&quot;, or &quot;bright&quot;). Used to parse spell descriptions and estimate mana control.</p>
+    <p>Mana level descriptors grouped by skill training stage.</p>
+<p>Each key represents a training phase; values are arrays of adjectives that
+describe the character's mana reserves at that stage. Used to assess spell
+readiness and casting potential.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>MANA_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>good</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; [&quot;faint&quot;, &quot;dim&quot;, &quot;hazy&quot;, ...] (13 descriptors)</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -974,7 +1051,7 @@ of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may a
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from tier to array of adjectives</p></div>
+        <div class='inline'><p>mapping skill stage names to mana descriptors</p></div>
       
     </li>
   
@@ -992,8 +1069,9 @@ of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may a
         <dt id="PRIMARY_SIGILS_PATTERN-constant" class="">PRIMARY_SIGILS_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching primary (tier 1) sigil names in spell descriptions.</p>
-<p>Matches the five primary sigils: abolition, congruence, induction, permutation, rarefaction.</p>
+    <p>Pattern matching primary sigil types in spell or ability names.</p>
+<p>Matches word boundaries around sigil names: abolition, congruence, induction,
+permutation, or rarefaction.</p>
 
   </div>
 </div>
@@ -1003,8 +1081,8 @@ of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may a
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>abolition sigil</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PRIMARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>congruence sigil</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PRIMARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>congruence sigil</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PRIMARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>abolition sigil</span><span class='tstring_end'>&quot;</span></span>  <span class='op'>=~</span> <span class='const'>PRIMARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0</span></code></pre>
     
   </div>
 
@@ -1019,7 +1097,7 @@ of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may a
       
       
         &mdash;
-        <div class='inline'><p>immutable regex matching a primary sigil word</p></div>
+        <div class='inline'><p>pattern for primary sigils</p></div>
       
     </li>
   
@@ -1039,9 +1117,9 @@ of adjectives that indicate mana at that tier (e.g., &quot;weak&quot; mana may a
         <dt id="SECONDARY_SIGILS_PATTERN-constant" class="">SECONDARY_SIGILS_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching secondary (tier 2) sigil names in spell descriptions.</p>
-<p>Matches the ten secondary sigils: antipode, ascension, clarification, decay, evolution,
-integration, metamorphosis, nurture, paradox, unity.</p>
+    <p>Pattern matching secondary sigil types in spell or ability names.</p>
+<p>Matches word boundaries around sigil names: antipode, ascension, clarification,
+decay, evolution, integration, metamorphosis, nurture, paradox, or unity.</p>
 
   </div>
 </div>
@@ -1051,8 +1129,8 @@ integration, metamorphosis, nurture, paradox, unity.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>antipode sigil</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>SECONDARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unity sigil</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>SECONDARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>decay sigil</span><span class='tstring_end'>&quot;</span></span>       <span class='op'>=~</span> <span class='const'>SECONDARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unity sigil</span><span class='tstring_end'>&quot;</span></span>       <span class='op'>=~</span> <span class='const'>SECONDARY_SIGILS_PATTERN</span> <span class='comment'>#=&gt; 0</span></code></pre>
     
   </div>
 
@@ -1067,7 +1145,7 @@ integration, metamorphosis, nurture, paradox, unity.</p>
       
       
         &mdash;
-        <div class='inline'><p>immutable regex matching a secondary sigil word</p></div>
+        <div class='inline'><p>pattern for secondary sigils</p></div>
       
     </li>
   
@@ -1087,14 +1165,23 @@ integration, metamorphosis, nurture, paradox, unity.</p>
         <dt id="VOL_MAP-constant" class="">VOL_MAP =
           <div class="docstring">
   <div class="discussion">
-    <p>Container volume categories in DragonRealms, mapped to numeric capacity values.</p>
-<p>Maps descriptive size adjectives (&quot;enormous&quot;, &quot;tiny&quot;, etc.) to numeric volume units.
-Used to estimate storage capacity of containers based on their described size.</p>
+    <p>Object volume descriptors mapped to approximate container sizes.</p>
+<p>Keys are size adjectives; values are numeric volume estimates used to estimate
+container capacity and item bulk.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'>VOL_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>large</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>   <span class='comment'>#=&gt; 4
+</span><span class='const'>VOL_MAP</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>colossal</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; 200</span></code></pre>
+    
+  </div>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -1106,7 +1193,7 @@ Used to estimate storage capacity of containers based on their described size.</
       
       
         &mdash;
-        <div class='inline'><p>immutable mapping from volume adjective to capacity value</p></div>
+        <div class='inline'><p>mapping size descriptors to volume units</p></div>
       
     </li>
   
@@ -1115,6 +1202,9 @@ Used to estimate storage capacity of containers based on their described size.</
 </div>
         </dt>
         <dd><pre class="code"><span class='lbrace'>{</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>colossal</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='int'>200</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gigantic</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='int'>100</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>immense</span><span class='tstring_end'>&#39;</span></span>  <span class='op'>=&gt;</span> <span class='int'>50</span><span class='comma'>,</span>
   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>enormous</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='int'>20</span><span class='comma'>,</span>
   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>massive</span><span class='tstring_end'>&#39;</span></span>  <span class='op'>=&gt;</span> <span class='int'>10</span><span class='comma'>,</span>
   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>huge</span><span class='tstring_end'>&#39;</span></span>     <span class='op'>=&gt;</span> <span class='int'>5</span><span class='comma'>,</span>
@@ -3311,7 +3401,7 @@ Used to handle the lack of Oxford comma in game output.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:55 2026 by
+  Generated on Thu Sep 10 03:55:13 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

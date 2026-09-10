@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Gemstone::Combat::Definitions::SpellLosses
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Gemstone::Combat::Definitions::SpellLosses";
+  relpath = '../../../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../../../_index.html">Index (S)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span>
+     &raquo; 
+    <span class="title">SpellLosses</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Gemstone::Combat::Definitions::SpellLosses
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/gemstone/combat/defs/spell_losses.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Namespace for spell wear-off pattern definitions and parsing.</p>
+<p>This module defines third-person wear-off lines for spell-circle spells,
+keyed by spell number. Patterns are pinned to spells via wiki documentation
+and cross-log timestamp pairing. The generic fallback pattern (spell: nil)
+covers unidentified spell expirations.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">SpellLosses.parse</a></span></li>
+    
+  </ul>
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span>
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="SPELL_LOSSES-constant" class="">SPELL_LOSSES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Array of spell loss definitions, mapping third-person wear-off patterns to
+spell identity (number and name).</p>
+<p>Each entry is a SpellLossDef capturing:</p>
+<ul>
+<li>spell: Integer or nil (nil for the generic fallback pattern)</li>
+<li>spell_name: String descriptive spell name</li>
+<li>patterns: Array of Regexp matching third-person wear-off lines</li>
+</ul>
+<p>Patterns use named capture group <code>:target</code> to extract the affected character.
+The final entry with spell: nil is the game's generic wear-off (&quot;appears
+somehow different&quot;, &quot;seems slightly different&quot;) for spells without bespoke
+end messaging.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">parse</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='comment'># wiki-pinned 2026-09-04 (owner directive: wiki first, log
+</span>  <span class='comment'># pairing for what the wiki can&#39;t settle). 107&#39;s page carries
+</span>  <span class='comment'># the motes first-person verbatim; the glow-leaves form falls
+</span>  <span class='comment'># out of the Dispel flare page&#39;s worked example (two spells
+</span>  <span class='comment'># stripped, 107 + 120, and &quot;both the very powerful look and
+</span>  <span class='comment'># white light come from 120&quot; - the remaining line is 107&#39;s).
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>107</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Spirit Warding II</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Deep blue motes swirl away from (?&lt;target&gt;.+?) and fade\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The deep blue glow leaves (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span>
+                   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>120</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Lesser Shroud</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The very powerful look leaves (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The white light leaves (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span>
+                   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># proven by pairing 2026-02-02 12:16:24: sibling logs show
+</span>  <span class='comment'># &quot;Nisugi loses his focused look.&quot; as Nisugi&#39;s own log prints
+</span>  <span class='comment'># 1109&#39;s end message &quot;Your mind&#39;s keen focus fades away.&quot;
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1109</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Empathic Focus</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) loses </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> focused look\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1119</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Strength of Will</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) loses an aura of resolve\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># onset observed in the wild: &quot;gets an intense expression.&quot;
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1130</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Intensity</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) loses an intense expression\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># effect-list pins (2026-09-04 round 2): first-person end
+</span>  <span class='comment'># messages verbatim (&quot;You no longer bristle with energy.&quot;,
+</span>  <span class='comment'># &quot;You become solid again.&quot; - 911 only, no standalone Blur
+</span>  <span class='comment'># entry exists; 1605&#39;s end names the same warmth+spiritual
+</span>  <span class='comment'># force around the arms the third person describes)
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>513</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Elemental Focus</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) no longer bristles with energy\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>911</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Mass Blur</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) becomes solid again\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1605</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Arm of the Arkati</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> movements no longer appear to be influenced by a divine power as the spiritual force fades from around </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> arms\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># owner-pinned via the 319 wiki page (collapse wear-off
+</span>  <span class='comment'># verbatim; the same page carries the intercept &quot;flares to
+</span>  <span class='comment'># life&quot; wording outcomes.rb claims)
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>319</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Soul Ward</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The air about (?&lt;target&gt;.+?) shimmers momentarily before the evanescent shield surrounding </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it|you)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> collapses\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># wiki-pinned: first-person wear-offs verbatim on the 1209/1214
+</span>  <span class='comment'># pages (&quot;The scales covering your hands turn brittle...&quot;,
+</span>  <span class='comment'># &quot;The thick plates of bone around your forearms...&quot;)
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1209</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Dragonclaw</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The scales covering (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> hands turn brittle and flake away\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1214</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Brace</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The thick plates of bone around (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> forearms begin to crack, then shatter into a fine white dust\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># owner-pinned. The line color varies by caster (observed:
+</span>  <span class='comment'># dark, blue, pale blue, ether blue, purple, jade green,
+</span>  <span class='comment'># umber, snow white) - wildcarded, anchored on the invariant
+</span>  <span class='comment'># sentence frame
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1208</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Mindward</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A series of [\w ]+ lines suddenly appears on (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> face, quickly racing towards the center of </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> forehead before detaching and dissipating in the air\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1204</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Foresight</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) takes a deep breath, blinking a couple of times before resuming a calm expression\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># The game&#39;s GENERIC third-person wear-off - the fallback
+</span>  <span class='comment'># wording for any spell without bespoke end messaging
+</span>  <span class='comment'># (owner ruling 2026-09-05: &quot;a spell coming off, not sure
+</span>  <span class='comment'># which one&quot; - and there is no which: 26+/15+ creature
+</span>  <span class='comment'># spread, fires in quiet RP contexts with no cascade, no
+</span>  <span class='comment'># effect-list phrase). spell: nil is deliberate - &quot;some
+</span>  <span class='comment'># spell left this target&quot;; the cause attribution still
+</span>  <span class='comment'># applies. This is the one permitted exception to the
+</span>  <span class='comment'># pin-before-convert rule, because the wording itself is
+</span>  <span class='comment'># the game&#39;s unspecified-spell marker.
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears somehow different\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) seems slightly different\.</span><span class='regexp_end'>/</span></span>
+                   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="LOOKUP-constant" class="">LOOKUP =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Flat array of [pattern, SpellLossDef] pairs for efficient pattern matching.</p>
+<p>Enables sequential regex matching against game output lines via .parse.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;[Regexp, <span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span>]&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="#SPELL_LOSSES-constant" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SPELL_LOSSES (constant)">SPELL_LOSSES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_loss_def'>loss_def</span><span class='op'>|</span>
+  <span class='id identifier rubyid_loss_def'>loss_def</span><span class='period'>.</span><span class='id identifier rubyid_patterns'>patterns</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_loss_def'>loss_def</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parse a spell wear-off line.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="parse-class_method">
+  
+    .<strong>parse</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parse a spell wear-off line. Returns { spell:, spell_name:,
+target: <raw capture> } or nil.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/spell_losses.rb', line 150</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>GATE</span><span class='comma'>,</span> <span class='const'>ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+
+  <span class='const'><span class='object_link'><a href="#LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::SpellLosses::LOOKUP (constant)">LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_loss_def'>loss_def</span><span class='op'>|</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='kw'>return</span> <span class='lbrace'>{</span>
+        <span class='label'>spell:</span> <span class='id identifier rubyid_loss_def'>loss_def</span><span class='period'>.</span><span class='id identifier rubyid_spell'>spell</span><span class='comma'>,</span>
+        <span class='label'>spell_name:</span> <span class='id identifier rubyid_loss_def'>loss_def</span><span class='period'>.</span><span class='id identifier rubyid_spell_name'>spell_name</span><span class='comma'>,</span>
+        <span class='label'>target:</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Thu Sep 10 03:55:27 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

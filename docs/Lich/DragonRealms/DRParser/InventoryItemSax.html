@@ -205,7 +205,7 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Captures the cmd attribute from an open <d> element.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Captures the cmd attribute value from a <d> element.</p></div></span>
   
 </li>
 
@@ -227,7 +227,7 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Marks the end of a <d> element and stops parsing after the first one.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Marks the end of a <d> element and stops capture.</p></div></span>
   
 </li>
 
@@ -273,7 +273,7 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes the SAX handler with parsing state ready to extract the cmd attribute and item name from the first <d> element in an inventory line.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a new SAX handler for parsing inventory item elements.</p></div></span>
   
 </li>
 
@@ -295,7 +295,7 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Records when a <d> element begins, marking it for attribute and text capture.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Marks the beginning of an XML element.</p></div></span>
   
 </li>
 
@@ -317,7 +317,7 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Records the item name from the text content of a <d> element.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Captures text content from inside a <d> element.</p></div></span>
   
 </li>
 
@@ -340,8 +340,9 @@ not well-formed XML; the resulting parse error is swallowed by #error.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes the SAX handler with parsing state ready to extract the cmd
-attribute and item name from the first <d> element in an inventory line.</p>
+    <p>Initializes a new SAX handler for parsing inventory item elements.</p>
+<p>Sets up internal state to capture the cmd attribute and item name from
+the first <d> element encountered during streaming XML parse.</p>
 
   </div>
 </div>
@@ -354,15 +355,15 @@ attribute and item name from the first <d> element in an inventory line.</p>
       <pre class="lines">
 
 
-154
-155
-156
-157
-158
-159</pre>
+177
+178
+179
+180
+181
+182</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 154</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 177</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span>
   <span class='ivar'>@in_d</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -406,12 +407,12 @@ attribute and item name from the first <d> element in an inventory line.</p>
       <pre class="lines">
 
 
-148
-149
-150</pre>
+169
+170
+171</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 148</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cmd'>cmd</span>
   <span class='ivar'>@cmd</span>
@@ -447,12 +448,12 @@ attribute and item name from the first <d> element in an inventory line.</p>
       <pre class="lines">
 
 
-148
-149
-150</pre>
+169
+170
+171</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 148</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -484,7 +485,9 @@ attribute and item name from the first <d> element in an inventory line.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Captures the cmd attribute from an open <d> element.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Captures the cmd attribute value from a <d> element.</p>
+<p>Records the cmd attribute only if currently inside a <d> element and
+the attribute has not yet been captured.</p>
 
   </div>
 </div>
@@ -502,7 +505,7 @@ attribute and item name from the first <d> element in an inventory line.</p>
       
       
         &mdash;
-        <div class='inline'><p>the attribute name (e.g., &quot;cmd&quot;)</p></div>
+        <div class='inline'><p>the attribute name</p></div>
       
     </li>
   
@@ -516,7 +519,7 @@ attribute and item name from the first <d> element in an inventory line.</p>
       
       
         &mdash;
-        <div class='inline'><p>the attribute value (e.g., &quot;get #12345 in #67890&quot;)</p></div>
+        <div class='inline'><p>the attribute value</p></div>
       
     </li>
   
@@ -529,12 +532,12 @@ attribute and item name from the first <d> element in an inventory line.</p>
       <pre class="lines">
 
 
-176
-177
-178</pre>
+205
+206
+207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 176</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 205</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_attr'>attr</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='ivar'>@cmd</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span> <span class='kw'>if</span> <span class='ivar'>@in_d</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>cmd</span><span class='tstring_end'>&quot;</span></span>
@@ -559,8 +562,10 @@ attribute and item name from the first <d> element in an inventory line.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Marks the end of a <d> element and stops parsing after the first one.
-Subsequent <d> elements are ignored; only the leading item is extracted.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Marks the end of a <d> element and stops capture.</p>
+<p>Exits capture mode after the first <d> element closes, preventing
+later <d> elements in the same parse from overwriting the captured
+cmd and name values.</p>
 
   </div>
 </div>
@@ -578,7 +583,7 @@ Subsequent <d> elements are ignored; only the leading item is extracted.</p>
       
       
         &mdash;
-        <div class='inline'><p>the XML element name</p></div>
+        <div class='inline'><p>the element name</p></div>
       
     </li>
   
@@ -591,15 +596,15 @@ Subsequent <d> elements are ignored; only the leading item is extracted.</p>
       <pre class="lines">
 
 
-196
-197
-198
-199
-200
-201</pre>
+230
+231
+232
+233
+234
+235</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 196</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 230</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_end_element'>end_element</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@in_d</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>d</span><span class='tstring_end'>&quot;</span></span>
@@ -637,10 +642,10 @@ element by the time Ox reports it, so the error is intentionally ignored.</p>
       <pre class="lines">
 
 
-205</pre>
+239</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 205</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 239</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_error'>error</span><span class='lparen'>(</span><span class='id identifier rubyid__message'>_message</span><span class='comma'>,</span> <span class='id identifier rubyid__line'>_line</span><span class='comma'>,</span> <span class='id identifier rubyid__column'>_column</span><span class='rparen'>)</span><span class='semicolon'>;</span> <span class='kw'>end</span></pre>
     </td>
@@ -663,7 +668,9 @@ element by the time Ox reports it, so the error is intentionally ignored.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Records when a <d> element begins, marking it for attribute and text capture.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Marks the beginning of an XML element.</p>
+<p>Enters capture mode when a <d> element is encountered and the handler
+has not yet successfully closed one; later <d> elements are ignored.</p>
 
   </div>
 </div>
@@ -681,7 +688,7 @@ element by the time Ox reports it, so the error is intentionally ignored.</p>
       
       
         &mdash;
-        <div class='inline'><p>the XML element name (e.g., &quot;d&quot;, &quot;output&quot;)</p></div>
+        <div class='inline'><p>the element name (e.g., &quot;d&quot;, &quot;component&quot;)</p></div>
       
     </li>
   
@@ -694,12 +701,12 @@ element by the time Ox reports it, so the error is intentionally ignored.</p>
       <pre class="lines">
 
 
-166
-167
-168</pre>
+192
+193
+194</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 166</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 192</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start_element'>start_element</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='ivar'>@in_d</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>d</span><span class='tstring_end'>&quot;</span></span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@done</span>
@@ -724,8 +731,9 @@ element by the time Ox reports it, so the error is intentionally ignored.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Records the item name from the text content of a <d> element.
-Only captures the first text node; subsequent text is ignored.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Captures text content from inside a <d> element.</p>
+<p>Records the first text node encountered within a <d> element as the
+item name; subsequent text nodes are ignored.</p>
 
   </div>
 </div>
@@ -743,7 +751,7 @@ Only captures the first text node; subsequent text is ignored.</p>
       
       
         &mdash;
-        <div class='inline'><p>the text content of the element</p></div>
+        <div class='inline'><p>the text content</p></div>
       
     </li>
   
@@ -756,12 +764,12 @@ Only captures the first text node; subsequent text is ignored.</p>
       <pre class="lines">
 
 
-186
-187
-188</pre>
+217
+218
+219</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 186</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 217</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_text'>text</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='ivar'>@name</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span> <span class='kw'>if</span> <span class='ivar'>@in_d</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -776,7 +784,7 @@ Only captures the first text node; subsequent text is ignored.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:11 2026 by
+  Generated on Thu Sep 10 03:55:41 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

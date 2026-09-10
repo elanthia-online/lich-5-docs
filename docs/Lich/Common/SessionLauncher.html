@@ -108,26 +108,33 @@ mapped to CLI-style argv.</p>
         <dt id="OPTIONAL_PATH_FLAGS-constant" class="">OPTIONAL_PATH_FLAGS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Configuration for optional directory path CLI flags that may be passed to child launches.
-Each entry maps a CLI option name to a context key, launcher constant name, and priority.
-Used by <span class='object_link'>optional_spawn_flags</span> to emit --home, --data, --scripts, etc. flags only when
-the child process directory would differ from defaults.</p>
+    <p>Directory path overrides that child Lich processes may inherit or explicitly override.</p>
+<p>Each entry maps a CLI option name (--home, --data, etc.) to a launch context key
+and a constants.rb constant name. The :inherit flag marks entries with no default
+constant in constants.rb; children spawned without such a flag cannot re-derive it,
+so the parent must explicitly pass it to maintain shared state (e.g., --active-session-dir).</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'>optional_spawn_flags</span></li>
-    
-  </ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Array of path flag descriptors with keys:
+:option, :key, :constant, and optional :inherit</p></div>
+      
+    </li>
+  
+</ul>
 
 </div>
         </dt>
@@ -139,7 +146,11 @@ the child process directory would differ from defaults.</p>
   <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>maps</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:map_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:MAP_DIR</span> <span class='rbrace'>}</span><span class='comma'>,</span>
   <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>logs</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:log_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:LOG_DIR</span> <span class='rbrace'>}</span><span class='comma'>,</span>
   <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>backup</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:backup_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:BACKUP_DIR</span> <span class='rbrace'>}</span><span class='comma'>,</span>
-  <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:lib_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:LIB_DIR</span> <span class='rbrace'>}</span>
+  <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:lib_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:LIB_DIR</span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='comment'># :inherit marks a flag with no constants.rb default of its own, which a
+</span>  <span class='comment'># child therefore cannot re-derive from its own ARGV. Such a flag falls
+</span>  <span class='comment'># back to this process&#39;s constant when the launch context omits it.
+</span>  <span class='lbrace'>{</span> <span class='label'>option:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>active-session-dir</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>key:</span> <span class='symbol'>:active_session_dir</span><span class='comma'>,</span> <span class='label'>constant:</span> <span class='symbol'>:ACTIVE_SESSION_DIR</span><span class='comma'>,</span> <span class='label'>inherit:</span> <span class='kw'>true</span> <span class='rbrace'>}</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
@@ -239,7 +250,8 @@ the child process directory would differ from defaults.</p>
         <div class='inline'><p>Optional context keys:
 :char_name, :game_code, :frontend, :custom_launch, :dark_mode
 and optional directory overrides (:home_dir, :data_dir, :script_dir,
-:temp_dir, :map_dir, :log_dir, :backup_dir, :lib_dir).</p></div>
+:temp_dir, :map_dir, :log_dir, :backup_dir, :lib_dir,
+:active_session_dir).</p></div>
       
     </li>
   
@@ -272,19 +284,19 @@ and optional directory overrides (:home_dir, :data_dir, :script_dir,
       <pre class="lines">
 
 
-42
-43
-44
-45
-46
-47
-48
 49
 50
-51</pre>
+51
+52
+53
+54
+55
+56
+57
+58</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/session_launcher.rb', line 42</span>
+      <pre class="code"><span class="info file"># File 'documented/common/session_launcher.rb', line 49</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_launch'>launch</span><span class='lparen'>(</span><span class='id identifier rubyid_launch_data'>launch_data</span><span class='comma'>,</span> <span class='label'>launch_context:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_launch_data'>launch_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_launch_data'>launch_data</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span>
@@ -306,7 +318,7 @@ and optional directory overrides (:home_dir, :data_dir, :script_dir,
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:58 2026 by
+  Generated on Thu Sep 10 03:55:19 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

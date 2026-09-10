@@ -385,6 +385,69 @@ consistent, so no lock is required.</h2>
         </dt>
         <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span></pre></dd>
       
+        <dt id="staging_all_contents-classvariable" class="">@@staging_all_contents =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Dedicated buffer for a full-replacement container refresh (DR <code>INV LIST</code>),
+kept separate from <code>@@staging_contents</code> so the whole-buffer swap/discard of
+a full refresh can never clobber an unrelated per-container
+<code>begin_container</code> refresh that happens to be in flight at the same time.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span></pre></dd>
+      
+        <dt id="staging_all_containers-classvariable" class="">@@staging_all_containers =
+          <div class="docstring">
+  <div class="discussion">
+    <p>True while a full-replacement container refresh (DR <code>INV LIST</code>) is open.
+While set, <code>new_inv</code> routes container placements not already owned by an
+open per-container refresh into <code>@@staging_all_contents</code> instead of the
+live <code>@@contents</code>, so an interrupted listing never mutates the published
+model. See <span class='object_link'><a href="#begin_all_containers-class_method" title="Lich::Common::GameObj.begin_all_containers (method)">begin_all_containers</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='kw'>false</span></pre></dd>
+      
+        <dt id="pending_metadata-classvariable" class="">@@pending_metadata =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Deferred +before_name+/+after_name+ refreshes for objects observed while a
+staged registry refresh is open. <code>find_or_create</code> returns the shared,
+still-published instance, so mutating its metadata mid-refresh would leak
+an uncommitted value to readers and could not be rolled back if the refresh
+is discarded. Instead the change is recorded here and applied by the
+matching <code>commit_*</code> (see <span class='object_link'><a href="#apply_pending_metadata-class_method" title="Lich::Common::GameObj.apply_pending_metadata (method)">apply_pending_metadata</a></span>), or dropped by every
+discard path (+abort_*+, <span class='object_link'><a href="#delete_container-class_method" title="Lich::Common::GameObj.delete_container (method)">delete_container</a></span>, <span class='object_link'><a href="#clear_all_containers-class_method" title="Lich::Common::GameObj.clear_all_containers (method)">clear_all_containers</a></span>, an
++begin_inv+/+begin_container+ restart, <span class='object_link'><a href="#discard_inv_refresh-class_method" title="Lich::Common::GameObj.discard_inv_refresh (method)">discard_inv_refresh</a></span>, and
+<span class='object_link'><a href="#discard_staged_refreshes-class_method" title="Lich::Common::GameObj.discard_staged_refreshes (method)">discard_staged_refreshes</a></span>).</p>
+<p>Scoped PER staging buffer: the outer hash is keyed by the buffer Array's
+identity (+compare_by_identity+ -- two empty Arrays are <code>==</code>, so content
+keying would collide), the inner by GameObj identity. Buffer scoping is
+what keeps two concurrently-open refreshes of the same object from
+overwriting each other's pending values and lets a discard drop exactly
+its own buffer's entries and no others.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_compare_by_identity'>compare_by_identity</span></pre></dd>
+      
     </dl>
   
 
@@ -559,6 +622,94 @@ consistent, so no lock is required.</h2>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#abort_container-class_method" title="abort_container (class method)">.<strong>abort_container</strong>(container_id)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Discards one container's open staging buffer WITHOUT publishing it, leaving the previously published <code>@@contents[id]</code> visible.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#abort_inv-class_method" title="abort_inv (class method)">.<strong>abort_inv</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Discards an open <code>@@inv</code> staging buffer WITHOUT publishing it, leaving the previously published <code>@@inv</code> visible.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#apply_pending_metadata-class_method" title="apply_pending_metadata (class method)">.<strong>apply_pending_metadata</strong>(buffer)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Applies the metadata deferred for one staging <code>buffer</code> to its objects and clears that buffer's pending entries.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#begin_all_containers-class_method" title="begin_all_containers (class method)">.<strong>begin_all_containers</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Opens a full-replacement refresh of ALL container contents, used by DR's <code>INV LIST</code> (a complete recursive scrape).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#begin_container-class_method" title="begin_container (class method)">.<strong>begin_container</strong>(container_id)  &#x21d2; Array </a>
     
 
@@ -617,7 +768,7 @@ consistent, so no lock is required.</h2>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Opens a refresh of worn inventory.</p></div></span>
   
 </li>
 
@@ -999,6 +1150,28 @@ consistent, so no lock is required.</h2>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#commit_all_containers_full-class_method" title="commit_all_containers_full (class method)">.<strong>commit_all_containers_full</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Publishes a full container refresh opened by <span class='object_link'><a href="#begin_all_containers-class_method" title="Lich::Common::GameObj.begin_all_containers (method)">GameObj.begin_all_containers</a></span> with a single reference swap and closes it.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#commit_container-class_method" title="commit_container (class method)">.<strong>commit_container</strong>(container_id)  &#x21d2; void </a>
     
 
@@ -1153,6 +1326,28 @@ consistent, so no lock is required.</h2>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#container_refresh_open%3F-class_method" title="container_refresh_open? (class method)">.<strong>container_refresh_open?</strong>(container_id)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether a staged refresh for one container's contents is currently open.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#containers-class_method" title="containers (class method)">.<strong>containers</strong>  &#x21d2; Hash{String =&gt; Array&lt;GameObj&gt;} </a>
     
 
@@ -1167,7 +1362,7 @@ consistent, so no lock is required.</h2>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns a snapshot of all container contents: the outer hash and every inner array are duplicated, so a caller iterating <code>containers[id]</code> is not affected by concurrent in-place mutation of the live registry (e.g. a hand pickup's <code>remove_inv_item</code> <code>reject!</code>, or +new_inv+'s <code>push</code>).</p></div></span>
   
 </li>
 
@@ -1219,6 +1414,28 @@ consistent, so no lock is required.</h2>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#discard_inv_refresh-class_method" title="discard_inv_refresh (class method)">.<strong>discard_inv_refresh</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Discards an in-flight INV LIST refresh (worn + full container staging) without publishing it, leaving the previously published model visible.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#discard_staged_refreshes-class_method" title="discard_staged_refreshes (class method)">.<strong>discard_staged_refreshes</strong>  &#x21d2; void </a>
     
 
@@ -1234,6 +1451,28 @@ consistent, so no lock is required.</h2>
 
   
     <span class="summary_desc"><div class='inline'><p>Discards every in-flight staged refresh without publishing it.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#drop_pending_metadata-class_method" title="drop_pending_metadata (class method)">.<strong>drop_pending_metadata</strong>(buffer)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Drops the metadata deferred for one staging <code>buffer</code> without applying it -- the abort counterpart to <span class='object_link'><a href="#apply_pending_metadata-class_method" title="Lich::Common::GameObj.apply_pending_metadata (method)">GameObj.apply_pending_metadata</a></span>.</p></div></span>
   
 </li>
 
@@ -1410,6 +1649,28 @@ consistent, so no lock is required.</h2>
 
   
     <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#inv_refresh_open%3F-class_method" title="inv_refresh_open? (class method)">.<strong>inv_refresh_open?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether a top-level inventory (+@@inv+) staged refresh is currently open.</p></div></span>
   
 </li>
 
@@ -1857,6 +2118,28 @@ consistent, so no lock is required.</h2>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#remove_inv_item-class_method" title="remove_inv_item (class method)">.<strong>remove_inv_item</strong>(id)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Removes every placement of <code>id</code> from the worn inventory (+@@inv+) and from all container contents (+@@contents+).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#reserve-class_method" title="reserve (class method)">.<strong>reserve</strong>  &#x21d2; Array&lt;GameObj&gt;<sup>?</sup> </a>
     
 
@@ -2026,6 +2309,28 @@ consistent, so no lock is required.</h2>
 
   
     <span class="summary_desc"><div class='inline'><p>The loaded type classification data.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#upsert_inv-class_method" title="upsert_inv (class method)">.<strong>upsert_inv</strong>(id, noun, name, container = nil, before = nil, after = nil)  &#x21d2; GameObj </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Upserts an inventory item by id for a PARTIAL (filtered) scrape -- e.g.</p></div></span>
   
 </li>
 
@@ -2393,16 +2698,16 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-162
-163
-164
-165
-166
-167
-168</pre>
+189
+190
+191
+192
+193
+194
+195</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 162</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 189</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@id</span>          <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>:</span> <span class='id identifier rubyid_id'>id</span>
@@ -2463,12 +2768,12 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-153
-154
-155</pre>
+180
+181
+182</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 153</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 180</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_after_name'>after_name</span>
   <span class='ivar'>@after_name</span>
@@ -2520,12 +2825,12 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-150
-151
-152</pre>
+177
+178
+179</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 150</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 177</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_before_name'>before_name</span>
   <span class='ivar'>@before_name</span>
@@ -2577,12 +2882,12 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-141
-142
-143</pre>
+168
+169
+170</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 141</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_id'>id</span>
   <span class='ivar'>@id</span>
@@ -2634,12 +2939,12 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-147
-148
-149</pre>
+174
+175
+176</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 147</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 174</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -2691,12 +2996,12 @@ consistent, so no lock is required.</h2>
       <pre class="lines">
 
 
-144
-145
-146</pre>
+171
+172
+173</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 144</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 171</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_noun'>noun</span>
   <span class='ivar'>@noun</span>
@@ -2766,43 +3071,43 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-793
-794
-795
-796
-797
-798
-799
-800
-801
-802
-803
-804
-805
-806
-807
-808
-809
-810
-811
-812
-813
-814
-815
-816
-817
-818
-819
-820
-821
-822
-823
-824
-825
-826</pre>
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122
+1123
+1124
+1125
+1126
+1127
+1128
+1129
+1130
+1131
+1132
+1133
+1134
+1135
+1136
+1137
+1138
+1139
+1140
+1141
+1142
+1143
+1144
+1145
+1146
+1147
+1148</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 793</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1115</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_val'>val</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Regexp</span><span class='rparen'>)</span>
@@ -2844,6 +3149,245 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="abort_container-class_method">
+  
+    .<strong>abort_container</strong>(container_id)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Discards one container's open staging buffer WITHOUT publishing it, leaving
+the previously published <code>@@contents[id]</code> visible. Rolls back a
+<code>begin_container</code> whose fill failed partway; no-op when none is open. Unlike
+<span class='object_link'><a href="#delete_container-class_method" title="Lich::Common::GameObj.delete_container (method)">delete_container</a></span> it does NOT remove the published contents.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>container_id</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+989
+990
+991
+992</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 989</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_abort_container'>abort_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_staged'>staged</span> <span class='op'>=</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_staged'>staged</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="abort_inv-class_method">
+  
+    .<strong>abort_inv</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Discards an open <code>@@inv</code> staging buffer WITHOUT publishing it, leaving the
+previously published <code>@@inv</code> visible. Rolls back a <code>begin_inv</code> whose fill
+failed partway (e.g. a second writer's mirror raised mid-registration) so a
+later cycle does not see <span class='object_link'><a href="#inv_refresh_open%3F-class_method" title="Lich::Common::GameObj.inv_refresh_open? (method)">inv_refresh_open?</a></span> stuck open. No-op when none is
+open. Symmetric with <span class='object_link'><a href="#commit_inv-class_method" title="Lich::Common::GameObj.commit_inv (method)">commit_inv</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+869
+870
+871
+872
+873
+874</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 869</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_abort_inv'>abort_inv</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_inv</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span><span class='rparen'>)</span>
+  <span class='cvar'>@@staging_inv</span> <span class='op'>=</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="apply_pending_metadata-class_method">
+  
+    .<strong>apply_pending_metadata</strong>(buffer)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Applies the metadata deferred for one staging <code>buffer</code> to its objects and
+clears that buffer's pending entries. Called by each <code>commit_*</code> just before
+it publishes the buffer, so the new +before_name+/+after_name+ become
+visible together with the new membership rather than mid-refresh. No-op for
+a buffer that deferred nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>buffer</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the staging buffer being committed</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+822
+823
+824
+825
+826
+827
+828
+829
+830</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 822</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_apply_pending_metadata'>apply_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_buffer'>buffer</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_pending'>pending</span> <span class='op'>=</span> <span class='cvar'>@@pending_metadata</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_buffer'>buffer</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_pending'>pending</span>
+
+  <span class='id identifier rubyid_pending'>pending</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='comma'>,</span> <span class='lparen'>(</span><span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span><span class='op'>|</span>
+    <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_before_name'>before_name</span> <span class='op'>=</span> <span class='id identifier rubyid_before'>before</span> <span class='kw'>unless</span> <span class='id identifier rubyid_before'>before</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_after_name'>after_name</span>  <span class='op'>=</span> <span class='id identifier rubyid_after'>after</span>  <span class='kw'>unless</span> <span class='id identifier rubyid_after'>after</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="begin_all_containers-class_method">
+  
+    .<strong>begin_all_containers</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Opens a full-replacement refresh of ALL container contents, used by DR's
+<code>INV LIST</code> (a complete recursive scrape). Staging goes into a dedicated
+buffer (+@@staging_all_contents+), separate from the ordinary per-container
+<code>@@staging_contents</code>, so an unrelated <code>begin_container</code> refresh in flight
+at the same time is never clobbered by this refresh's discard/commit. While
+open, <code>new_inv</code> stages every not-already-owned container placement (see
+<span class='object_link'><a href="#new_inv-class_method" title="Lich::Common::GameObj.new_inv (method)">new_inv</a></span>) and the live <code>@@contents</code> is left visible to readers.
+<span class='object_link'><a href="#commit_all_containers_full-class_method" title="Lich::Common::GameObj.commit_all_containers_full (method)">commit_all_containers_full</a></span> then swaps the whole buffer in one reference
+assignment, so containers absent from the listing are dropped -- matching
+the old clear-then-fill semantics -- while an interrupted listing that
+never commits leaves the previous model intact (see <span class='object_link'><a href="#discard_inv_refresh-class_method" title="Lich::Common::GameObj.discard_inv_refresh (method)">discard_inv_refresh</a></span>).
+Pair with <span class='object_link'><a href="#begin_inv-class_method" title="Lich::Common::GameObj.begin_inv (method)">begin_inv</a></span> for worn items.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1032
+1033
+1034
+1035
+1036
+1037
+1038</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1032</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_all_containers'>begin_all_containers</span>
+  <span class='comment'># Restarting an already-open full refresh discards the prior buffers, so
+</span>  <span class='comment'># drop their deferred metadata rather than orphan it (mirrors begin_inv).
+</span>  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_buf'>buf</span><span class='op'>|</span> <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_buf'>buf</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_all_contents</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>=</span> <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="begin_container-class_method">
   
     .<strong>begin_container</strong>(container_id)  &#x21d2; <tt>Array</tt> 
@@ -2854,7 +3398,9 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Opens a refresh of a single container's contents.</p>
+    <p>Opens a refresh of a single container's contents. Restarting an
+already-open refresh (a second <code>begin_container</code> before commit) discards
+the prior buffer, so drop its deferred metadata too rather than orphan it.</p>
 
   </div>
 </div>
@@ -2895,12 +3441,18 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-729</pre>
+967
+968
+969
+970</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 729</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 967</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_container'>begin_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span> <span class='op'>=</span> <span class='cvar'>@@staging_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span></pre>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_container'>begin_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='cvar'>@@staging_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='cvar'>@@staging_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
     </td>
   </tr>
 </table>
@@ -2930,15 +3482,15 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-704
-705
-706
-707
-708
-709</pre>
+940
+941
+942
+943
+944
+945</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 704</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 940</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_familiar'>begin_familiar</span>
   <span class='cvar'>@@staging_fam_room_desc</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -2962,7 +3514,9 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Opens a refresh of worn inventory. Restarting an already-open refresh (a
+second <code>begin_inv</code> before commit) discards the prior buffer, so drop its
+deferred metadata too rather than orphan it (mirrors <span class='object_link'><a href="#begin_container-class_method" title="Lich::Common::GameObj.begin_container (method)">begin_container</a></span>).</p>
 
   </div>
 </div>
@@ -2988,12 +3542,18 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-630</pre>
+848
+849
+850
+851</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 630</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 848</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_inv'>begin_inv</span> <span class='op'>=</span> <span class='cvar'>@@staging_inv</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span></pre>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_inv'>begin_inv</span>
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span><span class='rparen'>)</span>
+  <span class='cvar'>@@staging_inv</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
     </td>
   </tr>
 </table>
@@ -3036,10 +3596,10 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-641</pre>
+877</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 641</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 877</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_reserve'>begin_reserve</span> <span class='op'>=</span> <span class='cvar'>@@staging_reserve</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span></pre>
     </td>
@@ -3084,10 +3644,10 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-691</pre>
+927</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 691</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 927</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_room_desc'>begin_room_desc</span> <span class='op'>=</span> <span class='cvar'>@@staging_room_desc</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span></pre>
     </td>
@@ -3119,14 +3679,14 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-654
-655
-656
-657
-658</pre>
+890
+891
+892
+893
+894</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 654</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 890</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_room_objs'>begin_room_objs</span>
   <span class='cvar'>@@staging_loot</span>       <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -3162,13 +3722,13 @@ Also accepts a <code>Regexp</code> for name-based matching.</p>
       <pre class="lines">
 
 
-675
-676
-677
-678</pre>
+911
+912
+913
+914</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 675</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 911</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_begin_room_players'>begin_room_players</span>
   <span class='cvar'>@@staging_pcs</span>       <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -3205,16 +3765,24 @@ so previously seen objects are reused if re-encountered.</p>
       <pre class="lines">
 
 
-584
-585
-586
-587</pre>
+740
+741
+742
+743
+744
+745
+746
+747</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 584</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 740</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_all_containers'>clear_all_containers</span>
+  <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_staged'>staged</span><span class='op'>|</span> <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_staged'>staged</span><span class='op'>|</span> <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
   <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>=</span> <span class='kw'>false</span>
   <span class='cvar'>@@contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
 <span class='kw'>end</span></pre>
     </td>
@@ -3275,12 +3843,12 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-594
-595
-596</pre>
+754
+755
+756</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 594</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 754</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_container'>clear_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
   <span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -3314,10 +3882,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-571</pre>
+727</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 571</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 727</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_fam_loot'>clear_fam_loot</span>      <span class='op'>=</span> <span class='cvar'>@@fam_loot</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3349,10 +3917,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-574</pre>
+730</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 574</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 730</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_fam_npcs'>clear_fam_npcs</span>      <span class='op'>=</span> <span class='cvar'>@@fam_npcs</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3384,10 +3952,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-577</pre>
+733</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 577</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 733</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_fam_pcs'>clear_fam_pcs</span>       <span class='op'>=</span> <span class='cvar'>@@fam_pcs</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3419,10 +3987,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-568</pre>
+724</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 568</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 724</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_fam_room_desc'>clear_fam_room_desc</span> <span class='op'>=</span> <span class='cvar'>@@fam_room_desc</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3454,10 +4022,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-559</pre>
+715</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 559</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 715</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_inv'>clear_inv</span>           <span class='op'>=</span> <span class='cvar'>@@inv</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3489,10 +4057,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-550</pre>
+706</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 550</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 706</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_loot'>clear_loot</span>          <span class='op'>=</span> <span class='cvar'>@@loot</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3524,10 +4092,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-553</pre>
+709</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 553</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 709</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_npcs'>clear_npcs</span>          <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@npcs</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='semicolon'>;</span> <span class='cvar'>@@npc_status</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='rparen'>)</span></pre>
     </td>
@@ -3559,10 +4127,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-556</pre>
+712</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 556</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 712</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_pcs'>clear_pcs</span>           <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@pcs</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='semicolon'>;</span> <span class='cvar'>@@pc_status</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='rparen'>)</span></pre>
     </td>
@@ -3594,10 +4162,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-562</pre>
+718</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 562</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 718</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_reserve'>clear_reserve</span>       <span class='op'>=</span> <span class='lparen'>(</span><span class='cvar'>@@reserve</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span></pre>
     </td>
@@ -3629,10 +4197,10 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-565</pre>
+721</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 565</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 721</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_room_desc'>clear_room_desc</span>     <span class='op'>=</span> <span class='cvar'>@@room_desc</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span></pre>
     </td>
@@ -3655,6 +4223,12 @@ The shared identity index is preserved.</p>
 that terminates a command burst, the reliable close signal for the
 <code>clearContainer</code> ... <code>inv</code> fill sequence (which has no closing tag).
 No-op when no container refresh is open.</p>
+<p>A full INV LIST refresh (<span class='object_link'><a href="#begin_all_containers-class_method" title="Lich::Common::GameObj.begin_all_containers (method)">begin_all_containers</a></span>) uses its own dedicated
+buffer (+@@staging_all_contents+) and is published only through its clean
+path (<span class='object_link'><a href="#commit_all_containers_full-class_method" title="Lich::Common::GameObj.commit_all_containers_full (method)">commit_all_containers_full</a></span>) or discarded on interruption
+(<span class='object_link'><a href="#discard_inv_refresh-class_method" title="Lich::Common::GameObj.discard_inv_refresh (method)">discard_inv_refresh</a></span>) -- never here. While one is open this defers the
+ordinary per-container publish until the listing closes, so the two commit
+paths never interleave at an interrupting <code>prompt</code>.</p>
 
   </div>
 </div>
@@ -3667,21 +4241,80 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-746
-747
-748
-749
-750
-751</pre>
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015
+1016</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 746</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1007</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_all_containers'>commit_all_containers</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_all_containers</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
 
-  <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_staged'>staged</span><span class='op'>|</span> <span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_staged'>staged</span> <span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_staged'>staged</span><span class='op'>|</span>
+    <span class='id identifier rubyid_apply_pending_metadata'>apply_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span>
+    <span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_staged'>staged</span>
+  <span class='kw'>end</span>
   <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="commit_all_containers_full-class_method">
+  
+    .<strong>commit_all_containers_full</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Publishes a full container refresh opened by <span class='object_link'><a href="#begin_all_containers-class_method" title="Lich::Common::GameObj.begin_all_containers (method)">begin_all_containers</a></span> with
+a single reference swap and closes it. No-op if no full refresh is open,
+so an interrupted listing simply keeps the previous published model.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1045
+1046
+1047
+1048
+1049
+1050
+1051
+1052</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1045</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_all_containers_full'>commit_all_containers_full</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='cvar'>@@staging_all_containers</span>
+
+  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_buf'>buf</span><span class='op'>|</span> <span class='id identifier rubyid_apply_pending_metadata'>apply_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_buf'>buf</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='cvar'>@@contents</span> <span class='op'>=</span> <span class='cvar'>@@staging_all_contents</span>
+  <span class='cvar'>@@staging_all_contents</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>=</span> <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3727,20 +4360,22 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-733
-734
-735
-736
-737
-738</pre>
+974
+975
+976
+977
+978
+979
+980</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 733</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 974</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_container'>commit_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_staged'>staged</span> <span class='op'>=</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_staged'>staged</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
+  <span class='id identifier rubyid_apply_pending_metadata'>apply_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span>
   <span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_staged'>staged</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -3772,21 +4407,21 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723</pre>
+948
+949
+950
+951
+952
+953
+954
+955
+956
+957
+958
+959</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 712</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 948</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_familiar'>commit_familiar</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_fam_npcs</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3829,19 +4464,21 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-633
-634
-635
-636
-637
-638</pre>
+854
+855
+856
+857
+858
+859
+860</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 633</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 854</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_inv'>commit_inv</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_inv</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
+  <span class='id identifier rubyid_apply_pending_metadata'>apply_pending_metadata</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span><span class='rparen'>)</span>
   <span class='cvar'>@@inv</span>         <span class='op'>=</span> <span class='cvar'>@@staging_inv</span>
   <span class='cvar'>@@staging_inv</span> <span class='op'>=</span> <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
@@ -3874,15 +4511,15 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-644
-645
-646
-647
-648
-649</pre>
+880
+881
+882
+883
+884
+885</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 644</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 880</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_reserve'>commit_reserve</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_reserve</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3919,15 +4556,15 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-694
-695
-696
-697
-698
-699</pre>
+930
+931
+932
+933
+934
+935</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 694</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 930</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_room_desc'>commit_room_desc</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_room_desc</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3964,19 +4601,19 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-661
-662
-663
-664
-665
-666
-667
-668
-669
-670</pre>
+897
+898
+899
+900
+901
+902
+903
+904
+905
+906</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 661</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 897</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_room_objs'>commit_room_objs</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_npcs</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -4017,17 +4654,17 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-681
-682
-683
-684
-685
-686
-687
-688</pre>
+917
+918
+919
+920
+921
+922
+923
+924</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 681</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 917</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_commit_room_players'>commit_room_players</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@staging_pcs</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -4036,6 +4673,80 @@ No-op when no container refresh is open.</p>
   <span class='cvar'>@@pc_status</span>         <span class='op'>=</span> <span class='cvar'>@@staging_pc_status</span>
   <span class='cvar'>@@staging_pcs</span>       <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='cvar'>@@staging_pc_status</span> <span class='op'>=</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="container_refresh_open?-class_method">
+  
+    .<strong>container_refresh_open?</strong>(container_id)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether a staged refresh for one container's contents is currently open.
+Same purpose as <span class='object_link'><a href="#inv_refresh_open%3F-class_method" title="Lich::Common::GameObj.inv_refresh_open? (method)">inv_refresh_open?</a></span>, scoped to a single container id.</p>
+<p>A full INV LIST refresh (<span class='object_link'><a href="#begin_all_containers-class_method" title="Lich::Common::GameObj.begin_all_containers (method)">begin_all_containers</a></span>) owns <em>every</em> container
+the instant it opens, but only allocates a per-container buffer when an
+item line for that container arrives. A container not yet seen in the
+listing therefore has no key in <code>@@staging_contents</code> and would look
+unowned -- letting a second writer publish into or delete it mid-refresh.
+Report a full refresh as owning all containers so those writers defer.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>container_id</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+791
+792
+793</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 791</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_container_refresh_open?'>container_refresh_open?</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>||</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4053,7 +4764,12 @@ No-op when no container refresh is open.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Returns a snapshot of all container contents: the outer hash and every
+inner array are duplicated, so a caller iterating <code>containers[id]</code> is not
+affected by concurrent in-place mutation of the live registry (e.g. a hand
+pickup's <code>remove_inv_item</code> <code>reject!</code>, or +new_inv+'s <code>push</code>). Matches the
+dup-on-read contract of the other registry accessors and instance
+<code>#contents</code>. The GameObj elements themselves are shared, not copied.</p>
 
   </div>
 </div>
@@ -4079,12 +4795,12 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-543</pre>
+699</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 543</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 699</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_containers'>containers</span>  <span class='op'>=</span> <span class='cvar'>@@contents</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span></pre>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_containers'>containers</span>  <span class='op'>=</span> <span class='cvar'>@@contents</span><span class='period'>.</span><span class='id identifier rubyid_transform_values'>transform_values</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:dup</span><span class='rparen'>)</span></pre>
     </td>
   </tr>
 </table>
@@ -4127,13 +4843,13 @@ No-op when no container refresh is open.</p>
       <pre class="lines">
 
 
-865
-866
-867
-868</pre>
+1187
+1188
+1189
+1190</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 865</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1187</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dead'>dead</span>
   <span class='id identifier rubyid_dead_list'>dead_list</span> <span class='op'>=</span> <span class='cvar'>@@npcs</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_status'>status</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dead</span><span class='tstring_end'>&#39;</span></span> <span class='rbrace'>}</span>
@@ -4199,17 +4915,71 @@ The shared identity index is preserved.</p>
       <pre class="lines">
 
 
-605
-606
-607
-608</pre>
+765
+766
+767
+768
+769</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 605</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 765</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_delete_container'>delete_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
-  <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_staged'>staged</span> <span class='op'>=</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_staged'>staged</span>
   <span class='cvar'>@@contents</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_container_id'>container_id</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="discard_inv_refresh-class_method">
+  
+    .<strong>discard_inv_refresh</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Discards an in-flight INV LIST refresh (worn + full container staging)
+without publishing it, leaving the previously published model visible.
+Unlike <span class='object_link'><a href="#discard_staged_refreshes-class_method" title="Lich::Common::GameObj.discard_staged_refreshes (method)">discard_staged_refreshes</a></span> this touches only the INV LIST buffers,
+so it will not abort an unrelated in-flight room/familiar refresh -- nor an
+unrelated per-container <code>begin_container</code> refresh, which lives in the
+separate <code>@@staging_contents</code> hash and commits on its own at the next prompt.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1062
+1063
+1064
+1065
+1066
+1067
+1068</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1062</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_discard_inv_refresh'>discard_inv_refresh</span>
+  <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span><span class='rparen'>)</span>
+  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_buf'>buf</span><span class='op'>|</span> <span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_buf'>buf</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_inv</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='cvar'>@@staging_all_contents</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>=</span> <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4250,24 +5020,29 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-768
-769
-770
-771
-772
-773
-774
-775
-776
-777
-778
-779
-780
-781
-782</pre>
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092
+1093
+1094
+1095
+1096
+1097
+1098
+1099
+1100
+1101
+1102
+1103
+1104</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 768</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1085</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_discard_staged_refreshes'>discard_staged_refreshes</span>
   <span class='cvar'>@@staging_inv</span>           <span class='op'>=</span> <span class='kw'>nil</span>
@@ -4283,6 +5058,71 @@ next refresh of that same registry replaced it.</p>
   <span class='cvar'>@@staging_fam_npcs</span>      <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='cvar'>@@staging_fam_pcs</span>       <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+  <span class='cvar'>@@staging_all_containers</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='comment'># Every open buffer is being discarded, so no deferred metadata can still
+</span>  <span class='comment'># belong to a refresh that will commit; drop all of it.
+</span>  <span class='cvar'>@@pending_metadata</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="drop_pending_metadata-class_method">
+  
+    .<strong>drop_pending_metadata</strong>(buffer)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Drops the metadata deferred for one staging <code>buffer</code> without applying it --
+the abort counterpart to <span class='object_link'><a href="#apply_pending_metadata-class_method" title="Lich::Common::GameObj.apply_pending_metadata (method)">apply_pending_metadata</a></span>. Called by every path
+that discards a buffer so a rolled-back refresh cannot later publish its
+staged values. No-op for a buffer that deferred nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>buffer</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the staging buffer being discarded</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+839
+840
+841</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 839</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_drop_pending_metadata'>drop_pending_metadata</span><span class='lparen'>(</span><span class='id identifier rubyid_buffer'>buffer</span><span class='rparen'>)</span>
+  <span class='cvar'>@@pending_metadata</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_buffer'>buffer</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4326,10 +5166,10 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-534</pre>
+683</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 534</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 683</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_fam_loot'>fam_loot</span>    <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@fam_loot</span><span class='rparen'>)</span></pre>
     </td>
@@ -4374,10 +5214,10 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-537</pre>
+686</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 537</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 686</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_fam_npcs'>fam_npcs</span>    <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@fam_npcs</span><span class='rparen'>)</span></pre>
     </td>
@@ -4422,10 +5262,10 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-540</pre>
+689</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 540</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 689</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_fam_pcs'>fam_pcs</span>     <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@fam_pcs</span><span class='rparen'>)</span></pre>
     </td>
@@ -4470,10 +5310,10 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-531</pre>
+680</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 531</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 680</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_fam_room_desc'>fam_room_desc</span> <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@fam_room_desc</span><span class='rparen'>)</span></pre>
     </td>
@@ -4518,12 +5358,12 @@ next refresh of that same registry replaced it.</p>
       <pre class="lines">
 
 
-851
-852
-853</pre>
+1173
+1174
+1175</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 851</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1173</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_hidden_targets'>hidden_targets</span>
   <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_current_target_ids'>current_target_ids</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='op'>|</span> <span class='cvar'>@@npcs</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_id'>id</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
@@ -4553,8 +5393,9 @@ constructs <code>GameObj</code> instances via <code>GameObj.new</code> but wants
 in the shared identity index so objects are reused and tracked for TTL-
 based garbage collection.</p>
 <p>When a matching entry is found, <code>before_name</code> and <code>after_name</code> are
-backfilled if they were previously <code>nil</code> and the incoming values are
-non-nil. Existing non-nil values are never overwritten.</p>
+refreshed from a differing non-nil incoming value; a nil observation
+never clobbers a known value. (Hand slots pass no before/after, so in
+practice this path only ever backfills.)</p>
 
   </div>
 </div>
@@ -4621,7 +5462,7 @@ non-nil. Existing non-nil values are never overwritten.</p>
       
       
         &mdash;
-        <div class='inline'><p>backfills <code>before_name</code> if previously unset</p></div>
+        <div class='inline'><p>sets <code>before_name</code> from a differing non-nil observation</p></div>
       
     </li>
   
@@ -4637,7 +5478,7 @@ non-nil. Existing non-nil values are never overwritten.</p>
       
       
         &mdash;
-        <div class='inline'><p>backfills <code>after_name</code> if previously unset</p></div>
+        <div class='inline'><p>sets <code>after_name</code> from a differing non-nil observation</p></div>
       
     </li>
   
@@ -4663,28 +5504,33 @@ non-nil. Existing non-nil values are never overwritten.</p>
       <pre class="lines">
 
 
-482
-483
-484
-485
-486
-487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
-498
-499
-500</pre>
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 482</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 626</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_index_or_create'>index_or_create</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_str_id'>str_id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>:</span> <span class='id identifier rubyid_id'>id</span>
@@ -4695,8 +5541,13 @@ non-nil. Existing non-nil values are never overwritten.</p>
     <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span><span class='rparen'>)</span>
       <span class='id identifier rubyid_existing'>existing</span><span class='comma'>,</span> <span class='id identifier rubyid__ts'>_ts</span>        <span class='op'>=</span> <span class='id identifier rubyid_entry'>entry</span>
       <span class='cvar'>@@index</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span>         <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_existing'>existing</span><span class='comma'>,</span> <span class='id identifier rubyid_now'>now</span><span class='rbracket'>]</span>
-      <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_before_name'>before_name</span> <span class='op'>=</span> <span class='id identifier rubyid_before'>before</span> <span class='kw'>if</span> <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_before_name'>before_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_before'>before</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-      <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_after_name'>after_name</span>  <span class='op'>=</span> <span class='id identifier rubyid_after'>after</span>  <span class='kw'>if</span> <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_after_name'>after_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>  <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_after'>after</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='comment'># Refresh command metadata whenever a differing non-nil observation
+</span>      <span class='comment'># arrives -- e.g. a name-preserving move updates +before_name+ from
+</span>      <span class='comment'># &quot;get #id in #old&quot; to &quot;get #id in #new&quot;. A nil observation never
+</span>      <span class='comment'># clobbers a known value (a sighting from a source that carries no
+</span>      <span class='comment'># command, such as the hand slot, must not blank it).
+</span>      <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_before_name'>before_name</span> <span class='op'>=</span> <span class='id identifier rubyid_before'>before</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_before'>before</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_before_name'>before_name</span> <span class='op'>!=</span> <span class='id identifier rubyid_before'>before</span>
+      <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_after_name'>after_name</span>  <span class='op'>=</span> <span class='id identifier rubyid_after'>after</span>  <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_after'>after</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>  <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_after_name'>after_name</span>  <span class='op'>!=</span> <span class='id identifier rubyid_after'>after</span>
       <span class='id identifier rubyid_existing'>existing</span>
     <span class='kw'>else</span>
       <span class='id identifier rubyid_new_obj'>new_obj</span>      <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Common::GameObj#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span>
@@ -4802,82 +5653,82 @@ GameObj instances (via <code>ObjectSpace.memsize_of</code>)</li>
       <pre class="lines">
 
 
-1008
-1009
-1010
-1011
-1012
-1013
-1014
-1015
-1016
-1017
-1018
-1019
-1020
-1021
-1022
-1023
-1024
-1025
-1026
-1027
-1028
-1029
-1030
-1031
-1032
-1033
-1034
-1035
-1036
-1037
-1038
-1039
-1040
-1041
-1042
-1043
-1044
-1045
-1046
-1047
-1048
-1049
-1050
-1051
-1052
-1053
-1054
-1055
-1056
-1057
-1058
-1059
-1060
-1061
-1062
-1063
-1064
-1065
-1066
-1067
-1068
-1069
-1070
-1071
-1072
-1073
-1074
-1075
-1076
-1077
-1078
-1079
-1080</pre>
+1330
+1331
+1332
+1333
+1334
+1335
+1336
+1337
+1338
+1339
+1340
+1341
+1342
+1343
+1344
+1345
+1346
+1347
+1348
+1349
+1350
+1351
+1352
+1353
+1354
+1355
+1356
+1357
+1358
+1359
+1360
+1361
+1362
+1363
+1364
+1365
+1366
+1367
+1368
+1369
+1370
+1371
+1372
+1373
+1374
+1375
+1376
+1377
+1378
+1379
+1380
+1381
+1382
+1383
+1384
+1385
+1386
+1387
+1388
+1389
+1390
+1391
+1392
+1393
+1394
+1395
+1396
+1397
+1398
+1399
+1400
+1401
+1402</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1008</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1330</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_index_stats'>index_stats</span><span class='lparen'>(</span><span class='label'>verbose:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>objspace</span><span class='tstring_end'>&#39;</span></span>
@@ -4994,12 +5845,63 @@ GameObj instances (via <code>ObjectSpace.memsize_of</code>)</li>
       <pre class="lines">
 
 
-522</pre>
+671</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 522</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 671</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_inv'>inv</span>         <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@inv</span><span class='rparen'>)</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="inv_refresh_open?-class_method">
+  
+    .<strong>inv_refresh_open?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether a top-level inventory (+@@inv+) staged refresh is currently open.
+Lets a second writer (e.g. the <span class='object_link'><a href="Inventory.html" title="Lich::Common::Inventory (module)">Inventory</a></span> read-model) skip
+its own +begin_inv+/+commit_inv+ cycle so it cannot prematurely publish or
+truncate an in-flight classic <code>@@inv</code> refresh.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+777</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 777</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_inv_refresh_open?'>inv_refresh_open?</span> <span class='op'>=</span> <span class='op'>!</span><span class='cvar'>@@staging_inv</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span></pre>
     </td>
   </tr>
 </table>
@@ -5042,10 +5944,10 @@ GameObj instances (via <code>ObjectSpace.memsize_of</code>)</li>
       <pre class="lines">
 
 
-510</pre>
+659</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 510</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 659</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span>   <span class='op'>=</span> <span class='cvar'>@@left_hand</span><span class='op'>&amp;.</span><span class='id identifier rubyid_dup'>dup</span></pre>
     </td>
@@ -5114,43 +6016,43 @@ Merges custom overrides from <code>gameobj-custom/gameobj-data.xml</code> if pre
       <pre class="lines">
 
 
-1109
-1110
-1111
-1112
-1113
-1114
-1115
-1116
-1117
-1118
-1119
-1120
-1121
-1122
-1123
-1124
-1125
-1126
-1127
-1128
-1129
-1130
-1131
-1132
-1133
-1134
-1135
-1136
-1137
-1138
-1139
-1140
-1141
-1142</pre>
+1431
+1432
+1433
+1434
+1435
+1436
+1437
+1438
+1439
+1440
+1441
+1442
+1443
+1444
+1445
+1446
+1447
+1448
+1449
+1450
+1451
+1452
+1453
+1454
+1455
+1456
+1457
+1458
+1459
+1460
+1461
+1462
+1463
+1464</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1109</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1431</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_data'>load_data</span><span class='lparen'>(</span><span class='id identifier rubyid_filename'>filename</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_primary'>primary</span> <span class='op'>=</span> <span class='id identifier rubyid_filename'>filename</span> <span class='op'>||</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>DATA_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gameobj-data.xml</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -5228,10 +6130,10 @@ Merges custom overrides from <code>gameobj-custom/gameobj-data.xml</code> if pre
       <pre class="lines">
 
 
-516</pre>
+665</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 516</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 665</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_loot'>loot</span>        <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@loot</span><span class='rparen'>)</span></pre>
     </td>
@@ -5303,12 +6205,12 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-1100
-1101
-1102</pre>
+1422
+1423
+1424</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1100</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1422</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_merge_data'>merge_data</span><span class='lparen'>(</span><span class='id identifier rubyid_existing'>existing</span><span class='comma'>,</span> <span class='id identifier rubyid_new_value'>new_value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_existing'>existing</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Regexp</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='id identifier rubyid_existing'>existing</span><span class='comma'>,</span> <span class='id identifier rubyid_new_value'>new_value</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_new_value'>new_value</span>
@@ -5392,12 +6294,12 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-400
-401
-402</pre>
+543
+544
+545</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 400</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 543</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_fam_loot'>new_fam_loot</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_fam_loot</span> <span class='op'>||</span> <span class='cvar'>@@fam_loot</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -5481,12 +6383,12 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-410
-411
-412</pre>
+553
+554
+555</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 410</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 553</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_fam_npc'>new_fam_npc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_fam_npcs</span> <span class='op'>||</span> <span class='cvar'>@@fam_npcs</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -5570,12 +6472,12 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-420
-421
-422</pre>
+563
+564
+565</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 420</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 563</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_fam_pc'>new_fam_pc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_fam_pcs</span> <span class='op'>||</span> <span class='cvar'>@@fam_pcs</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -5659,12 +6561,12 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-390
-391
-392</pre>
+533
+534
+535</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 390</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 533</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_fam_room_desc'>new_fam_room_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_fam_room_desc</span> <span class='op'>||</span> <span class='cvar'>@@fam_room_desc</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -5790,24 +6692,64 @@ if the existing one is not yet a Regexp.</p>
       <pre class="lines">
 
 
-351
-352
-353
-354
-355
-356
-357
-358</pre>
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 351</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 391</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_inv'>new_inv</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_container'>container</span>
-    <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='cvar'>@@staging_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container'>container</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='lparen'>(</span><span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container'>container</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='id identifier rubyid_target'>target</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span>
+  <span class='comment'># A write is &quot;staged&quot; when it targets an open staging buffer rather than
+</span>  <span class='comment'># the live registry. Metadata refreshes are then deferred into that same
+</span>  <span class='comment'># buffer so an uncommitted (or later discarded) value is never published
+</span>  <span class='comment'># on the shared instance -- see +@@pending_metadata+.
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_container'>container</span>
+    <span class='id identifier rubyid_staged'>staged</span> <span class='op'>=</span>
+      <span class='kw'>if</span> <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
+        <span class='comment'># An explicit per-container refresh (+begin_container+, e.g. a
+</span>        <span class='comment'># +clearContainer+ fill) already owns this container -- stage into
+</span>        <span class='comment'># it even during a full INV LIST refresh so the two paths never
+</span>        <span class='comment'># share a buffer.
+</span>        <span class='cvar'>@@staging_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container'>container</span><span class='rbracket'>]</span>
+      <span class='kw'>elsif</span> <span class='cvar'>@@staging_all_containers</span>
+        <span class='comment'># Full INV LIST refresh: stage every other container into the
+</span>        <span class='comment'># dedicated buffer so nothing touches the live model until the
+</span>        <span class='comment'># listing commits cleanly.
+</span>        <span class='cvar'>@@staging_all_contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container'>container</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+      <span class='kw'>end</span>
+    <span class='comment'># +staged+ is the target staging buffer (either kind) or nil for a live
+</span>    <span class='comment'># write; either way it is both the placement target and the deferral
+</span>    <span class='comment'># scope, so an uncommitted metadata change lands in that same buffer.
+</span>    <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='id identifier rubyid_staged'>staged</span> <span class='op'>||</span> <span class='lparen'>(</span><span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='id identifier rubyid_container'>container</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='id identifier rubyid_target'>target</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='comma'>,</span> <span class='label'>defer_to:</span> <span class='id identifier rubyid_staged'>staged</span><span class='rparen'>)</span>
   <span class='kw'>else</span>
-    <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span> <span class='op'>||</span> <span class='cvar'>@@inv</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_inv</span> <span class='op'>||</span> <span class='cvar'>@@inv</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='comma'>,</span> <span class='label'>defer_to:</span> <span class='cvar'>@@staging_inv</span><span class='rparen'>)</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -5893,12 +6835,12 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-450
-451
-452</pre>
+593
+594
+595</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 450</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 593</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_left_hand'>new_left_hand</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='cvar'>@@left_hand</span> <span class='op'>=</span> <span class='id identifier rubyid_index_or_create'>index_or_create</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -5982,12 +6924,12 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-325
-326
-327</pre>
+365
+366
+367</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 325</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 365</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_loot'>new_loot</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_loot</span> <span class='op'>||</span> <span class='cvar'>@@loot</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6084,14 +7026,14 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-313
-314
-315
-316
-317</pre>
+353
+354
+355
+356
+357</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 313</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 353</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_npc'>new_npc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_obj'>obj</span> <span class='op'>=</span> <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_npcs</span> <span class='op'>||</span> <span class='cvar'>@@npcs</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6190,14 +7132,14 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-336
-337
-338
-339
-340</pre>
+376
+377
+378
+379
+380</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 336</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 376</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_pc'>new_pc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_obj'>obj</span> <span class='op'>=</span> <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_pcs</span> <span class='op'>||</span> <span class='cvar'>@@pcs</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6285,13 +7227,13 @@ it is always an Array (possibly empty).</p>
       <pre class="lines">
 
 
-369
-370
-371
-372</pre>
+512
+513
+514
+515</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 369</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 512</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_reserve'>new_reserve</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='cvar'>@@reserve</span> <span class='op'>||=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -6380,12 +7322,12 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-435
-436
-437</pre>
+578
+579
+580</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 435</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 578</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_right_hand'>new_right_hand</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='cvar'>@@right_hand</span> <span class='op'>=</span> <span class='id identifier rubyid_index_or_create'>index_or_create</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6469,12 +7411,12 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-380
-381
-382</pre>
+523
+524
+525</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 380</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 523</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_new_room_desc'>new_room_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_or_create'>find_or_create</span><span class='lparen'>(</span><span class='cvar'>@@staging_room_desc</span> <span class='op'>||</span> <span class='cvar'>@@room_desc</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6521,10 +7463,10 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-513</pre>
+662</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 513</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 662</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_npcs'>npcs</span>        <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@npcs</span><span class='rparen'>)</span></pre>
     </td>
@@ -6569,10 +7511,10 @@ overwritten with the result.</p>
       <pre class="lines">
 
 
-519</pre>
+668</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 519</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 668</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pcs'>pcs</span>         <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@pcs</span><span class='rparen'>)</span></pre>
     </td>
@@ -6707,64 +7649,64 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-924
-925
-926
-927
-928
-929
-930
-931
-932
-933
-934
-935
-936
-937
-938
-939
-940
-941
-942
-943
-944
-945
-946
-947
-948
-949
-950
-951
-952
-953
-954
-955
-956
-957
-958
-959
-960
-961
-962
-963
-964
-965
-966
-967
-968
-969
-970
-971
-972
-973
-974
-975
-976
-977
-978</pre>
+1246
+1247
+1248
+1249
+1250
+1251
+1252
+1253
+1254
+1255
+1256
+1257
+1258
+1259
+1260
+1261
+1262
+1263
+1264
+1265
+1266
+1267
+1268
+1269
+1270
+1271
+1272
+1273
+1274
+1275
+1276
+1277
+1278
+1279
+1280
+1281
+1282
+1283
+1284
+1285
+1286
+1287
+1288
+1289
+1290
+1291
+1292
+1293
+1294
+1295
+1296
+1297
+1298
+1299
+1300</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 924</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1246</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_prune_index!'>prune_index!</span><span class='lparen'>(</span><span class='label'>ttl:</span> <span class='int'>900</span><span class='comma'>,</span> <span class='label'>verbose:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>objspace</span><span class='tstring_end'>&#39;</span></span>
@@ -6883,15 +7825,105 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-1090
-1091
-1092</pre>
+1412
+1413
+1414</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1090</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1412</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reload'>reload</span><span class='lparen'>(</span><span class='id identifier rubyid_filename'>filename</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_load_data'>load_data</span><span class='lparen'>(</span><span class='id identifier rubyid_filename'>filename</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="remove_inv_item-class_method">
+  
+    .<strong>remove_inv_item</strong>(id)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Removes every placement of <code>id</code> from the worn inventory (+@@inv+) and
+from all container contents (+@@contents+). Used as the removal half of
+<span class='object_link'><a href="#upsert_inv-class_method" title="Lich::Common::GameObj.upsert_inv (method)">upsert_inv</a></span> and to reconcile the model when an item leaves inventory
+for a hand (a held item is neither worn nor in a container). Leaves
++@@right_hand+/+@@left_hand+ and the shared identity index untouched.</p>
+<p>A <code>nil</code> or empty id is an explicit no-op: empty hands stream a hand tag
+with no <code>exist</code> id, so this is called constantly with <code>nil</code>, and matching
+<code>obj.id == nil</code> would wrongly wipe any (future) nil-id entry -- and also
+scan the whole inventory for nothing. The <code>reject!</code> runs under
+<code>@@index_mutex</code> (the lock <code>find_or_create</code> holds for registry writes) so
+it cannot race the off-thread prune sweep that walks these registries.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500
+501</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 486</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_inv_item'>remove_inv_item</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_str_id'>str_id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>:</span> <span class='id identifier rubyid_id'>id</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_str_id'>str_id</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_str_id'>str_id</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='cvar'>@@index_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@inv</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='rbrace'>}</span>
+    <span class='cvar'>@@contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_list'>list</span><span class='op'>|</span> <span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+    <span class='comment'># Scrub any in-flight staging buffers too: a hand pickup during a full
+</span>    <span class='comment'># INV LIST refresh must not be resurrected in its old container when the
+</span>    <span class='comment'># staged listing commits.
+</span>    <span class='cvar'>@@staging_inv</span><span class='op'>&amp;.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='rbrace'>}</span>
+    <span class='cvar'>@@staging_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_list'>list</span><span class='op'>|</span> <span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+    <span class='cvar'>@@staging_all_contents</span><span class='period'>.</span><span class='id identifier rubyid_each_value'>each_value</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_list'>list</span><span class='op'>|</span> <span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+  <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -6935,10 +7967,10 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-525</pre>
+674</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 525</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 674</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reserve'>reserve</span>     <span class='op'>=</span> <span class='cvar'>@@reserve</span><span class='op'>&amp;.</span><span class='id identifier rubyid_dup'>dup</span></pre>
     </td>
@@ -6983,10 +8015,10 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-507</pre>
+656</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 507</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 656</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span>  <span class='op'>=</span> <span class='cvar'>@@right_hand</span><span class='op'>&amp;.</span><span class='id identifier rubyid_dup'>dup</span></pre>
     </td>
@@ -7031,10 +8063,10 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-528</pre>
+677</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 528</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 677</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_room_desc'>room_desc</span>   <span class='op'>=</span> <span class='id identifier rubyid_registry_or_nil'>registry_or_nil</span><span class='lparen'>(</span><span class='cvar'>@@room_desc</span><span class='rparen'>)</span></pre>
     </td>
@@ -7082,10 +8114,10 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-1151</pre>
+1473</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1151</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1473</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sellable_data'>sellable_data</span> <span class='op'>=</span> <span class='cvar'>@@sellable_data</span></pre>
     </td>
@@ -7130,12 +8162,12 @@ still present in at least one active registry</li>
       <pre class="lines">
 
 
-858
-859
-860</pre>
+1180
+1181
+1182</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 858</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1180</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_target'>target</span>
   <span class='lparen'>(</span><span class='cvar'>@@npcs</span> <span class='op'>+</span> <span class='cvar'>@@pcs</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_current_target_id'>current_target_id</span> <span class='rbrace'>}</span>
@@ -7183,28 +8215,28 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-836
-837
-838
-839
-840
-841
-842
-843
-844
-845
-846</pre>
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 836</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1158</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_targets'>targets</span>
   <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_current_target_ids'>current_target_ids</span><span class='period'>.</span><span class='id identifier rubyid_filter_map'>filter_map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='op'>|</span>
     <span class='id identifier rubyid_npc'>npc</span> <span class='op'>=</span> <span class='cvar'>@@npcs</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_id'>id</span> <span class='rbrace'>}</span>
     <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_npc'>npc</span>
     <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>dead|gone</span><span class='regexp_end'>/i</span></span>
-    <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span>  <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated\b</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated slush</span><span class='regexp_end'>/i</span></span>
-    <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_noun'>noun</span>  <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:arm|appendage|claw|limb|pincer|tentacle)s?$|^(?:palpus|palpi)$</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span>
+    <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated\b</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^animated slush</span><span class='regexp_end'>/i</span></span>
+    <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_noun'>noun</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:arm|appendage|claw|limb|pincer|tentacle)s?$|^(?:palpus|palpi)$</span><span class='regexp_end'>/i</span></span> <span class='op'>&amp;&amp;</span>
             <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span> <span class='op'>!~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:amaranthine|ghostly|grizzled|ancient) kraken tentacle</span><span class='regexp_end'>/i</span></span>
     <span class='id identifier rubyid_npc'>npc</span>
   <span class='kw'>end</span>
@@ -7254,10 +8286,10 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-1148</pre>
+1470</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1148</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1470</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_type_cache'>type_cache</span>    <span class='op'>=</span> <span class='cvar'>@@type_cache</span></pre>
     </td>
@@ -7305,12 +8337,194 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-1145</pre>
+1467</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1145</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 1467</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_type_data'>type_data</span>     <span class='op'>=</span> <span class='cvar'>@@type_data</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="upsert_inv-class_method">
+  
+    .<strong>upsert_inv</strong>(id, noun, name, container = nil, before = nil, after = nil)  &#x21d2; <tt><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Upserts an inventory item by id for a PARTIAL (filtered) scrape -- e.g.
+<code>INV SEARCH &lt;word&gt;</code> or <code>INV &lt;category&gt; full</code>, which list only the
+matching items and so must not clear unrelated inventory the way a full
+<code>INV LIST</code> refresh does. Any prior placement of <code>id</code> is removed from
+<code>@@inv</code> and every <code>@@contents</code> list first, so an item that moved
+containers (or whose name changed, e.g. gained &quot;(closed)&quot;) is refreshed
+in exactly one place with neither a duplicate nor a stale copy left
+behind. It is then (re)placed via <span class='object_link'><a href="#new_inv-class_method" title="Lich::Common::GameObj.new_inv (method)">new_inv</a></span>: worn (+container+ nil) into
+<code>@@inv</code>, otherwise into <code>@@contents[container]</code>.</p>
+<p>Because a filtered scrape only reports matches, it can add or relocate
+items but can never prove an item is gone -- removals are left to the
+next full refresh.</p>
+<p>The removal runs under <code>@@index_mutex</code> (the same lock <code>find_or_create</code>
+holds for registry writes) so it cannot race the off-thread
+<code>prune_index!</code> sweep that walks +@@inv+/+@@contents+. It is a separate
+acquisition from the <code>new_inv</code> that follows -- Ruby's Mutex is not
+reentrant, and <code>new_inv</code> takes the lock itself -- so remove and re-add
+are not one atomic step; that is fine because the parser thread is the
+sole writer and a reader can at worst momentarily not see the item.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>noun</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>container</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>before</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>after</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 449</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_upsert_inv'>upsert_inv</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_str_id'>str_id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>:</span> <span class='id identifier rubyid_id'>id</span>
+  <span class='id identifier rubyid_remove_inv_item'>remove_inv_item</span><span class='lparen'>(</span><span class='id identifier rubyid_str_id'>str_id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_obj'>obj</span> <span class='op'>=</span> <span class='id identifier rubyid_new_inv'>new_inv</span><span class='lparen'>(</span><span class='id identifier rubyid_str_id'>str_id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span>
+
+  <span class='comment'># A name change keys a NEW index entry (&quot;id|noun|newname&quot;); the prior
+</span>  <span class='comment'># &quot;id|noun|oldname&quot; instance was just pulled from every registry by
+</span>  <span class='comment'># remove_inv_item, but its index key lingers until the TTL prune. On the
+</span>  <span class='comment'># cold scrape path, evict any index entry for this id whose instance is no
+</span>  <span class='comment'># longer live so a frequently-renamed item (e.g. a pouch toggling
+</span>  <span class='comment'># &quot;(closed)&quot;) can&#39;t accumulate orphaned variants between sweeps. Guarded by
+</span>  <span class='comment'># object identity via +live_registry_objects+ (computed outside the lock,
+</span>  <span class='comment'># matching +sweep_stale!+) so a variant still held anywhere -- the instance
+</span>  <span class='comment'># just re-added, or a hand slot -- is kept.
+</span>  <span class='id identifier rubyid_live'>live</span> <span class='op'>=</span> <span class='id identifier rubyid_live_registry_objects'>live_registry_objects</span>
+  <span class='cvar'>@@index_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@index</span><span class='period'>.</span><span class='id identifier rubyid_delete_if'>delete_if</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__key'>_key</span><span class='comma'>,</span> <span class='lparen'>(</span><span class='id identifier rubyid_indexed'>indexed</span><span class='comma'>,</span> <span class='id identifier rubyid__ts'>_ts</span><span class='rparen'>)</span><span class='op'>|</span> <span class='id identifier rubyid_indexed'>indexed</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_str_id'>str_id</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_live'>live</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_indexed'>indexed</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_obj'>obj</span>
+<span class='kw'>end</span></pre>
     </td>
   </tr>
 </table>
@@ -7359,12 +8573,12 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-196
-197
-198</pre>
+223
+224
+225</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 196</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 223</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_contents'>contents</span>
   <span class='cvar'>@@contents</span><span class='lbracket'>[</span><span class='ivar'>@id</span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_dup'>dup</span>
@@ -7411,12 +8625,12 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-189
-190
-191</pre>
+216
+217
+218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 189</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 216</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_empty?'>empty?</span>
   <span class='kw'>false</span>
@@ -7463,13 +8677,13 @@ that are currently targeted via <code>XMLData.current_target_ids</code>.</p>
       <pre class="lines">
 
 
-203
-204
-205
-206</pre>
+230
+231
+232
+233</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 203</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 230</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_full_name'>full_name</span>
   <span class='id identifier rubyid_parts'>parts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='ivar'>@before_name</span><span class='comma'>,</span> <span class='ivar'>@name</span><span class='comma'>,</span> <span class='ivar'>@after_name</span><span class='rbracket'>]</span>
@@ -7519,12 +8733,12 @@ Kept for backwards-compatibility with scripts calling <code>obj.GameObj</code>.<
       <pre class="lines">
 
 
-182
-183
-184</pre>
+209
+210
+211</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 182</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 209</span>
 
 <span class='kw'>def</span> <span class='const'>GameObj</span>
   <span class='ivar'>@noun</span>
@@ -7571,17 +8785,25 @@ Kept for backwards-compatibility with scripts calling <code>obj.GameObj</code>.<
       <pre class="lines">
 
 
-244
-245
-246
-247
-248</pre>
+280
+281
+282
+283
+284
+285
+286
+287
+288</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 244</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 280</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sellable'>sellable</span>
-  <span class='const'><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_load_data'>load_data</span> <span class='kw'>if</span> <span class='cvar'>@@sellable_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='comment'># See +#type+: degrade to +nil+ (loudly once, then quietly) when the data
+</span>  <span class='comment'># file is missing/corrupt rather than raising on +nil.empty?+/+nil.keys+.
+</span>  <span class='const'><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_load_data'>load_data</span> <span class='kw'>if</span> <span class='cvar'>@@sellable_data</span> <span class='op'>&amp;&amp;</span> <span class='cvar'>@@sellable_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='cvar'>@@sellable_data</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
   <span class='id identifier rubyid_matches'>matches</span> <span class='op'>=</span> <span class='id identifier rubyid_matching_data_keys'>matching_data_keys</span><span class='lparen'>(</span><span class='cvar'>@@sellable_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_matches'>matches</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_matches'>matches</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
@@ -7641,17 +8863,17 @@ place; build a new String from it instead.</p>
       <pre class="lines">
 
 
-274
-275
-276
-277
-278
-279
-280
-281</pre>
+314
+315
+316
+317
+318
+319
+320
+321</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 274</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 314</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status'>status</span>
   <span class='kw'>return</span> <span class='cvar'>@@npc_status</span><span class='lbracket'>[</span><span class='ivar'>@id</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='cvar'>@@npc_status</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='ivar'>@id</span><span class='rparen'>)</span>
@@ -7725,18 +8947,18 @@ When no refresh is open it behaves exactly as before.</p>
       <pre class="lines">
 
 
-292
-293
-294
-295
-296
-297
-298
-299
-300</pre>
+332
+333
+334
+335
+336
+337
+338
+339
+340</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 292</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 332</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status='>status=</span><span class='lparen'>(</span><span class='id identifier rubyid_val'>val</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_npc_pool'>npc_pool</span> <span class='op'>=</span> <span class='cvar'>@@staging_npcs</span> <span class='op'>||</span> <span class='cvar'>@@npcs</span>
@@ -7789,12 +9011,12 @@ When no refresh is open it behaves exactly as before.</p>
       <pre class="lines">
 
 
-173
-174
-175</pre>
+200
+201
+202</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 173</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 200</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_s'>to_s</span>
   <span class='ivar'>@noun</span>
@@ -7849,20 +9071,38 @@ keys used by <code>@@index</code>.</p>
       <pre class="lines">
 
 
-224
-225
-226
-227
-228
-229
-230
-231</pre>
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 224</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 251</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_type'>type</span>
-  <span class='const'><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_load_data'>load_data</span> <span class='kw'>if</span> <span class='cvar'>@@type_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='comment'># +load_data+ nils +@@type_data+ (not +{}+) when the data file is missing
+</span>  <span class='comment'># or corrupt, and returns false rather than raising. Only attempt the load
+</span>  <span class='comment'># from the pristine +{}+ state (a nil is falsy under +&amp;&amp;+, so a failed load
+</span>  <span class='comment'># isn&#39;t retried on every call -- it echoes its error once, then degrades),
+</span>  <span class='comment'># and guard the lookup so a broken +gameobj-data.xml+ yields +nil+ instead
+</span>  <span class='comment'># of crashing every +#type+ caller -- including every Inventory::Item,
+</span>  <span class='comment'># which now exposes this as public API.
+</span>  <span class='const'><span class='object_link'><a href="#GameObj-instance_method" title="Lich::Common::GameObj#GameObj (method)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_load_data'>load_data</span> <span class='kw'>if</span> <span class='cvar'>@@type_data</span> <span class='op'>&amp;&amp;</span> <span class='cvar'>@@type_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='cvar'>@@type_data</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
   <span class='id identifier rubyid_cache_key'>cache_key</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@noun</span><span class='embexpr_end'>}</span><span class='tstring_content'>|</span><span class='embexpr_beg'>#{</span><span class='ivar'>@name</span><span class='embexpr_end'>}</span><span class='tstring_content'>|</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_full_name'>full_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>return</span> <span class='cvar'>@@type_cache</span><span class='lbracket'>[</span><span class='id identifier rubyid_cache_key'>cache_key</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='cvar'>@@type_cache</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_cache_key'>cache_key</span><span class='rparen'>)</span>
 
@@ -7929,12 +9169,12 @@ keys used by <code>@@index</code>.</p>
       <pre class="lines">
 
 
-237
-238
-239</pre>
+273
+274
+275</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 237</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameobj.rb', line 273</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_type?'>type?</span><span class='lparen'>(</span><span class='id identifier rubyid_type_to_check'>type_to_check</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_type'>type</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_type_to_check'>type_to_check</span><span class='rparen'>)</span>
@@ -7949,7 +9189,7 @@ keys used by <code>@@index</code>.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:07 2026 by
+  Generated on Thu Sep 10 03:55:33 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

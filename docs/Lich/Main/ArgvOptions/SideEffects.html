@@ -171,7 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Applies side effects for dark mode, hosts directory, bind address, detachable client configuration, and SAL launch file handling.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Applies side effects implied by parsed argv_options: theme, host directories, bind addresses, detachable client configuration, and SAL file launching.</p></div></span>
   
 </li>
 
@@ -215,7 +215,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes --detachable-client argument and configures host and port.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves --detachable-client address/port and applies --bind-address as default.</p></div></span>
   
 </li>
 
@@ -237,7 +237,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes --hosts-dir argument and sets argv_<a href=":hosts_dir">options</a> if valid.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Extracts and validates the --hosts-dir option, storing the normalized path in argv_<a href=":hosts_dir">options</a>.</p></div></span>
   
 </li>
 
@@ -259,7 +259,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Launches a SAL or Gse.~xt file if argv_<a href=":sal">options</a> is set.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Validates and launches a .sal launch file using system integration (Win32, Wine, or direct system call), then exits.</p></div></span>
   
 </li>
 
@@ -298,13 +298,13 @@
       <pre class="lines">
 
 
-216
-217
-218
-219</pre>
+189
+190
+191
+192</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 216</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 189</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_announce'>announce</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
   <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_level'>level</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -339,13 +339,13 @@
       <pre class="lines">
 
 
-222
-223
-224
-225</pre>
+195
+196
+197
+198</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 222</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 195</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_die'>die</span><span class='lparen'>(</span><span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_announce'>announce</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>error</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
@@ -371,12 +371,19 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Applies side effects for dark mode, hosts directory, bind address,
-detachable client configuration, and SAL launch file handling.</p>
-<p>Mutates argv_options by adding or resolving :bind_address,
-:detachable_client_host, :detachable_client_port, :hosts_dir, and
-processing :sal launch files. May exit with error status if
-configuration is invalid.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Called after argument parsing; modifies global state ($frontend, Win32
+ShellExecute) and may exit the process</p></div>
+  </div>
+
+<p>Applies side effects implied by parsed argv_options: theme, host directories,
+bind addresses, detachable client configuration, and SAL file launching.</p>
+<p>Resolves hostnames to concrete IP addresses (via <span class='object_link'><a href="../BindAddressOption.html" title="Lich::Main::BindAddressOption (module)">BindAddressOption</a></span> and
+BindHostResolver), handles --hosts-dir path validation, configures detachable
+client binding, and launches .sal files with the appropriate system integration
+(Win32 ShellExecute, Wine, or system). Fatal errors cause immediate exit(1).</p>
 
   </div>
 </div>
@@ -394,7 +401,7 @@ configuration is invalid.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash from OptionParser.execute</p></div>
+        <div class='inline'><p>the hash returned by <span class='object_link'><a href="OptionParser.html#execute-class_method" title="Lich::Main::ArgvOptions::OptionParser.execute (method)">OptionParser.execute</a></span></p></div>
       
     </li>
   
@@ -411,7 +418,8 @@ configuration is invalid.</p>
       
       
         &mdash;
-        <div class='inline'><p>the mutated argv_options hash</p></div>
+        <div class='inline'><p>the same argv_options hash, modified in-place with resolved
+addresses, host directories, and client configuration</p></div>
       
     </li>
   
@@ -423,17 +431,17 @@ configuration is invalid.</p>
       <pre class="lines">
 
 
-206
-207
-208
-209
-210
-211
-212
-213</pre>
+179
+180
+181
+182
+183
+184
+185
+186</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 206</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 179</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../StartupTheme.html" title="Lich::Main::StartupTheme (module)">StartupTheme</a></span></span><span class='period'>.</span><span class='id identifier rubyid_apply'><span class='object_link'><a href="../StartupTheme.html#apply-class_method" title="Lich::Main::StartupTheme.apply (method)">apply</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
@@ -476,17 +484,17 @@ exposure warning appears exactly once.</p>
       <pre class="lines">
 
 
-232
-233
-234
-235
-236
-237
-238
-239</pre>
+205
+206
+207
+208
+209
+210
+211
+212</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 232</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 205</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_bind_address'>handle_bind_address</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../BindAddressOption.html" title="Lich::Main::BindAddressOption (module)">BindAddressOption</a></span></span><span class='period'>.</span><span class='id identifier rubyid_apply'><span class='object_link'><a href="../BindAddressOption.html#apply-class_method" title="Lich::Main::BindAddressOption.apply (method)">apply</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:bind_address</span><span class='rbracket'>]</span><span class='rparen'>)</span>
@@ -516,11 +524,12 @@ exposure warning appears exactly once.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Processes --detachable-client argument and configures host and port.</p>
-<p>Parses --detachable-client=HOST:PORT or --detachable-client=PORT,
-resolving the host via BindHostResolver (unless port-only), and
-inherits :bind_address from argv_options if no explicit host is given.
-Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Resolves --detachable-client address/port and applies --bind-address as default.</p>
+<p>Parses --detachable-client=<target> format (host and/or port), resolves the
+host keyword (tailscale/lan/any) to a concrete IP via BindHostResolver,
+and defaults to --bind-address or 127.0.0.1. Port is optional. Raises
+<span class='object_link'><a href="../DetachableClientTarget.html#ParseError-constant" title="Lich::Main::DetachableClientTarget::ParseError (constant)">DetachableClientTarget::ParseError</a></span> or BindHostResolver::Error on invalid
+input, which <span class='object_link'><a href="" title="Lich::Main::ArgvOptions::SideEffects (module)">Lich::Main::ArgvOptions::SideEffects</a></span> catches and exits with an error message.</p>
 
   </div>
 </div>
@@ -538,7 +547,8 @@ Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash</p></div>
+        <div class='inline'><p>the options hash to update with :detachable_client_host
+and :detachable_client_port keys</p></div>
       
     </li>
   
@@ -555,7 +565,7 @@ Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
       
       
         &mdash;
-        <div class='inline'><p>if argument format is invalid</p></div>
+        <div class='inline'><p>if the target syntax is invalid</p></div>
       
     </li>
   
@@ -567,7 +577,7 @@ Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
       
       
         &mdash;
-        <div class='inline'><p>if host resolution fails</p></div>
+        <div class='inline'><p>if hostname resolution fails</p></div>
       
     </li>
   
@@ -579,30 +589,30 @@ Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
       <pre class="lines">
 
 
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296</pre>
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 276</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 252</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_detachable_client'>handle_detachable_client</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:detachable_client_host</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:bind_address</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>127.0.0.1</span><span class='tstring_end'>&#39;</span></span>
@@ -645,10 +655,11 @@ Sets :detachable_client_host and :detachable_client_port in argv_options.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Processes --hosts-dir argument and sets argv_<a href=":hosts_dir">options</a> if valid.</p>
-<p>Extracts the directory path from --hosts-dir=PATH in ARGV, validates
-existence, normalizes slashes, and removes the argument from ARGV.
-Warns if the directory does not exist but does not exit.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Extracts and validates the --hosts-dir option, storing the normalized path
+in argv_<a href=":hosts_dir">options</a>.</p>
+<p>Removes the argument from ARGV, converts backslashes to forward slashes, and
+ensures the directory ends with '/'. Logs a warning to stdout if the directory
+does not exist, but does not exit or raise.</p>
 
   </div>
 </div>
@@ -666,7 +677,7 @@ Warns if the directory does not exist but does not exit.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash</p></div>
+        <div class='inline'><p>the options hash to update with :hosts_dir key</p></div>
       
     </li>
   
@@ -679,22 +690,22 @@ Warns if the directory does not exist but does not exit.</p>
       <pre class="lines">
 
 
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262</pre>
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 250</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 224</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_hosts_dir'>handle_hosts_dir</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span> <span class='op'>=</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--hosts-dir=(.+)$</span><span class='regexp_end'>/i</span></span> <span class='rbrace'>}</span><span class='rparen'>)</span>
@@ -732,14 +743,16 @@ Warns if the directory does not exist but does not exit.</p>
 
   <div class="note notetag">
     <strong>Note:</strong>
-    <div class='inline'><p>Exits on file not found, launcher not found, or after successful launch</p></div>
+    <div class='inline'><p>Exits the entire process; used only for SAL-file launch mode</p></div>
   </div>
 
-<p class="note returns_void">This method returns an undefined value.</p><p>Launches a SAL or Gse.~xt file if argv_<a href=":sal">options</a> is set.</p>
-<p>Validates file existence, looks up the Simutronics launcher, and
-executes it via Win32.ShellExecute (Windows), Wine (if defined),
-or system() (other platforms). Logs and shows error messages, then exits
-on failure. Exits after successful launch.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Validates and launches a .sal launch file using system integration (Win32,
+Wine, or direct system call), then exits.</p>
+<p>Checks file existence, logs the path, and for SGE.sal specifically, retrieves
+the Simutronics launcher command and executes it with elevated privileges
+(runas on Win32 non-XP, open otherwise), substituting %1 with the file path.
+On non-SGE files or platforms without Win32, delegates to Wine or system().
+Always exits when invoked (does not return).</p>
 
   </div>
 </div>
@@ -757,7 +770,7 @@ on failure. Exits after successful launch.</p>
       
       
         &mdash;
-        <div class='inline'><p>option hash with optional :sal key</p></div>
+        <div class='inline'><p>the options hash (read only; checks :sal key)</p></div>
       
     </li>
   
@@ -770,6 +783,28 @@ on failure. Exits after successful launch.</p>
       <pre class="lines">
 
 
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
 309
 310
 311
@@ -781,32 +816,10 @@ on failure. Exits after successful launch.</p>
 317
 318
 319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342</pre>
+320</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 309</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 287</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_sal_launch'>handle_sal_launch</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span>
@@ -852,7 +865,7 @@ on failure. Exits after successful launch.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:57 2026 by
+  Generated on Thu Sep 10 03:55:16 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

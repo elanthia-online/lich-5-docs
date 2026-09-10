@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Class: Lich::Gemstone::Combat::Recorder
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Gemstone::Combat::Recorder";
+  relpath = '../../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../../_index.html">Index (R)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span>
+     &raquo; 
+    <span class="title">Recorder</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Class: Lich::Gemstone::Combat::Recorder
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+  <dl>
+    <dt>Inherits:</dt>
+    <dd>
+      <span class="inheritName">Object</span>
+      
+        <ul class="fullTree">
+          <li>Object</li>
+          
+            <li class="next">Lich::Gemstone::Combat::Recorder</li>
+          
+        </ul>
+        <a href="#" class="inheritanceTree">show all</a>
+      
+    </dd>
+  </dl>
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/gemstone/combat/recorder.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Persists the combat observer event stream to a SQLite database.</p>
+<p>Maintains a relational schema of sessions, creatures, attacks, resolutions,
+flares, hits, and statuses. Handles both live auto-sessioned recording and
+explicit session control for replay/headless analysis. Manages spawn-tree
+linkage (root/parent attack relationships), creature lifecycle tracking
+(kills, wounds), and attack attribution of status effects via a window
+heuristic.</p>
+<p>Thread-safe: serializes all public entry points on a non-reentrant mutex
+to coordinate between the AsyncProcessor worker thread (record) and the
+consuming script's event loop (check_idle!, close, start_session).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Record a live hunt</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Recorder</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/tmp/combat.db</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>character:</span> <span class='const'>Char</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>idle_timeout:</span> <span class='int'>300</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_subscribe!'>subscribe!</span>
+<span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_check_idle!'>check_idle!</span> <span class='rbrace'>}</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Explicit session (replay)</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Recorder</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/tmp/combat.db</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>log.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_t0'>t0</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_feed_events_to'>feed_events_to</span><span class='lparen'>(</span><span class='id identifier rubyid_rec'>rec</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_finish_session'>finish_session</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_t1'>t1</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+
+
+</div>
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="HANDLER_NAME-constant" class="">HANDLER_NAME =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>combat_recorder</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="SCHEMA-constant" class="">SCHEMA =
+          <div class="docstring">
+  <div class="discussion">
+    <p>SQLite schema: seven-table relational design for combat events.</p>
+<p>Tables: sessions (hunt unit), creatures (subject registry), attacks
+(swing/cast/inbound), resolutions (roll facts), flares (proc damage),
+hits (damage events with crit denormalization), statuses (effect stream).</p>
+<p>Sources of truth: attacks/resolutions/flares/hits unpack the :attack
+payload only (derived :damage/:wound/:fatal_crit/:amputation events are
+not subscribed). Statuses come from :status/:stun/:roundtime/:spell_loss
+/:ucs emits only.</p>
+<p>Spawn-tree closure: root_attack_id points every event at the initiating
+shot; parent_attack_id/parent_confidence record the immediate spawner
+only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">#initialize</a></span></li>
+    
+      <li><span class='object_link'><a href="#start_session-instance_method" title="Lich::Gemstone::Combat::Recorder#start_session (method)">#start_session</a></span></li>
+    
+      <li><span class='object_link'><a href="#record-instance_method" title="Lich::Gemstone::Combat::Recorder#record (method)">#record</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='heredoc_beg'>&lt;&lt;~SQL</span>
+<span class='tstring_content'>  CREATE TABLE IF NOT EXISTS sessions (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    character   TEXT,
+</span><span class='tstring_content'>    source      TEXT,
+</span><span class='tstring_content'>    started_at  REAL NOT NULL,
+</span><span class='tstring_content'>    ended_at    REAL
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS creatures (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    session_id  INTEGER NOT NULL REFERENCES sessions(id),
+</span><span class='tstring_content'>    exist_id    INTEGER,
+</span><span class='tstring_content'>    noun        TEXT,
+</span><span class='tstring_content'>    name        TEXT,
+</span><span class='tstring_content'>    first_seen  REAL,
+</span><span class='tstring_content'>    last_seen   REAL,
+</span><span class='tstring_content'>    killed_at   REAL,
+</span><span class='tstring_content'>    killed_by_attack_id INTEGER,
+</span><span class='tstring_content'>    UNIQUE (session_id, exist_id)
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS attacks (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    session_id  INTEGER NOT NULL REFERENCES sessions(id),
+</span><span class='tstring_content'>    seq         INTEGER NOT NULL,             -- monotonic within session
+</span><span class='tstring_content'>    occurred_at REAL NOT NULL,
+</span><span class='tstring_content'>    name        TEXT NOT NULL,                -- def name (:unknown = orphan sink)
+</span><span class='tstring_content'>    parent      TEXT,                         -- spawned-cast lineage (flare name)
+</span><span class='tstring_content'>    parent_weapon TEXT,                       -- the weapon whose flare spawned it
+</span><span class='tstring_content'>    root_attack_id   INTEGER REFERENCES attacks(id), -- initiating shot of this blob&#39;s spawn tree (self for a root)
+</span><span class='tstring_content'>    parent_attack_id INTEGER REFERENCES attacks(id), -- immediate spawner, ONLY when asserted (blink bracket); NULL when ambiguous
+</span><span class='tstring_content'>    parent_confidence TEXT,                   -- &#39;bracket&#39; (game-declared) | NULL (unproven); reserved: &#39;count&#39;
+</span><span class='tstring_content'>    via         TEXT,                         -- gesture wrapper (:cast)
+</span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id),  -- NULL: inbound/self/foreign/orphan
+</span><span class='tstring_content'>    target_kind TEXT NOT NULL,                -- creature|self|foreign|none
+</span><span class='tstring_content'>    attacker    TEXT,                         -- inbound: who attacked us
+</span><span class='tstring_content'>    attacker_exist_id INTEGER,
+</span><span class='tstring_content'>    weapon      TEXT,
+</span><span class='tstring_content'>    outcome     TEXT,                         -- first outcome (miss/evade/warded/...)
+</span><span class='tstring_content'>    outcomes_all TEXT,                        -- comma-joined when &gt;1
+</span><span class='tstring_content'>    aimed       INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    ambush      INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    inbound     INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    orphan      INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    foreign_caster INTEGER NOT NULL DEFAULT 0, -- a nearby player&#39;s attack (observed, not ours)
+</span><span class='tstring_content'>    unowned     INTEGER NOT NULL DEFAULT 0,    -- effect tick, no owning cast: applied to creature, not our deal
+</span><span class='tstring_content'>    redirected_from TEXT                       -- guardian redirect: noun of the creature we struck AT; the row&#39;s creature is the guardian that took it
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_attacks_session ON attacks(session_id, seq);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_attacks_creature ON attacks(creature_id);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_attacks_name ON attacks(session_id, name);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_attacks_root ON attacks(root_attack_id);
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  -- attacker_stat/defender_stat/modifier by type:
+</span><span class='tstring_content'>  --   as_ds:  AS  / DS  / AvD      cs_td: CS  / TD  / CvA
+</span><span class='tstring_content'>  --   uaf_udf:UAF / UDF / MM       fear:  FS  / FD  / FvP
+</span><span class='tstring_content'>  --   smr/ssr/maneuver_roll/activation: NULLs + roll/bonus/penalty/result
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS resolutions (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    attack_id   INTEGER NOT NULL REFERENCES attacks(id),
+</span><span class='tstring_content'>    flare_id    INTEGER REFERENCES flares(id),   -- NULL = the attack&#39;s own roll
+</span><span class='tstring_content'>    seq         INTEGER NOT NULL,                -- order within the attack
+</span><span class='tstring_content'>    type        TEXT NOT NULL,
+</span><span class='tstring_content'>    attacker_stat INTEGER,
+</span><span class='tstring_content'>    defender_stat INTEGER,
+</span><span class='tstring_content'>    modifier    INTEGER,
+</span><span class='tstring_content'>    roll        INTEGER,                         -- the die, kept separate:
+</span><span class='tstring_content'>    bonus       INTEGER,                         -- result - roll = margin
+</span><span class='tstring_content'>    penalty     INTEGER,
+</span><span class='tstring_content'>    result      INTEGER,
+</span><span class='tstring_content'>    total       REAL                             -- UCS pre-MM total (fractional)
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_resolutions_attack ON resolutions(attack_id);
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS flares (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    attack_id   INTEGER NOT NULL REFERENCES attacks(id),
+</span><span class='tstring_content'>    seq         INTEGER NOT NULL,
+</span><span class='tstring_content'>    name        TEXT NOT NULL,
+</span><span class='tstring_content'>    damaging    INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id), -- AoE: may differ from swing
+</span><span class='tstring_content'>    weapon      TEXT,
+</span><span class='tstring_content'>    outcome     TEXT
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_flares_attack ON flares(attack_id);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_flares_name ON flares(name);
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS hits (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    attack_id   INTEGER NOT NULL REFERENCES attacks(id),
+</span><span class='tstring_content'>    flare_id    INTEGER REFERENCES flares(id),    -- NULL = attack&#39;s own damage
+</span><span class='tstring_content'>    session_id  INTEGER NOT NULL REFERENCES sessions(id),
+</span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id), -- NULL = inbound/self/orphan
+</span><span class='tstring_content'>    seq         INTEGER NOT NULL,
+</span><span class='tstring_content'>    damage      INTEGER NOT NULL,
+</span><span class='tstring_content'>    location    TEXT,                             -- CritRanks location
+</span><span class='tstring_content'>    body_part   TEXT,                             -- mapped injury-doll part
+</span><span class='tstring_content'>    crit_type   TEXT,
+</span><span class='tstring_content'>    crit_rank   INTEGER,                          -- CritRanks :rank (0-9): crit severity
+</span><span class='tstring_content'>    wound_rank  INTEGER,                          -- CritRanks :wound_rank (0-3): wound left on the creature
+</span><span class='tstring_content'>    fatal       INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    amputated   INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    secondary_location TEXT,
+</span><span class='tstring_content'>    secondary_rank     INTEGER                    -- secondary wound severity (:wound_rank)
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_attack ON hits(attack_id);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_creature ON hits(session_id, creature_id);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_location ON hits(location);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_crit ON hits(crit_rank);
+</span><span class='tstring_content'>
+</span><span class='tstring_content'>  -- kind: status (action add/remove), stun (value=rounds),
+</span><span class='tstring_content'>  --       roundtime (value=seconds), spell_loss (spell/spell_name/cause),
+</span><span class='tstring_content'>  --       ucs (status=position/tierup/..., value=tier)
+</span><span class='tstring_content'>  CREATE TABLE IF NOT EXISTS statuses (
+</span><span class='tstring_content'>    id          INTEGER PRIMARY KEY,
+</span><span class='tstring_content'>    session_id  INTEGER NOT NULL REFERENCES sessions(id),
+</span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id), -- NULL = self or unresolved
+</span><span class='tstring_content'>    subject     TEXT,                             -- name as printed (&#39;self&#39; for us)
+</span><span class='tstring_content'>    attack_id   INTEGER REFERENCES attacks(id),   -- window attribution
+</span><span class='tstring_content'>    occurred_at REAL NOT NULL,
+</span><span class='tstring_content'>    kind        TEXT NOT NULL,
+</span><span class='tstring_content'>    status      TEXT,
+</span><span class='tstring_content'>    action      TEXT,
+</span><span class='tstring_content'>    value       INTEGER,
+</span><span class='tstring_content'>    spell       INTEGER,
+</span><span class='tstring_content'>    spell_name  TEXT,
+</span><span class='tstring_content'>    cause       TEXT,
+</span><span class='tstring_content'>    source      TEXT                              -- &#39;direct&#39; | &#39;window&#39;
+</span><span class='tstring_content'>  );
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_statuses_creature ON statuses(session_id, creature_id);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_statuses_attack ON statuses(attack_id);
+</span><span class='heredoc_end'>SQL</span></pre></dd>
+      
+        <dt id="STAT_KEYS-constant" class="">STAT_KEYS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>parsed-resolution key -&gt; generic column, per roll family</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span> <span class='label'>as:</span> <span class='symbol'>:attacker_stat</span><span class='comma'>,</span> <span class='label'>cs:</span> <span class='symbol'>:attacker_stat</span><span class='comma'>,</span> <span class='label'>uaf:</span> <span class='symbol'>:attacker_stat</span><span class='comma'>,</span> <span class='label'>fs:</span> <span class='symbol'>:attacker_stat</span><span class='comma'>,</span>
+<span class='label'>ds:</span> <span class='symbol'>:defender_stat</span><span class='comma'>,</span> <span class='label'>td:</span> <span class='symbol'>:defender_stat</span><span class='comma'>,</span> <span class='label'>udf:</span> <span class='symbol'>:defender_stat</span><span class='comma'>,</span> <span class='label'>fd:</span> <span class='symbol'>:defender_stat</span><span class='comma'>,</span>
+<span class='label'>avd:</span> <span class='symbol'>:modifier</span><span class='comma'>,</span> <span class='label'>cva:</span> <span class='symbol'>:modifier</span><span class='comma'>,</span> <span class='label'>mm:</span> <span class='symbol'>:modifier</span><span class='comma'>,</span> <span class='label'>fvp:</span> <span class='symbol'>:modifier</span><span class='comma'>,</span> <span class='label'>mods:</span> <span class='symbol'>:modifier</span><span class='comma'>,</span>
+<span class='label'>roll:</span> <span class='symbol'>:roll</span><span class='comma'>,</span> <span class='label'>bonus:</span> <span class='symbol'>:bonus</span><span class='comma'>,</span> <span class='label'>penalty:</span> <span class='symbol'>:penalty</span><span class='comma'>,</span> <span class='label'>result:</span> <span class='symbol'>:result</span><span class='comma'>,</span> <span class='label'>total:</span> <span class='symbol'>:total</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+  <h2>Instance Attribute Summary <small><a href="#" class="summary_toggle">collapse</a></small></h2>
+  <ul class="summary">
+    
+      <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#db-instance_method" title="#db (instance method)">#<strong>db</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+    
+      <span class="note title readonly">readonly</span>
+    
+    
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute db.</p></div></span>
+  
+</li>
+
+    
+      <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#session_id-instance_method" title="#session_id (instance method)">#<strong>session_id</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+    
+      <span class="note title readonly">readonly</span>
+    
+    
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute session_id.</p></div></span>
+  
+</li>
+
+    
+  </ul>
+
+
+
+
+  
+    <h2>
+      Instance Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#check_idle!-instance_method" title="#check_idle! (instance method)">#<strong>check_idle!</strong>(now = Time.now)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Close the current session if the idle gap has elapsed - ended_at is the LAST EVENT's time, not now, so town time never pads a hunt.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#check_idle_locked!-instance_method" title="#check_idle_locked! (instance method)">#<strong>check_idle_locked!</strong>(now = Time.now)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Internal variant of check_idle!; does not acquire the mutex.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#close-instance_method" title="#close (instance method)">#<strong>close</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Finish any open session and release the database.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#finish_session-instance_method" title="#finish_session (instance method)">#<strong>finish_session</strong>(at: Time.now)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The id of the session just closed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#finish_session_locked-instance_method" title="#finish_session_locked (instance method)">#<strong>finish_session_locked</strong>(at: Time.now)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Internal variant of finish_session; does not acquire the mutex.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(db_path, character: nil, source: &#39;live&#39;, idle_timeout: nil)  &#x21d2; Recorder </a>
+    
+
+    
+  </span>
+  
+  
+    <span class="note title constructor">constructor</span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>idle_timeout (seconds): enables auto-sessioning - a session opens on the first recorded event and closes once this long passes without one (see check_idle!).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record-instance_method" title="#record (instance method)">#<strong>record</strong>(type, data)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Record a combat event from the observer feed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record_locked-instance_method" title="#record_locked (instance method)">#<strong>record_locked</strong>(type, data)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Internal variant of record; does not acquire the mutex.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#start_session-instance_method" title="#start_session (instance method)">#<strong>start_session</strong>(character: nil, source: nil, at: Time.now)  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Open a new session, finishing any open session first.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#start_session_locked-instance_method" title="#start_session_locked (instance method)">#<strong>start_session_locked</strong>(character: nil, source: nil, at: Time.now)  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Internal variant of start_session; does not acquire the mutex.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#subscribe!-instance_method" title="#subscribe! (instance method)">#<strong>subscribe!</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Hook the live observer feed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#txt-instance_method" title="#txt (instance method)">#<strong>txt</strong>(value)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Text from the game stream arrives as ASCII-8BIT (binary) strings, and the sqlite3 gem binds a binary string as a BLOB.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#unsubscribe!-instance_method" title="#unsubscribe! (instance method)">#<strong>unsubscribe!</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Unregister the named handler from the observer feed.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+<div id="constructor_details" class="method_details_list">
+  <h2>Constructor Details</h2>
+  
+    <div class="method_details first">
+  <h3 class="signature first" id="initialize-instance_method">
+  
+    #<strong>initialize</strong>(db_path, character: nil, source: &#39;live&#39;, idle_timeout: nil)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Gemstone::Combat::Recorder (class)">Recorder</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>idle_timeout (seconds): enables auto-sessioning - a session opens on
+the first recorded event and closes once this long passes without
+one (see check_idle!). nil = explicit start_session/finish_session.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 285</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>live</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>idle_timeout:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='ivar'>@db</span> <span class='op'>=</span> <span class='const'>SQLite3</span><span class='op'>::</span><span class='const'>Database</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='rparen'>)</span>
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_busy_timeout'>busy_timeout</span> <span class='op'>=</span> <span class='int'>5_000</span>
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>PRAGMA journal_mode = WAL</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>PRAGMA synchronous = NORMAL</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute_batch'>execute_batch</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#SCHEMA-constant" title="Lich::Gemstone::Combat::Recorder::SCHEMA (constant)">SCHEMA</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_migrate!'>migrate!</span>
+  <span class='ivar'>@seq</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='ivar'>@open_attack</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># { id:, creature_ids: Set, inbound: bool }
+</span>  <span class='ivar'>@chunk_rows</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>   <span class='comment'># per-chunk _uid -&gt; attack row id, for spawn-tree links
+</span>  <span class='ivar'>@pending_cache</span> <span class='op'>=</span> <span class='kw'>nil</span>      <span class='comment'># creature-cache entries staged during a txn (see in_txn)
+</span>  <span class='ivar'>@pending_chunk_rows</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># chunk-row entries staged during a txn (see in_txn)
+</span>  <span class='ivar'>@character</span> <span class='op'>=</span> <span class='id identifier rubyid_character'>character</span>
+  <span class='ivar'>@source</span> <span class='op'>=</span> <span class='id identifier rubyid_source'>source</span>
+  <span class='ivar'>@idle_timeout</span> <span class='op'>=</span> <span class='id identifier rubyid_idle_timeout'>idle_timeout</span>
+  <span class='ivar'>@last_event_at</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='comment'># record fires on the AsyncProcessor worker thread; check_idle!/close
+</span>  <span class='comment'># are documented as driven from the consuming script&#39;s own periodic
+</span>  <span class='comment'># loop. Both touch @db, so every public entry point serialises on one
+</span>  <span class='comment'># non-reentrant mutex. Internal helpers that run while the lock is
+</span>  <span class='comment'># already held (start_session/finish_session called from inside
+</span>  <span class='comment'># record) must NOT re-acquire it - hence the unsynchronised _locked
+</span>  <span class='comment'># variants below.
+</span>  <span class='ivar'>@mutex</span> <span class='op'>=</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+  
+</div>
+
+  <div id="instance_attr_details" class="attr_details">
+    <h2>Instance Attribute Details</h2>
+    
+      
+      <span id=""></span>
+      <div class="method_details first">
+  <h3 class="signature first" id="db-instance_method">
+  
+    #<strong>db</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the value of attribute db.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+280
+281
+282</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 280</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_db'>db</span>
+  <span class='ivar'>@db</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      
+      <span id=""></span>
+      <div class="method_details ">
+  <h3 class="signature " id="session_id-instance_method">
+  
+    #<strong>session_id</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the value of attribute session_id.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+280
+281
+282</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 280</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_session_id'>session_id</span>
+  <span class='ivar'>@session_id</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+
+  <div id="instance_method_details" class="method_details_list">
+    <h2>Instance Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="check_idle!-instance_method">
+  
+    #<strong>check_idle!</strong>(now = Time.now)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Close the current session if the idle gap has elapsed - ended_at is
+the LAST EVENT's time, not now, so town time never pads a hunt.
+Cheap; call it from a periodic loop so a finished hunt closes even
+when no further event ever arrives.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+412
+413
+414</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 412</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_check_idle!'>check_idle!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="check_idle_locked!-instance_method">
+  
+    #<strong>check_idle_locked!</strong>(now = Time.now)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Internal variant of check_idle!; does not acquire the mutex.</p>
+<p>Assumes the caller already holds the lock. Finishes the current session
+if idle_timeout was set, a session is open, an event has been recorded,
+and the gap since the last event exceeds idle_timeout. Uses the last
+event's timestamp as the session end (town time never pads a hunt).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>now</span>
+      
+      
+        <span class='type'>(<tt>Time</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Time.now</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>current time for comparison, defaults to Time.now</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+426
+427
+428
+429
+430
+431</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 426</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@idle_timeout</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@session_id</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@last_event_at</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_now'>now</span> <span class='op'>-</span> <span class='ivar'>@last_event_at</span> <span class='op'>&gt;</span> <span class='ivar'>@idle_timeout</span>
+
+  <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='ivar'>@last_event_at</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="close-instance_method">
+  
+    #<strong>close</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Finish any open session and release the database.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+434
+435
+436
+437
+438
+439
+440</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 434</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_close'>close</span>
+  <span class='id identifier rubyid_unsubscribe!'>unsubscribe!</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='ivar'>@last_event_at</span> <span class='op'>||</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@session_id</span>
+    <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_close'>close</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="finish_session-instance_method">
+  
+    #<strong>finish_session</strong>(at: Time.now)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the id of the session just closed.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the id of the session just closed</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+366
+367
+368</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 366</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_finish_session'>finish_session</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_at'>at</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="finish_session_locked-instance_method">
+  
+    #<strong>finish_session_locked</strong>(at: Time.now)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Internal variant of finish_session; does not acquire the mutex.</p>
+<p>Assumes the caller already holds the lock. Updates the current session's
+ended_at timestamp and clears session and attack state. Returns the closed
+session's ID, or nil if no session was open.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>at</span>
+      
+      
+        <span class='type'>(<tt>Time</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Time.now</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>timestamp for session end, defaults to Time.now</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the closed session ID, or nil if no session was open</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+379
+380
+381
+382
+383
+384
+385
+386
+387</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 379</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
+
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UPDATE sessions SET ended_at = ? WHERE id = ?</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='id identifier rubyid_at'>at</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span><span class='comma'>,</span> <span class='ivar'>@session_id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_finished'>finished</span> <span class='op'>=</span> <span class='ivar'>@session_id</span>
+  <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@open_attack</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_finished'>finished</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="record-instance_method">
+  
+    #<strong>record</strong>(type, data)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Errors are logged via Lich.log (if available) and never re-raised</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Record a combat event from the observer feed.</p>
+<p>Public entry point called by the named observer handler. Acquires the
+serialization mutex and dispatches to record_locked. Rescue catches and
+logs any error so a payload bug never crashes the processor.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>event type: :attack, :status, :stun, :roundtime,
+:spell_loss, or :ucs</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>event payload</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+453
+454
+455</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 453</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_record_locked'>record_locked</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="record_locked-instance_method">
+  
+    #<strong>record_locked</strong>(type, data)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Internal variant of record; does not acquire the mutex.</p>
+<p>Assumes the caller already holds the lock. If idle_timeout is set,
+checks for session expiry, auto-opens a new session if needed, and
+updates the last-event timestamp. Then dispatches by type to the
+appropriate handler (record_attack or record_status variants).
+Returns early if no session is open.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>event type: :attack, :status, :stun, :roundtime,
+:spell_loss, or :ucs</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>event payload</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 470</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_record_locked'>record_locked</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='ivar'>@idle_timeout</span>
+    <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
+    <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='ivar'>@character</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='ivar'>@source</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
+    <span class='ivar'>@last_event_at</span> <span class='op'>=</span> <span class='id identifier rubyid_now'>now</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
+
+  <span class='kw'>case</span> <span class='id identifier rubyid_type'>type</span>
+  <span class='kw'>when</span> <span class='symbol'>:attack</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_attack'>record_attack</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:status</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>status</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                                  <span class='label'>status:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:status</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='label'>action:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:action</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:stun</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stun</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                                <span class='label'>status:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>action:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>add</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>value:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:rounds</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:roundtime</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>roundtime</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                                     <span class='label'>status:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>roundtime</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>action:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>add</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>value:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:seconds</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:spell_loss</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>spell_loss</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                                      <span class='label'>action:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>remove</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>spell:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:spell</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                                      <span class='label'>spell_name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:spell_name</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>cause:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:cause</span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:ucs</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>ucs</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
+                               <span class='label'>status:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:kind</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span>
+                               <span class='label'>value:</span> <span class='id identifier rubyid_ucs_value'>ucs_value</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+  <span class='comment'># Never raise into the processor; surfaced via Lich.log when present.
+</span>  <span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>CombatRecorder </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_type'>type</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_msg'>msg</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_warn'>warn</span><span class='lparen'>(</span><span class='id identifier rubyid_msg'>msg</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="start_session-instance_method">
+  
+    #<strong>start_session</strong>(character: nil, source: nil, at: Time.now)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Open a new session, finishing any open session first.</p>
+<p>Acquires the serialization mutex; calls the internal _locked variant.
+Sessions record hunts bounded by a 5-minute gap without combat events
+(inbound or outbound). With idle_timeout set at initialization, the
+recorder opens lazily on the first event and closes once that gap elapses.
+For explicit control (e.g., replay), omit idle_timeout and call this and
+finish_session directly.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Start a replay session</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/logs/hunt.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_at'>at</span><span class='lparen'>(</span><span class='int'>1000</span><span class='rparen'>)</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>character name, defaults to nil</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>source</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>origin description (&quot;live&quot;, log file path, etc.),
+defaults to nil</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>at</span>
+      
+      
+        <span class='type'>(<tt>Time</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Time.now</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>timestamp for session start, defaults to Time.now</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the row ID of the newly created session</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+327
+328
+329</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 327</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='id identifier rubyid_source'>source</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_at'>at</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="start_session_locked-instance_method">
+  
+    #<strong>start_session_locked</strong>(character: nil, source: nil, at: Time.now)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Internal variant of start_session; does not acquire the mutex.</p>
+<p>Assumes the caller already holds the lock. Closes any existing session,
+inserts a new session row, resets sequence counter and creature cache,
+and returns the new session ID.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>character name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>source</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>origin description</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>at</span>
+      
+      
+        <span class='type'>(<tt>Time</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Time.now</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>timestamp for session start</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the new session ID</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+355
+356
+357
+358
+359
+360
+361
+362
+363</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 355</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span> <span class='kw'>if</span> <span class='ivar'>@session_id</span>
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>INSERT INTO sessions (character, source, started_at) VALUES (?, ?, ?)</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+              <span class='lbracket'>[</span><span class='id identifier rubyid_txt'>txt</span><span class='lparen'>(</span><span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id identifier rubyid_txt'>txt</span><span class='lparen'>(</span><span class='id identifier rubyid_source'>source</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id identifier rubyid_at'>at</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_last_insert_row_id'>last_insert_row_id</span>
+  <span class='ivar'>@seq</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='ivar'>@creature_cache</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='ivar'>@session_id</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="subscribe!-instance_method">
+  
+    #<strong>subscribe!</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Hook the live observer feed. Idempotent via the named-handler
+contract; per the Observers contract the callback stays cheap
+(single WAL transaction) and never sends game commands.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+392
+393
+394
+395
+396</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 392</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_subscribe!'>subscribe!</span>
+  <span class='id identifier rubyid_obs'>obs</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span>
+  <span class='id identifier rubyid_obs'>obs</span><span class='period'>.</span><span class='id identifier rubyid_on'>on</span><span class='lparen'>(</span><span class='symbol'>:attack</span><span class='comma'>,</span> <span class='symbol'>:status</span><span class='comma'>,</span> <span class='symbol'>:stun</span><span class='comma'>,</span> <span class='symbol'>:roundtime</span><span class='comma'>,</span> <span class='symbol'>:spell_loss</span><span class='comma'>,</span> <span class='symbol'>:ucs</span><span class='comma'>,</span>
+         <span class='label'>name:</span> <span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='op'>|</span> <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="txt-instance_method">
+  
+    #<strong>txt</strong>(value)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Text from the game stream arrives as ASCII-8BIT (binary) strings, and
+the sqlite3 gem binds a binary string as a BLOB. Every noun, creature
+name, attacker and weapon was landing typed blob (real db 2026-09-07:
+creatures.noun blob=196, text=0), so <code>WHERE noun = 'berserker'</code> never
+matched and text functions saw bytes, not words. Re-tag as UTF-8 at
+the boundary; game text is ASCII/Latin-1 so scrub only guards junk.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+337
+338
+339
+340
+341
+342</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 337</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_txt'>txt</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_encoding'>encoding</span> <span class='op'>==</span> <span class='const'>Encoding</span><span class='op'>::</span><span class='const'>ASCII_8BIT</span> <span class='op'>?</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_force_encoding'>force_encoding</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UTF-8</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_scrub'>scrub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>?</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="unsubscribe!-instance_method">
+  
+    #<strong>unsubscribe!</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Unregister the named handler from the observer feed.</p>
+<p>Stops listening to :attack, :status, :stun, :roundtime, :spell_loss, :ucs
+events. Safe to call when not subscribed.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+404
+405
+406</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 404</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_unsubscribe!'>unsubscribe!</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_off'><span class='object_link'><a href="Observers.html#off-class_method" title="Lich::Gemstone::Combat::Observers.off (method)">off</a></span></span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Thu Sep 10 03:55:38 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

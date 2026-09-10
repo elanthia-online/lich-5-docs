@@ -88,16 +88,23 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Damage pattern definitions and parsing for GemStone IV combat.</p>
-<p>Provides regular expressions to match and extract damage values from various
-attack types including basic weapon damage, spell effects, and environmental
-effects like cyclones. The <code>.parse</code> method efficiently extracts damage amounts
-and optional target information from combat lines.</p>
+    <p>Damage pattern definitions and parsing for attacks, spells, flares, and environmental effects.</p>
+<p>Provides regex patterns to match damage messages from the game server and a
+<code>.parse</code> method to extract damage amounts and optional targets from a single line.</p>
+<p>Patterns are organized by source (basic physical attacks, spell effects, environmental
+damage, and fallback forms) and ordered to prefer specific matches over broad ones.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Damage.parse (method)">Damage.parse</a></span></li>
+    
+  </ul>
 
 </div>
   
@@ -121,9 +128,31 @@ and optional target information from combat lines.</p>
 </div>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\. and hit for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\. (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\. hits for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span>
+  <span class='comment'># &quot;and hit for&quot; is second person (your attacks); &quot;and hits for&quot;
+</span>  <span class='comment'># is third person (other players&#39; casts and companions) - both
+</span>  <span class='comment'># are live, and missing the latter undercounted every group
+</span>  <span class='comment'># member&#39;s initial hit while still counting their followups.
+</span>  <span class='comment'># \s* not a literal space: several abilities emit &quot;...N points&quot;
+</span>  <span class='comment'># with no space after the ellipsis (Bearhug, Empathic Assault)
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*and hits? for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*(?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*hits for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*and receives (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*and causes? (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># mid-cycle DoT ticks end in &quot;...&quot; not &quot;!&quot; (Fervent Reproach 312)
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*(?&lt;damage&gt;\d+) points? of damage \.\.\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>pulses for an additional (?&lt;damage&gt;\d+) points? of damage</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># Searing Light (135) per-target burn - &quot;The bright light sears
+</span>  <span class='comment'># the ant for 10 damage!&quot; precedes the main damage line
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>sears .+? for (?&lt;damage&gt;\d+) damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>dissipating with a final discharge of (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># roll-based maneuvers: &quot;...6 damage!&quot; - no &quot;points of&quot; at all
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.\.\.\s*(?&lt;damage&gt;\d+) damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># indirect/AoE hits (third person; high volume in group logs)
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is hit for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is smashed for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># lingering/bleed ticks - note: no &quot;points of&quot;, plain &quot;damage!&quot;
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) suffers an additional (?&lt;damage&gt;\d+) damage!</span><span class='regexp_end'>/</span></span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SPELL_DAMAGE-constant" class="">SPELL_DAMAGE =
@@ -140,13 +169,37 @@ and optional target information from combat lines.</p>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Consumed by the hallowed flames, (?&lt;target&gt;.+?) is ravaged for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Wisps of black smoke swirl around (?&lt;target&gt;.+?) and it bursts into flame causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Wisps of black smoke swirl around (?&lt;target&gt;.+?) and it bursts into flame causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Sound waves disrupt for (?&lt;damage&gt;\d+) damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is cloaked in a blinding platinum light and assailed for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Ripples of cold white flame flare up around (?&lt;target&gt;.+?) and blister .+? for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Cloudy tendrils writhe throughout (?&lt;target&gt;.+?) form, ravaging .+? for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># 702 Mana Disruption grades its lead word by endroll; only
+</span>  <span class='comment'># &quot;Massive&quot; is captured in local logs (overkill casters), so
+</span>  <span class='comment'># anchor on the invariant phrase and take any grade word
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\w+ internal disruption for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is struck by a burning projectile, taking (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Blazing light, hot and blistering, coalesces around (?&lt;target&gt;.+?) for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># Stone Fist (514) hand actions - inline damage, no &quot;...&quot; prefix
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The stone hand throws (?&lt;target&gt;.+?) and .+? goes flying through the air, then hits the ground with a loud thud\.\s+(?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The stone hand lets (?&lt;target&gt;.+?) go free for a moment, then quickly moves to slap </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>\.\s*(?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The stone hand closes its grasp around (?&lt;target&gt;.+?) and squeezes\.\s*(?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The stone hand raises (?&lt;target&gt;.+?) into the air and brings </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> down, pounding </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> into the (?:floor|ground)\.\s*(?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># elemental storm ticks (710 Energy Maelstrom / Immolation storms)
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?:rocks|hailstones|hail|winds|bolts|heat) (?:pummels?|burns?|electrif(?:y|ies)|assaults?) (?&lt;target&gt;.+?) for (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ENVIRONMENTAL_DAMAGE-constant" class="">ENVIRONMENTAL_DAMAGE =
           <div class="docstring">
   <div class="discussion">
-    <p>Environmental/cyclone damage patterns</p>
+    <p>Environmental/cyclone damage patterns.</p>
+<p>Generalized over the element: Chromatic Circle (502) alone has
+five observed variants (crackling lightning ARCS, whirlwind
+SWIRLS, shifting stones ORBIT, flickering flames swirl, ice
+shards orbit), all sharing the &quot;causing N points of damage&quot;
+tail. The old per-element list missed &quot;arcs&quot; entirely, so every
+lightning 502 kill undercounted by the arc damage - and that
+total is the LOWER bound for max_hp, so brackets came out low.</p>
 
   </div>
 </div>
@@ -156,9 +209,31 @@ and optional target information from combat lines.</p>
 </div>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The whirlwind quickly swirls around (?&lt;target&gt;.+?), causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The flickering flames quickly swirl around (?&lt;target&gt;.+?), causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The shifting stones quickly orbit (?&lt;target&gt;.+?), causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>quickly (?:arcs?|swirls?|orbits?) around (?&lt;target&gt;[^,]+), causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>quickly (?:arcs?|swirls?|orbits?) (?&lt;target&gt;[^,]+), causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="FALLBACK_DAMAGE-constant" class="">FALLBACK_DAMAGE =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Broad fallbacks, ordered LAST so the specific patterns above win
+their better target captures first. These close whole families
+(deity Condemn variants, Pestilence DoT wordings, &quot;for N damage&quot;
+spells, maneuver &quot;N hits!&quot;) without a def per flavor line.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) for (?&lt;damage&gt;\d+) points? of damage[.!]</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>causing (?&lt;damage&gt;\d+) points? of damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>inflicting (?&lt;damage&gt;\d+) points? of damage(?: in their wake)?!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) for (?&lt;damage&gt;\d+) damage!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'> (?&lt;damage&gt;\d+) hits!</span><span class='regexp_end'>/</span></span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ALL_DAMAGE-constant" class="">ALL_DAMAGE =
@@ -173,7 +248,7 @@ and optional target information from combat lines.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#BASIC_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::BASIC_DAMAGE (constant)">BASIC_DAMAGE</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#SPELL_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::SPELL_DAMAGE (constant)">SPELL_DAMAGE</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#ENVIRONMENTAL_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::ENVIRONMENTAL_DAMAGE (constant)">ENVIRONMENTAL_DAMAGE</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#BASIC_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::BASIC_DAMAGE (constant)">BASIC_DAMAGE</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#SPELL_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::SPELL_DAMAGE (constant)">SPELL_DAMAGE</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#ENVIRONMENTAL_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::ENVIRONMENTAL_DAMAGE (constant)">ENVIRONMENTAL_DAMAGE</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#FALLBACK_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::FALLBACK_DAMAGE (constant)">FALLBACK_DAMAGE</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="DAMAGE_DETECTOR-constant" class="">DAMAGE_DETECTOR =
           <div class="docstring">
@@ -262,31 +337,33 @@ and optional target information from combat lines.</p>
       <pre class="lines">
 
 
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67</pre>
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/damage.rb', line 52</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/damage.rb', line 114</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='comment'># Fast rejection: every damage pattern contains &quot;point(s) of damage&quot;.
-</span>  <span class='comment'># The substring check skips the regex scan on the ~95% of lines that
-</span>  <span class='comment'># can&#39;t match; the union detector then rejects near-misses cheaply.
-</span>  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>point</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='comment'># Fast rejection: every damage pattern contains &quot;damage&quot; except
+</span>  <span class='comment'># the maneuver &quot;N hits!&quot; form. The substring check skips the
+</span>  <span class='comment'># regex scan on the ~95% of lines that can&#39;t match; the union
+</span>  <span class='comment'># detector rejects near-misses cheaply.
+</span>  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>damage</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> hits!</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#DAMAGE_DETECTOR-constant" title="Lich::Gemstone::Combat::Definitions::Damage::DAMAGE_DETECTOR (constant)">DAMAGE_DETECTOR</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 
   <span class='const'><span class='object_link'><a href="#ALL_DAMAGE-constant" title="Lich::Gemstone::Combat::Definitions::Damage::ALL_DAMAGE (constant)">ALL_DAMAGE</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span>
@@ -308,7 +385,7 @@ and optional target information from combat lines.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:00 2026 by
+  Generated on Thu Sep 10 03:55:22 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

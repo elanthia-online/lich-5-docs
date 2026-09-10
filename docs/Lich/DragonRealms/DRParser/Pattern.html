@@ -88,10 +88,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Frozen regular expression patterns for parsing DragonRealms game output.</p>
-<p>Patterns are organized by feature: experience tracking, character stats,
-room state, spellbooks, barbarian abilities, thief khri, and other commands
-like <code>inv search</code>, <code>exp mods</code>, and <code>played</code>.</p>
+    <p>Regex patterns for parsing server output.</p>
+<p>Constants in this module match game output formats (experience display,
+inventory listings, spell rosters, room state, etc.). Patterns are frozen
+for reuse and performance.</p>
 
   </div>
 </div>
@@ -262,10 +262,39 @@ like <code>inv search</code>, <code>exp mods</code>, and <code>played</code>.</p
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>^&lt;component id=&#39;exp favor&#39;&gt;\s*Favors:\s*(?&lt;favor&gt;\d+)&lt;/component&gt;</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="InventoryGetStart-constant" class="">InventoryGetStart =
+        <dt id="InventoryListStart-constant" class="">InventoryListStart =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Headers that open a DR inventory scrape whose <d> output we mine for
+item IDs. The two differ in completeness, which decides how we write
+GameObj (see .parse):</p>
+<pre class="code ruby"><code class="ruby">INV LIST -&gt; COMPLETE: lists everything, so we clear and repopulate.
+&quot;You take a moment and rummage about your person, taking stock of
+ your possessions...&quot;
+INV SEARCH &lt;word&gt; / INV &lt;category&gt; full -&gt; PARTIAL: lists only the
+matching items, so we upsert without clearing. The header&#39;s trailing
+phrase is a per-category friendly name (e.g. &quot;looking for gems...&quot;,
+&quot;looking for armor and shields...&quot;) and is not matched here.
+</code></pre>
+<p>Both are anchored to the start of the stream line so quoted/chat/book
+text containing the phrase mid-line cannot open a (mutating) scrape
+(cf. GameShutdown). Logs confirm the exact prefixes: INV LIST is bare at
+line start; the &quot;looking for&quot; verbs carry exactly one leading
+<roundTime/>, which is allowed optionally.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>^You take a moment and rummage about your person, taking stock of your possessions</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="InventorySearchStart-constant" class="">InventorySearchStart =
           
         </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>You rummage about your person, looking for</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>^(?:&lt;roundTime[^&gt;]*/&gt;)?You rummage about your person, looking for</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GameShutdown-constant" class="">GameShutdown =
           <div class="docstring">
@@ -423,7 +452,7 @@ stem and capture the count.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:01 2026 by
+  Generated on Thu Sep 10 03:55:25 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

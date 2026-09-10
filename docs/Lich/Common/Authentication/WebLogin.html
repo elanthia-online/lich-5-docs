@@ -1,0 +1,2974 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Common::Authentication::WebLogin
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Common::Authentication::WebLogin";
+  relpath = '../../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../../_index.html">Index (W)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span>
+     &raquo; 
+    <span class="title">WebLogin</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Common::Authentication::WebLogin
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/common/authentication/web_login.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>HTTPS-based fallback authentication against play.net's web login flow
+(www.play.net), for use when the TLS EAccess protocol
+(eaccess.play.net:7910) is unreachable.</p>
+<p>Mirrors EAccess's public interface (.auth / .auth_with_timeout) and
+returns the same login_info hash shape (lowercase GAMEHOST/GAMEPORT/KEY
+keys, etc.) so Authenticator can select a backend without callers
+changing. See docs/web-login-protocol-analysis.md for how this
+contract was reverse-engineered from a live browser capture, and for
+what remains unconfirmed.</p>
+<p>Only game codes confirmed live against the real servers are enabled
+(see CONFIRMED_INSTANCES) -- fail closed rather than assume an
+untested instance code behaves like a confirmed one; the web layer's
+own game codes are not always identical to EAccess's (confirmed
+mismatch: GemStone Prime is &quot;GS4&quot; here vs &quot;GS3&quot; over EAccess).</p>
+<p>Unlike EAccess, there is no enumeration endpoint for an account's
+characters -- the character list is server-rendered into the game's
+home.asp page as radio inputs, so resolving a character name to its
+charID means scraping that HTML (see .resolve_char_code). This is the
+most fragile part of this module: a play.net markup change breaks it
+silently rather than with a clear protocol error.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span>, <span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span>
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="BASE_HOST-constant" class="">BASE_HOST =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>www.play.net</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+        <dt id="MAX_REDIRECTS-constant" class="">MAX_REDIRECTS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Redirect hops .follow_redirects will chase before giving up. The
+confirmed live chain is 2 hops (goplay2.asp -&gt; playing_web.asp -&gt;
+goplay_web.asp -&gt; final https:// Location); this leaves headroom
+without allowing an unbounded loop on an unexpected response.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>5</span></pre></dd>
+      
+        <dt id="OPEN_TIMEOUT-constant" class="">OPEN_TIMEOUT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Bounds each individual HTTP request's connect and read phases (see
+.auth) so a single black-holed request fails in seconds instead of
+relying entirely on auth_with_timeout's 30s overall watchdog --
+mirrors EAccess::CONNECT_TIMEOUT's rationale.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>5</span></pre></dd>
+      
+        <dt id="READ_TIMEOUT-constant" class="">READ_TIMEOUT =
+          
+        </dt>
+        <dd><pre class="code"><span class='int'>10</span></pre></dd>
+      
+        <dt id="USER_AGENT-constant" class="">USER_AGENT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>play.net's front end (CloudFront/WAF) returns a bare 500 for any
+request without a browser-like User-Agent -- confirmed live, not
+documented anywhere. Ruby's Net::HTTP default UA (&quot;Ruby/x.y.z&quot;) is
+rejected outright, including on the very first GET. Every request
+this module makes must carry this header.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+        <dt id="CONFIRMED_INSTANCES-constant" class="">CONFIRMED_INSTANCES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Every game code this module will accept, each with a
+<code>character_list_path</code> (the actual page a user would pick that game
+code from -- see below) and a <code>web_game_code</code> (the <code>game</code> form
+value; not always identical to the EAccess code -- confirmed
+mismatch: GemStone Prime is &quot;GS4&quot; here vs &quot;GS3&quot; over EAccess).
+Fail closed: a game_code not in this table raises rather than
+guessing at any of this from the EAccess table.</p>
+<p><code>expected_host</code>/<code>expected_port</code>, when present, pin
+.extract_connection_info to the exact live-confirmed values rather
+than trusting whatever the server's response says. DR, DRT, GS3,
+GST, and GSF are all confirmed this way.</p>
+<p>DRX (Platinum) and DRF (Fallen) are enabled with <code>expected_host</code>/
+<code>expected_port</code> deliberately left nil: nobody has an account with
+these entitlements to confirm live yet, but they're wired in
+end-to-end (character_list_path, family, and a best-guess
+web_game_code assuming it matches the EAccess code, as it does for
+DR/DRT/GSF -- only GS3-&gt;GS4 has ever diverged) so a tester who does
+have access can exercise this without a code change. See
+.extract_connection_info for what &quot;unverified&quot; relaxes and what it
+still enforces, and docs/web-login-protocol-analysis.md for what to
+do once a real result comes back: hardcode the observed host/port
+here and this comment no longer applies.</p>
+<p>GSX (GemStone Platinum) is absent because the instance itself has
+been retired -- LoginHelpers.VALID_GAME_CODES already excludes it
+for the same reason, independent of this module.</p>
+<p><code>character_list_path</code> matters: confirmed live that a character can
+exist on ONE instance of a family but not appear on that family's
+generic /home.asp at all (a GemStone Shattered-only character does
+not show up on the GemStone Prime page) -- so .resolve_char_code
+must scrape the same instance-specific page a user would actually
+pick this game code from, not assume the family's home.asp always
+has the full account-wide picture (true for DR/DRT/GS3/GST, where
+the same character happens to be shared, but not a safe general
+assumption).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DR</span><span class='tstring_end'>&quot;</span></span>  <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>dr</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DR</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/dr/play/home.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>       <span class='label'>expected_host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>storm.dr.game.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>expected_port:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>11024</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRT</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>dr</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRT</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/dr/play/playdrt.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>    <span class='label'>expected_host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>hydra.simutronics.com</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>   <span class='label'>expected_port:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>11624</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRX</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>dr</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRX</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/dr/play/playx.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>      <span class='label'>expected_host:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>expected_port:</span> <span class='kw'>nil</span> <span class='rbrace'>}</span><span class='comma'>,</span> <span class='comment'># unverified -- see comment above
+</span>  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRF</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>dr</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>  <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRF</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/dr/play/playf.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>      <span class='label'>expected_host:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>expected_port:</span> <span class='kw'>nil</span> <span class='rbrace'>}</span><span class='comma'>,</span> <span class='comment'># unverified -- see comment above
+</span>  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gs4</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS4</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/gs4/play/home.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>      <span class='label'>expected_host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>storm.gs4.game.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>expected_port:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>10024</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gs4</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/gs4/play/play_test.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>expected_host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>chimera.simutronics.com</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>expected_port:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>10624</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GSF</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='label'>family:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gs4</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>web_game_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GSF</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>character_list_path:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/gs4/play/playf.asp</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>     <span class='label'>expected_host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>storm.gs4.game.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>expected_port:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>10324</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span><span class='comma'>,</span>
+<span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="TRUSTED_GAME_HOST_SUFFIXES-constant" class="">TRUSTED_GAME_HOST_SUFFIXES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The fallback guard for an unverified instance's connection info
+(.extract_connection_info), since there's no exact expected_host to
+match yet -- the returned host must at least end in one of these.
+A confirmed instance's exact-match check already implies this, so
+this only comes into play for the unverified case.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>.simutronics.com</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>.simutronics.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>.game.play.net</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SECURITY_QA_PATH-constant" class="">SECURITY_QA_PATH =
+          <div class="docstring">
+  <div class="discussion">
+    <p>An account that has never set a security question is redirected
+here instead of okay_page on an otherwise-successful login --
+confirmed live. The session is already fully authenticated at this
+point (the account name renders in the page banner; Set-Cookie
+already carries the real session), so this is not a login failure
+-- .resolve_char_code's own subsequent GET of okay_page picks up
+the same authenticated session, matching what manually navigating
+straight to the game's play page does in a browser. If that
+assumption were ever wrong, resolve_char_code fails safely with
+CHARACTER_NOT_FOUND rather than proceeding on bad data.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/playdotnet/account/security_qa.asp</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#auth-class_method" title="auth (class method)">.<strong>auth</strong>(password:, account:, character:, game_code:)  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Authenticates against play.net's web login flow and resolves a character launch.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#auth_with_timeout-class_method" title="auth_with_timeout (class method)">.<strong>auth_with_timeout</strong>(timeout: 30, **kwargs)  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>See <span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">WebLogin.auth</a></span>.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#extract_connection_info-class_method" title="extract_connection_info (class method)">.<strong>extract_connection_info</strong>(location, instance:)  &#x21d2; Array(String, String, String) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parses the final redirect's query string into the host/port/key triple.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#follow_redirects-class_method" title="follow_redirects (class method)">.<strong>follow_redirects</strong>(http, jar, response)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Follows relative Location redirects via GET until an absolute Location is reached, validates its origin, and returns that URL string without fetching it -- the final hop carries the connection info in its query string; fetching it would load the web client page itself, which we don't want (see class doc).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#get-class_method" title="get (class method)">.<strong>get</strong>(http, jar, path)  &#x21d2; Net::HTTPResponse </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Issues a GET with the common headers set, absorbing any cookies from the response into the jar before returning it.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#instance_for-class_method" title="instance_for (class method)">.<strong>instance_for</strong>(game_code)  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>The CONFIRMED_INSTANCES entry for game_code.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#login-class_method" title="login (class method)">.<strong>login</strong>(http, jar, account:, password:, family:)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>GETs the family's sign-in page first to establish an ASP session cookie, then POSTs credentials against that session -- confirmed live as required: posting login.asp cold (no prior GET, no session cookie) gets a bare 500 from the server, matching how a real browser always visits signin_needed.asp before submitting the form.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#redirect_path-class_method" title="redirect_path (class method)">.<strong>redirect_path</strong>(response, malformed_code:, full_url: false)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Extracts a redirect's target from a response, rejecting anything that isn't an actual well-formed redirect.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#resolve_char_code-class_method" title="resolve_char_code (class method)">.<strong>resolve_char_code</strong>(http, jar, instance:, character:)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Step 1a: scrape the requested instance's character-selection page for the charID matching <code>character</code>.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#select_character-class_method" title="select_character (class method)">.<strong>select_character</strong>(http, jar, char_code:, instance:)  &#x21d2; Array(String, String, String) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Steps 2-4: submit the character/instance selection and follow the redirects to the final host/port/key triple, without ever fetching the web client page itself.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#set_common_headers-class_method" title="set_common_headers (class method)">.<strong>set_common_headers</strong>(request, jar)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>User-Agent is required on every request -- see USER_AGENT.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#trusted_game_host%3F-class_method" title="trusted_game_host? (class method)">.<strong>trusted_game_host?</strong>(host)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>True if host ends in a known Simutronics game-server domain.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#validate_final_url!-class_method" title="validate_final_url! (class method)">.<strong>validate_final_url!</strong>(location)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Strict origin/shape check on the final redirect target: exactly <code>https://www.play.net/play/home.asp</code>, default port, no userinfo.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="auth-class_method">
+  
+    .<strong>auth</strong>(password:, account:, character:, game_code:)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Authenticates against play.net's web login flow and resolves a
+character launch. Does not support EAccess's <code>legacy</code> multi-game
+enumeration mode or the <code>generator</code> (character-0) flow -- neither
+has a confirmed web-flow equivalent yet (see protocol doc).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>password</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account password (sent as an HTTPS form field, not obfuscated client-side)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>account</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>character name to select (resolved to a charID by scraping home.asp)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>game_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>EAccess-style game instance code -- must be a key of CONFIRMED_INSTANCES</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>login info hash: gamehost, gameport, key (confirmed from the server),
+plus game/gamecode/fullgamename/gamefile (NOT server-provided by this flow --
+synthesized locally to match EAccess's STORM/Wrayth defaults so downstream
+LaunchData formatting keeps working; verify these are still correct before
+trusting them for a frontend other than Stormfront/Wrayth)</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>on login failure, an unsupported/unresolved game code or
+character, or a server response that doesn't match the confirmed protocol shape</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 201</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_auth'>auth</span><span class='lparen'>(</span><span class='label'>password:</span><span class='comma'>,</span> <span class='label'>account:</span><span class='comma'>,</span> <span class='label'>character:</span><span class='comma'>,</span> <span class='label'>game_code:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_instance'>instance</span> <span class='op'>=</span> <span class='id identifier rubyid_instance_for'>instance_for</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_jar'>jar</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="WebLogin/CookieJar.html#initialize-instance_method" title="Lich::Common::Authentication::WebLogin::CookieJar#initialize (method)">new</a></span></span>
+
+  <span class='comment'># Block form: Net::HTTP.start finishes (closes) the connection in
+</span>  <span class='comment'># an ensure regardless of how the block exits, on every path --
+</span>  <span class='comment'># previously a bare Net::HTTP.new was never explicitly closed on
+</span>  <span class='comment'># success or failure, leaving the socket open until GC finalized
+</span>  <span class='comment'># it. open_timeout/read_timeout also bound each individual
+</span>  <span class='comment'># request&#39;s connect/read phases, so a single black-holed request
+</span>  <span class='comment'># fails in seconds instead of relying entirely on
+</span>  <span class='comment'># auth_with_timeout&#39;s 30s overall watchdog to unstick it --
+</span>  <span class='comment'># mirrors EAccess::CONNECT_TIMEOUT&#39;s rationale.
+</span>  <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='period'>.</span><span class='id identifier rubyid_start'>start</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#BASE_HOST-constant" title="Lich::Common::Authentication::WebLogin::BASE_HOST (constant)">BASE_HOST</a></span></span><span class='comma'>,</span> <span class='int'>443</span><span class='comma'>,</span> <span class='label'>use_ssl:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>verify_mode:</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>VERIFY_PEER</span><span class='comma'>,</span>
+                                   <span class='label'>open_timeout:</span> <span class='const'><span class='object_link'><a href="#OPEN_TIMEOUT-constant" title="Lich::Common::Authentication::WebLogin::OPEN_TIMEOUT (constant)">OPEN_TIMEOUT</a></span></span><span class='comma'>,</span> <span class='label'>read_timeout:</span> <span class='const'><span class='object_link'><a href="#READ_TIMEOUT-constant" title="Lich::Common::Authentication::WebLogin::READ_TIMEOUT (constant)">READ_TIMEOUT</a></span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_http'>http</span><span class='op'>|</span>
+    <span class='id identifier rubyid_login'>login</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span> <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>family:</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:family</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_char_code'>char_code</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_char_code'>resolve_char_code</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>instance:</span> <span class='id identifier rubyid_instance'>instance</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_select_character'>select_character</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>char_code:</span> <span class='id identifier rubyid_char_code'>char_code</span><span class='comma'>,</span> <span class='label'>instance:</span> <span class='id identifier rubyid_instance'>instance</span><span class='rparen'>)</span>
+
+    <span class='const'><span class='object_link'><a href="LaunchResult.html" title="Lich::Common::Authentication::LaunchResult (module)">LaunchResult</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize'><span class='object_link'><a href="LaunchResult.html#normalize-class_method" title="Lich::Common::Authentication::LaunchResult.normalize (method)">normalize</a></span></span><span class='lparen'>(</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gamehost</span><span class='tstring_end'>&quot;</span></span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gameport</span><span class='tstring_end'>&quot;</span></span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>key</span><span class='tstring_end'>&quot;</span></span>          <span class='op'>=&gt;</span> <span class='id identifier rubyid_key'>key</span><span class='comma'>,</span>
+      <span class='comment'># Not returned by this flow -- synthesized to match EAccess&#39;s
+</span>      <span class='comment'># STORM/Wrayth defaults (see class doc). LaunchData.prepare
+</span>      <span class='comment'># already overrides GAME/GAMEFILE/FULLGAMENAME per-frontend for
+</span>      <span class='comment'># wizard/avalon/saga/suks, so this only needs to be a correct
+</span>      <span class='comment'># default for the Stormfront/Wrayth case.
+</span>      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>game</span><span class='tstring_end'>&quot;</span></span>         <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>STORM</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gamecode</span><span class='tstring_end'>&quot;</span></span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>fullgamename</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Wrayth</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>gamefile</span><span class='tstring_end'>&quot;</span></span>     <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>WRAYTH.EXE</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="auth_with_timeout-class_method">
+  
+    .<strong>auth_with_timeout</strong>(timeout: 30, **kwargs)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns see <span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">auth</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>timeout</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>Float</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>30</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>seconds to wait for the full exchange</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>kwargs</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>forwarded to <span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">auth</a></span></p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>see <span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">auth</a></span></p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>RuntimeError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if the exchange does not complete within <code>timeout</code></p></div>
+      
+    </li>
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>StandardError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>re-raises whatever <span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">auth</a></span> raises</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#auth-class_method" title="Lich::Common::Authentication::WebLogin.auth (method)">auth</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 243</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'>auth_with_timeout</span><span class='lparen'>(</span><span class='label'>timeout:</span> <span class='int'>30</span><span class='comma'>,</span> <span class='op'>**</span><span class='id identifier rubyid_kwargs'>kwargs</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_auth_thread'>auth_thread</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='lbrace'>{</span>
+    <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_report_on_exception'>report_on_exception</span> <span class='op'>=</span> <span class='kw'>false</span>
+    <span class='id identifier rubyid_auth'>auth</span><span class='lparen'>(</span><span class='op'>**</span><span class='id identifier rubyid_kwargs'>kwargs</span><span class='rparen'>)</span>
+  <span class='rbrace'>}</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_kill'>kill</span> <span class='kw'>rescue</span> <span class='kw'>nil</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: timed out authenticating with web login after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_timeout'>timeout</span><span class='embexpr_end'>}</span><span class='tstring_content'>s</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_value'>value</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="extract_connection_info-class_method">
+  
+    .<strong>extract_connection_info</strong>(location, instance:)  &#x21d2; <tt>Array(<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>)</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Parses the final redirect's query string into the host/port/key
+triple. Rejects a duplicate query key (last-value-wins would
+otherwise let a repeated <code>key</code> param silently override the real
+one) and any blank value.</p>
+<p>For a confirmed instance (expected_host/expected_port both
+present), the returned host/port must match exactly rather than
+being trusted as-is. For an unverified instance (see
+CONFIRMED_INSTANCES), there's nothing yet to match exactly, so the
+host is instead checked against TRUSTED_GAME_HOST_SUFFIXES -- a
+looser but still real guard, and the observed host/port are logged
+so they can be promoted into CONFIRMED_INSTANCES once a live
+result confirms them.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>location</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the validated final URL from .follow_redirects</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>instance</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a CONFIRMED_INSTANCES entry</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>)</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>[host, port, key]</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;MALFORMED_LAUNCH_URL&quot; if the query string doesn't parse,
+&quot;DUPLICATE_QUERY_PARAM&quot; if host/port/key appears more than once, &quot;NO_CONNECTION_INFO&quot;
+if any of host/port/key is missing or blank, &quot;UNEXPECTED_CONNECTION_INFO&quot; if a
+confirmed instance's returned host/port don't match its expected values, or
+&quot;UNTRUSTED_CONNECTION_HOST&quot; if an unverified instance's returned host isn't a
+recognized Simutronics game-server domain</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 526</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extract_connection_info'>extract_connection_info</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='comma'>,</span> <span class='label'>instance:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_uri'>uri</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_grouped'>grouped</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_decode_www_form'>decode_www_form</span><span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_query'>query</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_group_by'>group_by</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:first</span><span class='rparen'>)</span>
+
+  <span class='qwords_beg'>%w[</span><span class='tstring_content'>host</span><span class='words_sep'> </span><span class='tstring_content'>port</span><span class='words_sep'> </span><span class='tstring_content'>key</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DUPLICATE_QUERY_PARAM</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_grouped'>grouped</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_grouped'>grouped</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>&gt;</span> <span class='int'>1</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_host'>host</span> <span class='op'>=</span> <span class='id identifier rubyid_grouped'>grouped</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>host</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_first'>first</span><span class='op'>&amp;.</span><span class='id identifier rubyid_last'>last</span>
+  <span class='id identifier rubyid_port'>port</span> <span class='op'>=</span> <span class='id identifier rubyid_grouped'>grouped</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>port</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_first'>first</span><span class='op'>&amp;.</span><span class='id identifier rubyid_last'>last</span>
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_grouped'>grouped</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>key</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_first'>first</span><span class='op'>&amp;.</span><span class='id identifier rubyid_last'>last</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>NO_CONNECTION_INFO</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='lbracket'>[</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_v'>v</span><span class='op'>|</span> <span class='id identifier rubyid_v'>v</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='rbrace'>}</span>
+
+  <span class='kw'>if</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:expected_host</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:expected_port</span><span class='rbracket'>]</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_host'>host</span> <span class='op'>==</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:expected_host</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_port'>port</span> <span class='op'>==</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:expected_port</span><span class='rbracket'>]</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNEXPECTED_CONNECTION_INFO</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNTRUSTED_CONNECTION_HOST</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_trusted_game_host?'>trusted_game_host?</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
+
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: WebLogin -- </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:web_game_code</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_content'> has no pinned host/port yet </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>(unverified instance); observed host=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'> port=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_port'>port</span><span class='embexpr_end'>}</span><span class='tstring_content'>. If this login </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>succeeded, hardcode these into CONFIRMED_INSTANCES.</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='lbracket'>[</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span>
+<span class='kw'>rescue</span> <span class='const'>URI</span><span class='op'>::</span><span class='const'>InvalidURIError</span><span class='comma'>,</span> <span class='const'>ArgumentError</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>MALFORMED_LAUNCH_URL</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="follow_redirects-class_method">
+  
+    .<strong>follow_redirects</strong>(http, jar, response)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Follows relative Location redirects via GET until an absolute
+Location is reached, validates its origin, and returns that URL
+string without fetching it -- the final hop carries the connection
+info in its query string; fetching it would load the web client
+page itself, which we don't want (see class doc).</p>
+<p>A relative Location can never escape www.play.net on its own,
+since every GET here reuses the same <code>http</code> connection, which is
+bound to BASE_HOST regardless of what path string it's given. The
+one point that guarantee doesn't hold is an absolute Location, so
+any absolute URL -- https or otherwise -- is validated immediately
+(.validate_final_url!) rather than ever being handed to <code>get</code> as if
+it were a path.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>http</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTP</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>open connection to BASE_HOST</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>response</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTPResponse</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the response to start following redirects from</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the validated final absolute URL (not fetched)</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;TOO_MANY_REDIRECTS&quot; past MAX_REDIRECTS hops, or anything
+.redirect_path / .validate_final_url! raises</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 431</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_follow_redirects'>follow_redirects</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#MAX_REDIRECTS-constant" title="Lich::Common::Authentication::WebLogin::MAX_REDIRECTS (constant)">MAX_REDIRECTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_location'>location</span> <span class='op'>=</span> <span class='id identifier rubyid_redirect_path'>redirect_path</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='comma'>,</span> <span class='label'>malformed_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>MALFORMED_REDIRECT_URL</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>full_url:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='comment'># Any absolute URL -- not just https:// -- must be validated
+</span>    <span class='comment'># immediately rather than ever reaching `get` as if it were a
+</span>    <span class='comment'># relative path: a plain http:// Location would otherwise be
+</span>    <span class='comment'># requested literally as a path string on the existing HTTPS
+</span>    <span class='comment'># connection instead of being recognized (and rejected) as the
+</span>    <span class='comment'># downgrade attempt it is.
+</span>    <span class='kw'>if</span> <span class='id identifier rubyid_location'>location</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\Ahttps?://</span><span class='regexp_end'>}i</span></span>
+      <span class='id identifier rubyid_validate_final_url!'>validate_final_url!</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_location'>location</span>
+    <span class='kw'>end</span>
+
+    <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../../../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>TOO_MANY_REDIRECTS</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="get-class_method">
+  
+    .<strong>get</strong>(http, jar, path)  &#x21d2; <tt>Net::HTTPResponse</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Issues a GET with the common headers set, absorbing any cookies
+from the response into the jar before returning it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>http</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTP</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>open connection to BASE_HOST</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar, mutated in place</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>path</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>request path</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Net::HTTPResponse</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+564
+565
+566
+567
+568
+569
+570</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 564</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get'><span class='object_link'><a href="../../../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_request'>request</span> <span class='op'>=</span> <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='op'>::</span><span class='const'>Get</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_set_common_headers'>set_common_headers</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_jar'>jar</span><span class='period'>.</span><span class='id identifier rubyid_absorb'>absorb</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_response'>response</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="instance_for-class_method">
+  
+    .<strong>instance_for</strong>(game_code)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns the CONFIRMED_INSTANCES entry for game_code.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>game_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>EAccess-style game instance code</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the CONFIRMED_INSTANCES entry for game_code</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;UNSUPPORTED_GAME_CODE&quot; if game_code is not in CONFIRMED_INSTANCES at all</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+181
+182
+183</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 181</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_instance_for'>instance_for</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#CONFIRMED_INSTANCES-constant" title="Lich::Common::Authentication::WebLogin::CONFIRMED_INSTANCES (constant)">CONFIRMED_INSTANCES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNSUPPORTED_GAME_CODE</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="login-class_method">
+  
+    .<strong>login</strong>(http, jar, account:, password:, family:)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>GETs the family's sign-in page first to establish an ASP session
+cookie, then POSTs credentials against that session -- confirmed
+live as required: posting login.asp cold (no prior GET, no session
+cookie) gets a bare 500 from the server, matching how a real
+browser always visits signin_needed.asp before submitting the
+form. Failure is detected by comparing the redirect target's PATH
+against the two page paths we supplied -- not a prefix match
+against the raw Location string, which would also match an
+unrelated same-prefix page (e.g. &quot;login_error.aspX&quot;) and would
+miss an absolute-URL redirect entirely -- and NOT by parsing
+response body text. See SECURITY_QA_PATH for the one other
+accepted redirect target.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>http</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTP</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>open connection to BASE_HOST</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar, mutated in place</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>account</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>password</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account password</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>family</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>game family path segment (&quot;dr&quot; or &quot;gs4&quot;)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;LOGIN_FAILED&quot; on rejected credentials, &quot;UNEXPECTED_LOGIN_RESPONSE&quot;
+on any other redirect target, or &quot;UNEXPECTED_NON_REDIRECT_RESPONSE&quot;/&quot;MALFORMED_LOGIN_REDIRECT&quot;
+if the response isn't a well-formed redirect at all</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 290</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_login'>login</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>family:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_okay_page'>okay_page</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_family'>family</span><span class='embexpr_end'>}</span><span class='tstring_content'>/play/home.asp</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_error_page'>error_page</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_family'>family</span><span class='embexpr_end'>}</span><span class='tstring_content'>/login_error.asp</span><span class='tstring_end'>&quot;</span></span>
+
+  <span class='id identifier rubyid_get'><span class='object_link'><a href="../../../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_family'>family</span><span class='embexpr_end'>}</span><span class='tstring_content'>/signin_needed.asp</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_request'>request</span> <span class='op'>=</span> <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='op'>::</span><span class='const'>Post</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/includes/common/login/login.asp</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_set_common_headers'>set_common_headers</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_request'>request</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Content-Type</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>application/x-www-form-urlencoded</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_request'>request</span><span class='period'>.</span><span class='id identifier rubyid_body'>body</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_encode_www_form'>encode_www_form</span><span class='lparen'>(</span>
+    <span class='label'>return_okay_page:</span> <span class='id identifier rubyid_okay_page'>okay_page</span><span class='comma'>,</span>
+    <span class='label'>return_error_page:</span> <span class='id identifier rubyid_error_page'>error_page</span><span class='comma'>,</span>
+    <span class='label'>remember_account:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='label'>remember_password:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='label'>account_name:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span>
+    <span class='label'>account_password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span>
+    <span class='label'>submit:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Login</span><span class='tstring_end'>&quot;</span></span>
+  <span class='rparen'>)</span>
+  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_jar'>jar</span><span class='period'>.</span><span class='id identifier rubyid_absorb'>absorb</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_path'>path</span> <span class='op'>=</span> <span class='id identifier rubyid_redirect_path'>redirect_path</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='comma'>,</span> <span class='label'>malformed_code:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>MALFORMED_LOGIN_REDIRECT</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>LOGIN_FAILED</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_path'>path</span> <span class='op'>==</span> <span class='id identifier rubyid_error_page'>error_page</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_path'>path</span> <span class='op'>==</span> <span class='id identifier rubyid_okay_page'>okay_page</span> <span class='op'>||</span> <span class='id identifier rubyid_path'>path</span> <span class='op'>==</span> <span class='const'><span class='object_link'><a href="#SECURITY_QA_PATH-constant" title="Lich::Common::Authentication::WebLogin::SECURITY_QA_PATH (constant)">SECURITY_QA_PATH</a></span></span>
+
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNEXPECTED_LOGIN_RESPONSE</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="redirect_path-class_method">
+  
+    .<strong>redirect_path</strong>(response, malformed_code:, full_url: false)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Extracts a redirect's target from a response, rejecting anything
+that isn't an actual well-formed redirect. Used for both the login
+POST's single redirect (where the target only needs to be a path,
+to compare against okay_page/error_page) and each hop of
+.follow_redirects (where the raw Location -- absolute or relative
+-- is needed to continue the chain).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>response</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTPResponse</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>response to read the redirect from</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>malformed_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>AuthenticationError code to raise if Location doesn't parse</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>full_url</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>if true, return the raw Location string (for chaining, since it
+may be relative); if false (default), return just the parsed path (for a same-request
+pass/fail comparison against a known path, robust to an absolute-URL redirect too)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the redirect's path, or the raw Location if full_url is true</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;UNEXPECTED_NON_REDIRECT_RESPONSE&quot; if the response isn't a 3xx
+with a non-blank Location, or malformed_code if Location doesn't parse as a URI</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 467</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_redirect_path'>redirect_path</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='comma'>,</span> <span class='label'>malformed_code:</span><span class='comma'>,</span> <span class='label'>full_url:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_code'>code</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='id identifier rubyid_location'>location</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>location</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNEXPECTED_NON_REDIRECT_RESPONSE</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='int'>300</span><span class='op'>..</span><span class='int'>399</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_cover?'>cover?</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_location'>location</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='comment'># Always parse -- even when returning the raw string for chaining
+</span>  <span class='comment'># (full_url) -- so a malformed Location raises malformed_code here
+</span>  <span class='comment'># rather than being handed unvalidated to `get` as if it were a
+</span>  <span class='comment'># well-formed relative path.
+</span>  <span class='id identifier rubyid_parsed'>parsed</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_full_url'>full_url</span> <span class='op'>?</span> <span class='id identifier rubyid_location'>location</span> <span class='op'>:</span> <span class='id identifier rubyid_parsed'>parsed</span><span class='period'>.</span><span class='id identifier rubyid_path'>path</span>
+<span class='kw'>rescue</span> <span class='const'>URI</span><span class='op'>::</span><span class='const'>InvalidURIError</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_malformed_code'>malformed_code</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="resolve_char_code-class_method">
+  
+    .<strong>resolve_char_code</strong>(http, jar, instance:, character:)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Step 1a: scrape the requested instance's character-selection page
+for the charID matching <code>character</code>. See
+docs/web-login-protocol-analysis.md for the exact markup this
+depends on and why it's the most fragile part of this module.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>http</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTP</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>open connection to BASE_HOST</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>instance</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a CONFIRMED_INSTANCES entry</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>character name to match (case-insensitive)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the matched charID (e.g. &quot;W_ACCOUNT_000&quot;)</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;NO_SUBSCRIPTION&quot; if the account has no active subscription
+on this instance, &quot;CHARACTER_NOT_FOUND&quot; if no radio input matches a 200 response, or
+&quot;UNEXPECTED_CHARACTER_LIST_RESPONSE&quot; for any other non-200 response (a 3xx to anywhere
+but subscription_needed.asp, or a 4xx/5xx)</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 333</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_char_code'>resolve_char_code</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>instance:</span><span class='comma'>,</span> <span class='label'>character:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_get'><span class='object_link'><a href="../../../top-level-namespace.html#get-instance_method" title="#get (method)">get</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:character_list_path</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_code'>code</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+
+  <span class='kw'>if</span> <span class='lparen'>(</span><span class='int'>300</span><span class='op'>..</span><span class='int'>399</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_cover?'>cover?</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span>
+    <span class='comment'># Confirmed live: an account with no active subscription on this
+</span>    <span class='comment'># instance gets a *second* redirect here (the first, from
+</span>    <span class='comment'># login.asp, already landed on okay_page successfully) --
+</span>    <span class='comment'># `get` doesn&#39;t follow it, so this would otherwise silently fall
+</span>    <span class='comment'># through to an empty body scrape and a misleading
+</span>    <span class='comment'># CHARACTER_NOT_FOUND instead of the real cause.
+</span>    <span class='comment'>#
+</span>    <span class='comment'># Not one fixed path: confirmed live that this varies per
+</span>    <span class='comment'># instance -- DR&#39;s is plain &quot;subscription_needed.asp&quot;, but
+</span>    <span class='comment'># DRX&#39;s/DRF&#39;s are &quot;subscription_to_plat_needed.asp&quot; /
+</span>    <span class='comment'># &quot;subscription_to_fall_needed.asp&quot;. Matched by pattern rather
+</span>    <span class='comment'># than an exact string so an instance-specific variant we
+</span>    <span class='comment'># haven&#39;t seen yet (e.g. if GST/GSF ever needs one) is still
+</span>    <span class='comment'># recognized instead of falling through to the generic
+</span>    <span class='comment'># UNEXPECTED_CHARACTER_LIST_RESPONSE below.
+</span>    <span class='id identifier rubyid_subscription_needed_pattern'>subscription_needed_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\A/</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_escape'>escape</span><span class='lparen'>(</span><span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:family</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>/play/subscription(?:_to_\w+)?_needed\.asp\z</span><span class='regexp_end'>}</span></span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>NO_SUBSCRIPTION</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_response'>response</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>location</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_subscription_needed_pattern'>subscription_needed_pattern</span><span class='rparen'>)</span>
+
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNEXPECTED_CHARACTER_LIST_RESPONSE</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># A non-3xx error response (4xx/5xx -- e.g. a transient 503) must
+</span>  <span class='comment'># not fall through to the scraper either: an empty/error body
+</span>  <span class='comment'># scrapes to no match, which would otherwise raise the same
+</span>  <span class='comment'># CHARACTER_NOT_FOUND a real &quot;no such character&quot; case raises --
+</span>  <span class='comment'># and Authenticator treats CHARACTER_NOT_FOUND as fatal (no
+</span>  <span class='comment'># retry), silently discarding what may well have been a transient,
+</span>  <span class='comment'># retryable server error.
+</span>  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNEXPECTED_CHARACTER_LIST_RESPONSE</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_code'>code</span> <span class='op'>==</span> <span class='int'>200</span>
+
+  <span class='id identifier rubyid_body'>body</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_body'>body</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_body'>body</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>id=&quot;(W_[A-Za-z0-9_]+)&quot;[^&gt;]*&gt;\s*&lt;label for=&quot;\1&quot;&gt;&lt;span[^&gt;]*&gt;([^&lt;]+)&lt;\/span&gt;</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_char_code'>char_code</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_char_code'>char_code</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_casecmp?'>casecmp?</span><span class='lparen'>(</span><span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>CHARACTER_NOT_FOUND</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="select_character-class_method">
+  
+    .<strong>select_character</strong>(http, jar, char_code:, instance:)  &#x21d2; <tt>Array(<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>)</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Steps 2-4: submit the character/instance selection and follow the
+redirects to the final host/port/key triple, without ever fetching
+the web client page itself.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>http</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTP</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>open connection to BASE_HOST</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>char_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>charID from .resolve_char_code</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>instance</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a CONFIRMED_INSTANCES entry</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array(<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>)</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>[host, port, key]</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 386</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_select_character'>select_character</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='label'>char_code:</span><span class='comma'>,</span> <span class='label'>instance:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_request'>request</span> <span class='op'>=</span> <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='op'>::</span><span class='const'>Post</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/includes/common/play/goplay2.asp</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_set_common_headers'>set_common_headers</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_request'>request</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Content-Type</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>application/x-www-form-urlencoded</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_request'>request</span><span class='period'>.</span><span class='id identifier rubyid_body'>body</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_encode_www_form'>encode_www_form</span><span class='lparen'>(</span>
+    <span class='label'>charID:</span> <span class='id identifier rubyid_char_code'>char_code</span><span class='comma'>,</span>
+    <span class='comment'># Present in every confirmed live capture except GemStone Test&#39;s
+</span>    <span class='comment'># (see docs/web-login-protocol-analysis.md) -- sent unconditionally
+</span>    <span class='comment'># since an extra form field the server doesn&#39;t need for that one
+</span>    <span class='comment'># case is far cheaper than silently omitting one it does need.
+</span>    <span class='label'>NEWCHARSUB:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>TRUE</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='label'>managesub:</span> <span class='int'>0</span><span class='comma'>,</span>
+    <span class='label'>gameName:</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:family</span><span class='rbracket'>]</span><span class='comma'>,</span>
+    <span class='label'>instanceID:</span> <span class='int'>0</span><span class='comma'>,</span>
+    <span class='label'>game:</span> <span class='id identifier rubyid_instance'>instance</span><span class='lbracket'>[</span><span class='symbol'>:web_game_code</span><span class='rbracket'>]</span><span class='comma'>,</span>
+    <span class='label'>frontend:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>web</span><span class='tstring_end'>&quot;</span></span>
+  <span class='rparen'>)</span>
+  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_jar'>jar</span><span class='period'>.</span><span class='id identifier rubyid_absorb'>absorb</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_location'>location</span> <span class='op'>=</span> <span class='id identifier rubyid_follow_redirects'>follow_redirects</span><span class='lparen'>(</span><span class='id identifier rubyid_http'>http</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_extract_connection_info'>extract_connection_info</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='comma'>,</span> <span class='label'>instance:</span> <span class='id identifier rubyid_instance'>instance</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="set_common_headers-class_method">
+  
+    .<strong>set_common_headers</strong>(request, jar)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>User-Agent is required on every request -- see USER_AGENT.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>request</span>
+      
+      
+        <span class='type'>(<tt>Net::HTTPRequest</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>request to set headers on, mutated in place</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jar</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/CookieJar.html" title="Lich::Common::Authentication::WebLogin::CookieJar (class)">CookieJar</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>session cookie jar</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+578
+579
+580
+581
+582</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 578</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_set_common_headers'>set_common_headers</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='comma'>,</span> <span class='id identifier rubyid_jar'>jar</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_request'>request</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>User-Agent</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#USER_AGENT-constant" title="Lich::Common::Authentication::WebLogin::USER_AGENT (constant)">USER_AGENT</a></span></span>
+  <span class='id identifier rubyid_cookie'>cookie</span> <span class='op'>=</span> <span class='id identifier rubyid_jar'>jar</span><span class='period'>.</span><span class='id identifier rubyid_header'>header</span>
+  <span class='id identifier rubyid_request'>request</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Cookie</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_cookie'>cookie</span> <span class='kw'>if</span> <span class='id identifier rubyid_cookie'>cookie</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="trusted_game_host?-class_method">
+  
+    .<strong>trusted_game_host?</strong>(host)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns true if host ends in a known Simutronics game-server domain.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>host</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>hostname to check</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if host ends in a known Simutronics game-server domain</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+173
+174
+175</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 173</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_trusted_game_host?'>trusted_game_host?</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#TRUSTED_GAME_HOST_SUFFIXES-constant" title="Lich::Common::Authentication::WebLogin::TRUSTED_GAME_HOST_SUFFIXES (constant)">TRUSTED_GAME_HOST_SUFFIXES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_suffix'>suffix</span><span class='op'>|</span> <span class='id identifier rubyid_host'>host</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_end_with?'>end_with?</span><span class='lparen'>(</span><span class='id identifier rubyid_suffix'>suffix</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="validate_final_url!-class_method">
+  
+    .<strong>validate_final_url!</strong>(location)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Strict origin/shape check on the final redirect target: exactly
+<code>https://www.play.net/play/home.asp</code>, default port, no userinfo.
+An off-host target, a downgraded-to-http target, or an unexpected
+path/port (compromised/MITM'd response, unexpected play.net
+change) must not be trusted, and must not be silently
+misinterpreted as something else either.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>location</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>absolute URL to validate</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;UNTRUSTED_REDIRECT_HOST&quot; if any check fails</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+493
+494
+495
+496
+497
+498
+499
+500</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/web_login.rb', line 493</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_validate_final_url!'>validate_final_url!</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_uri'>uri</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_valid'>valid</span> <span class='op'>=</span> <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>URI</span><span class='op'>::</span><span class='const'>HTTPS</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span> <span class='op'>==</span> <span class='const'><span class='object_link'><a href="#BASE_HOST-constant" title="Lich::Common::Authentication::WebLogin::BASE_HOST (constant)">BASE_HOST</a></span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_port'>port</span> <span class='op'>==</span> <span class='int'>443</span> <span class='op'>&amp;&amp;</span>
+          <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_userinfo'>userinfo</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_path'>path</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/play/home.asp</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNTRUSTED_REDIRECT_HOST</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_valid'>valid</span>
+<span class='kw'>rescue</span> <span class='const'>URI</span><span class='op'>::</span><span class='const'>InvalidURIError</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="WebLogin/AuthenticationError.html" title="Lich::Common::Authentication::WebLogin::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UNTRUSTED_REDIRECT_HOST</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Thu Sep 10 03:55:25 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

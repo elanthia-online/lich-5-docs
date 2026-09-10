@@ -134,10 +134,10 @@
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses a single line of XML game output and updates game state accordingly.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses a single line or multi-line block of game server XML output and dispatches to appropriate handlers.</p></div></span>
   
 </li>
 
@@ -163,23 +163,27 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-
+    
   <div class="note notetag">
     <strong>Note:</strong>
-    <div class='inline'><p>Rescues <code>StandardError</code> and logs to Lich.log with full backtrace; always
-returns a symbol even on error (does not re-raise)</p></div>
+    <div class='inline'><p>Errors are logged to <span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">Lich.log</a></span> and also printed as server responses.</p></div>
   </div>
 
-<p>Parses a single line of XML game output and updates game state accordingly.</p>
-<p>Detects NPC deaths, group arrivals, stow container configurations, ready item
-assignments, and status prompt markers. Uses a fast-path optimization: for
-single-line output, scans anchored patterns only at line start; for multiline
-buffered strings (containing interior newlines), falls back to full union to
-catch anchored patterns like death messages on inner lines.</p>
+<p>Parses a single line or multi-line block of game server XML output and dispatches to appropriate handlers.</p>
+<p>Uses an optimized two-tier strategy: for single-line input or buffered blocks with no
+embedded newlines, attempts anchored patterns (line-start ^) only at \A and scans just
+mid-line patterns via AllMidline. For multi-line strings (e.g. buffered combat blocks),
+falls back to the full union All so inner-line anchors (e.g. NPC death messages) still
+match. Recognized patterns trigger side effects (NPC status updates, group notifications,
+container/item roster updates, parser state transitions) and return a status symbol.</p>
+<p>Matches trigger:</p>
+<ul>
+<li>Death messages: update NPC status to 'dead'</li>
+<li>Group/arrival: notify <span class='object_link'><a href="../Group/Observer.html" title="Lich::Gemstone::Group::Observer (module)">Group::Observer</a></span>, append player nouns to XMLData.arrival_pcs</li>
+<li>Overwatch: delegate to <span class='object_link'><a href="../Overwatch/Observer.html" title="Lich::Gemstone::Overwatch::Observer (module)">Overwatch::Observer</a></span></li>
+<li>STOW/READY output: populate <span class='object_link'><a href="../StowList.html" title="Lich::Gemstone::StowList (class)">StowList</a></span> or <span class='object_link'><a href="../ReadyList.html" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span>, set &quot;checked&quot; flag</li>
+<li>Status prompt: transition parser state to <span class='object_link'><a href="Parser/State.html#Ready-constant" title="Lich::Gemstone::Infomon::Parser::State::Ready (constant)">Parser::State::Ready</a></span></li>
+</ul>
 
   </div>
 </div>
@@ -197,7 +201,7 @@ catch anchored patterns like death messages on inner lines.</p>
       
       
         &mdash;
-        <div class='inline'><p>a line of XML output from the game server</p></div>
+        <div class='inline'><p>a line or block of XML text from the game server</p></div>
       
     </li>
   
@@ -214,12 +218,35 @@ catch anchored patterns like death messages on inner lines.</p>
       
       
         &mdash;
-        <div class='inline'><p><code>:ok</code> if the line matched and was processed, <code>:noop</code> if no
-pattern matched (safe to forward to other handlers)</p></div>
+        <div class='inline'><p>:ok if a pattern matched and was processed, :noop if no pattern matched,
+or on error during processing</p></div>
       
     </li>
   
 </ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'><p>none; all errors are logged and return :ok to prevent stream disruption</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li>NpcDeathMessage, Group::Observer, Overwatch::Observer, StowList, ReadyList</li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -227,36 +254,6 @@ pattern matched (safe to forward to other handlers)</p></div>
       <pre class="lines">
 
 
-552
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565
-566
-567
-568
-569
-570
-571
-572
-573
-574
-575
-576
-577
-578
-579
-580
-581
 582
 583
 584
@@ -309,10 +306,40 @@ pattern matched (safe to forward to other handlers)</p></div>
 631
 632
 633
-634</pre>
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/xmlparser.rb', line 552</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/xmlparser.rb', line 582</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='comment'># Fast path: attempt the anchored union only at line start and scan just
@@ -407,7 +434,7 @@ pattern matched (safe to forward to other handlers)</p></div>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:00 2026 by
+  Generated on Thu Sep 10 03:55:22 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

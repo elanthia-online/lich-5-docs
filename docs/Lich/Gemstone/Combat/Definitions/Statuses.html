@@ -88,17 +88,30 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Combat status effect pattern definitions and parsing.</p>
-<p>Defines patterns for recognizing status effects like stun, prone, blind,
-webbed, poisoned, etc., along with the messages that indicate those effects
-are applied (add_patterns) or removed (remove_patterns) on targets.
-Provides a <code>.parse(line)</code> method for efficient pattern matching against
-game output.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Status effects are matched using a literal-substring gate for ~7µs/line performance;
+see <span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span> for details on the optimization.</p></div>
+  </div>
+
+<p>Combat status effect pattern definitions and parsing for GemStone IV and DragonRealms.</p>
+<p>This module defines the regular expressions that detect when combat status effects
+(stun, prone, blind, etc.) are applied to or removed from characters. Each status
+has add patterns (onset) and remove patterns (recovery). The <span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Statuses.parse (method)">Statuses.parse</a></span> method matches
+incoming game lines against these patterns to extract status changes.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Statuses.parse (method)">Statuses.parse</a></span></li>
+    
+  </ul>
 
 </div><h2>Defined Under Namespace</h2>
 <p class="children">
@@ -133,13 +146,41 @@ game output.</p>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span>
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:blind</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You blinded (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) vision clears\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You blinded (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are blinded!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your eyes suddenly cloud over\.  A moment later you realize you cannot see at all\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Suddenly, a silver mist swirls about you\.  Golden arcs streak across your vision</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is blinded!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># re-blind confirmation (round-11/12 generic
+</span>                  <span class='comment'># table: 7,232 lines across 272 creatures);
+</span>                  <span class='comment'># add_status is idempotent so re-adding is safe
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is already blinded\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) vision clears\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) steadies </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:himself|herself|itself)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> as </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> recovers from </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> blindness\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:immobilized</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) form is entangled in an unseen force that restricts .+? movement\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes in utter terror!</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes in utter terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An unseen force entangles you, restricting your movement!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># 619 Moonbeam hold onset - pairs with the
+</span>                  <span class='comment'># &quot;lunar light encircling ... fades away&quot; remove
+</span>                  <span class='comment'># below (full-corpus sweep 2026-09-03: ~85k lines
+</span>                  <span class='comment'># across up to 26 creatures per moon variant;
+</span>                  <span class='comment'># only observed moons listed)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is caught fast, the light of (?:Liabo|Lornon|Tilaok|the moon) arresting </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> movements\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are pinned in place, unable to move\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is rooted in place!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># ambient still-immobilized tick (round-13
+</span>                  <span class='comment'># sweep: fires under the Moonbeam hold and the
+</span>                  <span class='comment'># untagged &quot;odd paralysis&quot;/lassitude effects,
+</span>                  <span class='comment'># never webs; the grits-teeth analog for this
+</span>                  <span class='comment'># status). Idempotent re-add.
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) struggles as </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> tries to move\.</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) movements no longer appear hampered as the lunar light encircling .+? fades away\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -150,9 +191,68 @@ game output.</p>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>It is knocked to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is knocked to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to the ground!</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># 501 landing on a STANDING target: the sleep
+</span>                  <span class='comment'># def registers sleeping off the same line;
+</span>                  <span class='comment'># the fall itself is also a knockdown (the
+</span>                  <span class='comment'># goes-limp variant is the already-prone form
+</span>                  <span class='comment'># and deliberately absent here).
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) slumps to the ground unconscious\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># second person - the victim is us
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are knocked to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You lose your footing and fall to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your feet are suddenly swept from under you!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You fall flat on the floor\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You fall to the ground!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) loses </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> balance and falls to the ground\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># crit-free injury knockdowns (add_status is
+</span>                  <span class='comment'># idempotent, so overlap with critranks is safe)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to the ground grasping </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> mangled (?:right|left) (?:leg|arm)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> knees in pain!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># &quot;falls over&quot; family: tremors stomp, wind AoE,
+</span>                  <span class='comment'># sonic-onslaught proc, burning smother roll
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) loses </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> balance and falls over\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The wind knocks (?&lt;target&gt;.+?) off balance and </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> falls over!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Reeling from the sonic onslaught, (?&lt;target&gt;.+?) staggers and falls over, writh(?:ing|es)</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to the ground and rolls, trying to smother the flames</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># round-5 period-form
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) wobbles painfully and </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> falls to the ground\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># spine-crush knockdown flavor; often the ONLY
+</span>                  <span class='comment'># knockdown line printed (exchange evidence
+</span>                  <span class='comment'># 2026-09-03, 1.9k lines / 50+ creatures). The
+</span>                  <span class='comment'># &quot;unconscious&quot;/&quot;in a deep slumber&quot; tails file
+</span>                  <span class='comment'># as :sleeping, not here.
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) slumps to the ground\.</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) stands back up\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) gets back to .+? feet\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) rises to .+? feet\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) stands up\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># round-5
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) leaps (?:back )?up from the ground</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) rises back into a standing position</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># round-11/12 generic table: 7,715 lines across
+</span>                  <span class='comment'># 45 creatures; the bare &quot;stands up.&quot; pattern
+</span>                  <span class='comment'># above requires the period right after &quot;up&quot;
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) stands up with a grunt\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># round-5: Judgment and knockdown-to-knees results (~200 + every
+</span>  <span class='comment'># Judgment blob). The lookbehind keeps the subdue result line
+</span>  <span class='comment'># (&quot;is dazed and is driven to its knees!&quot;) filing as :paralyzed.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:kneeling</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)(?&lt;! dazed and)(?&lt;! paralyzed and) is (?:knocked|driven) to </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> knees!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You crash to the ground, falling to your knees!</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sitting</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is knocked into a sitting position!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='comment'># standing back up clears sitting - same remove
+</span>                <span class='comment'># messagings as prone
+</span>                <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) stands back up\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) gets back to .+? feet\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) rises to .+? feet\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -160,19 +260,83 @@ game output.</p>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:stunned</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;target&gt;.+?) is stunned!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes off the stun effect\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;target&gt;.+?) is stunned!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is badly stunned!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># pronoun confirmations - period (assess/look) and
+</span>                  <span class='comment'># bang (combat) forms both live
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*(?&lt;target&gt;</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:He|She|It))</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> is stunned[.!]</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># second person - the victim is us
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are stunned(?: for (?&lt;rounds&gt;\d+) rounds?)?!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are still stunned\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># ambient still-stunned indicators (multi-chunk
+</span>                  <span class='comment'># sweep 2026-09-04: failed recovery tick and the
+</span>                  <span class='comment'># between-rounds idle sway; both fire alone in
+</span>                  <span class='comment'># their own chunk, never with a crit, with the
+</span>                  <span class='comment'># stun add 1-3 chunks earlier). Idempotent
+</span>                  <span class='comment'># re-adds, same treatment as &quot;is already blinded&quot;
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) grits </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> teeth, but is unable to recover </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> wits\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) staggers slightly, swaying about in a daze\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># crtrStatus-proven (2026-09-04): stunned=&quot;1&quot;
+</span>                  <span class='comment'># in the last repaint before the line 20/20,
+</span>                  <span class='comment'># still stunned at the next repaint 16/20 -
+</span>                  <span class='comment'># a failed break or idle tick, identical for
+</span>                  <span class='comment'># our purposes. Berserker-only in corpus but
+</span>                  <span class='comment'># the wording is generic.
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) looks sluggishly about with dazed eyes\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='comment'># &quot;the stun&quot; (no &quot;effect&quot;) is the live third-person
+</span>                  <span class='comment'># wording; flavor prefixes vary by creature
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes off the stun(?: effect)?[.!]</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) twitches fiercely, shaking off the stun!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) throws .+? head back and howls, shaking off the stun!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) regains .+? composure\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is no longer stunned\.</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is no longer stunned\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are no longer stunned\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>with a sudden surge of strength, you throw off your stunned state!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shudders violently before visibly recovering from </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> stunned state\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># round-5
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) throws off </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> dazed state</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># unparsed variant of the shakes-off family
+</span>                  <span class='comment'># (sweep 2026-09-04: 15/36 windows show the stun
+</span>                  <span class='comment'># add on the same creature 1-3 chunks earlier;
+</span>                  <span class='comment'># trailing clause is creature flavor, anchor on
+</span>                  <span class='comment'># the shared core only)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes free from </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> stunned state</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Rivulets of swirling incarnadine energy envelop (?&lt;target&gt;.+?) scarred flesh, allowing </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> to move freely once more\.</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Dispel landing - a spell stripped from the target (round-6:
+</span>  <span class='comment'># 44k; follows the dispel/sigil_dispel flare + its SMR)
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:dispelled</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A white glow rushes away from (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># dispel-flare landing confirmation (exchange
+</span>                  <span class='comment'># evidence 2026-09-03: directly follows dispel/
+</span>                  <span class='comment'># sigil_dispel flares in all captured exchanges;
+</span>                  <span class='comment'># 13.4k lines / 50+ creatures)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) blinks and looks around in confusion for a moment\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Weapon knocked from the grip (round-6: 32k+ across spear/
+</span>  <span class='comment'># targe/handaxe). Indent-anchored crit-tail form - unindented
+</span>  <span class='comment'># period lines are room item-drop flavor, not this
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:disarmed</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>\s+The (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?&lt;weapon&gt;.+?) falls to the ground\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sunburst</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) reels and stumbles under the intense flare!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) blinks a few times, regaining a sense of balance\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:webbed</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) becomes ensnared in thick strands of webbing!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) becomes ensnared in thick strands of webbing!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You become ensnared in thick strands of webbing!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is firmly webbed in place\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) breaks free of the webs\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) struggles free of the webs\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -183,19 +347,39 @@ game output.</p>
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sleeping</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls into a deep slumber\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls asleep\.</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls asleep\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># Lullabye full-sleep wording (also implies prone)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) falls to the ground in a deep slumber\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> eyes roll up into its head as it slumps to the ground\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># 501 Sleep landing (forge test server, 2026-08-28):
+</span>                  <span class='comment'># both wordings read as deaths before this - the
+</span>                  <span class='comment'># death-lore grammar guards on \bunconscious\b, and
+</span>                  <span class='comment'># these are the lines that guard exists for.
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) slumps to the ground unconscious\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) goes limp as </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> falls unconscious[.!]</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) wakes up\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) awakens\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) opens .+? eyes\.</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) opens .+? eyes\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># 2p-attacker form of the :unconscious remove
+</span>                  <span class='comment'># below (round-11/12 generic table: 4,836 lines
+</span>                  <span class='comment'># across 124 creatures)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is awakened by your attack!</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:poisoned</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears to be suffering from a poison\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears to be suffering from a poison\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You feel a fierce poison coursing through your veins!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A virulent poison courses through your veins!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You feel poison coursing through your veins\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Bilious poison seeps into (?&lt;target&gt;.+?) flesh, sending </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> into paroxysms of agony!</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span>
                   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) looks much better\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) recovers from the poison\.</span><span class='regexp_end'>/</span></span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) recovers from the poison\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) collects </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:himself|herself|itself)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> as the poison afflicting </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> finally runs its course\.</span><span class='regexp_end'>/</span></span>
                 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:roundtime</span><span class='comma'>,</span>
@@ -223,7 +407,139 @@ game output.</p>
 
   <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:tangleweed</span><span class='comma'>,</span>
                 <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You notice .+? scrape into (?&lt;target&gt;.+?) skin. .+? suddenly looks very weak!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
-                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears to recover some strength\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears to recover some strength\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- catalogued from 2026-08-20 arena spectator logs ---
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:unconscious</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) goes limp as </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> is rendered unconscious!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You go limp as you are rendered unconscious!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) slumps to the ground in an unconscious heap\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is awakened by (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> attack!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># full-corpus sweep 2026-09-03: 1,256 lines
+</span>                  <span class='comment'># across 50+ creatures
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) slowly comes back to consciousness\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:slowed</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) movements slow to a crawl!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) suddenly slows all movements\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Blessed 2026-09-04: the crit-echo theory held only for UCS
+</span>  <span class='comment'># exchanges. The multi-chunk sweep found three no-crit sources
+</span>  <span class='comment'># (noxious brume SMR, Powersink, cold wyrm flyover - the last
+</span>  <span class='comment'># hits players too), so this line DOES carry information no
+</span>  <span class='comment'># other line carries. Add-only; when it trails a dizzies crit
+</span>  <span class='comment'># the critranks :dazed flag re-adds harmlessly.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:dazed</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears dazed and unsure\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># KO-class disable from the rogue subdue strike; &quot;dazed and is
+</span>  <span class='comment'># driven to its knees&quot; is the same maneuver&#39;s lighter result
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:paralyzed</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is (?:paralyzed|dazed)(?: and is driven to </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> knees)?!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:terrified</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your limbs lock and you quiver with fright!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You shake with terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You are immobilized with sheer terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) freezes in place, quivering with fright!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) freezes in place, shaking with terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes with terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) freezes in utter terror!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is frozen with fear!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># Evil Eye result (round-5)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is frightened into utter immobility!</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You regain control of your senses!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:silenced</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) chokes, momentarily unable to speak!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:weakened</span><span class='comma'>,</span>
+                <span class='comment'># standalone strength-drain line (the tangleweed def
+</span>                <span class='comment'># above requires the &quot;You notice ... scrape&quot; prefix)
+</span>                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) suddenly looks very weak!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears weak and feeble, </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> movements sluggish\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) appears to recover some strength\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># 1625 Templar&#39;s Verdict defense-debuff rider: printed right
+</span>  <span class='comment'># after the violet-flame damage in every captured exchange
+</span>  <span class='comment'># (2026-09-03; 7.2k lines / 50+ creatures). Add-only - no
+</span>  <span class='comment'># expiry line observed yet.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:vulnerable</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> defenses are diminished in the wake of the flames\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Immolation-class burn: onset and per-round ticks observed in
+</span>  <span class='comment'># the 2026-09-03 exchanges (bursts-into-flame carries its own
+</span>  <span class='comment'># inline damage; continue-to-burn is the round tick); the
+</span>  <span class='comment'># shakes-off line is the expiry, printed even as death cleanup.
+</span>  <span class='comment'># add_status is idempotent so the tick re-add is safe.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:burning</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Wisps of black smoke swirl around (?&lt;target&gt;.+?) and </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> bursts into flame</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The flames around (?&lt;target&gt;.+?) continue to burn!</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='comment'># 4.8k lines / 50+ creatures
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) shakes off the effects of the flames\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># DS vulnerability (502 whirlwind et al.). The onset wording
+</span>  <span class='comment'># varies by damage type but keeps the &quot;off balance and exposed&quot;
+</span>  <span class='comment'># core; the recovery is the shared &quot;regains balance&quot; line
+</span>  <span class='comment'># (6.8k lines / 40+ creatures). Crit-driven unbalance onsets
+</span>  <span class='comment'># (&quot;stumbles forward, off balance.&quot;) stay with critranks, same
+</span>  <span class='comment'># split as :dazed. Remove fires as a no-op when the onset was
+</span>  <span class='comment'># a crit or an uncaptured variant.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:off_balance</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>leaves? (?&lt;target&gt;.+?) off balance and exposed to</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># short-form rider without the &quot;exposed&quot; suffix
+</span>                  <span class='comment'># (sweep 2026-09-04: &quot;The whirlwind leaves the
+</span>                  <span class='comment'># mastodon off balance.&quot;)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>leaves? (?&lt;target&gt;.+?) off balance\.</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) regains </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> balance\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Temporary physical-damage immunity gained in response to
+</span>  <span class='comment'># damage of that type (owner exchange 2026-09-05: Bone
+</span>  <span class='comment'># Shatter damage -&gt; this line -&gt; &quot;unharmed by the impact!&quot;
+</span>  <span class='comment'># on every subsequent impact hit). Stimulus vocabulary is
+</span>  <span class='comment'># tiny: vibrations (27.6k, -&gt;impact) and piercing (12,
+</span>  <span class='comment'># -&gt;puncture). Add-only - no expiry line observed. The
+</span>  <span class='comment'># elemental unharmed-by-X lines are NOT this: those are
+</span>  <span class='comment'># innate (gorefrost golem vs cold), with no onset at all.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hardened</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>In response to the \w+, (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> skin seems to discolor and harden, lending the .+? unnatural durability!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Remove-only, like :dispelled/:disarmed: creatures enter hiding
+</span>  <span class='comment'># through per-creature flavor lines (creature messaging, not
+</span>  <span class='comment'># grammar), but the un-hide transitions are shared wording
+</span>  <span class='comment'># (round-11/12 candidate list: &quot;is revealed from hiding.&quot;
+</span>  <span class='comment'># 2,533x/2, &quot;is forced out of hiding!&quot; 416x/5). Removing a
+</span>  <span class='comment'># status that was never added is a harmless no-op.
+</span>  <span class='const'><span class='object_link'><a href="Statuses/StatusDef.html" title="Lich::Gemstone::Combat::Definitions::Statuses::StatusDef (class)">StatusDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hidden</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span>
+                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is revealed from hiding\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+                  <span class='comment'># both terminators live (sweep: period 2,200x/8,
+</span>                  <span class='comment'># bang 416x/5)
+</span>                  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is forced out of hiding[.!]</span><span class='regexp_end'>/</span></span>
+                <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ADD_LOOKUP-constant" class="">ADD_LOOKUP =
@@ -245,15 +561,32 @@ game output.</p>
         <dt id="REMOVE_LOOKUP-constant" class="">REMOVE_LOOKUP =
           <div class="docstring">
   <div class="discussion">
-    <p>Lookup table mapping remove patterns to status names and action type.</p>
-<p>Built from all remove_patterns across STATUS_EFFECTS. Each entry is a 3-tuple:
-[pattern, status_name, :remove]. Used by <code>.parse(line)</code> to detect when a
-status effect expires.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Lookup table mapping remove patterns to status names and action type.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Array&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>array of [pattern, status_name, :remove] tuples, one per remove pattern</p></div>
+      
+    </li>
+  
+</ul>
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
@@ -273,15 +606,32 @@ status effect expires.</p>
         <dt id="ALL_LOOKUP-constant" class="">ALL_LOOKUP =
           <div class="docstring">
   <div class="discussion">
-    <p>Combined lookup table of all add and remove patterns.</p>
-<p>Union of ADD_LOOKUP and REMOVE_LOOKUP. Used to build the STATUS_DETECTOR
-regex and STATUS_GATE substring filter for efficient parsing. Each entry
-is a 3-tuple: [pattern, status_name, action] where action is :add or :remove.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Combined lookup table of all add and remove patterns for status effects.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Array&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>array of [pattern, status_name, action] tuples where action is :add or :remove</p></div>
+      
+    </li>
+  
+</ul>
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
@@ -385,26 +735,26 @@ compatibility but the literal gate below is what parse uses.</p>
       <pre class="lines">
 
 
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176</pre>
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/statuses.rb', line 160</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/statuses.rb', line 462</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='comment'># Fast rejection: a line can only match a status pattern if it
@@ -433,7 +783,7 @@ compatibility but the literal gate below is what parse uses.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:01 2026 by
+  Generated on Thu Sep 10 03:55:24 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

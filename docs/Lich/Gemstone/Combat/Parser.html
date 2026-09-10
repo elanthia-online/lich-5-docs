@@ -86,18 +86,7 @@
   
 </div>
 
-<h2>Overview</h2><div class="docstring">
-  <div class="discussion">
-    <p>Core parsing methods for extracting combat events, damage, status effects,
-and UCS events from game server output. Provides performance-optimized pattern
-matching with lazy loading and early-exit conditions.</p>
 
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
   
     <h2>
       Constant Summary
@@ -136,6 +125,60 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;pushBold\/&gt;([^&lt;]*&lt;a exist=&quot;[^&quot;]+&quot;[^&gt;]+&gt;[^&lt;]+&lt;\/a&gt;)&lt;popBold\/&gt;</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
+        <dt id="SELF_TARGET_PATTERN-constant" class="">SELF_TARGET_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>A target capture that refers to US rather than a creature.
+Anchored at the start of the capture: real forms observed in
+session logs are &quot;you&quot;, &quot;your <bodypart>&quot; and tails like
+&quot;you with its tusk&quot; - but NOT a creature whose name merely
+contains the word (&quot;a youngling&quot;), hence the \b and the anchor.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A(?:you|your)\b</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SELF_IN_PATTERN-constant" class="">SELF_IN_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Some inbound defs name us in the pattern LITERAL rather than in a
+target capture (&quot;<attacker> springs from the shadows and strikes
+at you!&quot;, &quot;... plants <weapon> ... near you&quot;). They have an
+attacker capture and no target capture, so without this they too
+fall through to the line-scan and self-attribute. A def that
+captures an attacker and addresses &quot;you&quot;/&quot;your&quot; in its own source
+is aimed at us by construction.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b(?:at|towards?|upon|around|near|on)\s+your?\b</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SWING_WEAPON_PATTERN-constant" class="">SWING_WEAPON_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The weapon a swing line names, in plain text (swing lines do
+not link the weapon):  &quot;You swing a kelyn-edged slim short
+sword at <pushBold/>...&quot; - used to claim pre-flares by weapon.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?: take aim and)? (?:swing|fire) (?:an? |your |some )?(?&lt;weapon&gt;[^&lt;]+?) at &lt;</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
     </dl>
   
 
@@ -152,6 +195,28 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
     </h2>
 
     <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#extract_attacker_from_match-class_method" title="extract_attacker_from_match (class method)">.<strong>extract_attacker_from_match</strong>(match)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Attacker from a third-person def's (?<attacker>...) capture.</p></div></span>
+  
+</li>
+
       
         <li class="public ">
   <span class="summary_signature">
@@ -192,7 +257,7 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Extracts a creature target from a line of game output by looking for bold-wrapped links.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Extracts a creature target from a combat line by looking for a bolded link.</p></div></span>
   
 </li>
 
@@ -215,6 +280,72 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
 
   
     <span class="summary_desc"><div class='inline'><p>Try to extract target from regex match first, then from line.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#inbound_attack%3F-class_method" title="inbound_attack? (class method)">.<strong>inbound_attack?</strong>(line)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>True when this line is an attack aimed at US.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_assault_end-class_method" title="parse_assault_end (class method)">.<strong>parse_assault_end</strong>(line)  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parses a single-target multi-round assault bracket closing line.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_assault_start-class_method" title="parse_assault_start (class method)">.<strong>parse_assault_start</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Single-target multi-round assault brackets (flurry, barrage, pummel, guardant thrusts, thrash) - see defs/assaults.rb.</p></div></span>
   
 </li>
 
@@ -266,6 +397,138 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#parse_flare-class_method" title="parse_flare (class method)">.<strong>parse_flare</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parse a flare announce line (weapon scripts, enchants, GEFs, flourishes).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_outcome-class_method" title="parse_outcome (class method)">.<strong>parse_outcome</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Why a swing produced nothing: :evade, :block, :parry, :warded, :miss, :fumble, :hindrance, :confused.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_resolution-class_method" title="parse_resolution (class method)">.<strong>parse_resolution</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Roll lines: AS/DS, CS/TD, UAF/UDF, SMR - returns the full breakdown { type:, as:, ds:, avd:, roll:, result: ... }.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_sequence_end-class_method" title="parse_sequence_end (class method)">.<strong>parse_sequence_end</strong>(line)  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parses a multi-target sequence bracket closing line.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_sequence_start-class_method" title="parse_sequence_start (class method)">.<strong>parse_sequence_start</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Multi-TARGET action brackets (mstrike, volley, spawned casts).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_spell_loss-class_method" title="parse_spell_loss (class method)">.<strong>parse_spell_loss</strong>(line)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Third-person spell wear-off lines pinned to a spell number (defs/spell_losses.rb).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#parse_status-class_method" title="parse_status (class method)">.<strong>parse_status</strong>(line)  &#x21d2; Object </a>
     
 
@@ -281,6 +544,28 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
 
   
     <span class="summary_desc"><div class='inline'><p>Parse status effects (optional - performance setting).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse_swing_weapon-class_method" title="parse_swing_weapon (class method)">.<strong>parse_swing_weapon</strong>(line)  &#x21d2; String<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Extracts the weapon name from a swing or ranged attack line.</p></div></span>
   
 </li>
 
@@ -307,6 +592,50 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
 </li>
 
       
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#self_target%3F-class_method" title="self_target? (class method)">.<strong>self_target?</strong>(match)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Determines whether a regex match names the player as its target.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#strip_links-class_method" title="strip_links (class method)">.<strong>strip_links</strong>(text)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Drop XML link/bold markup from a captured fragment.</p></div></span>
+  
+</li>
+
+      
     </ul>
     
   
@@ -318,7 +647,66 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="extract_creature_target-class_method">
+  <h3 class="signature first" id="extract_attacker_from_match-class_method">
+  
+    .<strong>extract_attacker_from_match</strong>(match)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Attacker from a third-person def's (?<attacker>...) capture.
+Unlike targets, player attackers have NEGATIVE exist ids, so no
+id sign check; plain text (pre-stripped logs) falls back to name.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 187</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_extract_attacker_from_match'>extract_attacker_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacker</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_text'>text</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_link'>link</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#TARGET_LINK_PATTERN-constant" title="Lich::Gemstone::Combat::Parser::TARGET_LINK_PATTERN (constant)">TARGET_LINK_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span><span class='rparen'>)</span>
+    <span class='lbrace'>{</span> <span class='label'>id:</span> <span class='id identifier rubyid_link'>link</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='comma'>,</span> <span class='label'>noun:</span> <span class='id identifier rubyid_link'>link</span><span class='lbracket'>[</span><span class='symbol'>:noun</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_link'>link</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+  <span class='kw'>else</span>
+    <span class='lbrace'>{</span> <span class='label'>name:</span> <span class='id identifier rubyid_strip_links'>strip_links</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="extract_creature_target-class_method">
   
     .<strong>extract_creature_target</strong>(line)  &#x21d2; <tt>Object</tt> 
   
@@ -341,32 +729,32 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93</pre>
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 322</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_extract_creature_target'>extract_creature_target</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='comment'># Cheap gate: the wrapper pattern can&#39;t match without the bold tag,
@@ -407,21 +795,14 @@ Allow zero or more characters before <a> tag (e.g., &quot;a creature&quot; or ju
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Extracts a creature target from a line of game output by looking for
-bold-wrapped links. Non-bolded links (equipment, objects, NPCs) are rejected.</p>
+    <p>Extracts a creature target from a combat line by looking for a bolded link.</p>
+<p>Only creature links wrapped in <pushBold/> tags are accepted as valid targets.
+Non-bolded links (equipment, objects, or other non-combatants) are rejected.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='id identifier rubyid_extract_target_from_line'>extract_target_from_line</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;pushBold/&gt;&lt;a exist=\&quot;12345\&quot; noun=\&quot;troll\&quot;&gt;a troll&lt;/a&gt;&lt;popBold/&gt;</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; {:id=&gt;12345, :noun=&gt;&quot;troll&quot;, :name=&gt;&quot;a troll&quot;}</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -434,7 +815,7 @@ bold-wrapped links. Non-bolded links (equipment, objects, NPCs) are rejected.</p
       
       
         &mdash;
-        <div class='inline'><p>a line of game server output containing XML tags</p></div>
+        <div class='inline'><p>a combat output line</p></div>
       
     </li>
   
@@ -451,8 +832,7 @@ bold-wrapped links. Non-bolded links (equipment, objects, NPCs) are rejected.</p
       
       
         &mdash;
-        <div class='inline'><p>a hash with :id (Integer), :noun (String), and :name (String)
-keys if a bolded creature link is found; nil otherwise</p></div>
+        <div class='inline'><p>a hash with keys :id (Integer), :noun (String), and :name (String) if a bolded creature link is found; nil otherwise</p></div>
       
     </li>
   
@@ -464,14 +844,14 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-124
-125
-126
-127
-128</pre>
+374
+375
+376
+377
+378</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 124</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 374</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_extract_target_from_line'>extract_target_from_line</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='comment'># ONLY accept bolded creatures as targets
@@ -507,28 +887,28 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114</pre>
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 96</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 347</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_extract_target_from_match'>extract_target_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -548,6 +928,196 @@ keys if a bolded creature link is found; nil otherwise</p></div>
   <span class='kw'>end</span>
 
   <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="inbound_attack?-class_method">
+  
+    .<strong>inbound_attack?</strong>(line)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>True when this line is an attack aimed at US. Used by the
+processor to keep the attacker's own link out of the
+target-switcher (see the inbound_line note there).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 173</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_inbound_attack?'>inbound_attack?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="Definitions/Attacks.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::Attacks.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html#ATTACK_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACK_LOOKUP (constant)">ATTACK_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid__name'>_name</span><span class='op'>|</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_self_target?'>self_target?</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='kw'>false</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_assault_end-class_method">
+  
+    .<strong>parse_assault_end</strong>(line)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parses a single-target multi-round assault bracket closing line.</p>
+<p>Identifies the end of assault sequences (flurry, barrage, pummel, guardant
+thrusts, thrash) that span multiple rounds against one target.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a combat output line</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a hash with assault metadata if the line closes an assault; nil otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse_assault_start-class_method" title="Lich::Gemstone::Combat::Parser.parse_assault_start (method)">parse_assault_start</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+261
+262
+263</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 261</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_assault_end'>parse_assault_end</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Assaults.html" title="Lich::Gemstone::Combat::Definitions::Assaults (module)">Assaults</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse_end'><span class='object_link'><a href="Definitions/Assaults.html#parse_end-class_method" title="Lich::Gemstone::Combat::Definitions::Assaults.parse_end (method)">parse_end</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_assault_start-class_method">
+  
+    .<strong>parse_assault_start</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Single-target multi-round assault brackets (flurry, barrage,
+pummel, guardant thrusts, thrash) - see defs/assaults.rb</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+249
+250
+251</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 249</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_assault_start'>parse_assault_start</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Assaults.html" title="Lich::Gemstone::Combat::Definitions::Assaults (module)">Assaults</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse_start'><span class='object_link'><a href="Definitions/Assaults.html#parse_start-class_method" title="Lich::Gemstone::Combat::Definitions::Assaults.parse_start (method)">parse_start</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -578,36 +1148,184 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-33
-34
-35
-36
-37
-38
-39
-40
 41
 42
 43
 44
 45
 46
-47</pre>
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 41</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_attack'>parse_attack</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="Definitions/Attacks.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::Attacks.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 
   <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html#ATTACK_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACK_LOOKUP (constant)">ATTACK_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
     <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_target_info'>target_info</span> <span class='op'>=</span> <span class='id identifier rubyid_extract_target_from_match'>extract_target_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_extract_target_from_line'>extract_target_from_line</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-      <span class='kw'>return</span> <span class='lbrace'>{</span>
+      <span class='comment'># An inbound attack (creature -&gt; us) names US as its target.
+</span>      <span class='comment'># Its only creature link is the ATTACKER, so the line-scan
+</span>      <span class='comment'># fallback below would install the attacker as its own
+</span>      <span class='comment'># target and apply its damage/crits to itself. Resolve the
+</span>      <span class='comment'># target as us and stop - never fall through.
+</span>      <span class='comment'># Environmental / self-inflicted defs (SELF_INFLICTED) are
+</span>      <span class='comment'># damage to us by construction - no attacker, no &quot;you&quot;
+</span>      <span class='comment'># capture - unless this particular pattern named someone
+</span>      <span class='comment'># else (a nearby player taking the same tick).
+</span>      <span class='id identifier rubyid_self_inflicted'>self_inflicted</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Attacks.html#SELF_INFLICTED-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SELF_INFLICTED (constant)">SELF_INFLICTED</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
+                       <span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_self_target?'>self_target?</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_self_inflicted'>self_inflicted</span>
+        <span class='kw'>return</span> <span class='lbrace'>{</span>
+          <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span>
+          <span class='label'>target:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span>
+          <span class='label'>inbound:</span> <span class='kw'>true</span><span class='comma'>,</span>
+          <span class='label'>attacker:</span> <span class='id identifier rubyid_extract_attacker_from_match'>extract_attacker_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span><span class='comma'>,</span>
+          <span class='label'>damaging:</span> <span class='kw'>true</span>
+        <span class='rbrace'>}</span>
+      <span class='kw'>end</span>
+
+      <span class='comment'># The fallback is only safe when the def has NO target
+</span>      <span class='comment'># capture: then the sole creature link on the line really is
+</span>      <span class='comment'># the target. When a def DID capture a target but it failed
+</span>      <span class='comment'># to resolve to a creature link, scanning the line would find
+</span>      <span class='comment'># some other creature (typically the attacker) - so don&#39;t.
+</span>      <span class='id identifier rubyid_attacker'>attacker</span> <span class='op'>=</span> <span class='id identifier rubyid_extract_attacker_from_match'>extract_attacker_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_target_info'>target_info</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+                      <span class='id identifier rubyid_extract_target_from_match'>extract_target_from_match</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
+                    <span class='kw'>else</span>
+                      <span class='id identifier rubyid_extract_target_from_line'>extract_target_from_line</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+                    <span class='kw'>end</span>
+      <span class='comment'># Nothing can attack itself. An untargeted def (an AoE like
+</span>      <span class='comment'># the mastodon&#39;s tremors) has no target capture, so the
+</span>      <span class='comment'># line-scan above returns the only link present - the
+</span>      <span class='comment'># attacker. Drop it: the event is genuinely untargeted, and
+</span>      <span class='comment'># the per-target lines that follow bind the real victims.
+</span>      <span class='id identifier rubyid_target_info'>target_info</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_target_info'>target_info</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_attacker'>attacker</span> <span class='op'>&amp;&amp;</span>
+                           <span class='id identifier rubyid_attacker'>attacker</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_target_info'>target_info</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_attacker'>attacker</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>
+      <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='lbrace'>{</span>
         <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span>
         <span class='label'>target:</span> <span class='id identifier rubyid_target_info'>target_info</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span>
         <span class='label'>damaging:</span> <span class='kw'>true</span>
       <span class='rbrace'>}</span>
+      <span class='comment'># The def NAMED a target but it is not a creature link - a
+</span>      <span class='comment'># player (&quot;striking Sugiin!&quot;), or a name we cannot resolve.
+</span>      <span class='comment'># The event is therefore bound to someone who is not a
+</span>      <span class='comment'># creature, and must never later adopt one: the caster&#39;s own
+</span>      <span class='comment'># bolded props (a summoned ethereal sphere) and room echoes
+</span>      <span class='comment'># would otherwise fill the empty slot through the
+</span>      <span class='comment'># target-switcher and take that third party&#39;s damage with
+</span>      <span class='comment'># them (real-feed replay, GSIV-Monstr 2025-09-30).
+</span>      <span class='kw'>if</span> <span class='id identifier rubyid_target_info'>target_info</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
+         <span class='op'>!</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+        <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:foreign_target</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>end</span>
+      <span class='comment'># Third-person defs capture the attacker (a player link with
+</span>      <span class='comment'># a negative exist id, or a pushBold-wrapped creature link)
+</span>      <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_attacker'>attacker</span> <span class='kw'>if</span> <span class='id identifier rubyid_attacker'>attacker</span>
+      <span class='comment'># A NEARBY PLAYER&#39;s attack on a creature we can see. When a
+</span>      <span class='comment'># 3p attack names its actor but that actor is not us and not
+</span>      <span class='comment'># a creature - a player link (negative id) or a bare name
+</span>      <span class='comment'># from mid-sentence prose (the paladin weapon_infusion proc
+</span>      <span class='comment'># names &quot;Heavenscent&quot;, not a link) - the whole event belongs
+</span>      <span class='comment'># to that player. Marked foreign_caster so the processor
+</span>      <span class='comment'># emits it for observers but never lands its damage on our
+</span>      <span class='comment'># ledger, the attacker-side mirror of foreign_target
+</span>      <span class='comment'># (real-feed, GSIV-Nisugi 2026-09-06). Attacks a CREATURE
+</span>      <span class='comment'># makes on us are :inbound and handled above; those keep
+</span>      <span class='comment'># their creature-id attacker and are not foreign_caster.
+</span>      <span class='kw'>if</span> <span class='id identifier rubyid_attacker'>attacker</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:inbound</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
+         <span class='lparen'>(</span><span class='id identifier rubyid_attacker'>attacker</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&lt;</span> <span class='int'>0</span> <span class='op'>||</span> <span class='lparen'>(</span><span class='id identifier rubyid_attacker'>attacker</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_attacker'>attacker</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:foreign_caster</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:weapon</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_strip_links'>strip_links</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:weapon</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>weapon</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:weapon</span><span class='rbracket'>]</span>
+      <span class='comment'># Aimed shots (&quot;You take aim and fire...&quot;, &quot;You make a precise
+</span>      <span class='comment'># attempt to jab...&quot;) roll differently from unaimed ones. The
+</span>      <span class='comment'># defs have captured this all along; it was never surfaced.
+</span>      <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:aimed</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>aimed</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:aimed</span><span class='rbracket'>]</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
   <span class='kw'>nil</span>
@@ -641,17 +1359,326 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-50
-51
-52
-53</pre>
+206
+207
+208
+209</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 50</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 206</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_damage'>parse_damage</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Damage.html" title="Lich::Gemstone::Combat::Definitions::Damage (module)">Damage</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/Damage.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Damage.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>?</span> <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:damage</span><span class='rbracket'>]</span> <span class='op'>:</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_flare-class_method">
+  
+    .<strong>parse_flare</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parse a flare announce line (weapon scripts, enchants, GEFs,
+flourishes). Returns name/damaging/aoe/spawns plus the flaring
+weapon's { id:, name: } when the line links it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+214
+215
+216</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 214</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_flare'>parse_flare</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Flares.html" title="Lich::Gemstone::Combat::Definitions::Flares (module)">Flares</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/Flares.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Flares.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_outcome-class_method">
+  
+    .<strong>parse_outcome</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Why a swing produced nothing: :evade, :block, :parry, :warded,
+:miss, :fumble, :hindrance, :confused</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+220
+221
+222</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 220</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_outcome'>parse_outcome</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Outcomes.html" title="Lich::Gemstone::Combat::Definitions::Outcomes (module)">Outcomes</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/Outcomes.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Outcomes.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_resolution-class_method">
+  
+    .<strong>parse_resolution</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Roll lines: AS/DS, CS/TD, UAF/UDF, SMR - returns the full
+breakdown { type:, as:, ds:, avd:, roll:, result: ... }</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+226
+227
+228</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 226</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_resolution'>parse_resolution</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Resolutions.html" title="Lich::Gemstone::Combat::Definitions::Resolutions (module)">Resolutions</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/Resolutions.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Resolutions.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_sequence_end-class_method">
+  
+    .<strong>parse_sequence_end</strong>(line)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parses a multi-target sequence bracket closing line.</p>
+<p>Identifies the end of action sequences (mstrike, volley, spawned casts)
+that span multiple targets.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a combat output line</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a hash with sequence metadata if the line closes a sequence; nil otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse_sequence_start-class_method" title="Lich::Gemstone::Combat::Parser.parse_sequence_start (method)">parse_sequence_start</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+243
+244
+245</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 243</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_sequence_end'>parse_sequence_end</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Sequences.html" title="Lich::Gemstone::Combat::Definitions::Sequences (module)">Sequences</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse_end'><span class='object_link'><a href="Definitions/Sequences.html#parse_end-class_method" title="Lich::Gemstone::Combat::Definitions::Sequences.parse_end (method)">parse_end</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_sequence_start-class_method">
+  
+    .<strong>parse_sequence_start</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Multi-TARGET action brackets (mstrike, volley, spawned casts)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+231
+232
+233</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 231</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_sequence_start'>parse_sequence_start</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Sequences.html" title="Lich::Gemstone::Combat::Definitions::Sequences (module)">Sequences</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse_start'><span class='object_link'><a href="Definitions/Sequences.html#parse_start-class_method" title="Lich::Gemstone::Combat::Definitions::Sequences.parse_start (method)">parse_start</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_spell_loss-class_method">
+  
+    .<strong>parse_spell_loss</strong>(line)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Third-person spell wear-off lines pinned to a spell number
+(defs/spell_losses.rb). Unlike statuses these apply to players
+in view as well as creatures, so the subject resolves through
+ANY link (negative player ids included), falling back to the
+stripped capture text for plain logs.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 298</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_spell_loss'>parse_spell_loss</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_settings'><span class='object_link'><a href="Tracker.html#settings-class_method" title="Lich::Gemstone::Combat::Tracker.settings (method)">settings</a></span></span><span class='lbracket'>[</span><span class='symbol'>:track_statuses</span><span class='rbracket'>]</span>
+
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/SpellLosses.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses (module)">SpellLosses</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/SpellLosses.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_result'>result</span>
+
+  <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_link'>link</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#TARGET_LINK_PATTERN-constant" title="Lich::Gemstone::Combat::Parser::TARGET_LINK_PATTERN (constant)">TARGET_LINK_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>   <span class='op'>=</span> <span class='id identifier rubyid_link'>link</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_link'>link</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>   <span class='op'>=</span> <span class='kw'>nil</span>
+    <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_strip_links'>strip_links</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_result'>result</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -682,21 +1709,106 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-56
-57
-58
-59
-60
-61</pre>
+286
+287
+288
+289
+290
+291</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 56</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 286</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_status'>parse_status</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_settings'><span class='object_link'><a href="Tracker.html#settings-class_method" title="Lich::Gemstone::Combat::Tracker.settings (method)">settings</a></span></span><span class='lbracket'>[</span><span class='symbol'>:track_statuses</span><span class='rbracket'>]</span>
 
   <span class='comment'># Return the full result including action field
 </span>  <span class='const'><span class='object_link'><a href="Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Definitions/Statuses.html" title="Lich::Gemstone::Combat::Definitions::Statuses (module)">Statuses</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="Definitions/Statuses.html#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Statuses.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse_swing_weapon-class_method">
+  
+    .<strong>parse_swing_weapon</strong>(line)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Extracts the weapon name from a swing or ranged attack line.</p>
+<p>Swing lines name the weapon in plain text (not as a link): &quot;You swing a
+kelyn-edged slim short sword at <pushBold/>...&quot; or &quot;You take aim and fire
+a flaming arrow at ...&quot;. Used to claim pre-flares by the weapon that
+triggered them.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_parse_swing_weapon'>parse_swing_weapon</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You swing a bastard sword at &lt;pushBold/&gt;...</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;bastard sword&quot;</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a combat output line</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the weapon name, or nil if the line is not a swing</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+281
+282
+283</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 281</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_parse_swing_weapon'>parse_swing_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#SWING_WEAPON_PATTERN-constant" title="Lich::Gemstone::Combat::Parser::SWING_WEAPON_PATTERN (constant)">SWING_WEAPON_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='op'>&amp;.</span><span class='op'>[]</span><span class='lparen'>(</span><span class='symbol'>:weapon</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -727,14 +1839,14 @@ keys if a bolded creature link is found; nil otherwise</p></div>
       <pre class="lines">
 
 
-64
-65
-66
-67
-68</pre>
+315
+316
+317
+318
+319</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 315</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_ucs'>parse_ucs</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_settings'><span class='object_link'><a href="Tracker.html#settings-class_method" title="Lich::Gemstone::Combat::Tracker.settings (method)">settings</a></span></span><span class='lbracket'>[</span><span class='symbol'>:track_ucs</span><span class='rbracket'>]</span>
@@ -746,12 +1858,153 @@ keys if a bolded creature link is found; nil otherwise</p></div>
 </table>
 </div>
     
+      <div class="method_details ">
+  <h3 class="signature " id="self_target?-class_method">
+  
+    .<strong>self_target?</strong>(match)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Returns false if the match includes a target capture but it is empty or nil.</p></div>
+  </div>
+
+<p>Determines whether a regex match names the player as its target.</p>
+<p>Handles two patterns: explicit target captures like &quot;you&quot; or &quot;your <bodypart>&quot;,
+and inbound defs without target captures that reference the player literally
+(e.g., &quot;at you&quot;, &quot;towards your leg&quot;). Used to classify inbound attacks.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>match</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../MatchData.html" title="MatchData (class)">MatchData</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a Regexp match from an attack pattern, with named captures</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the match identifies the player as target; false otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 156</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_self_target?'>self_target?</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_text'>text</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span>
+    <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+    <span class='kw'>return</span> <span class='const'><span class='object_link'><a href="#SELF_TARGET_PATTERN-constant" title="Lich::Gemstone::Combat::Parser::SELF_TARGET_PATTERN (constant)">SELF_TARGET_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_strip_links'>strip_links</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># No target capture: inbound only if the def both identifies an
+</span>  <span class='comment'># attacker and addresses us literally.
+</span>  <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacker</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
+    <span class='const'><span class='object_link'><a href="#SELF_IN_PATTERN-constant" title="Lich::Gemstone::Combat::Parser::SELF_IN_PATTERN (constant)">SELF_IN_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_regexp'>regexp</span><span class='period'>.</span><span class='id identifier rubyid_source'>source</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="strip_links-class_method">
+  
+    .<strong>strip_links</strong>(text)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Drop XML link/bold markup from a captured fragment</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+201
+202
+203</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/parser.rb', line 201</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_strip_links'>strip_links</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;[^&gt;]+&gt;</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
   </div>
 
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:58 2026 by
+  Generated on Thu Sep 10 03:55:19 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

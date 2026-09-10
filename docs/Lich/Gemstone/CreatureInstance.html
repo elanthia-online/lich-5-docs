@@ -133,9 +133,9 @@ exclusions.</p>
         <dt id="BODY_PARTS-constant" class="">BODY_PARTS =
           <div class="docstring">
   <div class="discussion">
-    <p>Valid GemStone body parts for injury tracking.</p>
-<p>Used by <span class='object_link'><a href="#add_injury-instance_method" title="Lich::Gemstone::CreatureInstance#add_injury (method)">#add_injury</a></span> to validate injury locations. Keys correspond to
-the body part names used in the bestiary and combat parsing.</p>
+    <p>Valid body locations for injury and amputation tracking.</p>
+<p>Matches the 17 body parts exposed by limb-targeting messages and the
+Limb Disruption (708) spell.</p>
 
   </div>
 </div>
@@ -145,7 +145,7 @@ the body part names used in the bestiary and combat parsing.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li>#injured?, #injured_locations</li>
+      <li>#amputate!</li>
     
   </ul>
 
@@ -180,6 +180,40 @@ the body part names used in the bestiary and combat parsing.</p>
 </div>
         </dt>
         <dd><pre class="code"><span class='int'>15</span></pre></dd>
+      
+        <dt id="STUN_ROUND_SECONDS-constant" class="">STUN_ROUND_SECONDS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Seconds per stun round. Critical tables express stun in <em>rounds</em>
+(a rank-5 crit's <code>stunned: 5</code> means five rounds), while their
+<code>roundtime</code> field is already in seconds - the two units live side by
+side in the same CritRanks hash, so never mix them.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>5</span></pre></dd>
+      
+        <dt id="COUP_INCAP_STATUSES-constant" class="">COUP_INCAP_STATUSES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Statuses that satisfy Coup de Grace's &quot;incapacitated in some way&quot;
+requirement, unlocking the (rank * 10)% threshold instead of
+(rank * 5)%. Positional states (prone/kneeling/sitting) are
+deliberately excluded.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>stunned</span><span class='words_sep'> </span><span class='tstring_content'>immobilized</span><span class='words_sep'> </span><span class='tstring_content'>webbed</span><span class='words_sep'> </span><span class='tstring_content'>sleeping</span><span class='words_sep'> </span><span class='tstring_content'>bound</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -606,6 +640,94 @@ the body part names used in the bestiary and combat parsing.</p>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#add_stun_estimate-instance_method" title="#add_stun_estimate (instance method)">#<strong>add_stun_estimate</strong>(rounds, at: Time.now)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Records a crit-table stun estimate, in rounds.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#amputate!-instance_method" title="#amputate! (instance method)">#<strong>amputate!</strong>(body_part)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Marks a body part as amputated.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#amputated%3F-instance_method" title="#amputated? (instance method)">#<strong>amputated?</strong>(body_part)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether a body part has been amputated.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#amputated_parts-instance_method" title="#amputated_parts (instance method)">#<strong>amputated_parts</strong>  &#x21d2; Array&lt;String&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Every amputated body part.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#clear_smote-instance_method" title="#clear_smote (instance method)">#<strong>clear_smote</strong>  &#x21d2; Object </a>
     
 
@@ -621,6 +743,50 @@ the body part names used in the bestiary and combat parsing.</p>
 
   
     <span class="summary_desc"><div class='inline'><p>Clear smote status.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clear_stun_estimate-instance_method" title="#clear_stun_estimate (instance method)">#<strong>clear_stun_estimate</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Clears any crit-derived stun estimate (creature shook off the stun).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#coup_eligible%3F-instance_method" title="#coup_eligible? (instance method)">#<strong>coup_eligible?</strong>(rank)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Check if creature currently qualifies for Coup de Grace at the given trained rank: at or below (rank * 10)% of max HP when incapacitated, (rank * 5)% otherwise, hard-capped at 200 HP either way.</p></div></span>
   
 </li>
 
@@ -776,7 +942,7 @@ the body part names used in the bestiary and combat parsing.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a creature instance for runtime tracking.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a tracked creature instance.</p></div></span>
   
 </li>
 
@@ -1048,6 +1214,50 @@ the body part names used in the bestiary and combat parsing.</p>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#stun_rounds-instance_method" title="#stun_rounds (instance method)">#<strong>stun_rounds</strong>  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Estimated stun rounds from the last crit, or nil when the estimate has lapsed or stun is no longer active.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stunned_for-instance_method" title="#stunned_for (instance method)">#<strong>stunned_for</strong>  &#x21d2; Float </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Estimated seconds of stun remaining.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#template-instance_method" title="#template (instance method)">#<strong>template</strong>  &#x21d2; Object </a>
     
 
@@ -1141,10 +1351,11 @@ the body part names used in the bestiary and combat parsing.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a creature instance for runtime tracking.</p>
-<p>Sets up the creature's identity, injury log, HP tracking, and UCS (Unarmed
-Combat System) state. Status tracking is delegated to the shared
-<span class='object_link'><a href="../Common/CreatureBase.html" title="Lich::Common::CreatureBase (module)">Common::CreatureBase</a></span> mixin.</p>
+    <p>Initializes a tracked creature instance.</p>
+<p>Sets up mutable runtime state: injury tracking per body part (initialized to 0),
+damage taken, UCS (Unarmed Combat System) position/tierup/smote tracking, and
+stun estimates from critical hits. Status tracking is delegated to the
+CreatureBase mixin.</p>
 
   </div>
 </div>
@@ -1162,7 +1373,7 @@ Combat System) state. Status tracking is delegated to the shared
       
       
         &mdash;
-        <div class='inline'><p>the creature's unique id in the room</p></div>
+        <div class='inline'><p>the creature's game ID (cast to integer)</p></div>
       
     </li>
   
@@ -1176,7 +1387,7 @@ Combat System) state. Status tracking is delegated to the shared
       
       
         &mdash;
-        <div class='inline'><p>the creature noun (e.g. &quot;orc&quot;, &quot;spider&quot;)</p></div>
+        <div class='inline'><p>the creature's lowercase noun form (e.g. &quot;orc&quot;, &quot;goblin&quot;)</p></div>
       
     </li>
   
@@ -1190,7 +1401,7 @@ Combat System) state. Status tracking is delegated to the shared
       
       
         &mdash;
-        <div class='inline'><p>the display name, may include boon adjectives</p></div>
+        <div class='inline'><p>the creature's display name, possibly with boon adjectives</p></div>
       
     </li>
   
@@ -1203,24 +1414,27 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282</pre>
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 268</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 373</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='ivar'>@id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -1236,6 +1450,9 @@ Combat System) state. Status tracking is delegated to the shared
   <span class='ivar'>@ucs_tierup</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@amputated</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='ivar'>@stun_rounds</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@stun_estimated_until</span> <span class='op'>=</span> <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1273,12 +1490,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_created_at'>created_at</span>
   <span class='ivar'>@created_at</span>
@@ -1314,12 +1531,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_damage_taken'>damage_taken</span>
   <span class='ivar'>@damage_taken</span>
@@ -1355,12 +1572,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit'>fatal_crit</span>
   <span class='ivar'>@fatal_crit</span>
@@ -1396,12 +1613,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_health'>health</span>
   <span class='ivar'>@health</span>
@@ -1437,12 +1654,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_id'>id</span>
   <span class='ivar'>@id</span>
@@ -1478,12 +1695,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injuries'>injuries</span>
   <span class='ivar'>@injuries</span>
@@ -1519,12 +1736,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -1560,12 +1777,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_noun'>noun</span>
   <span class='ivar'>@noun</span>
@@ -1601,12 +1818,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status'>status</span>
   <span class='ivar'>@status</span>
@@ -1642,12 +1859,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status_timestamps'>status_timestamps</span>
   <span class='ivar'>@status_timestamps</span>
@@ -1683,13 +1900,13 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-365
-366
-367
-368</pre>
+473
+474
+475
+476</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 365</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 473</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_position'>ucs_position</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -1726,12 +1943,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_smote'>ucs_smote</span>
   <span class='ivar'>@ucs_smote</span>
@@ -1767,13 +1984,13 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-371
-372
-373
-374</pre>
+479
+480
+481
+482</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 371</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 479</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_tierup'>ucs_tierup</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -1810,12 +2027,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-243
-244
-245</pre>
+341
+342
+343</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_updated'>ucs_updated</span>
   <span class='ivar'>@ucs_updated</span>
@@ -1856,12 +2073,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-405
-406
-407</pre>
+602
+603
+604</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 405</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 602</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_damage'>add_damage</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>+=</span> <span class='id identifier rubyid_amount'>amount</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -1895,21 +2112,307 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-377
-378
-379
-380
-381
-382</pre>
+571
+572
+573
+574
+575
+576
+577
+578
+579</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 377</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 571</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_injury'>add_injury</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='comma'>,</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#BODY_PARTS-constant" title="Lich::Gemstone::CreatureInstance::BODY_PARTS (constant)">BODY_PARTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Invalid body part: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_body_part'>body_part</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>end</span>
+  <span class='comment'># An amputated limb cannot accrue further wound rank - it is gone.
+</span>  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_amputated?'>amputated?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='rparen'>)</span>
+
   <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='id identifier rubyid_amount'>amount</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="add_stun_estimate-instance_method">
+  
+    #<strong>add_stun_estimate</strong>(rounds, at: Time.now)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Records a crit-table stun estimate, in rounds.</p>
+<p>This is deliberately <em>not</em> stored as a timed entry in @status. The
+authoritative stun boolean is owned by <crtrStatus> and the combat
+message parser (see STATUS_DURATIONS, where 'stunned' is nil on
+purpose); expiring it on a table-derived timer would clear stun while
+a resisted-or-stacked creature is still stunned, and report
+<code>muckled?</code> false when acting is still unsafe. So the estimate lives
+alongside the boolean and is advisory only.</p>
+<p>Stun does not cleanly stack, so a new estimate extends but never
+shortens an existing one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>rounds</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>stun rounds from the critical table.</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>at</span>
+      
+      
+        <span class='type'>(<tt>Time</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Time.now</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>when the game applied the crit (prompt time, not
+parse time - the async parser can lag the server).</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 501</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_add_stun_estimate'>add_stun_estimate</span><span class='lparen'>(</span><span class='id identifier rubyid_rounds'>rounds</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>=</span> <span class='id identifier rubyid_rounds'>rounds</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
+
+  <span class='id identifier rubyid_expires_at'>expires_at</span> <span class='op'>=</span> <span class='id identifier rubyid_at'>at</span> <span class='op'>+</span> <span class='lparen'>(</span><span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>*</span> <span class='const'><span class='object_link'><a href="#STUN_ROUND_SECONDS-constant" title="Lich::Gemstone::CreatureInstance::STUN_ROUND_SECONDS (constant)">STUN_ROUND_SECONDS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@stun_estimated_until</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@stun_estimated_until</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_expires_at'>expires_at</span>
+
+  <span class='ivar'>@stun_rounds</span> <span class='op'>=</span> <span class='id identifier rubyid_rounds'>rounds</span>
+  <span class='ivar'>@stun_estimated_until</span> <span class='op'>=</span> <span class='id identifier rubyid_expires_at'>expires_at</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>+stun estimate: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_rounds'>rounds</span><span class='embexpr_end'>}</span><span class='tstring_content'> round</span><span class='embexpr_beg'>#{</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>s</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>==</span> <span class='int'>1</span><span class='embexpr_end'>}</span><span class='tstring_content'> (~</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>*</span> <span class='const'><span class='object_link'><a href="#STUN_ROUND_SECONDS-constant" title="Lich::Gemstone::CreatureInstance::STUN_ROUND_SECONDS (constant)">STUN_ROUND_SECONDS</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>s)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="amputate!-instance_method">
+  
+    #<strong>amputate!</strong>(body_part)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Marks a body part as amputated.</p>
+<p>Distinct from @injuries, which accumulates rank: an amputated limb is
+gone rather than wounded, cannot be wounded further, and stays gone.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>body_part</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one of BODY_PARTS.</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+550
+551
+552
+553
+554
+555
+556
+557
+558</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 550</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_amputate!'>amputate!</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='rparen'>)</span>
+  <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#BODY_PARTS-constant" title="Lich::Gemstone::CreatureInstance::BODY_PARTS (constant)">BODY_PARTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Invalid body part: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_body_part'>body_part</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@amputated</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+
+  <span class='ivar'>@amputated</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>+amputated: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_body_part'>body_part</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="amputated?-instance_method">
+  
+    #<strong>amputated?</strong>(body_part)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns whether a body part has been amputated.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>whether a body part has been amputated.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+561
+562
+563</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 561</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_amputated?'>amputated?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='rparen'>)</span>
+  <span class='ivar'>@amputated</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="amputated_parts-instance_method">
+  
+    #<strong>amputated_parts</strong>  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns every amputated body part.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>every amputated body part.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+566
+567
+568</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 566</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_amputated_parts'>amputated_parts</span>
+  <span class='ivar'>@amputated</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1940,19 +2443,123 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-352
-353
-354
-355
-356</pre>
+460
+461
+462
+463
+464</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 352</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 460</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_smote'>clear_smote</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@ucs_updated</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
   <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>UCS: smote cleared</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clear_stun_estimate-instance_method">
+  
+    #<strong>clear_stun_estimate</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Clears any crit-derived stun estimate (creature shook off the stun).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+538
+539
+540
+541</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 538</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_clear_stun_estimate'>clear_stun_estimate</span>
+  <span class='ivar'>@stun_rounds</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@stun_estimated_until</span> <span class='op'>=</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="coup_eligible?-instance_method">
+  
+    #<strong>coup_eligible?</strong>(rank)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Check if creature currently qualifies for Coup de Grace at the given
+trained rank: at or below (rank * 10)% of max HP when incapacitated,
+(rank * 5)% otherwise, hard-capped at 200 HP either way. The cap is
+what binds on large creatures, so this compares raw HP, not percent.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+655
+656
+657
+658
+659
+660
+661</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 655</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_coup_eligible?'>coup_eligible?</span><span class='lparen'>(</span><span class='id identifier rubyid_rank'>rank</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_rank'>rank</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_incap'>incap</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#COUP_INCAP_STATUSES-constant" title="Lich::Gemstone::CreatureInstance::COUP_INCAP_STATUSES (constant)">COUP_INCAP_STATUSES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_s'><span class='object_link'><a href="../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='id identifier rubyid_s'><span class='object_link'><a href="../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='lparen'>(</span><span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>*</span> <span class='id identifier rubyid_rank'>rank</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>*</span> <span class='lparen'>(</span><span class='id identifier rubyid_incap'>incap</span> <span class='op'>?</span> <span class='int'>10</span> <span class='op'>:</span> <span class='int'>5</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='op'>/</span> <span class='float'>100.0</span><span class='comma'>,</span> <span class='int'>200</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_min'>min</span>
+  <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>&lt;=</span> <span class='id identifier rubyid_threshold'>threshold</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1983,13 +2590,13 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-431
-432
-433
-434</pre>
+628
+629
+630
+631</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 431</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 628</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_hp'>current_hp</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
@@ -2037,12 +2644,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-449
-450
-451</pre>
+664
+665
+666</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 449</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 664</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dead?'>dead?</span>
   <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>==</span> <span class='int'>0</span>
@@ -2076,28 +2683,31 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
-498
-499
-500
-501
-502
-503
-504
-505</pre>
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 487</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 702</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_essential_data'>essential_data</span>
   <span class='lbrace'>{</span>
@@ -2115,7 +2725,10 @@ Combat System) state. Status tracking is delegated to the shared
     <span class='label'>created_at:</span> <span class='ivar'>@created_at</span><span class='comma'>,</span>
     <span class='label'>ucs_position:</span> <span class='id identifier rubyid_ucs_position'>ucs_position</span><span class='comma'>,</span>
     <span class='label'>ucs_tierup:</span> <span class='id identifier rubyid_ucs_tierup'>ucs_tierup</span><span class='comma'>,</span>
-    <span class='label'>ucs_smote:</span> <span class='id identifier rubyid_smote?'>smote?</span>
+    <span class='label'>ucs_smote:</span> <span class='id identifier rubyid_smote?'>smote?</span><span class='comma'>,</span>
+    <span class='label'>amputated:</span> <span class='id identifier rubyid_amputated_parts'>amputated_parts</span><span class='comma'>,</span>
+    <span class='label'>stun_rounds:</span> <span class='id identifier rubyid_stun_rounds'>stun_rounds</span><span class='comma'>,</span>
+    <span class='label'>stunned_for:</span> <span class='id identifier rubyid_stunned_for'>stunned_for</span>
   <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -2160,12 +2773,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-395
-396
-397</pre>
+592
+593
+594</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 395</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 592</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit?'>fatal_crit?</span>
   <span class='ivar'>@fatal_crit</span>
@@ -2212,12 +2825,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-295
-296
-297</pre>
+403
+404
+405</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 295</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 403</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_template?'>has_template?</span>
   <span class='op'>!</span><span class='id identifier rubyid_template'>template</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2251,13 +2864,13 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-437
-438
-439
-440</pre>
+634
+635
+636
+637</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 437</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 634</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&gt;</span> <span class='int'>0</span>
@@ -2305,12 +2918,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-385
-386
-387</pre>
+582
+583
+584</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 385</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 582</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured?'>injured?</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='comma'>,</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span>
@@ -2344,12 +2957,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-400
-401
-402</pre>
+597
+598
+599</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 400</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 597</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured_locations'>injured_locations</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span> <span class='id identifier rubyid_value'>value</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
@@ -2396,13 +3009,13 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-443
-444
-445
-446</pre>
+640
+641
+642
+643</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 443</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 640</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_low_hp?'>low_hp?</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>25</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
@@ -2437,12 +3050,12 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-390
-391
-392</pre>
+587
+588
+589</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 390</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 587</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mark_fatal_crit!'>mark_fatal_crit!</span>
   <span class='ivar'>@fatal_crit</span> <span class='op'>=</span> <span class='kw'>true</span>
@@ -2476,28 +3089,28 @@ Combat System) state. Status tracking is delegated to the shared
       <pre class="lines">
 
 
-410
-411
-412
-413
-414
-415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
-427
-428</pre>
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 410</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 607</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
   <span class='comment'># Try template first
@@ -2566,13 +3179,13 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-476
-477
-478
-479</pre>
+691
+692
+693
+694</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 476</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 691</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_muckled?'><span class='object_link'><a href="../../top-level-namespace.html#muckled%3F-instance_method" title="#muckled? (method)">muckled?</a></span></span>
   <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>webbed</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span> <span class='op'>||</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
@@ -2607,17 +3220,17 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-302
-303
-304
-305
-306
-307
-308
-309</pre>
+410
+411
+412
+413
+414
+415
+416
+417</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 302</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 410</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_pos'>pos</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_pos'>pos</span>
@@ -2656,12 +3269,12 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-482
-483
-484</pre>
+697
+698
+699</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 482</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 697</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset_damage'>reset_damage</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -2695,20 +3308,20 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321
-322</pre>
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 312</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 420</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_position'>set_ucs_position</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_new_tier'>new_tier</span> <span class='op'>=</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
@@ -2750,14 +3363,14 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-325
-326
-327
-328
-329</pre>
+433
+434
+435
+436
+437</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 325</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 433</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_tierup'>set_ucs_tierup</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_type'>attack_type</span><span class='rparen'>)</span>
   <span class='ivar'>@ucs_tierup</span> <span class='op'>=</span> <span class='id identifier rubyid_attack_type'>attack_type</span>
@@ -2793,14 +3406,14 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-332
-333
-334
-335
-336</pre>
+440
+441
+442
+443
+444</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 332</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 440</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smite!'>smite!</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
@@ -2849,20 +3462,20 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-339
-340
-341
-342
-343
-344
-345
-346
-347
-348
-349</pre>
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 339</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 447</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smote?'>smote?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_smote</span>
@@ -2874,6 +3487,119 @@ acting, not ones that merely penalize or reposition.</p>
   <span class='kw'>end</span>
 
   <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stun_rounds-instance_method">
+  
+    #<strong>stun_rounds</strong>  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Estimated stun rounds from the last crit, or nil when the estimate has
+lapsed or stun is no longer active.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+517
+518
+519
+520</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 517</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stun_rounds'>stun_rounds</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_stun_estimate_active?'>stun_estimate_active?</span>
+  <span class='ivar'>@stun_rounds</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stunned_for-instance_method">
+  
+    #<strong>stunned_for</strong>  &#x21d2; <tt>Float</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Estimated seconds of stun remaining.</p>
+<p>Advisory: derived from the critical table, not observed. Returns 0.0
+when no estimate is active. Callers deciding whether it is safe to act
+should gate on <code>muckled?</code>/<code>has_status?('stunned')</code> and use this only to
+size the window.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Float</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+530
+531
+532
+533</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 530</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stunned_for'>stunned_for</span>
+  <span class='kw'>return</span> <span class='float'>0.0</span> <span class='kw'>unless</span> <span class='id identifier rubyid_stun_estimate_active?'>stun_estimate_active?</span>
+  <span class='lbracket'>[</span><span class='ivar'>@stun_estimated_until</span> <span class='op'>-</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='comma'>,</span> <span class='float'>0.0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_max'>max</span><span class='period'>.</span><span class='id identifier rubyid_round'>round</span><span class='lparen'>(</span><span class='int'>1</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2906,15 +3632,15 @@ every call the way <code>||=</code> would.</p>
       <pre class="lines">
 
 
-287
-288
-289
-290
-291
-292</pre>
+395
+396
+397
+398
+399
+400</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 287</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 395</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_template'>template</span>
   <span class='kw'>return</span> <span class='ivar'>@template</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='ivar'>@template_looked_up</span><span class='rparen'>)</span>
@@ -2964,13 +3690,13 @@ every call the way <code>||=</code> would.</p>
       <pre class="lines">
 
 
-359
-360
-361
-362</pre>
+467
+468
+469
+470</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 359</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 467</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_updated</span>
@@ -3021,17 +3747,17 @@ regex-matching a status string.</p>
       <pre class="lines">
 
 
-460
-461
-462
-463
-464
-465
-466
-467</pre>
+675
+676
+677
+678
+679
+680
+681
+682</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 460</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 675</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_valid_target?'>valid_target?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span>
@@ -3051,7 +3777,7 @@ regex-matching a status string.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:08 2026 by
+  Generated on Thu Sep 10 03:55:36 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

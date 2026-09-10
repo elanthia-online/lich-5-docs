@@ -135,6 +135,44 @@ When sent via the L command, the game server starts the character creation flow.
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0</span><span class='tstring_end'>&quot;</span></span></pre></dd>
       
+        <dt id="CONNECT_TIMEOUT-constant" class="">CONNECT_TIMEOUT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Bounds the TCP connect to eaccess.play.net:7910 so a silently-dropped
+SYN (firewalled/blocked, no RST) fails in seconds instead of hanging
+on the OS connect timeout (commonly ~75s on Linux, driven by
+tcp_syn_retries) -- observed live when the port is unreachable but
+not actively refused. This only bounds the TCP handshake itself; it
+is not a substitute for auth_with_timeout's overall watchdog, which
+also covers the TLS handshake and the K/A/M/F/G/P/C/L exchange.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>5</span></pre></dd>
+      
+        <dt id="KNOWN_REJECTION_TOKENS-constant" class="">KNOWN_REJECTION_TOKENS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Simutronics-recognized rejection tokens the <code>A</code> command can return.
+Distinguishes a normal, expected credential rejection from an
+unrecognized/empty/malformed response, which points at a different
+class of problem (relay or backend divergence) -- see
+docs/eaccess-failure-diagnostics.md.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>REJECT</span><span class='words_sep'> </span><span class='tstring_content'>NORECORD</span><span class='words_sep'> </span><span class='tstring_content'>INVALID</span><span class='words_sep'> </span><span class='tstring_content'>PASSWORD</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
     </dl>
   
 
@@ -192,6 +230,28 @@ When sent via the L command, the game server starts the character creation flow.
 
   
     <span class="summary_desc"><div class='inline'><p>Bounds how long the full SGE authentication exchange may block.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#classify_a_response_failure-class_method" title="classify_a_response_failure (class method)">.<strong>classify_a_response_failure</strong>(error)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>A probable-cause hint distinguishing a normal credential rejection from an unrecognized response.</p></div></span>
   
 </li>
 
@@ -324,6 +384,28 @@ When sent via the L command, the game server starts the character creation flow.
 
   
     <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stage-class_method" title="stage (class method)">.<strong>stage</strong>(name, probable_cause:) { ... } &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Wraps a step of the connect/handshake/protocol exchange so a failure is logged with which stage it happened in, how long that stage ran before failing, and a probable-cause hint -- see docs/eaccess-failure-diagnostics.md for the full taxonomy.</p></div></span>
   
 </li>
 
@@ -515,107 +597,6 @@ an existing character.</p>
       <pre class="lines">
 
 
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180
-181
-182
-183
-184
-185
-186
-187
-188
-189
-190
-191
-192
-193
-194
-195
-196
-197
-198
-199
-200
 201
 202
 203
@@ -634,10 +615,135 @@ an existing character.</p>
 216
 217
 218
-219</pre>
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 100</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 201</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_auth'>auth</span><span class='lparen'>(</span><span class='label'>password:</span><span class='comma'>,</span> <span class='label'>account:</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='comment'># Set Account module state
@@ -652,75 +758,99 @@ an existing character.</p>
     <span class='comment'># it is vitally important to verify self-signed certs
 </span>    <span class='comment'># because there is no chain-of-trust for them
 </span>    <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_verify_pem'><span class='object_link'><a href="#verify_pem-class_method" title="Lich::Common::Authentication::EAccess.verify_pem (method)">verify_pem</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>K\n</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_hashkey'>hashkey</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+
+    <span class='id identifier rubyid_hashkey'>hashkey</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>k_response</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>a relay or the EAccess target behind 7910 (possible)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>K\n</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+      <span class='comment'># A malformed/empty K response would otherwise silently produce
+</span>      <span class='comment'># garbage password bytes below, surfacing two steps later as an
+</span>      <span class='comment'># unrelated-looking a_response failure instead of being
+</span>      <span class='comment'># attributed to this stage.
+</span>      <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>MALFORMED_K_RESPONSE</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+      <span class='id identifier rubyid_key'>key</span>
+    <span class='kw'>end</span>
     <span class='comment'># pp &quot;hash=%s&quot; % hashkey
 </span>    <span class='id identifier rubyid_password'>password</span> <span class='op'>=</span> <span class='id identifier rubyid_password'>password</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c'>c</span><span class='op'>|</span> <span class='id identifier rubyid_c'>c</span><span class='period'>.</span><span class='id identifier rubyid_getbyte'>getbyte</span><span class='lparen'>(</span><span class='int'>0</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
     <span class='id identifier rubyid_hashkey'>hashkey</span> <span class='op'>=</span> <span class='id identifier rubyid_hashkey'>hashkey</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c'>c</span><span class='op'>|</span> <span class='id identifier rubyid_c'>c</span><span class='period'>.</span><span class='id identifier rubyid_getbyte'>getbyte</span><span class='lparen'>(</span><span class='int'>0</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
     <span class='id identifier rubyid_password'>password</span><span class='period'>.</span><span class='id identifier rubyid_each_index'>each_index</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_i'>i</span><span class='op'>|</span> <span class='id identifier rubyid_password'>password</span><span class='lbracket'>[</span><span class='id identifier rubyid_i'>i</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_password'>password</span><span class='lbracket'>[</span><span class='id identifier rubyid_i'>i</span><span class='rbracket'>]</span> <span class='op'>-</span> <span class='int'>32</span><span class='rparen'>)</span> <span class='op'>^</span> <span class='id identifier rubyid_hashkey'>hashkey</span><span class='lbracket'>[</span><span class='id identifier rubyid_i'>i</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>+</span> <span class='int'>32</span> <span class='rbrace'>}</span>
     <span class='id identifier rubyid_password'>password</span> <span class='op'>=</span> <span class='id identifier rubyid_password'>password</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c'>c</span><span class='op'>|</span> <span class='id identifier rubyid_c'>c</span><span class='period'>.</span><span class='id identifier rubyid_chr'>chr</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span>
-    <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>A\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account'>account</span><span class='embexpr_end'>}</span><span class='tstring_content'>\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_password'>password</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-    <span class='kw'>unless</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>KEY\t(?&lt;key&gt;.*)\t</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_error_code'>error_code</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\s+</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span>
-      <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_error_code'>error_code</span>
+
+    <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>a_response</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tlambda'>-&gt;</span><span class='lparen'>(</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='rparen'>)</span> <span class='tlambeg'>{</span> <span class='id identifier rubyid_classify_a_response_failure'>classify_a_response_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>A\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account'>account</span><span class='embexpr_end'>}</span><span class='tstring_content'>\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_password'>password</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+      <span class='kw'>unless</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>KEY\t(?&lt;key&gt;.*)\t</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_error_code'>error_code</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\s+</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_error_code'>error_code</span>
+      <span class='kw'>end</span>
     <span class='kw'>end</span>
     <span class='comment'># pp &quot;A:response=%s&quot; % response
-</span>    <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>M\n</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span> <span class='kw'>unless</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^M\t</span><span class='regexp_end'>/</span></span>
+</span>    <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>m_response</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>session accepted but the immediate follow-up command failed -- possible session-affinity issue on a load-balanced backend</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>M\n</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_m_response'>m_response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_m_response'>m_response</span> <span class='kw'>unless</span> <span class='id identifier rubyid_m_response'>m_response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^M\t</span><span class='regexp_end'>/</span></span>
+
+      <span class='id identifier rubyid_m_response'>m_response</span>
+    <span class='kw'>end</span>
     <span class='comment'># pp &quot;M:response=%s&quot; % response
 </span>
     <span class='kw'>unless</span> <span class='id identifier rubyid_legacy'>legacy</span>
-      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>F\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
-      <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-      <span class='comment'># F reports the account&#39;s tier for this instance. NEW_TO_GAME is the
-</span>      <span class='comment'># normal response for any instance the account is not subscribed to --
-</span>      <span class='comment'># not an error. The generator path tolerates it because character
-</span>      <span class='comment'># creation is exactly the flow that targets instances the account does
-</span>      <span class='comment'># not already hold; whether creation is permitted is decided later by
-</span>      <span class='comment'># the L response, not here.
-</span>      <span class='kw'>unless</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>NORMAL|PREMIUM|TRIAL|INTERNAL|FREE</span><span class='regexp_end'>/</span></span> <span class='op'>||</span> <span class='lparen'>(</span><span class='id identifier rubyid_generator'>generator</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>NEW_TO_GAME</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
-        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span>
+      <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>entitlement_response</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>a backend/DB dependency specific to entitlements, not the auth path itself</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+        <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>F\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+        <span class='comment'># F reports the account&#39;s tier for this instance. NEW_TO_GAME is the
+</span>        <span class='comment'># normal response for any instance the account is not subscribed to --
+</span>        <span class='comment'># not an error. The generator path tolerates it because character
+</span>        <span class='comment'># creation is exactly the flow that targets instances the account does
+</span>        <span class='comment'># not already hold; whether creation is permitted is decided later by
+</span>        <span class='comment'># the L response, not here.
+</span>        <span class='kw'>unless</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>NORMAL|PREMIUM|TRIAL|INTERNAL|FREE</span><span class='regexp_end'>/</span></span> <span class='op'>||</span> <span class='lparen'>(</span><span class='id identifier rubyid_generator'>generator</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>NEW_TO_GAME</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+          <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span>
+        <span class='kw'>end</span>
+        <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='rparen'>)</span>
+          <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_subscription'><span class='object_link'><a href="../Account.html#subscription-class_method" title="Lich::Common::Account.subscription (method)">subscription</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span>
+        <span class='kw'>end</span>
+        <span class='comment'># pp &quot;F:response=%s&quot; % response
+</span>        <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>G\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
+        <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+        <span class='comment'># pp &quot;G:response=%s&quot; % response
+</span>        <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>P\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
+        <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+        <span class='comment'># pp &quot;P:response=%s&quot; % response
+</span>        <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>C\n</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+        <span class='comment'># pp &quot;C:response=%s&quot; % response
+</span>        <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='rparen'>)</span>
+          <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_members'><span class='object_link'><a href="../Account.html#members-class_method" title="Lich::Common::Account.members (method)">members</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span>
+        <span class='kw'>end</span>
       <span class='kw'>end</span>
-      <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='rparen'>)</span>
-        <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_subscription'><span class='object_link'><a href="../Account.html#subscription-class_method" title="Lich::Common::Account.subscription (method)">subscription</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span>
-      <span class='kw'>end</span>
-      <span class='comment'># pp &quot;F:response=%s&quot; % response
-</span>      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>G\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
-      <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-      <span class='comment'># pp &quot;G:response=%s&quot; % response
-</span>      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>P\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span>
-      <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-      <span class='comment'># pp &quot;P:response=%s&quot; % response
-</span>      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>C\n</span><span class='tstring_end'>&quot;</span></span>
-      <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-      <span class='comment'># pp &quot;C:response=%s&quot; % response
-</span>      <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='rparen'>)</span>
-        <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_members'><span class='object_link'><a href="../Account.html#members-class_method" title="Lich::Common::Account.members (method)">members</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span>
-      <span class='kw'>end</span>
+
       <span class='id identifier rubyid_char_code'>char_code</span> <span class='op'>=</span> <span class='id identifier rubyid_generator'>generator</span> <span class='op'>?</span> <span class='const'><span class='object_link'><a href="#NEW_CHARACTER_CODE-constant" title="Lich::Common::Authentication::EAccess::NEW_CHARACTER_CODE (constant)">NEW_CHARACTER_CODE</a></span></span> <span class='op'>:</span> <span class='id identifier rubyid_resolve_char_code'>resolve_char_code</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='comma'>,</span> <span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>L\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_char_code'>char_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\tSTORM\n</span><span class='tstring_end'>&quot;</span></span>
-      <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
-      <span class='comment'># Both success and failure are prefixed with &quot;L\t&quot; (e.g. the server
-</span>      <span class='comment'># returns &quot;L\tPROBLEM\t1&quot; when the account is not entitled to create on
-</span>      <span class='comment'># this instance), so require the explicit OK before parsing the launch
-</span>      <span class='comment'># payload -- otherwise a PROBLEM line is parsed into a garbage hash.
-</span>      <span class='kw'>unless</span> <span class='id identifier rubyid_response'>response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^L\tOK\t</span><span class='regexp_end'>/</span></span>
-        <span class='comment'># On the generator path a PROBLEM here means the account has no
-</span>        <span class='comment'># entitlement to create a character on this instance (e.g. an
-</span>        <span class='comment'># unsubscribed Fallen/Shattered). Fail fast with a clear code rather
-</span>        <span class='comment'># than crash or launch broken data.
-</span>        <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GENERATOR_NOT_AVAILABLE</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_generator'>generator</span>
-        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_response'>response</span>
-      <span class='kw'>end</span>
-      <span class='comment'># pp &quot;L:response=%s&quot; % response
-</span>      <span class='id identifier rubyid_login_info'>login_info</span> <span class='op'>=</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^L\tOK\t</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+
+      <span class='id identifier rubyid_login_info'>login_info</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>l_response</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>protocol/backend divergence at the final step</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+        <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>L\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_char_code'>char_code</span><span class='embexpr_end'>}</span><span class='tstring_content'>\tSTORM\n</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_l_response'>l_response</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_read'><span class='object_link'><a href="#read-class_method" title="Lich::Common::Authentication::EAccess.read (method)">read</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
+        <span class='comment'># Both success and failure are prefixed with &quot;L\t&quot; (e.g. the server
+</span>        <span class='comment'># returns &quot;L\tPROBLEM\t1&quot; when the account is not entitled to create on
+</span>        <span class='comment'># this instance), so require the explicit OK before parsing the launch
+</span>        <span class='comment'># payload -- otherwise a PROBLEM line is parsed into a garbage hash.
+</span>        <span class='kw'>unless</span> <span class='id identifier rubyid_l_response'>l_response</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^L\tOK\t</span><span class='regexp_end'>/</span></span>
+          <span class='comment'># On the generator path a PROBLEM here means the account has no
+</span>          <span class='comment'># entitlement to create a character on this instance (e.g. an
+</span>          <span class='comment'># unsubscribed Fallen/Shattered). Fail fast with a clear code rather
+</span>          <span class='comment'># than crash or launch broken data.
+</span>          <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GENERATOR_NOT_AVAILABLE</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_generator'>generator</span>
+          <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='id identifier rubyid_l_response'>l_response</span>
+        <span class='kw'>end</span>
+        <span class='comment'># pp &quot;L:response=%s&quot; % l_response
+</span>        <span class='id identifier rubyid_parsed'>parsed</span> <span class='op'>=</span> <span class='id identifier rubyid_l_response'>l_response</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^L\tOK\t</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
                            <span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\t</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
                            <span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_kv'>kv</span><span class='op'>|</span>
                              <span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid_v'>v</span> <span class='op'>=</span> <span class='id identifier rubyid_kv'>kv</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
                              <span class='lbracket'>[</span><span class='id identifier rubyid_k'>k</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='comma'>,</span> <span class='id identifier rubyid_v'>v</span><span class='rbracket'>]</span>
                            <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span>
+        <span class='const'><span class='object_link'><a href="LaunchResult.html" title="Lich::Common::Authentication::LaunchResult (module)">LaunchResult</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize'><span class='object_link'><a href="LaunchResult.html#normalize-class_method" title="Lich::Common::Authentication::LaunchResult.normalize (method)">normalize</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_parsed'>parsed</span><span class='rparen'>)</span>
+      <span class='kw'>end</span>
     <span class='kw'>else</span>
       <span class='id identifier rubyid_login_info'>login_info</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
       <span class='kw'>for</span> <span class='id identifier rubyid_game'>game</span> <span class='kw'>in</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^M\t</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[^\t]+\t[^\t\n]+</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -879,22 +1009,30 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270</pre>
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 258</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 383</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'>auth_with_timeout</span><span class='lparen'>(</span><span class='label'>timeout:</span> <span class='int'>30</span><span class='comma'>,</span> <span class='op'>**</span><span class='id identifier rubyid_kwargs'>kwargs</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_auth_thread'>auth_thread</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='lbrace'>{</span>
@@ -904,10 +1042,107 @@ and no log output. This wraps the whole exchange the same way
     <span class='id identifier rubyid_auth'>auth</span><span class='lparen'>(</span><span class='op'>**</span><span class='id identifier rubyid_kwargs'>kwargs</span><span class='rparen'>)</span>
   <span class='rbrace'>}</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_timeout'>timeout</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='comment'># The stage marker set by `stage` lives on the thread object
+</span>    <span class='comment'># itself, readable from here even after kill -- the one case
+</span>    <span class='comment'># where the exchange hangs with no exception at all (a stalled
+</span>    <span class='comment'># connect or a read that never returns) otherwise leaves zero
+</span>    <span class='comment'># indication of which step it was stuck in. See
+</span>    <span class='comment'># docs/eaccess-failure-diagnostics.md.
+</span>    <span class='id identifier rubyid_stalled_stage'>stalled_stage</span> <span class='op'>=</span> <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='lbracket'>[</span><span class='symbol'>:eaccess_stage</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>connect (pre-stage)</span><span class='tstring_end'>&quot;</span></span>
     <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_kill'>kill</span> <span class='kw'>rescue</span> <span class='kw'>nil</span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: EAccess timed out after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_timeout'>timeout</span><span class='embexpr_end'>}</span><span class='tstring_content'>s while in stage &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_stalled_stage'>stalled_stage</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;</span><span class='tstring_end'>&quot;</span></span>
     <span class='id identifier rubyid_raise'>raise</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: timed out authenticating with EAccess after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_timeout'>timeout</span><span class='embexpr_end'>}</span><span class='tstring_content'>s</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>end</span>
   <span class='id identifier rubyid_auth_thread'>auth_thread</span><span class='period'>.</span><span class='id identifier rubyid_value'>value</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="classify_a_response_failure-class_method">
+  
+    .<strong>classify_a_response_failure</strong>(error)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns a probable-cause hint distinguishing a normal credential
+rejection from an unrecognized response.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>error</span>
+      
+      
+        <span class='type'>(<tt>StandardError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the error raised by the a_response stage</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a probable-cause hint distinguishing a normal credential
+rejection from an unrecognized response</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+60
+61
+62
+63
+64
+65
+66
+67</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 60</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_classify_a_response_failure'>classify_a_response_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_error'>error</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_code'>code</span> <span class='op'>=</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:error_code</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_error_code'>error_code</span> <span class='op'>:</span> <span class='kw'>nil</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_code'>code</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="#KNOWN_REJECTION_TOKENS-constant" title="Lich::Common::Authentication::EAccess::KNOWN_REJECTION_TOKENS (constant)">KNOWN_REJECTION_TOKENS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_token'>token</span><span class='op'>|</span> <span class='id identifier rubyid_code'>code</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>recognized credential rejection (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_code'>code</span><span class='embexpr_end'>}</span><span class='tstring_content'>) -- normal, not a backend issue</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>else</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unrecognized/malformed response -- possible application/backend divergence</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -942,31 +1177,53 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57</pre>
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 46</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 111</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_download_pem'>download_pem</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>eaccess.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span> <span class='op'>=</span> <span class='int'>7910</span><span class='rparen'>)</span>
   <span class='comment'># Create an OpenSSL context
 </span>  <span class='id identifier rubyid_ctx'>ctx</span> <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>SSLContext</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
-  <span class='comment'># Get remote TCP socket
-</span>  <span class='id identifier rubyid_sock'>sock</span> <span class='op'>=</span> <span class='const'>TCPSocket</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span>
+  <span class='comment'># Get remote TCP socket, bounded so an unreachable port fails fast
+</span>  <span class='comment'># instead of hanging on the OS connect timeout -- see CONNECT_TIMEOUT.
+</span>  <span class='id identifier rubyid_sock'>sock</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tcp_connect:pem_bootstrap</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>firewall/routing/load-balancer silently dropping packets (probable), or the host actively refusing (distinct cause)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='const'>Socket</span><span class='period'>.</span><span class='id identifier rubyid_tcp'>tcp</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='label'>connect_timeout:</span> <span class='const'><span class='object_link'><a href="#CONNECT_TIMEOUT-constant" title="Lich::Common::Authentication::EAccess::CONNECT_TIMEOUT (constant)">CONNECT_TIMEOUT</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
   <span class='comment'># pass that socket to OpenSSL
 </span>  <span class='id identifier rubyid_ssl'>ssl</span> <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>SSLSocket</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_sock'>sock</span><span class='comma'>,</span> <span class='id identifier rubyid_ctx'>ctx</span><span class='rparen'>)</span>
   <span class='comment'># establish connection, if possible
-</span>  <span class='id identifier rubyid_ssl'>ssl</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span>
+</span>  <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tls_handshake:pem_bootstrap</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>TLS termination misconfiguration (not probable on its own)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_ssl'>ssl</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span>
+  <span class='kw'>rescue</span> <span class='const'>StandardError</span>
+    <span class='comment'># sync_close only closes the underlying TCP socket when the
+</span>    <span class='comment'># SSLSocket itself is explicitly closed -- a failed connect never
+</span>    <span class='comment'># reaches that point, and would otherwise leak this descriptor.
+</span>    <span class='id identifier rubyid_sock'>sock</span><span class='period'>.</span><span class='id identifier rubyid_close'>close</span> <span class='kw'>rescue</span> <span class='kw'>nil</span>
+    <span class='id identifier rubyid_raise'>raise</span>
+  <span class='kw'>end</span>
   <span class='comment'># write the .pem to disk
 </span>  <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_write'>write</span><span class='lparen'>(</span><span class='id identifier rubyid_pem'>pem</span><span class='comma'>,</span> <span class='id identifier rubyid_ssl'>ssl</span><span class='period'>.</span><span class='id identifier rubyid_peer_cert'>peer_cert</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
@@ -1003,12 +1260,12 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-36
-37
-38</pre>
+101
+102
+103</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 36</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 101</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pem'>pem</span>
   <span class='ivar'>@pem</span> <span class='op'>||=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>DATA_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>simu.pem</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -1059,12 +1316,12 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-41
-42
-43</pre>
+106
+107
+108</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 41</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 106</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pem_exist?'>pem_exist?</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span> <span class='id identifier rubyid_pem'>pem</span>
@@ -1102,12 +1359,12 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-239
-240
-241</pre>
+364
+365
+366</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 239</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 364</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_read'>read</span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_sysread'>sysread</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#PACKET_SIZE-constant" title="Lich::Common::Authentication::EAccess::PACKET_SIZE (constant)">PACKET_SIZE</a></span></span><span class='rparen'>)</span>
@@ -1209,18 +1466,18 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-228
-229
-230
-231
-232
-233
-234
-235
-236</pre>
+353
+354
+355
+356
+357
+358
+359
+360
+361</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 228</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 353</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_char_code'>resolve_char_code</span><span class='lparen'>(</span><span class='id identifier rubyid_c_response'>c_response</span><span class='comma'>,</span> <span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_char_entry'>char_entry</span> <span class='op'>=</span> <span class='id identifier rubyid_c_response'>c_response</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^C\t[0-9]+\t[0-9]+\t[0-9]+\t[0-9]+[\t\n]</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -1264,26 +1521,46 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84</pre>
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 72</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 156</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_socket'>socket</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>eaccess.play.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span> <span class='op'>=</span> <span class='int'>7910</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_download_pem'>download_pem</span> <span class='kw'>unless</span> <span class='id identifier rubyid_pem_exist?'>pem_exist?</span>
-  <span class='id identifier rubyid_socket'>socket</span> <span class='op'>=</span> <span class='const'>TCPSocket</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span>
+  <span class='comment'># Bounded connect -- see CONNECT_TIMEOUT.
+</span>  <span class='id identifier rubyid_socket'>socket</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tcp_connect:main</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>firewall/routing/load-balancer silently dropping packets (probable), or the host actively refusing (distinct cause)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='const'>Socket</span><span class='period'>.</span><span class='id identifier rubyid_tcp'>tcp</span><span class='lparen'>(</span><span class='id identifier rubyid_hostname'>hostname</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='label'>connect_timeout:</span> <span class='const'><span class='object_link'><a href="#CONNECT_TIMEOUT-constant" title="Lich::Common::Authentication::EAccess::CONNECT_TIMEOUT (constant)">CONNECT_TIMEOUT</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
   <span class='id identifier rubyid_cert_store'>cert_store</span>              <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>X509</span><span class='op'>::</span><span class='const'>Store</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='id identifier rubyid_ssl_context'>ssl_context</span>             <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>SSLContext</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='id identifier rubyid_ssl_context'>ssl_context</span><span class='period'>.</span><span class='id identifier rubyid_cert_store'>cert_store</span>  <span class='op'>=</span> <span class='id identifier rubyid_cert_store'>cert_store</span>
@@ -1291,8 +1568,170 @@ and no log output. This wraps the whole exchange the same way
   <span class='id identifier rubyid_cert_store'>cert_store</span><span class='period'>.</span><span class='id identifier rubyid_add_file'>add_file</span><span class='lparen'>(</span><span class='id identifier rubyid_pem'>pem</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_pem_exist?'>pem_exist?</span>
   <span class='id identifier rubyid_ssl_socket'>ssl_socket</span> <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>SSLSocket</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_socket'>socket</span><span class='comma'>,</span> <span class='id identifier rubyid_ssl_context'>ssl_context</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_ssl_socket'>ssl_socket</span><span class='period'>.</span><span class='id identifier rubyid_sync_close'>sync_close</span> <span class='op'>=</span> <span class='kw'>true</span>
-  <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_verify_pem'><span class='object_link'><a href="#verify_pem-class_method" title="Lich::Common::Authentication::EAccess.verify_pem (method)">verify_pem</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_ssl_socket'>ssl_socket</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_connected'>connected</span> <span class='op'>=</span> <span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tls_handshake:main</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>probable_cause:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>TLS termination misconfiguration (not probable on its own)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_ssl_socket'>ssl_socket</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span>
+  <span class='kw'>rescue</span> <span class='const'>StandardError</span>
+    <span class='comment'># sync_close only closes the underlying TCP socket when the
+</span>    <span class='comment'># SSLSocket itself is explicitly closed -- a failed connect never
+</span>    <span class='comment'># reaches that point, and would otherwise leak this descriptor
+</span>    <span class='comment'># across retries/fallback.
+</span>    <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_close'>close</span> <span class='kw'>rescue</span> <span class='kw'>nil</span>
+    <span class='id identifier rubyid_raise'>raise</span>
+  <span class='kw'>end</span>
+  <span class='comment'># Not wrapped in the tls_handshake stage above: a cert mismatch is
+</span>  <span class='comment'># its own distinct stage (cert_pin_mismatch, logged inside
+</span>  <span class='comment'># verify_pem), not a handshake failure -- the handshake itself
+</span>  <span class='comment'># already succeeded by this point.
+</span>  <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_verify_pem'><span class='object_link'><a href="#verify_pem-class_method" title="Lich::Common::Authentication::EAccess.verify_pem (method)">verify_pem</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_connected'>connected</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_ssl_socket'>ssl_socket</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stage-class_method">
+  
+    .<strong>stage</strong>(name, probable_cause:) { ... } &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Wraps a step of the connect/handshake/protocol exchange so a
+failure is logged with which stage it happened in, how long that
+stage ran before failing, and a probable-cause hint -- see
+docs/eaccess-failure-diagnostics.md for the full taxonomy. Never
+logs raw protocol response bodies, the account password, or the
+session key: only the stage name, exception class/message, and the
+derived probable-cause classification.</p>
+<p>Also records the stage name on the current thread so
+auth_with_timeout can report which stage was in flight if the
+overall watchdog has to kill a hung attempt.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>stage identifier (see docs/eaccess-failure-diagnostics.md)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>probable_cause</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Proc</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a fixed hint, or a callable receiving the raised
+error and returning a hint -- used when the classification depends on what failed
+(e.g. a_response's recognized-rejection-vs-divergence split)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Yields:</p>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'><p>the stage's work</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'><p>the block's return value</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>StandardError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>re-raises whatever the block raised, after logging</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 89</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_stage'>stage</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>probable_cause:</span><span class='rparen'>)</span>
+  <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='lbracket'>[</span><span class='symbol'>:eaccess_stage</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span>
+  <span class='id identifier rubyid_started_at'>started_at</span> <span class='op'>=</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_clock_gettime'>clock_gettime</span><span class='lparen'>(</span><span class='const'>Process</span><span class='op'>::</span><span class='const'>CLOCK_MONOTONIC</span><span class='rparen'>)</span>
+  <span class='kw'>yield</span>
+<span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+  <span class='id identifier rubyid_duration'>duration</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_clock_gettime'>clock_gettime</span><span class='lparen'>(</span><span class='const'>Process</span><span class='op'>::</span><span class='const'>CLOCK_MONOTONIC</span><span class='rparen'>)</span> <span class='op'>-</span> <span class='id identifier rubyid_started_at'>started_at</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_round'>round</span><span class='lparen'>(</span><span class='int'>3</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_cause'>cause</span> <span class='op'>=</span> <span class='id identifier rubyid_probable_cause'>probable_cause</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:call</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_probable_cause'>probable_cause</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_probable_cause'>probable_cause</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: EAccess stage &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; failed after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_duration'>duration</span><span class='embexpr_end'>}</span><span class='tstring_content'>s (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>) -- likely cause: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_cause'>cause</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_raise'>raise</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1327,30 +1766,46 @@ and no log output. This wraps the whole exchange the same way
       <pre class="lines">
 
 
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69</pre>
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 60</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/eaccess.rb', line 136</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_verify_pem'>verify_pem</span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='rparen'>)</span>
   <span class='comment'># return if conn.peer_cert.to_s = File.read(pem)
 </span>  <span class='kw'>if</span> <span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_peer_cert'>peer_cert</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>==</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_read'>read</span><span class='lparen'>(</span><span class='id identifier rubyid_pem'>pem</span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Exception, \nssl peer certificate did not match </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pem'>pem</span><span class='embexpr_end'>}</span><span class='tstring_content'>\nwas:\n</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_peer_cert'>peer_cert</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='comment'># Ambiguous by design: a legitimate Simutronics cert rotation and
+</span>    <span class='comment'># a MITM presenting a different certificate look identical here.
+</span>    <span class='comment'># Flagged as its own stage (cert_pin_mismatch) rather than folded
+</span>    <span class='comment'># into a generic warning -- see docs/eaccess-failure-diagnostics.md.
+</span>    <span class='comment'># The certificate itself is public data, not a secret, so it&#39;s
+</span>    <span class='comment'># safe to log in full for diagnosis.
+</span>    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: EAccess stage &#39;cert_pin_mismatch&#39; -- peer certificate differs from the </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>pinned </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pem'>pem</span><span class='embexpr_end'>}</span><span class='tstring_content'>; re-pinning automatically. Expected on a legitimate cert </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>rotation, but indistinguishable here from a MITM presenting a different </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>certificate. was:\n</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_conn'>conn</span><span class='period'>.</span><span class='id identifier rubyid_peer_cert'>peer_cert</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
     <span class='id identifier rubyid_download_pem'>download_pem</span>
   <span class='kw'>else</span>
     <span class='kw'>return</span> <span class='kw'>true</span>
   <span class='kw'>end</span>
-  <span class='comment'>#     fail Exception, &quot;\nssl peer certificate did not match #{pem}\nwas:\n#{conn.peer_cert}&quot;
-</span><span class='kw'>end</span></pre>
+<span class='kw'>end</span></pre>
     </td>
   </tr>
 </table>
@@ -1361,7 +1816,7 @@ and no log output. This wraps the whole exchange the same way
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:01 2026 by
+  Generated on Thu Sep 10 03:55:24 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -64,7 +64,7 @@
       <div id="content"><h1>Class: Lich::Common::XMLParser
   
   
-  
+  <span class="private note title">Private</span>
 </h1>
 <div class="box_info">
   
@@ -104,26 +104,30 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Parses the game server's XML stream and extracts game state: character stats,
-room contents, inventory, active spells, and combat data.</p>
-<p>Implements the Ox SAX parser interface (start_element, attr, attrs_done, end_element,
-cdata, error) to process the server stream in real time. Tracks creature status,
-item containers, and collision-free room roster updates. Maintains dual-game support
-(GemStone IV and DragonRealms) with game-specific adaptations.</p>
+    <p class="note private">
+  <strong>This class is part of a private API.</strong>
+  You should avoid using this class if possible, as it may be removed or be changed in the future.
+</p>
+<p>Parses the XML game server stream into game state and script-visible attributes.</p>
+<p>This parser drives the Lich engine's understanding of the player's character,
+room, inventory, spell durations, creatures, and other real-time game state.
+The server sends a continuous stream of XML fragments describing each command's
+effects (room arrival, cast success, inventory change, etc.). XMLParser accumulates
+these fragments, hands them to the Ox SAX parser, and routes the resulting events
+to tag_start, tag_end, text, and attr callbacks that update game state and fire
+hooks for scripts to observe.</p>
+<p>Most instance attributes are exposed as attr_reader; accessing XMLData.attribute
+from a script returns the parsed value. The parser also maintains internal caches
+for staging incomplete operations (e.g., container fills that span multiple text
+nodes) and coordinates with related systems like Creature, GameObj, and Claim.</p>
+<p>Supports both GemStone IV and DragonRealms game streams, with game-specific
+handling for room-object identification, creature status flagging, and player
+roster tracking.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../Gemstone/Creature.html" title="Lich::Gemstone::Creature (module)">Gemstone::Creature</a></span></li>
-    
-      <li><span class='object_link'><a href="../DragonRealms/Creature.html" title="Lich::DragonRealms::Creature (module)">DragonRealms::Creature</a></span></li>
-    
-  </ul>
 
 </div>
   
@@ -137,8 +141,14 @@ item containers, and collision-free room roster updates. Maintains dual-game sup
         <dt id="DECADE-constant" class="">DECADE =
           <div class="docstring">
   <div class="discussion">
-    <p>Number of seconds in a decade (10 years); used as the expiry duration for
-infinite-duration spell effects.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Sentinel duration for indefinite spell effects.</p>
+<p>Equal to 315,360,000 seconds (10 years). Used as a placeholder expiry time
+when a PSM 3.0 progress bar spell has &quot;Indefinite&quot; or &quot;OM&quot; (Omen/Manna)
+duration, representing an effect that does not expire during a session.</p>
 
   </div>
 </div>
@@ -159,15 +169,26 @@ infinite-duration spell effects.</p>
         <dt id="PSM_3_DIALOG_IDS-constant" class="">PSM_3_DIALOG_IDS =
           <div class="docstring">
   <div class="discussion">
-    <p>The four dialog types tracked in PSM 3.0 (player status module).</p>
-<p>These strings appear as <dialogData id="..."> tags and partition active effects
-into Buffs (positive), Active Spells (combat spells), Debuffs (negative), and
-Cooldowns (ability recovery times).</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Dialog category IDs that track active spell/buff effects in PSM 3.0.</p>
+<p>When a progressBar tag appears with an id that is one of these categories,
+its effect name and expiry are cached in @dialogs. Other categories (e.g.,
+&quot;Quest Progress&quot;) are not parsed by parse_psm3_progressbar.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse_psm3_progressbar-instance_method" title="Lich::Common::XMLParser#parse_psm3_progressbar (method)">#parse_psm3_progressbar</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -176,7 +197,11 @@ Cooldowns (ability recovery times).</p>
         <dt id="ASSESS_RANGES-constant" class="">ASSESS_RANGES =
           <div class="docstring">
   <div class="discussion">
-    <p>assess stream parsing</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>assess stream parsing</p>
 
   </div>
 </div>
@@ -190,11 +215,14 @@ Cooldowns (ability recovery times).</p>
         <dt id="ASSESS_RELATION-constant" class="">ASSESS_RELATION =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern that matches the positional relationship between a creature and its target
-in an assess stream line.</p>
-<p>Captures the relation (e.g. &quot;flanking&quot;, &quot;facing&quot;) and the target name.
-Used by #parse_assess_line to extract tactical positioning from the combat situation
-stream.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Regex pattern matching the relation and target in an assess (combat situation) line.</p>
+<p>Captures the positional relation of one combatant to another (e.g., &quot;flanking&quot;,
+&quot;behind&quot;, &quot;advancing on&quot;) and the target's name. Used by parse_assess_line to
+break down a creature description into structured fields.</p>
 
   </div>
 </div>
@@ -204,8 +232,9 @@ stream.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>flanking a merchant</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>ASSESS_RELATION</span>
-<span class='comment'>#=&gt; Regexp::MatchData with relation=&quot;flanking&quot;, target=&quot;a merchant&quot;</span></code></pre>
+        <h5 class="example_title"><div class='inline'><p>Match a flanking relation</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>ASSESS_RELATION</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>flanking a goblin</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; MatchData with relation=&#39;flanking&#39;, target=&#39;a goblin&#39;</span></code></pre>
     
   </div>
 
@@ -222,7 +251,20 @@ stream.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?&lt;relation&gt;moving to flank|flanking|facing|behind|in front of|beside|advancing on|next to|to (?:the )?(?:left|right) of)\s+(?&lt;target&gt;.+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="warned_deprecated_spellfront-classvariable" class="">@@warned_deprecated_spellfront =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This classvariable is part of a private API.</strong>
+  You should avoid using this classvariable if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='int'>0</span></pre></dd>
       
@@ -254,10 +296,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute arrival_pcs.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -281,10 +323,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute ascension_exp.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -308,10 +350,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute assess.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -335,10 +377,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute bounty_task.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -362,10 +404,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute cast_roundtime_end.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -389,10 +431,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute concentration.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -416,10 +458,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute current_target_id.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -443,10 +485,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute current_target_ids.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -470,10 +512,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute dialogs.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -497,10 +539,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute dr_active_spells.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -524,10 +566,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute dr_active_spells_slivers.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -551,10 +593,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute dr_active_spells_stellar_percentage.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -578,10 +620,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute encumbrance_full_text.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -605,10 +647,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute encumbrance_text.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -632,10 +674,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute encumbrance_value.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -659,10 +701,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute exp.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -686,10 +728,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute familiar_room_description.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -713,10 +755,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute familiar_room_exits.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -740,10 +782,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute familiar_room_title.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -767,10 +809,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute fashlonae.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -794,10 +836,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute field_exp.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -821,10 +863,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute game.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -848,10 +890,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute health.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -875,10 +917,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute in_stream.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -902,10 +944,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute indicator.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -929,10 +971,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute injuries.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -956,10 +998,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute injury_mode.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -983,10 +1025,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute last_pulse.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1010,10 +1052,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute last_spirit.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1037,10 +1079,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute level.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1064,10 +1106,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute lumnis.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1091,10 +1133,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute mana.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1118,10 +1160,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_concentration.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1145,10 +1187,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_field_exp.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1172,10 +1214,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_health.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1199,10 +1241,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_mana.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1226,10 +1268,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_spirit.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1253,10 +1295,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute max_stamina.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1280,10 +1322,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute mind_text.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1307,10 +1349,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute mind_value.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1334,10 +1376,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute name.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1361,10 +1403,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute next_level_text.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1388,10 +1430,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute next_level_value.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1415,10 +1457,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute player_id.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1442,10 +1484,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute prepared_spell.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1469,10 +1511,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute previous_nav_rm.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1496,10 +1538,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute prompt.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1523,10 +1565,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_bonfire.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1550,10 +1592,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_climate.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1577,10 +1619,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_count.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1604,10 +1646,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_description.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1631,10 +1673,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_exits.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1658,10 +1700,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_exits_string.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1685,10 +1727,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_id.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1712,10 +1754,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_inside.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1739,10 +1781,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_name.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1766,10 +1808,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_player_hidden.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1793,10 +1835,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_realm.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1820,10 +1862,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_sanctuary.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1847,10 +1889,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_terrain.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1874,10 +1916,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_title.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1901,10 +1943,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_water.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1928,10 +1970,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_weather.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1955,10 +1997,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute room_window_disabled.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -1982,10 +2024,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute roundtime_end.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2009,10 +2051,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute rpa.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2036,7 +2078,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>Ox reports parse problems here instead of raising, then keeps parsing, auto-balancing whatever was malformed.</p></div></span>
@@ -2061,10 +2103,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute send_fake_tags.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2088,10 +2130,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute server_time.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2115,10 +2157,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute server_time_offset.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2142,10 +2184,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute show_room_id.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2169,10 +2211,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute society_task.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2196,10 +2238,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute spirit.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2223,10 +2265,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute stamina.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2250,10 +2292,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute stance_text.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2277,10 +2319,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute stance_value.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2304,10 +2346,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute stow_container_id.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2331,10 +2373,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute until_next.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -2366,7 +2408,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>for backwards compatibility.</p></div></span>
@@ -2388,7 +2430,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>convenience: just the creatures (positive ids; excludes self and PCs).</p></div></span>
@@ -2410,7 +2452,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>Values are left in Ox's native encoding rather than retagged: REXML handed these callbacks UTF-8 (effectively ASCII for the scrubbed game stream), so force-tagging Windows-1252 was both a divergence from the pre-Ox behavior and the source of the entity corruption.</p></div></span>
@@ -2435,7 +2477,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Ox SAX callback: signals the end of attribute accumulation for the current element.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fires after all attributes for an XML element have been accumulated.</p></div></span>
   
 </li>
 
@@ -2454,7 +2496,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>REXML routed CDATA through text handling; do the same.</p></div></span>
@@ -2479,7 +2521,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Ox SAX callback: invoked when an XML element closes.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fires when an XML closing tag is encountered.</p></div></span>
   
 </li>
 
@@ -2501,7 +2543,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Ox SAX callback: collects XML parse errors.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Records a non-fatal parse error from Ox SAX.</p></div></span>
   
 </li>
 
@@ -2509,7 +2551,7 @@ stream.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>  &#x21d2; XMLParser </a>
     
 
     
@@ -2522,10 +2564,10 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes the parser with empty buffers and default state.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes the parser with empty game state and default values.</p></div></span>
   
 </li>
 
@@ -2533,7 +2575,7 @@ stream.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#make_scar_gsl-instance_method" title="#make_scar_gsl (instance method)">#<strong>make_scar_gsl</strong>  &#x21d2; String </a>
+      <a href="#make_scar_gsl-instance_method" title="#make_scar_gsl (instance method)">#<strong>make_scar_gsl</strong>  &#x21d2; void </a>
     
 
     
@@ -2547,7 +2589,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Encodes the character's scar injuries into a binary GSL format string.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Encodes scar injury levels into a binary GSL tag.</p></div></span>
   
 </li>
 
@@ -2555,7 +2597,7 @@ stream.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#make_wound_gsl-instance_method" title="#make_wound_gsl (instance method)">#<strong>make_wound_gsl</strong>  &#x21d2; String </a>
+      <a href="#make_wound_gsl-instance_method" title="#make_wound_gsl (instance method)">#<strong>make_wound_gsl</strong>  &#x21d2; void </a>
     
 
     
@@ -2569,7 +2611,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Encodes the character's wound injuries into a binary GSL format string.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Encodes wound injury levels into a binary GSL (Gemstone Scripting Language) tag.</p></div></span>
   
 </li>
 
@@ -2588,7 +2630,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>Parse a single reconstructed line from the 'assess' (combat situation) stream into a structured entry.</p></div></span>
@@ -2613,7 +2655,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses a PSM 3.0 progress bar (dialog) and stores its expiry time.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses a PSM 3.0 progress bar (spell/buff/debuff/cooldown effect) into the dialogs cache.</p></div></span>
   
 </li>
 
@@ -2621,7 +2663,7 @@ stream.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset-instance_method" title="#reset (instance method)">#<strong>reset</strong>  &#x21d2; void </a>
+      <a href="#reset-instance_method" title="#reset (instance method)">#<strong>reset</strong>  &#x21d2; Object </a>
     
 
     
@@ -2635,7 +2677,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Clears parser state after a malformed or truncated fragment.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Clears mid-parse state after a fragment error or sync loss.</p></div></span>
   
 </li>
 
@@ -2657,7 +2699,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Tests whether the parser is in a safe state to send a game command.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether it is safe for a script to send a command right now.</p></div></span>
   
 </li>
 
@@ -2676,7 +2718,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>here for backwards compatibility, but spellfront xml isn't sent by the game anymore.</p></div></span>
@@ -2698,7 +2740,7 @@ stream.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
     <span class="summary_desc"><div class='inline'><p>Ox::Sax interface: Ox parses the server stream directly into XMLData (see Game.process_xml_data).</p></div></span>
@@ -2723,7 +2765,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes a closing XML tag and triggers end-of-element handlers.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Routes a closing XML tag to final object creation and stream commitment.</p></div></span>
   
 </li>
 
@@ -2745,7 +2787,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes an opening XML tag and its attributes.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Routes an opening XML tag to game-state updates and side effects.</p></div></span>
   
 </li>
 
@@ -2767,7 +2809,7 @@ stream.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Processes text content between XML tags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Routes text nodes to game-state updates and message capture.</p></div></span>
   
 </li>
 
@@ -2782,7 +2824,7 @@ stream.</p>
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::XMLParser (class)">XMLParser</a></span></tt> 
   
 
   
@@ -2790,12 +2832,16 @@ stream.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes the parser with empty buffers and default state.</p>
-<p>All instance variables are initialized to their zero/empty equivalents:
-numeric stats (health, mana, stamina) to 0; strings to empty String; collections
-to empty Array or Hash. This allows safe reads before the first game tag arrives.
-Server time is set to the current time; server_time_offset will be computed
-when the first <prompt> tag arrives.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Initializes the parser with empty game state and default values.</p>
+<p>All mutable state is reset to sane defaults: strings to empty, arrays to [],
+integers to 0, nil to nil. Room ID defaults to 0 (not nil) so that checks like
+room_id.zero? and room_id &gt; N in map layers do not raise NoMethodError before
+a <nav> tag arrives. The parser is not ready for use until the game sends its
+first settingsInfo tag naming the instance (game name and character name).</p>
 
   </div>
 </div>
@@ -2808,14 +2854,6 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-50
-51
-52
-53
-54
-55
-56
-57
 58
 59
 60
@@ -2957,10 +2995,18 @@ when the first <prompt> tag arrives.</p>
 196
 197
 198
-199</pre>
+199
+200
+201
+202
+203
+204
+205
+206
+207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 50</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 58</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span>
   <span class='ivar'>@buffer</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -3135,7 +3181,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute arrival_pcs.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3148,12 +3198,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_arrival_pcs'>arrival_pcs</span>
   <span class='ivar'>@arrival_pcs</span>
@@ -3176,7 +3226,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute ascension_exp.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3189,12 +3243,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ascension_exp'>ascension_exp</span>
   <span class='ivar'>@ascension_exp</span>
@@ -3217,7 +3271,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute assess.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3230,12 +3288,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_assess'>assess</span>
   <span class='ivar'>@assess</span>
@@ -3258,7 +3316,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute bounty_task.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3271,12 +3333,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bounty_task'>bounty_task</span>
   <span class='ivar'>@bounty_task</span>
@@ -3299,7 +3361,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute cast_roundtime_end.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3312,12 +3378,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cast_roundtime_end'>cast_roundtime_end</span>
   <span class='ivar'>@cast_roundtime_end</span>
@@ -3340,7 +3406,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute concentration.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3353,12 +3423,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_concentration'>concentration</span>
   <span class='ivar'>@concentration</span>
@@ -3381,7 +3451,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute current_target_id.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3394,12 +3468,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_target_id'>current_target_id</span>
   <span class='ivar'>@current_target_id</span>
@@ -3422,7 +3496,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute current_target_ids.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3435,12 +3513,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_target_ids'>current_target_ids</span>
   <span class='ivar'>@current_target_ids</span>
@@ -3463,7 +3541,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute dialogs.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3476,12 +3558,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dialogs'>dialogs</span>
   <span class='ivar'>@dialogs</span>
@@ -3504,7 +3586,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute dr_active_spells.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3517,12 +3603,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dr_active_spells'>dr_active_spells</span>
   <span class='ivar'>@dr_active_spells</span>
@@ -3545,7 +3631,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute dr_active_spells_slivers.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3558,12 +3648,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dr_active_spells_slivers'>dr_active_spells_slivers</span>
   <span class='ivar'>@dr_active_spells_slivers</span>
@@ -3586,7 +3676,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute dr_active_spells_stellar_percentage.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3599,12 +3693,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dr_active_spells_stellar_percentage'>dr_active_spells_stellar_percentage</span>
   <span class='ivar'>@dr_active_spells_stellar_percentage</span>
@@ -3627,7 +3721,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute encumbrance_full_text.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3640,12 +3738,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_encumbrance_full_text'>encumbrance_full_text</span>
   <span class='ivar'>@encumbrance_full_text</span>
@@ -3668,7 +3766,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute encumbrance_text.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3681,12 +3783,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_encumbrance_text'>encumbrance_text</span>
   <span class='ivar'>@encumbrance_text</span>
@@ -3709,7 +3811,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute encumbrance_value.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3722,12 +3828,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_encumbrance_value'>encumbrance_value</span>
   <span class='ivar'>@encumbrance_value</span>
@@ -3750,7 +3856,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute exp.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3763,12 +3873,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_exp'>exp</span>
   <span class='ivar'>@exp</span>
@@ -3791,7 +3901,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute familiar_room_description.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3804,12 +3918,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_familiar_room_description'>familiar_room_description</span>
   <span class='ivar'>@familiar_room_description</span>
@@ -3832,7 +3946,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute familiar_room_exits.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3845,12 +3963,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_familiar_room_exits'>familiar_room_exits</span>
   <span class='ivar'>@familiar_room_exits</span>
@@ -3873,7 +3991,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute familiar_room_title.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3886,12 +4008,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_familiar_room_title'>familiar_room_title</span>
   <span class='ivar'>@familiar_room_title</span>
@@ -3914,7 +4036,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute fashlonae.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3927,12 +4053,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fashlonae'>fashlonae</span>
   <span class='ivar'>@fashlonae</span>
@@ -3955,7 +4081,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute field_exp.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -3968,12 +4098,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_field_exp'>field_exp</span>
   <span class='ivar'>@field_exp</span>
@@ -3996,7 +4126,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute game.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4009,12 +4143,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_game'>game</span>
   <span class='ivar'>@game</span>
@@ -4037,7 +4171,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute health.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4050,12 +4188,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_health'>health</span>
   <span class='ivar'>@health</span>
@@ -4078,7 +4216,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute in_stream.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4091,12 +4233,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_in_stream'>in_stream</span>
   <span class='ivar'>@in_stream</span>
@@ -4119,7 +4261,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute indicator.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4132,12 +4278,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_indicator'>indicator</span>
   <span class='ivar'>@indicator</span>
@@ -4160,7 +4306,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute injuries.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4173,12 +4323,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injuries'>injuries</span>
   <span class='ivar'>@injuries</span>
@@ -4201,7 +4351,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute injury_mode.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4214,12 +4368,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injury_mode'>injury_mode</span>
   <span class='ivar'>@injury_mode</span>
@@ -4242,7 +4396,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute last_pulse.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4255,12 +4413,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_last_pulse'>last_pulse</span>
   <span class='ivar'>@last_pulse</span>
@@ -4283,7 +4441,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute last_spirit.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4296,12 +4458,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_last_spirit'>last_spirit</span>
   <span class='ivar'>@last_spirit</span>
@@ -4324,7 +4486,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute level.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4337,12 +4503,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_level'>level</span>
   <span class='ivar'>@level</span>
@@ -4365,7 +4531,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute lumnis.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4378,12 +4548,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lumnis'>lumnis</span>
   <span class='ivar'>@lumnis</span>
@@ -4406,7 +4576,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute mana.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4419,12 +4593,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mana'>mana</span>
   <span class='ivar'>@mana</span>
@@ -4447,7 +4621,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_concentration.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4460,12 +4638,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_concentration'>max_concentration</span>
   <span class='ivar'>@max_concentration</span>
@@ -4488,7 +4666,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_field_exp.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4501,12 +4683,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_field_exp'>max_field_exp</span>
   <span class='ivar'>@max_field_exp</span>
@@ -4529,7 +4711,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_health.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4542,12 +4728,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_health'>max_health</span>
   <span class='ivar'>@max_health</span>
@@ -4570,7 +4756,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_mana.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4583,12 +4773,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_mana'>max_mana</span>
   <span class='ivar'>@max_mana</span>
@@ -4611,7 +4801,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_spirit.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4624,12 +4818,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_spirit'>max_spirit</span>
   <span class='ivar'>@max_spirit</span>
@@ -4652,7 +4846,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute max_stamina.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4665,12 +4863,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_stamina'>max_stamina</span>
   <span class='ivar'>@max_stamina</span>
@@ -4693,7 +4891,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute mind_text.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4706,12 +4908,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mind_text'>mind_text</span>
   <span class='ivar'>@mind_text</span>
@@ -4734,7 +4936,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute mind_value.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4747,12 +4953,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mind_value'>mind_value</span>
   <span class='ivar'>@mind_value</span>
@@ -4775,7 +4981,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute name.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4788,12 +4998,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -4816,7 +5026,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute next_level_text.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4829,12 +5043,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_next_level_text'>next_level_text</span>
   <span class='ivar'>@next_level_text</span>
@@ -4857,7 +5071,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute next_level_value.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4870,12 +5088,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_next_level_value'>next_level_value</span>
   <span class='ivar'>@next_level_value</span>
@@ -4898,7 +5116,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute player_id.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4911,12 +5133,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_player_id'>player_id</span>
   <span class='ivar'>@player_id</span>
@@ -4939,7 +5161,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute prepared_spell.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4952,12 +5178,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_prepared_spell'>prepared_spell</span>
   <span class='ivar'>@prepared_spell</span>
@@ -4980,7 +5206,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute previous_nav_rm.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -4993,12 +5223,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_previous_nav_rm'>previous_nav_rm</span>
   <span class='ivar'>@previous_nav_rm</span>
@@ -5021,7 +5251,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute prompt.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5034,12 +5268,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_prompt'>prompt</span>
   <span class='ivar'>@prompt</span>
@@ -5062,7 +5296,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_bonfire.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5075,12 +5313,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_bonfire'>room_bonfire</span>
   <span class='ivar'>@room_bonfire</span>
@@ -5103,7 +5341,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_climate.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5116,12 +5358,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_climate'>room_climate</span>
   <span class='ivar'>@room_climate</span>
@@ -5144,7 +5386,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_count.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5157,12 +5403,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_count'>room_count</span>
   <span class='ivar'>@room_count</span>
@@ -5185,7 +5431,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_description.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5198,12 +5448,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_description'>room_description</span>
   <span class='ivar'>@room_description</span>
@@ -5226,7 +5476,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_exits.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5239,12 +5493,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_exits'>room_exits</span>
   <span class='ivar'>@room_exits</span>
@@ -5267,7 +5521,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_exits_string.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5280,12 +5538,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_exits_string'>room_exits_string</span>
   <span class='ivar'>@room_exits_string</span>
@@ -5308,7 +5566,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_id.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5321,12 +5583,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_id'>room_id</span>
   <span class='ivar'>@room_id</span>
@@ -5349,7 +5611,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_inside.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5362,12 +5628,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_inside'>room_inside</span>
   <span class='ivar'>@room_inside</span>
@@ -5390,7 +5656,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_name.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5403,12 +5673,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_name'>room_name</span>
   <span class='ivar'>@room_name</span>
@@ -5431,7 +5701,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_player_hidden.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5444,12 +5718,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_player_hidden'>room_player_hidden</span>
   <span class='ivar'>@room_player_hidden</span>
@@ -5472,7 +5746,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_realm.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5485,12 +5763,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_realm'>room_realm</span>
   <span class='ivar'>@room_realm</span>
@@ -5513,7 +5791,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_sanctuary.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5526,12 +5808,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_sanctuary'>room_sanctuary</span>
   <span class='ivar'>@room_sanctuary</span>
@@ -5554,7 +5836,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_terrain.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5567,12 +5853,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_terrain'>room_terrain</span>
   <span class='ivar'>@room_terrain</span>
@@ -5595,7 +5881,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_title.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5608,12 +5898,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_title'>room_title</span>
   <span class='ivar'>@room_title</span>
@@ -5636,7 +5926,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_water.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5649,12 +5943,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_water'>room_water</span>
   <span class='ivar'>@room_water</span>
@@ -5677,7 +5971,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_weather.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5690,12 +5988,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_weather'>room_weather</span>
   <span class='ivar'>@room_weather</span>
@@ -5718,7 +6016,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute room_window_disabled.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5731,12 +6033,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_window_disabled'>room_window_disabled</span>
   <span class='ivar'>@room_window_disabled</span>
@@ -5759,7 +6061,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute roundtime_end.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5772,12 +6078,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_roundtime_end'>roundtime_end</span>
   <span class='ivar'>@roundtime_end</span>
@@ -5800,7 +6106,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute rpa.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5813,12 +6123,12 @@ when the first <prompt> tag arrives.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rpa'>rpa</span>
   <span class='ivar'>@rpa</span>
@@ -5841,7 +6151,11 @@ when the first <prompt> tag arrives.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Ox reports parse problems here instead of raising, then keeps parsing,
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Ox reports parse problems here instead of raising, then keeps parsing,
 auto-balancing whatever was malformed. Collect the messages so
 Game.process_xml_data can tell Simu's routine almost-XML from a
 genuinely truncated (desynced) fragment once the parse completes.
@@ -5858,12 +6172,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-499
-500
-501</pre>
+520
+521
+522</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 499</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 520</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sax_parse_errors'>sax_parse_errors</span>
   <span class='ivar'>@sax_parse_errors</span>
@@ -5886,7 +6200,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute send_fake_tags.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5899,12 +6217,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-37
-38
-39</pre>
+45
+46
+47</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 37</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 45</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_send_fake_tags'>send_fake_tags</span>
   <span class='ivar'>@send_fake_tags</span>
@@ -5927,7 +6245,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute server_time.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5940,12 +6262,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_server_time'>server_time</span>
   <span class='ivar'>@server_time</span>
@@ -5968,7 +6290,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute server_time_offset.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -5981,12 +6307,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_server_time_offset'>server_time_offset</span>
   <span class='ivar'>@server_time_offset</span>
@@ -6009,7 +6335,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute show_room_id.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6022,12 +6352,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_show_room_id'>show_room_id</span>
   <span class='ivar'>@show_room_id</span>
@@ -6050,7 +6380,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute society_task.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6063,12 +6397,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_society_task'>society_task</span>
   <span class='ivar'>@society_task</span>
@@ -6091,7 +6425,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute spirit.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6104,12 +6442,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_spirit'>spirit</span>
   <span class='ivar'>@spirit</span>
@@ -6132,7 +6470,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute stamina.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6145,12 +6487,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stamina'>stamina</span>
   <span class='ivar'>@stamina</span>
@@ -6173,7 +6515,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute stance_text.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6186,12 +6532,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stance_text'>stance_text</span>
   <span class='ivar'>@stance_text</span>
@@ -6214,7 +6560,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute stance_value.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6227,12 +6577,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stance_value'>stance_value</span>
   <span class='ivar'>@stance_value</span>
@@ -6255,7 +6605,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute stow_container_id.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6268,12 +6622,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_container_id'>stow_container_id</span>
   <span class='ivar'>@stow_container_id</span>
@@ -6296,7 +6650,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute until_next.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
@@ -6309,12 +6667,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_until_next'>until_next</span>
   <span class='ivar'>@until_next</span>
@@ -6342,7 +6700,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>for backwards compatibility</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>for backwards compatibility</p>
 
   </div>
 </div>
@@ -6355,14 +6717,6 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-202
-203
-204
-205
-206
-207
-208
-209
 210
 211
 212
@@ -6379,10 +6733,18 @@ The caller clears this between fragments.</p>
 223
 224
 225
-226</pre>
+226
+227
+228
+229
+230
+231
+232
+233
+234</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 202</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 210</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_active_spells'>active_spells</span>
   <span class='id identifier rubyid_z'>z</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
@@ -6425,7 +6787,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>convenience: just the creatures (positive ids; excludes self and PCs)</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>convenience: just the creatures (positive ids; excludes self and PCs)</p>
 
   </div>
 </div>
@@ -6438,12 +6804,12 @@ The caller clears this between fragments.</p>
       <pre class="lines">
 
 
-441
-442
-443</pre>
+460
+461
+462</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 441</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 460</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_assess_creatures'>assess_creatures</span>
   <span class='ivar'>@assess</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='lbracket'>[</span><span class='symbol'>:self</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='lbracket'>[</span><span class='symbol'>:pc</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
@@ -6464,7 +6830,11 @@ The caller clears this between fragments.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Values are left in Ox's native encoding rather than retagged: REXML handed
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Values are left in Ox's native encoding rather than retagged: REXML handed
 these callbacks UTF-8 (effectively ASCII for the scrubbed game stream), so
 force-tagging Windows-1252 was both a divergence from the pre-Ox behavior
 and the source of the entity corruption. Ox runs with convert_special:
@@ -6481,12 +6851,12 @@ false, so XmlEntities.decode restores the standard entities here.</p>
       <pre class="lines">
 
 
-461
-462
-463</pre>
+480
+481
+482</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 461</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 480</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_attr'>attr</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='ivar'>@sax_attributes</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="XmlEntities.html" title="Lich::Common::XmlEntities (module)">XmlEntities</a></span></span><span class='period'>.</span><span class='id identifier rubyid_decode'><span class='object_link'><a href="XmlEntities.html#decode-class_method" title="Lich::Common::XmlEntities.decode (method)">decode</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
@@ -6511,10 +6881,11 @@ false, so XmlEntities.decode restores the standard entities here.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Ox SAX callback: signals the end of attribute accumulation for the current element.</p>
-<p>Flushes the accumulated attributes and element name to tag_start, triggering
-handler logic. Called after start_element and all attr callbacks for a tag,
-before text or child elements.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Fires after all attributes for an XML element have been accumulated.</p>
+<p>Delegates to tag_start with the accumulated element name and attributes hash,
+matching the old REXML-style single tag_start(name, hash) call. Part of the
+Ox SAX parser callback sequence: start_element -&gt; attr (repeated) -&gt; attrs_done
+-&gt; text/children -&gt; end_element.</p>
 
   </div>
 </div>
@@ -6527,12 +6898,12 @@ before text or child elements.</p>
       <pre class="lines">
 
 
-473
-474
-475</pre>
+494
+495
+496</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 473</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 494</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_attrs_done'>attrs_done</span>
   <span class='id identifier rubyid_tag_start'>tag_start</span><span class='lparen'>(</span><span class='ivar'>@sax_element</span><span class='comma'>,</span> <span class='ivar'>@sax_attributes</span><span class='rparen'>)</span>
@@ -6553,7 +6924,11 @@ before text or child elements.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>REXML routed CDATA through text handling; do the same.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>REXML routed CDATA through text handling; do the same.</p>
 
   </div>
 </div>
@@ -6566,12 +6941,12 @@ before text or child elements.</p>
       <pre class="lines">
 
 
-490
-491
-492</pre>
+511
+512
+513</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 490</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 511</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cdata'>cdata</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_text'>text</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
@@ -6596,9 +6971,8 @@ before text or child elements.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Ox SAX callback: invoked when an XML element closes.</p>
-<p>Routes the close event to tag_end, which pops the tag stack and triggers
-end-of-element handlers (e.g., committing staged GameObj refreshes).</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Fires when an XML closing tag is encountered.</p>
+<p>Delegates to tag_end(name), mirroring the Ox SAX parser interface.</p>
 
   </div>
 </div>
@@ -6616,7 +6990,7 @@ end-of-element handlers (e.g., committing staged GameObj refreshes).</p>
       
       
         &mdash;
-        <div class='inline'><p>the element name (e.g. &quot;prompt&quot;, &quot;compass&quot;)</p></div>
+        <div class='inline'><p>the element name (tag) being closed</p></div>
       
     </li>
   
@@ -6629,12 +7003,12 @@ end-of-element handlers (e.g., committing staged GameObj refreshes).</p>
       <pre class="lines">
 
 
-485
-486
-487</pre>
+506
+507
+508</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 485</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 506</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_end_element'>end_element</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_tag_end'>tag_end</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
@@ -6659,11 +7033,12 @@ end-of-element handlers (e.g., committing staged GameObj refreshes).</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Ox SAX callback: collects XML parse errors.</p>
-<p>Ox does not raise on malformed input; instead it auto-balances and reports
-errors here. Errors are accumulated so that the game layer can distinguish
-between SIMU's intentional relaxed XML and a genuinely truncated (desynced)
-fragment once parsing completes.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Records a non-fatal parse error from Ox SAX.</p>
+<p>Ox does not raise on malformed XML; instead, it calls this method, auto-balances
+the structure, and continues parsing. The parser accumulates these messages so
+Game.process_xml_data can distinguish between SIMU's intentional almost-XML
+and a genuinely truncated or desynced fragment once parsing completes. Messages
+are cleared between fragments by the reset method.</p>
 
   </div>
 </div>
@@ -6695,7 +7070,7 @@ fragment once parsing completes.</p>
       
       
         &mdash;
-        <div class='inline'><p>the line number in the fragment</p></div>
+        <div class='inline'><p>1-indexed line number in the fragment</p></div>
       
     </li>
   
@@ -6709,7 +7084,7 @@ fragment once parsing completes.</p>
       
       
         &mdash;
-        <div class='inline'><p>the column number in the fragment</p></div>
+        <div class='inline'><p>0-indexed column number</p></div>
       
     </li>
   
@@ -6722,12 +7097,12 @@ fragment once parsing completes.</p>
       <pre class="lines">
 
 
-513
-514
-515</pre>
+536
+537
+538</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 513</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 536</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_error'>error</span><span class='lparen'>(</span><span class='id identifier rubyid_message'>message</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='id identifier rubyid_column'>column</span><span class='rparen'>)</span>
   <span class='ivar'>@sax_parse_errors</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'> (line </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_line'>line</span><span class='embexpr_end'>}</span><span class='tstring_content'>, column </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_column'>column</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
@@ -6740,7 +7115,7 @@ fragment once parsing completes.</p>
       <div class="method_details ">
   <h3 class="signature " id="make_scar_gsl-instance_method">
   
-    #<strong>make_scar_gsl</strong>  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
+    #<strong>make_scar_gsl</strong>  &#x21d2; <tt>void</tt> 
   
 
   
@@ -6752,39 +7127,64 @@ fragment once parsing completes.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Encodes the character's scar injuries into a binary GSL format string.</p>
-<p>Formats 14 body parts (nsys, leftEye, rightEye, back, abdomen, chest, leftHand,
-rightHand, leftLeg, rightLeg, leftArm, rightArm, neck, head) into a 0b0NNNNNNNNNNNNNNNN
-binary string where each 2-bit field holds the scar severity (0-3).
-Severity 0 = no scar; higher values = worsening condition.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Encodes scar injury levels into a binary GSL tag.</p>
+<p>Constructs a 16-body-part bitfield for the GSL <code>\034GSV</code> vital stats packet,
+encoding the scar rank (0-3) of each tracked injury location in the same order
+as make_wound_gsl. Called when scars update or when fake GSL tags are sent to
+the Wizard frontend.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>binary GSL string (e.g. &quot;0b0000010001000...&quot;)</p></div>
-      
-    </li>
-  
-</ul>
 
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+318
+319
+320</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 318</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_make_scar_gsl'>make_scar_gsl</span>
+  <span class='ivar'>@scar_gsl</span> <span class='op'>=</span> <span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>nsys</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>back</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>abdomen</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>chest</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>neck</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>head</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
     
-      <li><span class='object_link'><a href="#make_wound_gsl-instance_method" title="Lich::Common::XMLParser#make_wound_gsl (method)">#make_wound_gsl</a></span></li>
-    
-  </ul>
+      <div class="method_details ">
+  <h3 class="signature " id="make_wound_gsl-instance_method">
+  
+    #<strong>make_wound_gsl</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Encodes wound injury levels into a binary GSL (Gemstone Scripting Language) tag.</p>
+<p>Constructs a 16-body-part bitfield for the GSL <code>\034GSV</code> vital stats packet,
+encoding the wound rank (0-3) of each tracked injury location. The bit order is
+fixed: nsys, leftEye, rightEye, back, abdomen, chest, leftHand, rightHand,
+leftLeg, rightLeg, leftArm, rightArm, neck, head. Called when injuries update
+or when fake GSL tags are sent to the Wizard frontend.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
 
 </div><table class="source_code">
   <tr>
@@ -6798,76 +7198,6 @@ Severity 0 = no scar; higher values = worsening condition.</p>
     </td>
     <td>
       <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 304</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_make_scar_gsl'>make_scar_gsl</span>
-  <span class='ivar'>@scar_gsl</span> <span class='op'>=</span> <span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>nsys</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>back</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>abdomen</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>chest</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>neck</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>head</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="make_wound_gsl-instance_method">
-  
-    #<strong>make_wound_gsl</strong>  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Encodes the character's wound injuries into a binary GSL format string.</p>
-<p>Formats 14 body parts (nsys, leftEye, rightEye, back, abdomen, chest, leftHand,
-rightHand, leftLeg, rightLeg, leftArm, rightArm, neck, head) into a 0b0NNNNNNNNNNNNNNNN
-binary string where each 2-bit field holds the wound severity (0-3).
-Severity 0 = no wound; higher values = worsening condition.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>binary GSL string (e.g. &quot;0b0000100010000...&quot;)</p></div>
-      
-    </li>
-  
-</ul>
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#make_scar_gsl-instance_method" title="Lich::Common::XMLParser#make_scar_gsl (method)">#make_scar_gsl</a></span></li>
-    
-  </ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-290
-291
-292</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 290</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_make_wound_gsl'>make_wound_gsl</span>
   <span class='ivar'>@wound_gsl</span> <span class='op'>=</span> <span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>nsys</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightEye</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>back</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>abdomen</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>chest</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightHand</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightLeg</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>leftArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rightArm</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>neck</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>head</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
@@ -6888,7 +7218,11 @@ Severity 0 = no wound; higher values = worsening condition.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Parse a single reconstructed line from the 'assess' (combat situation) stream
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Parse a single reconstructed line from the 'assess' (combat situation) stream
 into a structured entry. <code>ids</code> is the ordered list of look-target ids pulled
 from the line's <d cmd='look #id'> tags (subject first, then target).
 Returns a Hash, or nil for the header / unparseable lines.</p>
@@ -6904,25 +7238,6 @@ Returns a Hash, or nil for the header / unparseable lines.</p>
       <pre class="lines">
 
 
-389
-390
-391
-392
-393
-394
-395
-396
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
 408
 409
 410
@@ -6953,10 +7268,29 @@ Returns a Hash, or nil for the header / unparseable lines.</p>
 435
 436
 437
-438</pre>
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 389</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 408</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_assess_line'>parse_assess_line</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='comma'>,</span> <span class='id identifier rubyid_ids'>ids</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_text'>text</span> <span class='op'>=</span> <span class='id identifier rubyid_text'>text</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
@@ -7028,25 +7362,17 @@ Returns a Hash, or nil for the header / unparseable lines.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Parses a PSM 3.0 progress bar (dialog) and stores its expiry time.</p>
-<p>Extracts the spell/effect name and remaining duration from a <progressBar> tag,
-converting time strings (&quot;HH:MM:SS&quot; or &quot;Indefinite&quot;) into absolute Time objects.
-Stores the entry twice: keyed by name (for display) and by numeric id (for deduplication).
-Indefinite effects are assigned an expiry of +1 decade; invalid or missing duration
-returns early without updating the dialog.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Parses a PSM 3.0 progress bar (spell/buff/debuff/cooldown effect) into the dialogs cache.</p>
+<p>Stores the effect's expiry time (Time.now + duration) in @<a href="kind">dialogs</a> keyed
+by both the effect name string and its numeric id. If the duration is &quot;Indefinite&quot;
+or &quot;OM&quot;, sets expiry to DECADE (10 years). Otherwise, parses HH:MM:SS format
+and computes the expiry as current time plus that many seconds. The result is
+immediately visible to scripts via XMLData.dialogs.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='id identifier rubyid_parse_psm3_progressbar'>parse_psm3_progressbar</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Buffs</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>id</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>42</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>text</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Aura</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>time</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>00:05:30</span><span class='tstring_end'>&quot;</span></span><span class='rbrace'>}</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -7059,7 +7385,7 @@ returns early without updating the dialog.</p>
       
       
         &mdash;
-        <div class='inline'><p>the dialog kind (e.g. &quot;Buffs&quot;, &quot;Active Spells&quot;, &quot;Cooldowns&quot;)</p></div>
+        <div class='inline'><p>the dialog/effect category, e.g. &quot;Buffs&quot;, &quot;Cooldowns&quot;</p></div>
       
     </li>
   
@@ -7068,13 +7394,17 @@ returns early without updating the dialog.</p>
         <span class='name'>attributes</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>}</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>XML attributes including &quot;id&quot; (numeric), &quot;text&quot; (spell name),
-&quot;time&quot; (duration string: &quot;HH:MM:SS&quot;, &quot;Indefinite&quot;, &quot;OM&quot;, or &quot;Fading&quot;)</p></div>
+        <div class='inline'><p>XML attributes of the progressBar tag:</p>
+<ul>
+<li>&quot;id&quot;: numeric effect id (parsed to_i)</li>
+<li>&quot;text&quot;: effect name (e.g., &quot;Heroism&quot;)</li>
+<li>&quot;time&quot;: duration as &quot;HH:MM:SS&quot; or &quot;Indefinite&quot; or &quot;OM&quot;</li>
+</ul></div>
       
     </li>
   
@@ -7087,22 +7417,22 @@ returns early without updating the dialog.</p>
       <pre class="lines">
 
 
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361</pre>
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 349</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 367</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_psm3_progressbar'>parse_psm3_progressbar</span><span class='lparen'>(</span><span class='id identifier rubyid_kind'>kind</span><span class='comma'>,</span> <span class='id identifier rubyid_attributes'>attributes</span><span class='rparen'>)</span>
   <span class='ivar'>@dialogs</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
@@ -7125,7 +7455,7 @@ returns early without updating the dialog.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset-instance_method">
   
-    #<strong>reset</strong>  &#x21d2; <tt>void</tt> 
+    #<strong>reset</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -7137,13 +7467,14 @@ returns early without updating the dialog.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Clears parser state after a malformed or truncated fragment.</p>
-<p>Resets tag/id stacks, the current stream buffer, and any in-flight state
-(pending creature status, room NPC names, collected creature ids) that could
-cause mismatches or data corruption if applied to the next fragment.
-Discards staged GameObj container refreshes that would be published as
-authoritative by the next <prompt> tag. Called automatically by the error
-handler and may be called directly to recover from severe parsing issues.</p>
+<p>Clears mid-parse state after a fragment error or sync loss.</p>
+<p>Drops any in-flight XML tag stack, active style context, staged GameObj
+refreshes (incomplete container fills, room component updates), and cached
+creature status/name pairings that were not yet committed. This prevents a
+truncated or malformed fragment from leaving stale data that would pollute
+the next arrival's state.</p>
+<p>Called automatically by tag_start and text when they catch an exception,
+and between server fragments by Game.process_xml_data.</p>
 
   </div>
 </div>
@@ -7156,15 +7487,6 @@ handler and may be called directly to recover from severe parsing issues.</p>
       <pre class="lines">
 
 
-239
-240
-241
-242
-243
-244
-245
-246
-247
 248
 249
 250
@@ -7178,10 +7500,19 @@ handler and may be called directly to recover from severe parsing issues.</p>
 258
 259
 260
-261</pre>
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 239</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 248</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset'>reset</span>
   <span class='ivar'>@active_tags</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -7226,11 +7557,13 @@ handler and may be called directly to recover from severe parsing issues.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Tests whether the parser is in a safe state to send a game command.</p>
-<p>For DragonRealms, returns false if the server stream is actively being received
-(in_stream), or if bold text or a style tag is open - these indicate that
-game output is mid-stream and a command response may collide with it.
-GemStone IV always returns true (the game maintains command/response ordering).</p>
+<p>Checks whether it is safe for a script to send a command right now.</p>
+<p>In DragonRealms, returns false if the parser is mid-stream (in_stream true),
+mid-bold block (@bold true), or in an active inline style; returns true if safe.
+GemStone IV always returns true (no flow control needed).</p>
+<p>This gate prevents scripts from sending commands that would land in the middle
+of a room component update or other structured multi-line server response,
+which could corrupt the parser's state or break the command-response pairing.</p>
 
   </div>
 </div>
@@ -7247,7 +7580,7 @@ GemStone IV always returns true (the game maintains command/response ordering).<
       
       
         &mdash;
-        <div class='inline'><p>true if safe to send a command now; false if mid-stream (DR only)</p></div>
+        <div class='inline'><p>true if a command may be sent safely; false otherwise</p></div>
       
     </li>
   
@@ -7259,16 +7592,16 @@ GemStone IV always returns true (the game maintains command/response ordering).<
       <pre class="lines">
 
 
-272
-273
-274
-275
-276
-277
-278</pre>
+285
+286
+287
+288
+289
+290
+291</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 272</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 285</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_safe_to_respond?'>safe_to_respond?</span>
   <span class='kw'>if</span> <span class='ivar'>@game</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^DR</span><span class='regexp_end'>/</span></span>
@@ -7293,7 +7626,11 @@ GemStone IV always returns true (the game maintains command/response ordering).<
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>here for backwards compatibility, but spellfront xml isn't sent by the game anymore</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>here for backwards compatibility, but spellfront xml isn't sent by the game anymore</p>
 
   </div>
 </div>
@@ -7306,19 +7643,19 @@ GemStone IV always returns true (the game maintains command/response ordering).<
       <pre class="lines">
 
 
-1474
-1475
-1476
-1477
-1478
-1479
-1480
-1481
-1482
-1483</pre>
+1528
+1529
+1530
+1531
+1532
+1533
+1534
+1535
+1536
+1537</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1474</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1528</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_spellfront'>spellfront</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>-</span> <span class='cvar'>@@warned_deprecated_spellfront</span><span class='rparen'>)</span> <span class='op'>&gt;</span> <span class='int'>300</span>
@@ -7346,7 +7683,11 @@ GemStone IV always returns true (the game maintains command/response ordering).<
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Ox::Sax interface: Ox parses the server stream directly into XMLData (see
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Ox::Sax interface: Ox parses the server stream directly into XMLData (see
 Game.process_xml_data). Ox fires start_element, then attr per attribute,
 then attrs_done, then text/children, then end_element. Attributes are
 accumulated and flushed to tag_start (matching the old REXML-style single
@@ -7364,13 +7705,13 @@ content is tagged with that encoding; names are ASCII.</p>
       <pre class="lines">
 
 
-451
-452
-453
-454</pre>
+470
+471
+472
+473</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 470</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start_element'>start_element</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='ivar'>@sax_element</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span>
@@ -7396,19 +7737,17 @@ content is tagged with that encoding; names are ASCII.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Ignores closes with no matching open tag (see comment on line 1233).</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Processes a closing XML tag and triggers end-of-element handlers.</p>
-<p>Pops the tag and id stacks when a close matches the currently-open tag (ignoring
-stray synthetic closes). Commits staged GameObj refresh buffers (room objects,
-NPCs, exits) when their components close. Sends GSL format updates and room count
-increments at the appropriate boundaries (compass close, stream close). Handles
-DR compass double-pulse and disabled-room-window branches. Catches errors and resets
-on failure.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Routes a closing XML tag to final object creation and stream commitment.</p>
+<p>Called once per element close by the Ox SAX parser (via end_element). Pops the
+tag name from the stack and handles closing logic: committing staged room
+components (room objs, players, description) when their container closes,
+finalizing inventory items with stored location and surrounding text, and
+incrementing room counters on compass close.</p>
+<p>Prevents spurious handler invocation on synthetic closes (Ox-synthesized ends
+for desynced orphan tags) by checking that the closing tag name matches the
+top of the active stack; mismatches are silently ignored.</p>
+<p>If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+discard in-flight state.</p>
 
   </div>
 </div>
@@ -7426,7 +7765,7 @@ on failure.</p>
       
       
         &mdash;
-        <div class='inline'><p>the element tag name being closed</p></div>
+        <div class='inline'><p>the element tag name being closed (lowercase)</p></div>
       
     </li>
   
@@ -7439,60 +7778,6 @@ on failure.</p>
       <pre class="lines">
 
 
-1396
-1397
-1398
-1399
-1400
-1401
-1402
-1403
-1404
-1405
-1406
-1407
-1408
-1409
-1410
-1411
-1412
-1413
-1414
-1415
-1416
-1417
-1418
-1419
-1420
-1421
-1422
-1423
-1424
-1425
-1426
-1427
-1428
-1429
-1430
-1431
-1432
-1433
-1434
-1435
-1436
-1437
-1438
-1439
-1440
-1441
-1442
-1443
-1444
-1445
-1446
-1447
-1448
-1449
 1450
 1451
 1452
@@ -7514,10 +7799,64 @@ on failure.</p>
 1468
 1469
 1470
-1471</pre>
+1471
+1472
+1473
+1474
+1475
+1476
+1477
+1478
+1479
+1480
+1481
+1482
+1483
+1484
+1485
+1486
+1487
+1488
+1489
+1490
+1491
+1492
+1493
+1494
+1495
+1496
+1497
+1498
+1499
+1500
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508
+1509
+1510
+1511
+1512
+1513
+1514
+1515
+1516
+1517
+1518
+1519
+1520
+1521
+1522
+1523
+1524
+1525</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1396</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1450</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tag_end'>tag_end</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='comment'># Called once per element close. Ox synthesizes an end for a stray closing
@@ -7615,19 +7954,18 @@ on failure.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Automatically called by attrs_done after attribute accumulation completes.</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Processes an opening XML tag and its attributes.</p>
-<p>Core handler for all incoming game state tags (nav, compass, progressBar, etc.).
-Updates instance variables (room_id, stats, containers, creature status) and
-triggers cascading state changes (clearing room roster on nav, committing containers
-on prompt). Handles game-specific logic branches for GemStone IV vs DragonRealms.
-Routes creature data to Creature.register or defers status flags for later application.
-Catches errors, logs them, resets parser state, and continues.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Routes an opening XML tag to game-state updates and side effects.</p>
+<p>Called once per element by the Ox SAX parser (via attrs_done). Pushes the tag
+name and id attribute onto stacks, then handles 100+ tag types to extract and
+cache game state: room arrival (nav), room components (compDef/component), spell
+durations (progressBar), creature status (crtrStatus), inventory (inv),
+player status, injuries, server time, roundtime, and numerous UI elements.</p>
+<p>Complex operations span multiple callbacks: container fills begin here and close
+at the prompt; creature name/status pairings are staged here and committed at
+tag_end; and room-object names (DragonRealms only) are captured during bold text
+and paired to creature ids at the next prompt.</p>
+<p>If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+discard in-flight state.</p>
 
   </div>
 </div>
@@ -7645,7 +7983,7 @@ Catches errors, logs them, resets parser state, and continues.</p>
       
       
         &mdash;
-        <div class='inline'><p>the element tag name</p></div>
+        <div class='inline'><p>the element tag name (lowercase)</p></div>
       
     </li>
   
@@ -7654,12 +7992,12 @@ Catches errors, logs them, resets parser state, and continues.</p>
         <span class='name'>attributes</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>}</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the element's attributes as key-value pairs</p></div>
+        <div class='inline'><p>the element's attributes</p></div>
       
     </li>
   
@@ -7672,36 +8010,6 @@ Catches errors, logs them, resets parser state, and continues.</p>
       <pre class="lines">
 
 
-531
-532
-533
-534
-535
-536
-537
-538
-539
-540
-541
-542
-543
-544
-545
-546
-547
-548
-549
-550
-551
-552
-553
-554
-555
-556
-557
-558
-559
-560
 561
 562
 563
@@ -8252,10 +8560,40 @@ Catches errors, logs them, resets parser state, and continues.</p>
 1108
 1109
 1110
-1111</pre>
+1111
+1112
+1113
+1114
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122
+1123
+1124
+1125
+1126
+1127
+1128
+1129
+1130
+1131
+1132
+1133
+1134
+1135
+1136
+1137
+1138
+1139
+1140
+1141</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 531</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 561</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tag_start'>tag_start</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_attributes'>attributes</span><span class='rparen'>)</span>
   <span class='comment'># This is called once per element by REXML in games.rb
@@ -8858,14 +9196,23 @@ Catches errors, logs them, resets parser state, and continues.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Processes text content between XML tags.</p>
-<p>Handles multiple state machines in parallel: game stats (mind state, stance),
-room/inventory content (objects, NPCs, PCs), container filling, and the assess
-(combat) stream. Decodes standard XML entities and routes text to the appropriate
-accumulator (room_description, inventory, active spells, etc.) based on the current
-tag/stream context. Registers creatures and items, annotates status, and handles
-game-specific parsing branches (DR active spell durations, familiar room tracking, etc.).
-Catches errors and resets on failure.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Routes text nodes to game-state updates and message capture.</p>
+<p>Called once per text node by the Ox SAX parser. First decodes standard XML
+entities (since Ox runs with convert_special: false). Then dispatches to
+state handlers based on active tag stack and current stream context:</p>
+<ul>
+<li>Inventory items: builds object name and surrounding text</li>
+<li>Room components: registers NPCs, items, players, and descriptions</li>
+<li>Spell tracking: extracts spell names and durations from percWindow stream</li>
+<li>Familiar room: tracks the familiar's location and contents</li>
+<li>Bounty/society tasks: appends to multi-line content</li>
+<li>Assess stream: builds combat situation descriptions</li>
+</ul>
+<p>In DragonRealms, captures bold NPC names in stream order so they can be paired
+to creature status ids at the next prompt. In GemStone, applies creature status
+immediately via the bold <a exist> tag path.</p>
+<p>If an exception is raised, logs the error, sleeps briefly, and calls reset() to
+discard in-flight state.</p>
 
   </div>
 </div>
@@ -8883,7 +9230,7 @@ Catches errors and resets on failure.</p>
       
       
         &mdash;
-        <div class='inline'><p>the decoded text node content</p></div>
+        <div class='inline'><p>the text node content (may span multiple lines)</p></div>
       
     </li>
   
@@ -8896,46 +9243,6 @@ Catches errors and resets on failure.</p>
       <pre class="lines">
 
 
-1126
-1127
-1128
-1129
-1130
-1131
-1132
-1133
-1134
-1135
-1136
-1137
-1138
-1139
-1140
-1141
-1142
-1143
-1144
-1145
-1146
-1147
-1148
-1149
-1150
-1151
-1152
-1153
-1154
-1155
-1156
-1157
-1158
-1159
-1160
-1161
-1162
-1163
-1164
-1165
 1166
 1167
 1168
@@ -9151,10 +9458,58 @@ Catches errors and resets on failure.</p>
 1378
 1379
 1380
-1381</pre>
+1381
+1382
+1383
+1384
+1385
+1386
+1387
+1388
+1389
+1390
+1391
+1392
+1393
+1394
+1395
+1396
+1397
+1398
+1399
+1400
+1401
+1402
+1403
+1404
+1405
+1406
+1407
+1408
+1409
+1410
+1411
+1412
+1413
+1414
+1415
+1416
+1417
+1418
+1419
+1420
+1421
+1422
+1423
+1424
+1425
+1426
+1427
+1428
+1429</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1126</span>
+      <pre class="code"><span class="info file"># File 'documented/common/xmlparser.rb', line 1166</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_text'>text</span><span class='lparen'>(</span><span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span>
   <span class='comment'># Called by Ox once per text node. Decode the standard XML entities (Ox
@@ -9229,10 +9584,18 @@ Catches errors and resets on failure.</p>
       <span class='ivar'>@prompt</span> <span class='op'>=</span> <span class='id identifier rubyid_text_string'>text_string</span>
     <span class='kw'>elsif</span> <span class='ivar'>@active_tags</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new_right_hand'><span class='object_link'><a href="GameObj.html#new_right_hand-class_method" title="Lich::Common::GameObj.new_right_hand (method)">new_right_hand</a></span></span><span class='lparen'>(</span><span class='ivar'>@obj_exist</span><span class='comma'>,</span> <span class='ivar'>@obj_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span>
+      <span class='comment'># DR only: an item now held in hand is no longer worn or in a
+</span>      <span class='comment'># container, so drop any stale placement of it. DR has no passive
+</span>      <span class='comment'># container stream to self-correct this, and its containers are
+</span>      <span class='comment'># rebuilt only on an explicit INV LIST/SEARCH. Gated so GemStone
+</span>      <span class='comment'># (which relies on its own inv stream) is unaffected. Empty hands
+</span>      <span class='comment'># carry no exist id (@obj_exist nil), making this a safe no-op.
+</span>      <span class='const'><span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_remove_inv_item'><span class='object_link'><a href="GameObj.html#remove_inv_item-class_method" title="Lich::Common::GameObj.remove_inv_item (method)">remove_inv_item</a></span></span><span class='lparen'>(</span><span class='ivar'>@obj_exist</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^DR</span><span class='regexp_end'>/</span></span>
       <span class='gvar'>$_CLIENT_</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\034GSm</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%-45s</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='ivar'>@send_fake_tags</span>
     <span class='kw'>elsif</span> <span class='ivar'>@active_tags</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new_left_hand'><span class='object_link'><a href="GameObj.html#new_left_hand-class_method" title="Lich::Common::GameObj.new_left_hand (method)">new_left_hand</a></span></span><span class='lparen'>(</span><span class='ivar'>@obj_exist</span><span class='comma'>,</span> <span class='ivar'>@obj_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span>
-      <span class='gvar'>$_CLIENT_</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\034GSl</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%-45s</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='ivar'>@send_fake_tags</span>
+      <span class='const'><span class='object_link'><a href="GameObj.html" title="Lich::Common::GameObj (class)">GameObj</a></span></span><span class='period'>.</span><span class='id identifier rubyid_remove_inv_item'><span class='object_link'><a href="GameObj.html#remove_inv_item-class_method" title="Lich::Common::GameObj.remove_inv_item (method)">remove_inv_item</a></span></span><span class='lparen'>(</span><span class='ivar'>@obj_exist</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^DR</span><span class='regexp_end'>/</span></span> <span class='comment'># see &#39;right&#39; above
+</span>      <span class='gvar'>$_CLIENT_</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\034GSl</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%-45s</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='ivar'>@send_fake_tags</span>
     <span class='kw'>elsif</span> <span class='ivar'>@active_tags</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>spell</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
       <span class='ivar'>@prepared_spell</span> <span class='op'>=</span> <span class='id identifier rubyid_text_string'>text_string</span>
       <span class='gvar'>$_CLIENT_</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\034GSn</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_sprintf'>sprintf</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%-14s</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_text_string'>text_string</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='ivar'>@send_fake_tags</span>
@@ -9422,7 +9785,7 @@ Catches errors and resets on failure.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:08 2026 by
+  Generated on Thu Sep 10 03:55:35 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -127,7 +127,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the frontend name based on ARGV flags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Inspects ARGV to select the active UI frontend (-s, -w, --avalon, etc.).</p></div></span>
   
 </li>
 
@@ -149,7 +149,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Routes game connection configuration based on ARGV flags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Routes ARGV flags to the appropriate game server connection handler and sets game_host, game_port, and $frontend accordingly.</p></div></span>
   
 </li>
 
@@ -171,7 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Configures DragonRealms connection details based on ARGV flags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets game server and frontend for DragonRealms (premium or free play).</p></div></span>
   
 </li>
 
@@ -193,7 +193,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Handles explicit -g/--game HOST:PORT connection configuration.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Handles explicit -g/--game mode: parses host:port and sets frontend from ARGV.</p></div></span>
   
 </li>
 
@@ -215,7 +215,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Configures Fallen connection details.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets game server and frontend for DragonRealms: Fallen (event realm).</p></div></span>
   
 </li>
 
@@ -237,7 +237,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Configures GemStone IV connection details based on ARGV flags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets game server and frontend for GemStone IV (premium or free play).</p></div></span>
   
 </li>
 
@@ -259,7 +259,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Configures Shattered connection details.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets game server and frontend for GemStone IV: Shattered (event realm).</p></div></span>
   
 </li>
 
@@ -289,9 +289,10 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Returns the frontend name based on ARGV flags.</p>
-<p>Checks for -s/--stormfront, -w/--wizard, --avalon, --frostbite, and --saga
-in ARGV in that order of precedence.</p>
+<p>Inspects ARGV to select the active UI frontend (-s, -w, --avalon, etc.).</p>
+<p>Searches ARGV for frontend flags in order: -s/--stormfront, -w/--wizard,
+--avalon, --frostbite, --saga. Returns the first match found, or 'unknown'
+if none are present.</p>
 
   </div>
 </div>
@@ -308,8 +309,8 @@ in ARGV in that order of precedence.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name: &quot;stormfront&quot;, &quot;wizard&quot;, &quot;avalon&quot;,
-&quot;frostbite&quot;, &quot;saga&quot;, or &quot;unknown&quot; if no flag matches</p></div>
+        <div class='inline'><p>one of 'stormfront', 'wizard', 'avalon', 'frostbite', 'saga',
+or 'unknown'</p></div>
       
     </li>
   
@@ -321,6 +322,13 @@ in ARGV in that order of precedence.</p>
       <pre class="lines">
 
 
+523
+524
+525
+526
+527
+528
+529
 530
 531
 532
@@ -328,17 +336,10 @@ in ARGV in that order of precedence.</p>
 534
 535
 536
-537
-538
-539
-540
-541
-542
-543
-544</pre>
+537</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 530</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 523</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_determine_frontend'>determine_frontend</span>
   <span class='kw'>if</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-s</span><span class='tstring_end'>&#39;</span></span> <span class='op'>||</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--stormfront</span><span class='tstring_end'>&#39;</span></span> <span class='rbrace'>}</span>
@@ -375,11 +376,18 @@ in ARGV in that order of precedence.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Routes game connection configuration based on ARGV flags.</p>
-<p>Checks for explicit -g/--game, --shattered, --fallen, and game-specific
-flags (--gemstone, --dragonrealms) in ARGV and delegates to the
-corresponding handler. Sets :game_host and :game_port in processed_options.
-Falls through to set both to nil if no route matches.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Called after side effects; modifies global game connection state</p></div>
+  </div>
+
+<p>Routes ARGV flags to the appropriate game server connection handler and sets
+game_host, game_port, and $frontend accordingly.</p>
+<p>Detects force-mode flags (-g/--game, --shattered, --fallen, or authentication
+provider flags) and calls the corresponding handler. If no game mode is detected,
+sets game_host and game_port to nil. Also initializes <span class='object_link'><a href="../../Common/Frontend.html" title="Lich::Common::Frontend (module)">Common::Frontend</a></span>
+from the parent process for normal connections (not detachable-client mode).</p>
 
   </div>
 </div>
@@ -397,7 +405,7 @@ Falls through to set both to nil if no route matches.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash</p></div>
+        <div class='inline'><p>the options hash from <span class='object_link'><a href="SideEffects.html#execute-class_method" title="Lich::Main::ArgvOptions::SideEffects.execute (method)">SideEffects.execute</a></span></p></div>
       
     </li>
   
@@ -414,7 +422,8 @@ Falls through to set both to nil if no route matches.</p>
       
       
         &mdash;
-        <div class='inline'><p>the mutated processed_options hash</p></div>
+        <div class='inline'><p>the same processed_options hash, updated with :game_host and
+:game_port keys; side effect is setting global $frontend and $platinum</p></div>
       
     </li>
   
@@ -426,27 +435,27 @@ Falls through to set both to nil if no route matches.</p>
       <pre class="lines">
 
 
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
-367
-368
-369
-370
-371
-372
-373
-374</pre>
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 357</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 338</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span> <span class='op'>=</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-g</span><span class='tstring_end'>&#39;</span></span> <span class='op'>||</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--game</span><span class='tstring_end'>&#39;</span></span> <span class='rbrace'>}</span><span class='rparen'>)</span>
@@ -486,10 +495,17 @@ Falls through to set both to nil if no route matches.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Configures DragonRealms connection details based on ARGV flags.</p>
-<p>Sets host to dr.simutronics.net, port based on --platinum, --test,
-and --stormfront/--genie flags, and determines frontend from ARGV.
-Sets $platinum global accordingly.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Sets global $platinum and $frontend</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Sets game server and frontend for DragonRealms (premium or free play).</p>
+<p>Selects the appropriate server port based on --platinum flag and --test flag.
+Determines frontend from -s/--stormfront, --genie, --avalon, --frostbite,
+--saga, or defaults to wizard. Stormfront is preferred if specified; Genie
+is checked next; then the remaining flags in order.</p>
 
   </div>
 </div>
@@ -507,7 +523,8 @@ Sets $platinum global accordingly.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash; sets :game_host and :game_port</p></div>
+        <div class='inline'><p>the options hash to update with :game_host
+and :game_port</p></div>
       
     </li>
   
@@ -520,6 +537,14 @@ Sets $platinum global accordingly.</p>
       <pre class="lines">
 
 
+480
+481
+482
+483
+484
+485
+486
+487
 488
 489
 490
@@ -544,18 +569,10 @@ Sets $platinum global accordingly.</p>
 509
 510
 511
-512
-513
-514
-515
-516
-517
-518
-519
-520</pre>
+512</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 488</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 480</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_dragonrealms_connection'>handle_dragonrealms_connection</span><span class='lparen'>(</span><span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--platinum</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -610,10 +627,11 @@ Sets $platinum global accordingly.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Handles explicit -g/--game HOST:PORT connection configuration.</p>
-<p>Extracts host and port from the argument following -g or --game in ARGV,
-determines the frontend from other ARGV flags, and initializes the
-frontend from the parent process unless --detachable-client is present.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Handles explicit -g/--game mode: parses host:port and sets frontend from ARGV.</p>
+<p>Extracts the game server address from ARGV immediately following -g or --game,
+splits on ':', converts port to Integer, and calls <span class='object_link'><a href="#determine_frontend-class_method" title="Lich::Main::ArgvOptions::GameConnection.determine_frontend (method)">determine_frontend</a></span>
+to select the UI. Initializes <span class='object_link'><a href="../../Common/Frontend.html" title="Lich::Common::Frontend (module)">Common::Frontend</a></span> from the parent process
+unless --detachable-client is present.</p>
 
   </div>
 </div>
@@ -631,7 +649,7 @@ frontend from the parent process unless --detachable-client is present.</p>
       
       
         &mdash;
-        <div class='inline'><p>the -g or --game flag itself</p></div>
+        <div class='inline'><p>the literal '-g' or '--game' flag from ARGV</p></div>
       
     </li>
   
@@ -645,7 +663,8 @@ frontend from the parent process unless --detachable-client is present.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash</p></div>
+        <div class='inline'><p>the options hash to update with :game_host
+and :game_port</p></div>
       
     </li>
   
@@ -658,18 +677,18 @@ frontend from the parent process unless --detachable-client is present.</p>
       <pre class="lines">
 
 
-386
-387
-388
-389
-390
-391
-392
-393
-394</pre>
+369
+370
+371
+372
+373
+374
+375
+376
+377</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 386</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 369</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_explicit_game_connection'>handle_explicit_game_connection</span><span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span><span class='comma'>,</span> <span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_processed_options'>processed_options</span><span class='lbracket'>[</span><span class='symbol'>:game_host</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_processed_options'>processed_options</span><span class='lbracket'>[</span><span class='symbol'>:game_port</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'>ARGV</span><span class='lbracket'>[</span><span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span><span class='rparen'>)</span> <span class='op'>+</span> <span class='int'>1</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>:</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -700,10 +719,16 @@ frontend from the parent process unless --detachable-client is present.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Configures Fallen connection details.</p>
-<p>Sets host to dr.simutronics.net and port to 11324.
-Determines frontend from ARGV (stormfront, genie, or wizard/avalon/frostbite/saga default).
-Sets $platinum to false.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Sets global $frontend and $platinum to false</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Sets game server and frontend for DragonRealms: Fallen (event realm).</p>
+<p>Connects to dr.simutronics.net port 11324. Determines frontend from
+-s/--stormfront, --genie, --avalon, --frostbite, --saga, or defaults to wizard.
+Genie is preferred if specified; Stormfront is checked next.</p>
 
   </div>
 </div>
@@ -721,7 +746,8 @@ Sets $platinum to false.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash; sets :game_host and :game_port</p></div>
+        <div class='inline'><p>the options hash to update with :game_host
+and :game_port</p></div>
       
     </li>
   
@@ -734,25 +760,25 @@ Sets $platinum to false.</p>
       <pre class="lines">
 
 
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
 462
 463
 464
 465
-466
-467
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477</pre>
+466</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 462</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 451</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_fallen_connection'>handle_fallen_connection</span><span class='lparen'>(</span><span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='gvar'>$platinum</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -790,10 +816,17 @@ Sets $platinum to false.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Configures GemStone IV connection details based on ARGV flags.</p>
-<p>Sets host to storm.gs4.game.play.net, port based on --platinum, --test,
-and --stormfront flags, and determines the frontend (stormfront, wizard,
-avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Sets global $platinum and $frontend</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Sets game server and frontend for GemStone IV (premium or free play).</p>
+<p>Selects the appropriate server port based on --platinum flag and --test flag.
+Determines frontend from -s/--stormfront, --avalon, --frostbite, --saga, or
+defaults to wizard. Stormfront is preferred if specified; otherwise frontend
+flags are checked in the order listed.</p>
 
   </div>
 </div>
@@ -811,7 +844,8 @@ avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash; sets :game_host and :game_port</p></div>
+        <div class='inline'><p>the options hash to update with :game_host
+and :game_port</p></div>
       
     </li>
   
@@ -824,6 +858,20 @@ avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.</p>
       <pre class="lines">
 
 
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
 405
 406
 407
@@ -834,24 +882,10 @@ avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.</p>
 412
 413
 414
-415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
-427
-428
-429</pre>
+415</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 405</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 391</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_gemstone_connection'>handle_gemstone_connection</span><span class='lparen'>(</span><span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--platinum</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -898,10 +932,15 @@ avalon, frostbite, saga) from ARGV. Sets $platinum global accordingly.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Configures Shattered connection details.</p>
-<p>Sets host to storm.gs4.game.play.net and port to 10324.
-Determines frontend from ARGV (stormfront or wizard/avalon/frostbite/saga default).
-Sets $platinum to false.</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Sets global $frontend and $platinum to false</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Sets game server and frontend for GemStone IV: Shattered (event realm).</p>
+<p>Connects to storm.gs4.game.play.net port 10324. Determines frontend from
+-s/--stormfront, --avalon, --frostbite, --saga, or defaults to wizard.</p>
 
   </div>
 </div>
@@ -919,7 +958,8 @@ Sets $platinum to false.</p>
       
       
         &mdash;
-        <div class='inline'><p>mutable option hash; sets :game_host and :game_port</p></div>
+        <div class='inline'><p>the options hash to update with :game_host
+and :game_port</p></div>
       
     </li>
   
@@ -932,21 +972,21 @@ Sets $platinum to false.</p>
       <pre class="lines">
 
 
-440
-441
-442
-443
-444
-445
-446
-447
-448
-449
-450
-451</pre>
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 440</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 427</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_shattered_connection'>handle_shattered_connection</span><span class='lparen'>(</span><span class='id identifier rubyid_processed_options'>processed_options</span><span class='rparen'>)</span>
   <span class='gvar'>$platinum</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -970,7 +1010,7 @@ Sets $platinum to false.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:57 2026 by
+  Generated on Thu Sep 10 03:55:16 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

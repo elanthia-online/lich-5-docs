@@ -151,7 +151,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Cleans a DragonRealms server string: buffers split room components, removes superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Cleans a DragonRealms server string: buffers split room components, fixes encoding and malformed XML tags, handles combat/atmospherics.</p></div></span>
   
 </li>
 
@@ -173,7 +173,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the DragonRealms Lich installation documentation URL.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the DragonRealms-specific documentation URL.</p></div></span>
   
 </li>
 
@@ -195,7 +195,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Handles DragonRealms atmospheric stream state: prepends popStream when atmospherics flag is set, and manages broken familiar/pet-pig tags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Manages DragonRealms atmospheric stream state (familiar and spell effects).</p></div></span>
   
 </li>
 
@@ -217,7 +217,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Handles DragonRealms combat stream nesting: closes pushStream/combat with popStream when certain end tags are encountered.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Manages DragonRealms combat stream nesting: closes pending streams and removes duplicates.</p></div></span>
   
 </li>
 
@@ -261,7 +261,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses DragonRealms XML and line data for DRParser (dynamic data display).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses DragonRealms-specific data via DRParser (vitals, experience, room info).</p></div></span>
   
 </li>
 
@@ -338,8 +338,11 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Cleans a DragonRealms server string: buffers split room components, removes
-superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
+<p>Cleans a DragonRealms server string: buffers split room components, fixes encoding
+and malformed XML tags, handles combat/atmospherics.</p>
+<p>Buffers the &quot;...wait N seconds.&quot; part of split room object/player components,
+removes superfluous combat wrapping, fixes encoding and duplicate tags, and
+processes combat/atmospheric stream markers.</p>
 
   </div>
 </div>
@@ -357,7 +360,7 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
       
       
         &mdash;
-        <div class='inline'><p>the server string to clean</p></div>
+        <div class='inline'><p>the raw server string</p></div>
       
     </li>
   
@@ -374,7 +377,7 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cleaned server string, or nil if buffering a split component</p></div>
+        <div class='inline'><p>the cleaned server string, or nil if buffering (should skip)</p></div>
       
     </li>
   
@@ -386,38 +389,38 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
       <pre class="lines">
 
 
-1726
-1727
-1728
-1729
-1730
-1731
-1732
-1733
-1734
-1735
-1736
-1737
-1738
-1739
-1740
-1741
-1742
-1743
-1744
-1745
-1746
-1747
-1748
-1749
-1750
-1751
-1752
-1753
-1754</pre>
+1764
+1765
+1766
+1767
+1768
+1769
+1770
+1771
+1772
+1773
+1774
+1775
+1776
+1777
+1778
+1779
+1780
+1781
+1782
+1783
+1784
+1785
+1786
+1787
+1788
+1789
+1790
+1791
+1792</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1726</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1764</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clean_serverstring'>clean_serverstring</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># Buffer split room objs components (server sends &quot;...wait N seconds.&quot; separately)
@@ -468,7 +471,7 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Returns the DragonRealms Lich installation documentation URL.</p>
+<p>Returns the DragonRealms-specific documentation URL.</p>
 
   </div>
 </div>
@@ -485,7 +488,7 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
       
       
         &mdash;
-        <div class='inline'><p>the GitHub wiki URL for Lich installation</p></div>
+        <div class='inline'><p>the Lich 5 GitHub wiki URL</p></div>
       
     </li>
   
@@ -497,12 +500,12 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
       <pre class="lines">
 
 
-1806
-1807
-1808</pre>
+1848
+1849
+1850</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1806</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1848</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_documentation_url'>get_documentation_url</span>
   <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://github.com/elanthia-online/lich-5/wiki/Documentation-for-Installing-and-Upgrading-Lich</span><span class='tstring_end'>&quot;</span></span>
@@ -527,8 +530,9 @@ superfluous tags, fixes encoding, and handles combat/atmospheric streams.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Handles DragonRealms atmospheric stream state: prepends popStream when atmospherics
-flag is set, and manages broken familiar/pet-pig tags.</p>
+<p>Manages DragonRealms atmospheric stream state (familiar and spell effects).</p>
+<p>Closes pending atmospheric streams and strips misplaced stream tags that break
+prompt processing (familiar narration and pet pig effects).</p>
 
   </div>
 </div>
@@ -546,7 +550,7 @@ flag is set, and manages broken familiar/pet-pig tags.</p>
       
       
         &mdash;
-        <div class='inline'><p>the server string, modified in place</p></div>
+        <div class='inline'><p>the server string with atmospheric tags</p></div>
       
     </li>
   
@@ -563,7 +567,7 @@ flag is set, and manages broken familiar/pet-pig tags.</p>
       
       
         &mdash;
-        <div class='inline'><p>the processed server string</p></div>
+        <div class='inline'><p>the modified string</p></div>
       
     </li>
   
@@ -575,25 +579,25 @@ flag is set, and manages broken familiar/pet-pig tags.</p>
       <pre class="lines">
 
 
-1785
-1786
-1787
-1788
-1789
-1790
-1791
-1792
-1793
-1794
-1795
-1796
-1797
-1798
-1799
-1800</pre>
+1827
+1828
+1829
+1830
+1831
+1832
+1833
+1834
+1835
+1836
+1837
+1838
+1839
+1840
+1841
+1842</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1785</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1827</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_handle_atmospherics'>handle_atmospherics</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='ivar'>@atmospherics</span>
@@ -631,8 +635,9 @@ flag is set, and manages broken familiar/pet-pig tags.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Handles DragonRealms combat stream nesting: closes pushStream/combat with popStream
-when certain end tags are encountered.</p>
+<p>Manages DragonRealms combat stream nesting: closes pending streams and removes duplicates.</p>
+<p>When exiting combat, wraps end tags (prompt, clearStream, etc.) with closing
+combat stream markers. Removes orphaned opening tags when not in combat.</p>
 
   </div>
 </div>
@@ -650,7 +655,7 @@ when certain end tags are encountered.</p>
       
       
         &mdash;
-        <div class='inline'><p>the server string, modified in place</p></div>
+        <div class='inline'><p>the server string with combat tags</p></div>
       
     </li>
   
@@ -667,7 +672,7 @@ when certain end tags are encountered.</p>
       
       
         &mdash;
-        <div class='inline'><p>the processed server string</p></div>
+        <div class='inline'><p>the modified string</p></div>
       
     </li>
   
@@ -679,25 +684,25 @@ when certain end tags are encountered.</p>
       <pre class="lines">
 
 
-1762
-1763
-1764
-1765
-1766
-1767
-1768
-1769
-1770
-1771
-1772
-1773
-1774
-1775
-1776
-1777</pre>
+1802
+1803
+1804
+1805
+1806
+1807
+1808
+1809
+1810
+1811
+1812
+1813
+1814
+1815
+1816
+1817</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1762</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1802</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_handle_combat_tags'>handle_combat_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='ivar'>@combat_count</span> <span class='op'>&gt;</span> <span class='int'>0</span>
@@ -800,20 +805,20 @@ because process_xml_data has already parsed the inbound stream before this runs.
       <pre class="lines">
 
 
-1840
-1841
-1842
-1843
-1844
-1845
-1846
-1847
-1848
-1849
-1850</pre>
+1883
+1884
+1885
+1886
+1887
+1888
+1889
+1890
+1891
+1892
+1893</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1840</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1883</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_modify_room_display'>modify_room_display</span><span class='lparen'>(</span><span class='id identifier rubyid_alt_string'>alt_string</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_room_id_in_title?'>room_id_in_title?</span>
@@ -846,8 +851,9 @@ because process_xml_data has already parsed the inbound stream before this runs.
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Parses DragonRealms XML and line data for DRParser (dynamic data display).</p>
-<p>Passes raw server_string to DRParser for inline modifications.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Parses DragonRealms-specific data via DRParser (vitals, experience, room info).</p>
+<p>Runs DRParser to update character state and optionally inject inline exp display.
+The parser may modify server_string in place.</p>
 
   </div>
 </div>
@@ -865,7 +871,7 @@ because process_xml_data has already parsed the inbound stream before this runs.
       
       
         &mdash;
-        <div class='inline'><p>the raw XML server string, modified in place by the parser</p></div>
+        <div class='inline'><p>the raw server XML string, possibly modified in place</p></div>
       
     </li>
   
@@ -878,14 +884,14 @@ because process_xml_data has already parsed the inbound stream before this runs.
       <pre class="lines">
 
 
-1817
-1818
-1819
-1820
-1821</pre>
+1860
+1861
+1862
+1863
+1864</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1817</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1860</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_process_game_specific_data'>process_game_specific_data</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='comma'>,</span> <span class='id identifier rubyid__stripped_server'>_stripped_server</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='comment'># Parse directly to allow inline modifications (e.g., inline exp display)
@@ -968,26 +974,26 @@ injection for the &quot;title&quot;/&quot;both&quot; placements is handled separ
       <pre class="lines">
 
 
-1868
-1869
-1870
-1871
-1872
-1873
-1874
-1875
-1876
-1877
-1878
-1879
-1880
-1881
-1882
-1883
-1884</pre>
+1911
+1912
+1913
+1914
+1915
+1916
+1917
+1918
+1919
+1920
+1921
+1922
+1923
+1924
+1925
+1926
+1927</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1868</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1911</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_process_room_display'>process_room_display</span><span class='lparen'>(</span><span class='id identifier rubyid_alt_string'>alt_string</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_alt_string'>alt_string</span> <span class='op'>=</span> <span class='id identifier rubyid_prepend_room_lines'>prepend_room_lines</span><span class='lparen'>(</span><span class='id identifier rubyid_alt_string'>alt_string</span><span class='comma'>,</span> <span class='id identifier rubyid_room_stringproc_entries'>room_stringproc_entries</span><span class='comma'>,</span> <span class='id identifier rubyid_room_exit_entries'>room_exit_entries</span><span class='rparen'>)</span>
@@ -1016,7 +1022,7 @@ injection for the &quot;title&quot;/&quot;both&quot; placements is handled separ
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:05 2026 by
+  Generated on Thu Sep 10 03:55:31 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

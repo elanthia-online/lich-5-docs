@@ -104,10 +104,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Defense configuration for a creature template.</p>
-<p>Tracks all defensive mechanics: armor/shield/guard/magic defense values,
-TD (Target Defense) for each caster class, spell immunities, and passive
-defensive spells/abilities.</p>
+    <p>Creature defensive statistics and special defenses.</p>
+<p>Armor and spell TD values, immunities, defensive spell/ability lists.
+Ranges (e.g., TD spread) are parsed from strings into Range objects;
+numeric values are stored as-is.</p>
 
   </div>
 </div>
@@ -678,7 +678,7 @@ defensive spells/abilities.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes defense attributes from template data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes defense attributes from creature template data.</p></div></span>
   
 </li>
 
@@ -701,10 +701,9 @@ defensive spells/abilities.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes defense attributes from template data.</p>
-<p>Parses all defense values, including armor-type defenses (ASG, melee, ranged,
-bolt, UDF) and caster-specific TDs (BAR, CLR, EMP, PAL, RAN, SOR, WIZ, etc.).
-TD values are converted from string ranges (&quot;10..15&quot;) to Range objects as needed.</p>
+    <p>Initializes defense attributes from creature template data.</p>
+<p>Parses range values (&quot;10..15&quot; strings into Range objects). All numeric
+TD values are converted using parse_td; lists are stored as-is or empty arrays.</p>
 
   </div>
 </div>
@@ -722,7 +721,10 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       
       
         &mdash;
-        <div class='inline'><p>template defense data</p></div>
+        <div class='inline'><p>defense attributes including :asg, :melee, :ranged, :bolt,
+:udf, :bar_td, :cle_td, :emp_td, :pal_td, :ran_td, :sor_td, :wiz_td,
+:mje_td, :mne_td, :mjs_td, :mns_td, :mnm_td, :immunities,
+:defensive_spells, :defensive_abilities, :special_defenses</p></div>
       
     </li>
   
@@ -735,25 +737,25 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-797
-798
-799
-800
-801
-802
-803
-804
-805
-806
-807
-808
-809
-810
-811
-812</pre>
+1025
+1026
+1027
+1028
+1029
+1030
+1031
+1032
+1033
+1034
+1035
+1036
+1037
+1038
+1039
+1040</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 797</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1025</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='ivar'>@asg</span> <span class='op'>=</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:asg</span><span class='rbracket'>]</span>
@@ -807,12 +809,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_asg'>asg</span>
   <span class='ivar'>@asg</span>
@@ -848,12 +850,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bar_td'>bar_td</span>
   <span class='ivar'>@bar_td</span>
@@ -889,12 +891,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bolt'>bolt</span>
   <span class='ivar'>@bolt</span>
@@ -930,12 +932,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cle_td'>cle_td</span>
   <span class='ivar'>@cle_td</span>
@@ -971,12 +973,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_defensive_abilities'>defensive_abilities</span>
   <span class='ivar'>@defensive_abilities</span>
@@ -1012,12 +1014,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_defensive_spells'>defensive_spells</span>
   <span class='ivar'>@defensive_spells</span>
@@ -1053,12 +1055,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_emp_td'>emp_td</span>
   <span class='ivar'>@emp_td</span>
@@ -1094,12 +1096,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_immunities'>immunities</span>
   <span class='ivar'>@immunities</span>
@@ -1135,12 +1137,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_melee'>melee</span>
   <span class='ivar'>@melee</span>
@@ -1176,12 +1178,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mje_td'>mje_td</span>
   <span class='ivar'>@mje_td</span>
@@ -1217,12 +1219,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mjs_td'>mjs_td</span>
   <span class='ivar'>@mjs_td</span>
@@ -1258,12 +1260,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mne_td'>mne_td</span>
   <span class='ivar'>@mne_td</span>
@@ -1299,12 +1301,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mnm_td'>mnm_td</span>
   <span class='ivar'>@mnm_td</span>
@@ -1340,12 +1342,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mns_td'>mns_td</span>
   <span class='ivar'>@mns_td</span>
@@ -1381,12 +1383,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_pal_td'>pal_td</span>
   <span class='ivar'>@pal_td</span>
@@ -1422,12 +1424,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ran_td'>ran_td</span>
   <span class='ivar'>@ran_td</span>
@@ -1463,12 +1465,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ranged'>ranged</span>
   <span class='ivar'>@ranged</span>
@@ -1504,12 +1506,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sor_td'>sor_td</span>
   <span class='ivar'>@sor_td</span>
@@ -1545,12 +1547,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_special_defenses'>special_defenses</span>
   <span class='ivar'>@special_defenses</span>
@@ -1586,12 +1588,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_udf'>udf</span>
   <span class='ivar'>@udf</span>
@@ -1627,12 +1629,12 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
       <pre class="lines">
 
 
-783
-784
-785</pre>
+1009
+1010
+1011</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 783</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wiz_td'>wiz_td</span>
   <span class='ivar'>@wiz_td</span>
@@ -1648,7 +1650,7 @@ TD values are converted from string ranges (&quot;10..15&quot;) to Range objects
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:08 2026 by
+  Generated on Thu Sep 10 03:55:36 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

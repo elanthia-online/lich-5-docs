@@ -88,9 +88,9 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Collection of utilities for login argument parsing, character lookup, and session spawning.</p>
-<p>This module provides methods for resolving CLI arguments, finding saved characters,
-constructing login entries, and spawning authenticated Lich sessions.</p>
+    <p>Collection of utilities for login argument parsing, character data lookup, and game instance resolution.</p>
+<p>Provides methods for CLI argument parsing, saved character discovery across YAML and legacy formats,
+and frontend/instance resolution for login workflows.</p>
 
   </div>
 </div>
@@ -209,12 +209,13 @@ other values are treated as frontend launch selectors/modifiers.</p>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--(?:frontend=)?(?&lt;fe&gt;avalon|stormfront|wizard|genie|frostbite|wrayth|saga)$</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="INSTANCE_PATTERN-constant" class="">INSTANCE_PATTERN =
+        <dt id="REGISTERED_FRONTEND_PATTERN-constant" class="">REGISTERED_FRONTEND_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern for matching direct game instance codes as command-line flags.</p>
-<p>Matches standalone game-code flags like <code>--GS3</code>, <code>--GST</code>, <code>--DR</code>, <code>--DRX</code>, etc.
-The named capture group <code>:inst</code> extracts the code portion (without the leading <code>--</code>).</p>
+    <p>Matches long-form frontend identifier arguments with registry-backed custom names.</p>
+<p>Captures the frontend identifier portion in the <code>fe</code> named group.
+The identifier must begin with an alphanumeric character and may contain
+alphanumerics, underscores, and hyphens (up to 64 characters total).</p>
 
   </div>
 </div>
@@ -224,16 +225,8 @@ The named capture group <code>:inst</code> extracts the code portion (without th
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Match GemStone instance codes</p></div></h5>
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GS3</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>INSTANCE_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GST</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>INSTANCE_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Match DragonRealms instance codes</p></div></h5>
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--DR</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>INSTANCE_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--DRX</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'>INSTANCE_PATTERN</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=my-custom-client</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>REGISTERED_FRONTEND_PATTERN</span>  <span class='comment'>#=&gt; 0 (match)
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=_invalid</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>REGISTERED_FRONTEND_PATTERN</span>          <span class='comment'>#=&gt; nil (no match)</span></code></pre>
     
   </div>
 
@@ -243,7 +236,43 @@ The named capture group <code>:inst</code> extracts the code portion (without th
     
       <li><span class='object_link'><a href="#FRONTEND_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::FRONTEND_PATTERN (constant)">FRONTEND_PATTERN</a></span></li>
     
-      <li><span class='object_link'><a href="#CUSTOM_LAUNCH_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::CUSTOM_LAUNCH_PATTERN (constant)">CUSTOM_LAUNCH_PATTERN</a></span></li>
+      <li><span class='object_link'><a href="#resolve_frontend_arg-class_method" title="Lich::Common::Authentication::LoginHelpers.resolve_frontend_arg (method)">resolve_frontend_arg</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--frontend=(?&lt;fe&gt;[a-z0-9][a-z0-9_-]{0,63})$</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="INSTANCE_PATTERN-constant" class="">INSTANCE_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches game instance code arguments with optional single-character suffix.</p>
+<p>Captures the full instance code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;DR&quot;, &quot;DRX&quot;) in the <code>inst</code> named group.
+Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes (DR followed by 0–1 characters).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GS3</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;GS3&quot;)
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--gst</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;gst&quot;, case-insensitive)
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--DRX</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;DRX&quot;)
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GST2</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>   <span class='comment'>#=&gt; nil (no match; max 1 suffix char)</span></code></pre>
+    
+  </div>
+
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#VALID_GAME_CODES-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_GAME_CODES (constant)">VALID_GAME_CODES</a></span></li>
+    
+      <li><span class='object_link'><a href="#resolve_instance-class_method" title="Lich::Common::Authentication::LoginHelpers.resolve_instance (method)">resolve_instance</a></span></li>
     
   </ul>
 
@@ -618,7 +647,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the human-readable game name for a game code.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the human-readable game name for a game code, with fallback to the default.</p></div></span>
   
 </li>
 
@@ -662,7 +691,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether the current Lich runtime meets or exceeds a minimum version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether the running Lich version is at least the specified semantic version.</p></div></span>
   
 </li>
 
@@ -728,7 +757,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the realm name for a game code.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the realm name associated with a game code, with fallback to the default.</p></div></span>
   
 </li>
 
@@ -750,7 +779,29 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the game code for a realm name.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the game code associated with a realm name, or nil if not found.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#resolve_frontend_arg-class_method" title="resolve_frontend_arg (class method)">.<strong>resolve_frontend_arg</strong>(argv)  &#x21d2; String, Symbol </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Resolves the final recognized frontend selector from CLI arguments.</p></div></span>
   
 </li>
 
@@ -868,28 +919,6 @@ Game code to realm mappings</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#spawn_login-class_method" title="spawn_login (class method)">.<strong>spawn_login</strong>(entry, lich_path: nil, startup_scripts: [], instance_override: nil, frontend_override: nil, custom_launch_filter: nil)  &#x21d2; Process::Waiter<sup>?</sup> </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Spawns a Lich login session using a saved entry.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
       <a href="#symbolize_keys-class_method" title="symbolize_keys (class method)">.<strong>symbolize_keys</strong>(obj)  &#x21d2; Hash, ... </a>
     
 
@@ -948,7 +977,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a realm name is valid for elogin.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether a realm name is valid for elogin.</p></div></span>
   
 </li>
 
@@ -1051,9 +1080,6 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-371
-372
-373
 374
 375
 376
@@ -1067,10 +1093,13 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
 384
 385
 386
-387</pre>
+387
+388
+389
+390</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 371</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 374</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_build_character_result'>build_character_result</span><span class='lparen'>(</span><span class='id identifier rubyid_account_name'>account_name</span><span class='comma'>,</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='comma'>,</span> <span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_character'>character</span> <span class='kw'>if</span> <span class='id identifier rubyid_account_name'>account_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1152,14 +1181,14 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-246
-247
-248
 249
-250</pre>
+250
+251
+252
+253</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 246</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 249</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_data_format'>data_format</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='symbol'>:legacy_array</span> <span class='kw'>if</span> <span class='id identifier rubyid_data'>data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
@@ -1229,12 +1258,12 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-592
-593
-594</pre>
+595
+596
+597</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 592</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 595</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dragonrealms_flag?'>dragonrealms_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#DRAGONREALMS_FLAGS-constant" title="Lich::Common::Authentication::LoginHelpers::DRAGONREALMS_FLAGS (constant)">DRAGONREALMS_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_flag'>flag</span><span class='op'>|</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -1302,9 +1331,6 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-256
-257
-258
 259
 260
 261
@@ -1317,10 +1343,13 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
 268
 269
 270
-271</pre>
+271
+272
+273
+274</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 256</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 259</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extract_candidate_characters_with_accounts'>extract_candidate_characters_with_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_data_format'>data_format</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
@@ -1482,9 +1511,6 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
-297
-298
-299
 300
 301
 302
@@ -1545,10 +1571,13 @@ other parameters are provided, multiple character records may be returned.</p>
 357
 358
 359
-360</pre>
+360
+361
+362
+363</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 297</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 300</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>custom_launch:</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_candidates'>candidates</span> <span class='op'>=</span> <span class='id identifier rubyid_extract_candidate_characters_with_accounts'>extract_candidate_characters_with_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='rparen'>)</span>
@@ -1691,12 +1720,12 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
-410
-411
-412</pre>
+413
+414
+415</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 410</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 413</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name'>find_character_by_name</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='rparen'>)</span>
@@ -1792,12 +1821,12 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
-420
-421
-422</pre>
+423
+424
+425</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 420</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 423</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name_and_game'>find_character_by_name_and_game</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
@@ -1926,12 +1955,12 @@ frontend filter is ignored for matching purposes.</p>
       <pre class="lines">
 
 
-436
-437
-438</pre>
+439
+440
+441</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 436</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 439</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name_game_and_frontend'>find_character_by_name_game_and_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='label'>custom_launch:</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
@@ -2050,13 +2079,13 @@ character from potentially multiple matches.</p>
       <pre class="lines">
 
 
-400
-401
-402
-403</pre>
+403
+404
+405
+406</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 400</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 403</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_first_character_by_attributes'>find_first_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_matches'>matches</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
@@ -2127,24 +2156,24 @@ character from potentially multiple matches.</p>
       <pre class="lines">
 
 
-679
-680
-681
-682
-683
-684
-685
-686
-687
-688
-689
-690
-691
-692
-693</pre>
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 679</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 699</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_format_launch_flag'>format_launch_flag</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -2177,9 +2206,9 @@ character from potentially multiple matches.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the human-readable game name for a game code.</p>
-<p>Looks up the display name (e.g., &quot;GemStone IV&quot;, &quot;DragonRealms&quot;) corresponding
-to a game code. If the code is not found, returns the default game name from GameConfig.</p>
+    <p>Returns the human-readable game name for a game code, with fallback to the default.</p>
+<p>Maps game codes to their display names (e.g., &quot;GS3&quot; → &quot;GemStone IV&quot;).
+Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
 
   </div>
 </div>
@@ -2189,8 +2218,9 @@ to a game code. If the code is not found, returns the default game name from Gam
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;GemStone IV&quot;
-</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DR</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;DragonRealms&quot;</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;GemStone IV&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRX</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;DragonRealms Platinum&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>FAKE</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; (GameConfig::DEFAULT_GAME_NAME)</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2206,7 +2236,7 @@ to a game code. If the code is not found, returns the default game name from Gam
       
       
         &mdash;
-        <div class='inline'><p>the game code (e.g., 'GS3', 'GST', 'DR', 'DRX')</p></div>
+        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;DR&quot;, &quot;DRX&quot;)</p></div>
       
     </li>
   
@@ -2223,7 +2253,7 @@ to a game code. If the code is not found, returns the default game name from Gam
       
       
         &mdash;
-        <div class='inline'><p>the human-readable game name, or GameConfig::DEFAULT_GAME_NAME if unknown</p></div>
+        <div class='inline'><p>the human-readable game name (e.g., &quot;GemStone IV&quot;, &quot;DragonRealms&quot;), or the configured default</p></div>
       
     </li>
   
@@ -2234,8 +2264,6 @@ to a game code. If the code is not found, returns the default game name from Gam
     
       <li><span class='object_link'><a href="#GAME_CODE_TO_NAME-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_NAME (constant)">GAME_CODE_TO_NAME</a></span></li>
     
-      <li>GameConfig::DEFAULT_GAME_NAME</li>
-    
   </ul>
 
 </div><table class="source_code">
@@ -2244,12 +2272,12 @@ to a game code. If the code is not found, returns the default game name from Gam
       <pre class="lines">
 
 
-172
-173
-174</pre>
+174
+175
+176</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 172</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 174</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GAME_CODE_TO_NAME-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_NAME (constant)">GAME_CODE_TO_NAME</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='const'>GameConfig</span><span class='op'>::</span><span class='const'>DEFAULT_GAME_NAME</span><span class='rparen'>)</span>
@@ -2317,12 +2345,12 @@ to a game code. If the code is not found, returns the default game name from Gam
       <pre class="lines">
 
 
-584
-585
-586</pre>
+587
+588
+589</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 584</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 587</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gemstone_flag?'>gemstone_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GEMSTONE_FLAGS-constant" title="Lich::Common::Authentication::LoginHelpers::GEMSTONE_FLAGS (constant)">GEMSTONE_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_flag'>flag</span><span class='op'>|</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -2343,9 +2371,15 @@ to a game code. If the code is not found, returns the default game name from Gam
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether the current Lich runtime meets or exceeds a minimum version.</p>
-<p>Compares the LICH_VERSION constant (if defined) against the provided semantic version.
-Returns false if LICH_VERSION is not defined in the runtime.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Always returns false when LICH_VERSION is not defined</p></div>
+  </div>
+
+<p>Checks whether the running Lich version is at least the specified semantic version.</p>
+<p>Returns false immediately if LICH_VERSION is not defined (e.g., in test contexts where
+the constant is unavailable). Uses Gem::Version comparison for robust semantic versioning.</p>
 
   </div>
 </div>
@@ -2355,8 +2389,8 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>5</span><span class='comma'>,</span> <span class='int'>12</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true (for Lich 5.12.0+)
-</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>6</span><span class='comma'>,</span> <span class='int'>0</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span> <span class='comment'>#=&gt; false (for Lich 5.x)</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>5</span><span class='comma'>,</span> <span class='int'>12</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span>  <span class='comment'>#=&gt; true  (if running Lich 5.12.0+)
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>6</span><span class='rparen'>)</span>          <span class='comment'>#=&gt; false (if running Lich 5.x)</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2372,7 +2406,7 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
       
       
         &mdash;
-        <div class='inline'><p>the major version component</p></div>
+        <div class='inline'><p>major version number</p></div>
       
     </li>
   
@@ -2388,7 +2422,7 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
       
       
         &mdash;
-        <div class='inline'><p>the minor version component (default 0)</p></div>
+        <div class='inline'><p>minor version number (default: 0)</p></div>
       
     </li>
   
@@ -2404,7 +2438,7 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
       
       
         &mdash;
-        <div class='inline'><p>the patch version component (default 0)</p></div>
+        <div class='inline'><p>patch version number (default: 0)</p></div>
       
     </li>
   
@@ -2421,18 +2455,11 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if LICH_VERSION &gt;= [major, minor, patch], false otherwise or if undefined</p></div>
+        <div class='inline'><p>true if LICH_VERSION is defined and &gt;= the specified version; false otherwise</p></div>
       
     </li>
   
 </ul>
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#format_launch_flag-class_method" title="Lich::Common::Authentication::LoginHelpers.format_launch_flag (method)">format_launch_flag</a></span></li>
-    
-  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -2440,14 +2467,14 @@ Returns false if LICH_VERSION is not defined in the runtime.</p>
       <pre class="lines">
 
 
-201
-202
-203
 204
-205</pre>
+205
+206
+207
+208</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 201</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 204</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='id identifier rubyid_major'>major</span><span class='comma'>,</span> <span class='id identifier rubyid_minor'>minor</span> <span class='op'>=</span> <span class='int'>0</span><span class='comma'>,</span> <span class='id identifier rubyid_patch'>patch</span> <span class='op'>=</span> <span class='int'>0</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='rparen'>)</span>
@@ -2516,15 +2543,15 @@ available in the current runtime or isolated spec context.</p>
       <pre class="lines">
 
 
-213
-214
-215
 216
 217
-218</pre>
+218
+219
+220
+221</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 213</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 216</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_messaging_msg'>messaging_msg</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='rparen'>)</span>
@@ -2592,16 +2619,16 @@ available in the current runtime or isolated spec context.</p>
       <pre class="lines">
 
 
-572
-573
-574
 575
 576
 577
-578</pre>
+578
+579
+580
+581</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 572</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 575</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_non_instance_option_flag?'>non_instance_option_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#VALID_FRONTENDS-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_FRONTENDS (constant)">VALID_FRONTENDS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
@@ -2626,9 +2653,9 @@ available in the current runtime or isolated spec context.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the realm name for a game code.</p>
-<p>Looks up the realm (e.g., 'prime', 'platinum', 'test') corresponding to a game code
-like 'GS3' or 'GST'. If the code is not found, returns the default realm from GameConfig.</p>
+    <p>Returns the realm name associated with a game code, with fallback to the default.</p>
+<p>Maps legacy Gemstone game codes (GSX, GSF, GST) to their corresponding realm names.
+Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DEFAULT_REALM.</p>
 
   </div>
 </div>
@@ -2638,8 +2665,9 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;test&quot;
-</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GSX</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;platinum&quot;</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GSX</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; &quot;platinum&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; &quot;test&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; (GameConfig::DEFAULT_REALM)</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2655,7 +2683,7 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
       
       
         &mdash;
-        <div class='inline'><p>the game code to resolve (e.g., 'GS3', 'GST', 'GSX')</p></div>
+        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;GSX&quot;, &quot;DR&quot;)</p></div>
       
     </li>
   
@@ -2672,7 +2700,7 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
       
       
         &mdash;
-        <div class='inline'><p>the realm name, or GameConfig::DEFAULT_REALM if unknown</p></div>
+        <div class='inline'><p>the realm name (e.g., &quot;platinum&quot;, &quot;shattered&quot;, &quot;test&quot;), or the configured default</p></div>
       
     </li>
   
@@ -2683,7 +2711,7 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
     
       <li><span class='object_link'><a href="#GAME_CODE_TO_REALM-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_REALM (constant)">GAME_CODE_TO_REALM</a></span></li>
     
-      <li>GameConfig::DEFAULT_REALM</li>
+      <li><span class='object_link'><a href="#realm_to_game_code-class_method" title="Lich::Common::Authentication::LoginHelpers.realm_to_game_code (method)">realm_to_game_code</a></span></li>
     
   </ul>
 
@@ -2693,12 +2721,12 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
       <pre class="lines">
 
 
-141
 142
-143</pre>
+143
+144</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 141</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 142</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GAME_CODE_TO_REALM-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_REALM (constant)">GAME_CODE_TO_REALM</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span><span class='comma'>,</span> <span class='const'>GameConfig</span><span class='op'>::</span><span class='const'>DEFAULT_REALM</span><span class='rparen'>)</span>
@@ -2719,9 +2747,8 @@ like 'GS3' or 'GST'. If the code is not found, returns the default realm from Ga
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the game code for a realm name.</p>
-<p>Looks up the game code (e.g., 'GS3', 'GST') corresponding to a realm
-like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
+    <p>Returns the game code associated with a realm name, or nil if not found.</p>
+<p>Performs a direct lookup in the realm-to-code mapping; no fallback is applied.</p>
 
   </div>
 </div>
@@ -2731,8 +2758,9 @@ like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;GS3&quot;
-</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>platinum</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;GSX&quot;</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>     <span class='comment'>#=&gt; &quot;GS3&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>platinum</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;GSX&quot;
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; nil</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2748,7 +2776,7 @@ like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
       
       
         &mdash;
-        <div class='inline'><p>the realm name (e.g., 'prime', 'platinum', 'test')</p></div>
+        <div class='inline'><p>the realm name (e.g., &quot;prime&quot;, &quot;platinum&quot;, &quot;shattered&quot;, &quot;test&quot;)</p></div>
       
     </li>
   
@@ -2765,7 +2793,7 @@ like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
       
       
         &mdash;
-        <div class='inline'><p>the game code, or nil if realm is unknown</p></div>
+        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GSX&quot;, &quot;GSF&quot;, &quot;GST&quot;), or nil if the realm is not mapped</p></div>
       
     </li>
   
@@ -2776,6 +2804,8 @@ like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
     
       <li><span class='object_link'><a href="#REALM_TO_GAME_CODE-constant" title="Lich::Common::Authentication::LoginHelpers::REALM_TO_GAME_CODE (constant)">REALM_TO_GAME_CODE</a></span></li>
     
+      <li><span class='object_link'><a href="#realm_from_game_code-class_method" title="Lich::Common::Authentication::LoginHelpers.realm_from_game_code (method)">realm_from_game_code</a></span></li>
+    
   </ul>
 
 </div><table class="source_code">
@@ -2784,15 +2814,108 @@ like 'prime' or 'platinum'. Returns nil if the realm is not recognized.</p>
       <pre class="lines">
 
 
-156
-157
-158</pre>
+158
+159
+160</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 156</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 158</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#REALM_TO_GAME_CODE-constant" title="Lich::Common::Authentication::LoginHelpers::REALM_TO_GAME_CODE (constant)">REALM_TO_GAME_CODE</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_realm'>realm</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="resolve_frontend_arg-class_method">
+  
+    .<strong>resolve_frontend_arg</strong>(argv)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Resolves the final recognized frontend selector from CLI arguments.
+Legacy shorthand flags and registry-backed long-form identifiers share
+this path so login matching and detachable runtime identity agree.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>argv</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>command line arguments</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>canonical frontend id, or :__unset</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 639</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='symbol'>:__unset</span>
+  <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_arg'>arg</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#FRONTEND_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::FRONTEND_PATTERN (constant)">FRONTEND_PATTERN</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_canonical_name'><span class='object_link'><a href="../Frontend.html#canonical_name-class_method" title="Lich::Common::Frontend.canonical_name (method)">canonical_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:fe</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+    <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_arg'>arg</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#REGISTERED_FRONTEND_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::REGISTERED_FRONTEND_PATTERN (constant)">REGISTERED_FRONTEND_PATTERN</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_candidate'>candidate</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_canonical_name'><span class='object_link'><a href="../Frontend.html#canonical_name-class_method" title="Lich::Common::Frontend.canonical_name (method)">canonical_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:fe</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_candidate'>candidate</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_registered_frontends'><span class='object_link'><a href="../Frontend.html#registered_frontends-class_method" title="Lich::Common::Frontend.registered_frontends (method)">registered_frontends</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_candidate'>candidate</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_frontend'>frontend</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2881,21 +3004,23 @@ XML parser as if it were a tag.</p>
       <pre class="lines">
 
 
-664
-665
-666
-667
-668
-669
-670</pre>
+683
+684
+685
+686
+687
+688
+689
+690</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 664</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 683</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_headless_frontend'>resolve_headless_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='comma'>,</span> <span class='label'>detachable_client:</span> <span class='kw'>false</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>saga</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span> <span class='id identifier rubyid_arg'>arg</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--saga$</span><span class='regexp_end'>/i</span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>saga</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>saga</span><span class='tstring_end'>&#39;</span></span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_detachable_client'>detachable_client</span>
-  <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>genie</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span> <span class='id identifier rubyid_arg'>arg</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--genie$</span><span class='regexp_end'>/i</span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='kw'>unless</span> <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>==</span> <span class='symbol'>:__unset</span>
 
   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>profanity</span><span class='tstring_end'>&#39;</span></span>
 <span class='kw'>end</span></pre>
@@ -2966,9 +3091,6 @@ selector is present, or nil for probable invalid instance intent.</p></div>
       <pre class="lines">
 
 
-512
-513
-514
 515
 516
 517
@@ -3020,10 +3142,13 @@ selector is present, or nil for probable invalid instance intent.</p></div>
 563
 564
 565
-566</pre>
+566
+567
+568
+569</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 512</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 515</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_instance'>resolve_instance</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_instance_flags_seen'>instance_flags_seen</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -3150,9 +3275,6 @@ Invalid game codes resolve to nil through the canonical game-code validator.</p>
       <pre class="lines">
 
 
-609
-610
-611
 612
 613
 614
@@ -3175,19 +3297,16 @@ Invalid game codes resolve to nil through the canonical game-code validator.</p>
 631</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 609</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 612</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_login_args'>resolve_login_args</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='symbol'>:__unset</span>
+  <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span>
   <span class='id identifier rubyid_instance'>instance</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_instance'>resolve_instance</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span>
-    <span class='kw'>case</span> <span class='id identifier rubyid_arg'>arg</span>
-    <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="#FRONTEND_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::FRONTEND_PATTERN (constant)">FRONTEND_PATTERN</a></span></span>
-      <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_canonical_name'><span class='object_link'><a href="../Frontend.html#canonical_name-class_method" title="Lich::Common::Frontend.canonical_name (method)">canonical_name</a></span></span><span class='lparen'>(</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:fe</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-    <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="#CUSTOM_LAUNCH_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::CUSTOM_LAUNCH_PATTERN (constant)">CUSTOM_LAUNCH_PATTERN</a></span></span>
-      <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:cl</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_arg'>arg</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#CUSTOM_LAUNCH_PATTERN-constant" title="Lich::Common::Authentication::LoginHelpers::CUSTOM_LAUNCH_PATTERN (constant)">CUSTOM_LAUNCH_PATTERN</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:cl</span><span class='rbracket'>]</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 
@@ -3282,14 +3401,14 @@ when headless mode should ignore frontend during matching</p></div>
       <pre class="lines">
 
 
-644
-645
-646
-647
-648</pre>
+663
+664
+665
+666
+667</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 644</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 663</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_lookup_frontend'>resolve_lookup_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_requested_frontend'>requested_frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='symbol'>:__unset</span> <span class='kw'>if</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--without-frontend</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -3419,9 +3538,6 @@ the first highest-scoring hash encountered is returned.</p>
       <pre class="lines">
 
 
-460
-461
-462
 463
 464
 465
@@ -3461,10 +3577,13 @@ the first highest-scoring hash encountered is returned.</p>
 499
 500
 501
-502</pre>
+502
+503
+504
+505</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 460</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_select_best_fit'>select_best_fit</span><span class='lparen'>(</span><span class='label'>char_data_sets:</span><span class='comma'>,</span> <span class='label'>requested_character:</span><span class='comma'>,</span> <span class='label'>requested_instance:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>requested_fe:</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_char_data_sets'>char_data_sets</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_char_data_sets'>char_data_sets</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -3508,220 +3627,6 @@ the first highest-scoring hash encountered is returned.</p>
   <span class='kw'>end</span>
 
   <span class='id identifier rubyid_best_match'>best_match</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="spawn_login-class_method">
-  
-    .<strong>spawn_login</strong>(entry, lich_path: nil, startup_scripts: [], instance_override: nil, frontend_override: nil, custom_launch_filter: nil)  &#x21d2; <tt>Process::Waiter</tt><sup>?</sup> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Spawns a Lich login session using a saved entry.</p>
-<p>This constructs and launches a Ruby + Lich command line with proper login arguments.
-It is aware of the Lich version and formats launch flags (e.g., <code>--gst</code>, <code>--GSX</code>) accordingly.
-Only the character name and game instance are passed - all sensitive data is handled by Lich internally.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>entry</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the login entry (must include :char_name and :game_code)</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>lich_path</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional path to lich.rbw; defaults to LICH_DIR/lich.rbw</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>startup_scripts</span>
-      
-      
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>[]</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional scripts to autostart post-login</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>instance_override</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional instance override (e.g., 'GST', 'GSX')</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>frontend_override</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional frontend (e.g., 'avalon', 'wizard')</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>custom_launch_filter</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional custom launch filter for entry selection</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Process::Waiter</tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>detached process handle if successful, nil otherwise</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-708
-709
-710
-711
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727
-728
-729
-730
-731
-732
-733
-734
-735
-736
-737
-738
-739</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 708</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_spawn_login'>spawn_login</span><span class='lparen'>(</span><span class='id identifier rubyid_entry'>entry</span><span class='comma'>,</span> <span class='label'>lich_path:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>startup_scripts:</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>instance_override:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>frontend_override:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>custom_launch_filter:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_ruby_path'>ruby_path</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../RubyExecutable.html" title="Lich::Common::RubyExecutable (module)">RubyExecutable</a></span></span><span class='period'>.</span><span class='id identifier rubyid_resolve'><span class='object_link'><a href="../RubyExecutable.html#resolve-class_method" title="Lich::Common::RubyExecutable.resolve (method)">resolve</a></span></span>
-  <span class='id identifier rubyid_lich_path'>lich_path</span> <span class='op'>||=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LICH_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lich.rbw</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-
-  <span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span> <span class='op'>=</span> <span class='lbracket'>[</span>
-    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_ruby_path'>ruby_path</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_lich_path'>lich_path</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--login</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span>
-  <span class='rbracket'>]</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_instance_override'>instance_override</span>
-    <span class='id identifier rubyid_flag'>flag</span> <span class='op'>=</span> <span class='id identifier rubyid_format_launch_flag'>format_launch_flag</span><span class='lparen'>(</span><span class='id identifier rubyid_instance_override'>instance_override</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_flag'>flag</span> <span class='kw'>if</span> <span class='id identifier rubyid_flag'>flag</span>
-  <span class='kw'>end</span>
-  <span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_frontend_override'>frontend_override</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_frontend_override'>frontend_override</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-  <span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--custom-launch=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_custom_launch_filter'>custom_launch_filter</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_custom_launch_filter'>custom_launch_filter</span>
-  <span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--start-scripts=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_startup_scripts'>startup_scripts</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_startup_scripts'>startup_scripts</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span>
-
-  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Spawning login: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-
-  <span class='kw'>begin</span>
-    <span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_spawn'>spawn</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_spawn_cmd'>spawn_cmd</span><span class='rparen'>)</span>
-    <span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_detach'>detach</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
-  <span class='kw'>rescue</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>ENOENT</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>error</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Executable not found: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Executable not found: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>nil</span>
-  <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>error</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to launch login session: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'> - </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Failed to launch login session: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'> - </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>nil</span>
-  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3788,9 +3693,6 @@ using Ruby symbols, which is the preferred approach for hash keys in Ruby.</p>
       <pre class="lines">
 
 
-228
-229
-230
 231
 232
 233
@@ -3800,10 +3702,13 @@ using Ruby symbols, which is the preferred approach for hash keys in Ruby.</p>
 237
 238
 239
-240</pre>
+240
+241
+242
+243</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 228</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 231</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_symbolize_keys'>symbolize_keys</span><span class='lparen'>(</span><span class='id identifier rubyid_obj'>obj</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_obj'>obj</span>
@@ -3879,12 +3784,12 @@ Callers remain responsible for any input normalization they require.</p>
       <pre class="lines">
 
 
-41
-42
-43</pre>
+30
+31
+32</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 41</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_valid_game_code?'>valid_game_code?</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#VALID_GAME_CODES-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_GAME_CODES (constant)">VALID_GAME_CODES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
@@ -3905,7 +3810,7 @@ Callers remain responsible for any input normalization they require.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether a realm name is valid for elogin.</p>
+    <p>Returns whether a realm name is valid for elogin.</p>
 
   </div>
 </div>
@@ -3915,8 +3820,9 @@ Callers remain responsible for any input normalization they require.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
-</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; false</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>     <span class='comment'>#=&gt; true
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>test</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; true
+</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; false</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -3949,7 +3855,7 @@ Callers remain responsible for any input normalization they require.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if realm is in VALID_REALMS, false otherwise</p></div>
+        <div class='inline'><p>true if the realm is in VALID_REALMS; false otherwise</p></div>
       
     </li>
   
@@ -3968,12 +3874,12 @@ Callers remain responsible for any input normalization they require.</p>
       <pre class="lines">
 
 
-184
-185
-186</pre>
+187
+188
+189</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 184</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 187</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#VALID_REALMS-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_REALMS (constant)">VALID_REALMS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
@@ -3988,7 +3894,7 @@ Callers remain responsible for any input normalization they require.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:04 2026 by
+  Generated on Thu Sep 10 03:55:29 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

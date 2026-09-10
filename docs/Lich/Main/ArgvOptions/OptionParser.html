@@ -127,7 +127,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses ARGV into a hash of option flags and values for backward compatibility.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses ARGV into a hash of option flags and values, handling system integration (SGE/SAL linking), game connection modes, authentication, and frontend selection.</p></div></span>
   
 </li>
 
@@ -149,7 +149,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets dark mode flag based on --dark-mode argument value.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts the --dark-mode argument value to a strict boolean and stores it.</p></div></span>
   
 </li>
 
@@ -171,51 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Records a SAL or Gse.~xt launch file path in argv_options, resolving Windows paths and Wine prefix translations as needed.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#print_help-class_method" title="print_help (class method)">.<strong>print_help</strong>(topic = nil)  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  <span class="private note title">private</span>
-
-  
-    <span class="summary_desc"><div class='inline'><p>Prints help text to stdout, optionally for a specific topic.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#print_version-class_method" title="print_version (class method)">.<strong>print_version</strong>  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  <span class="private note title">private</span>
-
-  
-    <span class="summary_desc"><div class='inline'><p>Prints version information and copyright notices to stdout.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves a .sal or .~xt launch file path and stores it in @argv_<a href=":sal">options</a>.</p></div></span>
   
 </li>
 
@@ -248,19 +204,14 @@
 
   <div class="note notetag">
     <strong>Note:</strong>
-    <div class='inline'><p>Modifies ARGV by calling handle_sal_file and may clear bad_args</p></div>
+    <div class='inline'><p>Does not apply side effects; use <span class='object_link'><a href="SideEffects.html#execute-class_method" title="Lich::Main::ArgvOptions::SideEffects.execute (method)">SideEffects.execute</a></span> afterward</p></div>
   </div>
 
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Early-exit operations (help, version, SGE/SAL links, install) call
-exit and do not return</p></div>
-  </div>
-
-<p>Parses ARGV into a hash of option flags and values for backward compatibility.</p>
-<p>Processes command-line arguments including help, version, SGE/SAL linking,
-installation, game connection details, UI settings, and launch configuration.
-Exits immediately for early-exit operations (--help, --version, --install).</p>
+<p>Parses ARGV into a hash of option flags and values, handling system integration
+(SGE/SAL linking), game connection modes, authentication, and frontend selection.</p>
+<p>Recognizes long-form options (--start-scripts, --host, --game, etc.) and performs
+early exit for installation/system linking operations. Normalizes host:port pairs,
+resolves .sal/.~xt launch files, and applies dark mode settings.</p>
 
   </div>
 </div>
@@ -277,8 +228,8 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
       
       
         &mdash;
-        <div class='inline'><p>option hash with keys like :start_scripts, :host, :gui, :game,
-:password, :character, :frontend, :save, :pipe, :sal, :dark_mode</p></div>
+        <div class='inline'><p>a hash mapping option symbols (:start_scripts, :host, :game, :sal,
+:bind_address, :dark_mode, etc.) to their parsed values; empty if ARGV is empty</p></div>
       
     </li>
   
@@ -290,6 +241,8 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
       <pre class="lines">
 
 
+38
+39
 40
 41
 42
@@ -377,16 +330,10 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
 124
 125
 126
-127
-128
-129
-130
-131
-132
-133</pre>
+127</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 40</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 38</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span>
   <span class='ivar'>@argv_options</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
@@ -394,12 +341,6 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
 
   <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span>
     <span class='kw'>case</span> <span class='id identifier rubyid_arg'>arg</span>
-    <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-h</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--help</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--help=.+$</span><span class='regexp_end'>/</span></span>
-      <span class='id identifier rubyid_print_help'>print_help</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../HelpText.html" title="Lich::Main::HelpText (module)">HelpText</a></span></span><span class='period'>.</span><span class='id identifier rubyid_topic_from_argv'><span class='object_link'><a href="../HelpText.html#topic_from_argv-class_method" title="Lich::Main::HelpText.topic_from_argv (method)">topic_from_argv</a></span></span><span class='lparen'>(</span><span class='const'>ARGV</span><span class='comma'>,</span> <span class='id identifier rubyid_arg'>arg</span><span class='rparen'>)</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_exit'>exit</span>
-    <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-v</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--version</span><span class='tstring_end'>&#39;</span></span>
-      <span class='id identifier rubyid_print_version'>print_version</span>
-      <span class='id identifier rubyid_exit'>exit</span>
     <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--link-to-sge</span><span class='tstring_end'>&#39;</span></span>
       <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_link_to_sge'><span class='object_link'><a href="../../../Lich.html#link_to_sge-class_method" title="Lich.link_to_sge (method)">link_to_sge</a></span></span>
       <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Successfully linked to SGE.</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Failed to link to SGE.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_isatty'>isatty</span>
@@ -452,6 +393,8 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:gui</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--game=(.+)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:game</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--auth-provider=(eaccess|web)$</span><span class='regexp_end'>/i</span></span>
+      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:auth_provider</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--account=(.+)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:account</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--password=(.+)$</span><span class='regexp_end'>/i</span></span>
@@ -502,8 +445,9 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Sets dark mode flag based on --dark-mode argument value.</p>
-<p>Converts string values like &quot;true&quot;, &quot;on&quot;, &quot;false&quot;, &quot;off&quot; to a strict boolean.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Converts the --dark-mode argument value to a strict boolean and stores it.</p>
+<p>Accepts &quot;true&quot;, &quot;on&quot; (case-insensitive) as truthy; all other values are falsy.
+Ensures the stored value is a pure [Boolean], not a Regexp match result.</p>
 
   </div>
 </div>
@@ -521,7 +465,7 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
       
       
         &mdash;
-        <div class='inline'><p>the regex capture group from --dark-mode=(true|false|on|off)</p></div>
+        <div class='inline'><p>the captured regex group from --dark-mode=(true|false|on|off)</p></div>
       
     </li>
   
@@ -534,13 +478,13 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
       <pre class="lines">
 
 
-162
-163
-164
-165</pre>
+157
+158
+159
+160</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 162</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 157</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_dark_mode'>handle_dark_mode</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='comment'># Regex returns Integer/nil; force strict boolean for startup handling.
@@ -566,11 +510,11 @@ Exits immediately for early-exit operations (--help, --version, --install).</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Records a SAL or Gse.~xt launch file path in argv_options, resolving
-Windows paths and Wine prefix translations as needed.</p>
-<p>Sets :sal key to the resolved file path. If the file does not exist,
-attempts to extract a Windows path from ARGV, then (if Wine is defined)
-translates the path to a Wine drive_c location.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Resolves a .sal or .~xt launch file path and stores it in @argv_<a href=":sal">options</a>.</p>
+<p>Attempts three resolution strategies: use the argument as-is, extract a Windows
+path from ARGV (e.g., C:\folder\file.sal), and translate it to a Wine prefix
+path if Wine is defined. Logs the final resolved path but does not validate
+existence—that is deferred to <span class='object_link'><a href="SideEffects.html#handle_sal_launch-class_method" title="Lich::Main::ArgvOptions::SideEffects.handle_sal_launch (method)">SideEffects.handle_sal_launch</a></span>.</p>
 
   </div>
 </div>
@@ -588,7 +532,7 @@ translates the path to a Wine drive_c location.</p>
       
       
         &mdash;
-        <div class='inline'><p>the SAL or .~xt file path argument</p></div>
+        <div class='inline'><p>the literal argument matched by the .sal/.~xt regex</p></div>
       
     </li>
   
@@ -601,18 +545,18 @@ translates the path to a Wine drive_c location.</p>
       <pre class="lines">
 
 
+139
+140
+141
+142
+143
+144
 145
 146
-147
-148
-149
-150
-151
-152
-153</pre>
+147</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 145</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 139</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_sal_file'>handle_sal_file</span><span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span><span class='rparen'>)</span>
   <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_arg'>arg</span>
@@ -628,134 +572,12 @@ translates the path to a Wine drive_c location.</p>
 </table>
 </div>
     
-      <div class="method_details ">
-  <h3 class="signature " id="print_help-class_method">
-  
-    .<strong>print_help</strong>(topic = nil)  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Prints help text to stdout, optionally for a specific topic.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>topic</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>optional help topic name; if nil, prints general help</p></div>
-      
-    </li>
-  
-</ul>
-
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-172
-173
-174</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 172</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_print_help'>print_help</span><span class='lparen'>(</span><span class='id identifier rubyid_topic'>topic</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='const'><span class='object_link'><a href="../HelpText.html" title="Lich::Main::HelpText (module)">HelpText</a></span></span><span class='period'>.</span><span class='id identifier rubyid_render'><span class='object_link'><a href="../HelpText.html#render-class_method" title="Lich::Main::HelpText.render (method)">render</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_topic'>topic</span><span class='rparen'>)</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="print_version-class_method">
-  
-    .<strong>print_version</strong>  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Prints version information and copyright notices to stdout.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-180
-181
-182
-183
-184
-185
-186
-187
-188
-189
-190</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 180</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_print_version'>print_version</span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The Lich, version </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> (an implementation of the Ruby interpreter by Yukihiro Matsumoto designed to be a \&#39;script engine\&#39; for text-based MUDs)</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>- The Lich program and all material collectively referred to as &quot;The Lich project&quot; is copyright (C) 2005-2006 Murray Miron.</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>- The Gemstone IV and DragonRealms games are copyright (C) Simutronics Corporation.</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>- The Wizard front-end and the StormFront front-end are also copyrighted by the Simutronics Corporation.</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>- Ruby is (C) Yukihiro \&#39;Matz\&#39; Matsumoto.</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Thanks to all those who\&#39;ve reported bugs and helped me track down problems on both Windows and Linux.</span><span class='tstring_end'>&#39;</span></span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
   </div>
 
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:57 2026 by
+  Generated on Thu Sep 10 03:55:16 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

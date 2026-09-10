@@ -80,8 +80,8 @@
   
   <dl>
     <dt>Defined in:</dt>
-    <dd>documented/common/authentication/cli.rb<span class="defines">,<br>
-  documented/common/authentication/gui.rb,<br> documented/common/authentication/eaccess.rb,<br> documented/common/authentication/entry_store.rb,<br> documented/common/authentication/launch_data.rb,<br> documented/common/authentication/cli_password.rb,<br> documented/common/authentication/authenticator.rb,<br> documented/common/authentication/login_helpers.rb</span>
+    <dd>documented/common/authentication/eaccess.rb<span class="defines">,<br>
+  documented/common/authentication/cli.rb,<br> documented/common/authentication/gui.rb,<br> documented/common/authentication/web_login.rb,<br> documented/common/authentication/entry_store.rb,<br> documented/common/authentication/launch_data.rb,<br> documented/common/authentication/cli_password.rb,<br> documented/common/authentication/authenticator.rb,<br> documented/common/authentication/launch_result.rb,<br> documented/common/authentication/login_helpers.rb</span>
 
 </dd>
   </dl>
@@ -90,25 +90,18 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Namespace for authentication, login, and session-related utilities.</p>
+    <p>Namespace for authentication and login-related utilities.</p>
 
   </div>
 </div>
 <div class="tags">
   
 
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="Authentication/LoginHelpers.html" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></li>
-    
-  </ul>
-
 </div><h2>Defined Under Namespace</h2>
 <p class="children">
   
     
-      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Authentication/CLI.html" title="Lich::Common::Authentication::CLI (module)">CLI</a></span>, <span class='object_link'><a href="Authentication/CLIPassword.html" title="Lich::Common::Authentication::CLIPassword (module)">CLIPassword</a></span>, <span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span>, <span class='object_link'><a href="Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span>, <span class='object_link'><a href="Authentication/GUI.html" title="Lich::Common::Authentication::GUI (module)">GUI</a></span>, <span class='object_link'><a href="Authentication/LaunchData.html" title="Lich::Common::Authentication::LaunchData (module)">LaunchData</a></span>, <span class='object_link'><a href="Authentication/LoginHelpers.html" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span>
+      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Authentication/CLI.html" title="Lich::Common::Authentication::CLI (module)">CLI</a></span>, <span class='object_link'><a href="Authentication/CLIPassword.html" title="Lich::Common::Authentication::CLIPassword (module)">CLIPassword</a></span>, <span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span>, <span class='object_link'><a href="Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span>, <span class='object_link'><a href="Authentication/GUI.html" title="Lich::Common::Authentication::GUI (module)">GUI</a></span>, <span class='object_link'><a href="Authentication/LaunchData.html" title="Lich::Common::Authentication::LaunchData (module)">LaunchData</a></span>, <span class='object_link'><a href="Authentication/LaunchResult.html" title="Lich::Common::Authentication::LaunchResult (module)">LaunchResult</a></span>, <span class='object_link'><a href="Authentication/LoginHelpers.html" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span>, <span class='object_link'><a href="Authentication/WebLogin.html" title="Lich::Common::Authentication::WebLogin (module)">WebLogin</a></span>
     
   
     
@@ -162,10 +155,15 @@ These errors are often temporary and resolve on retry:</p>
         <dt id="FATAL_ERROR_CODES-constant" class="">FATAL_ERROR_CODES =
           <div class="docstring">
   <div class="discussion">
-    <p>Known fatal error codes that should not be retried
+    <p>Known fatal error codes that should not be retried. Shared across
+every provider's AuthenticationError (EAccess, WebLogin) -- with_retry
+classifies by error_code alone, not by exception class, so this list
+applies uniformly regardless of which provider raised it.
 REJECT = bad credentials, NORECORD = account not found, INVALID = invalid request
 PASSWORD = wrong password, CHARACTER_NOT_FOUND = character not in account
-GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the instance</p>
+GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the instance
+LOGIN_FAILED = WebLogin's credential-rejection signal (see web_login.rb)
+NO_SUBSCRIPTION = WebLogin: account has no active subscription on the requested instance</p>
 
   </div>
 </div>
@@ -174,7 +172,34 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>REJECT</span><span class='words_sep'> </span><span class='tstring_content'>NORECORD</span><span class='words_sep'> </span><span class='tstring_content'>INVALID</span><span class='words_sep'> </span><span class='tstring_content'>PASSWORD</span><span class='words_sep'> </span><span class='tstring_content'>CHARACTER_NOT_FOUND</span><span class='words_sep'> </span><span class='tstring_content'>GENERATOR_NOT_AVAILABLE</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>REJECT</span><span class='words_sep'> </span><span class='tstring_content'>NORECORD</span><span class='words_sep'> </span><span class='tstring_content'>INVALID</span><span class='words_sep'> </span><span class='tstring_content'>PASSWORD</span><span class='words_sep'> </span><span class='tstring_content'>CHARACTER_NOT_FOUND</span><span class='words_sep'> </span><span class='tstring_content'>GENERATOR_NOT_AVAILABLE</span><span class='words_sep'> </span><span class='tstring_content'>LOGIN_FAILED</span><span class='words_sep'> </span><span class='tstring_content'>NO_SUBSCRIPTION</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="UNREACHABLE_ERROR_CLASSES-constant" class="">UNREACHABLE_ERROR_CLASSES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Connection-level failures where the endpoint itself didn't respond.
+with_retry can stop after the first attempt for these (see its
+fast_fail_unreachable: parameter) when an alternate provider is
+actually available to hand off to -- retrying the same unreachable
+endpoint 3 times with backoff only wastes time in that case, since
+it just delays the handoff. When there is NO alternate provider
+(legacy/generator EAccess calls, or a WebLogin call itself, forced
+or already-the-fallback), these same error classes get full retries
+like any other transient error: an ECONNRESET or &quot;SSL_read:
+unexpected eof&quot; mid-exchange is not proof the endpoint is down, and
+there is nothing to fail fast <em>to</em>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='const'>SocketError</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>ECONNREFUSED</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>ECONNRESET</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>ETIMEDOUT</span><span class='comma'>,</span>
+  <span class='const'>Errno</span><span class='op'>::</span><span class='const'>EHOSTUNREACH</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>ENETUNREACH</span><span class='comma'>,</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>SSLError</span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -196,7 +221,7 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#authenticate-class_method" title="authenticate (class method)">.<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false)  &#x21d2; Hash, Array </a>
+      <a href="#authenticate-class_method" title="authenticate (class method)">.<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false, auth_provider: :eaccess)  &#x21d2; Hash, Array </a>
     
 
     
@@ -210,7 +235,7 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Authenticates a user with the game server Includes automatic retry with exponential backoff for transient errors.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Authenticates a user with the game server.</p></div></span>
   
 </li>
 
@@ -218,7 +243,73 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#with_retry-class_method" title="with_retry (class method)">.<strong>with_retry</strong> { ... } &#x21d2; Object </a>
+      <a href="#authenticate_via_eaccess-class_method" title="authenticate_via_eaccess (class method)">.<strong>authenticate_via_eaccess</strong>(account:, password:, character:, game_code:, legacy:, generator:, fast_fail_unreachable: false)  &#x21d2; Hash, Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Dispatches to the appropriate EAccess.auth_with_timeout call shape based on which of character/game_code/legacy/generator were given.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#unreachable_error%3F-class_method" title="unreachable_error? (class method)">.<strong>unreachable_error?</strong>(error)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>True for a connection-level failure (see UNREACHABLE_ERROR_CLASSES), or the &quot;timed out authenticating&quot; RuntimeError EAccess/WebLogin's own auth_with_timeout watchdogs raise when the endpoint never responds at all (a black-holed connection times out rather than refusing immediately, so it never raises one of the Errno classes).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#web_fallback_supported%3F-class_method" title="web_fallback_supported? (class method)">.<strong>web_fallback_supported?</strong>(character:, game_code:, legacy:, generator:)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>WebLogin only implements a normal single-character login -- no equivalent yet for legacy multi-game enumeration or character generator entry (see docs/web-login-protocol-analysis.md).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#with_retry-class_method" title="with_retry (class method)">.<strong>with_retry</strong>(fast_fail_unreachable: false) { ... } &#x21d2; Object </a>
     
 
     
@@ -250,7 +341,7 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
       <div class="method_details first">
   <h3 class="signature first" id="authenticate-class_method">
   
-    .<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt> 
+    .<strong>authenticate</strong>(account:, password:, character: nil, game_code: nil, legacy: false, generator: false, auth_provider: :eaccess)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt> 
   
 
   
@@ -258,8 +349,20 @@ GENERATOR_NOT_AVAILABLE = account not entitled to create a character on the inst
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Authenticates a user with the game server
-Includes automatic retry with exponential backoff for transient errors</p>
+    <p>Authenticates a user with the game server.</p>
+<p>By default, authenticates via EAccess (eaccess.play.net:7910). If
+EAccess fails for any reason OTHER than rejected credentials (a
+FatalAuthError -- REJECT/PASSWORD/NORECORD/etc), automatically falls
+back to the HTTPS WebLogin path once EAccess's own retries are
+exhausted. This distinction matters: EAccess being unreachable is a
+reason to try a different transport; EAccess correctly rejecting a
+bad password is not -- falling back in that case would just resubmit
+the same bad credentials to a second system for no benefit. See
+docs/web-login-protocol-analysis.md.</p>
+<p>Fallback only applies to a normal single-character login (character
+AND game_code present, not legacy, not generator) -- WebLogin has no
+equivalent yet for the legacy multi-game enumeration mode or
+character-generator entry.</p>
 
   </div>
 </div>
@@ -359,6 +462,23 @@ Includes automatic retry with exponential backoff for transient errors</p>
       
     </li>
   
+    <li>
+      
+        <span class='name'>auth_provider</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:eaccess</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>:eaccess (default, with automatic web fallback) or :web to force
+the HTTPS WebLogin path directly, skipping EAccess entirely</p></div>
+      
+    </li>
+  
 </ul>
 
 <p class="tag_title">Returns:</p>
@@ -388,7 +508,7 @@ Includes automatic retry with exponential backoff for transient errors</p>
       
       
         &mdash;
-        <div class='inline'><p>Re-raises the last error after all retries exhausted</p></div>
+        <div class='inline'><p>Re-raises the last error after all retries (and fallback, if applicable) exhausted</p></div>
       
     </li>
   
@@ -400,36 +520,298 @@ Includes automatic retry with exponential backoff for transient errors</p>
       <pre class="lines">
 
 
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64</pre>
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 41</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 101</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_authenticate'>authenticate</span><span class='lparen'>(</span><span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='kw'>false</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='kw'>do</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_authenticate'>authenticate</span><span class='lparen'>(</span><span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>auth_provider:</span> <span class='symbol'>:eaccess</span><span class='rparen'>)</span>
+  <span class='comment'># Provider-neutral: EAccess.auth also sets this internally (before
+</span>  <span class='comment'># its own protocol exchange even starts, so it&#39;s visible mid-attempt
+</span>  <span class='comment'># for the eaccess path), but WebLogin.auth does not, and the forced
+</span>  <span class='comment'># auth_provider: :web / fallback-to-web paths would otherwise skip
+</span>  <span class='comment'># EAccess entirely and leave this unset -- breaking session-file
+</span>  <span class='comment'># creation, setup-file resolution, and active-session lifecycle
+</span>  <span class='comment'># naming, which all read Account.character.
+</span>  <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_name'><span class='object_link'><a href="Account.html#name-class_method" title="Lich::Common::Account.name (method)">name</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_account'>account</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_code'><span class='object_link'><a href="Account.html#game_code-class_method" title="Lich::Common::Account.game_code (method)">game_code</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_game_code'>game_code</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_character'><span class='object_link'><a href="Account.html#character-class_method" title="Lich::Common::Account.character (method)">character</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_character'>character</span>
+  <span class='kw'>end</span>
+
+  <span class='kw'>if</span> <span class='id identifier rubyid_auth_provider'>auth_provider</span> <span class='op'>==</span> <span class='symbol'>:web</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_web_fallback_supported?'>web_fallback_supported?</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='id identifier rubyid_legacy'>legacy</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='id identifier rubyid_generator'>generator</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>auth_provider: :web requires character and game_code, and supports neither legacy nor generator</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
+
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='lbrace'>{</span>
+      <span class='const'><span class='object_link'><a href="Authentication/WebLogin.html" title="Lich::Common::Authentication::WebLogin (module)">WebLogin</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/WebLogin.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::WebLogin.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span><span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span> <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
+    <span class='rbrace'>}</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: authenticated via web login (forced by auth_provider: :web)</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_fallback_available'>fallback_available</span> <span class='op'>=</span> <span class='id identifier rubyid_web_fallback_supported?'>web_fallback_supported?</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>legacy:</span> <span class='id identifier rubyid_legacy'>legacy</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='id identifier rubyid_generator'>generator</span><span class='rparen'>)</span>
+
+  <span class='kw'>begin</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_authenticate_via_eaccess'>authenticate_via_eaccess</span><span class='lparen'>(</span>
+      <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span> <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span>
+      <span class='label'>legacy:</span> <span class='id identifier rubyid_legacy'>legacy</span><span class='comma'>,</span> <span class='label'>generator:</span> <span class='id identifier rubyid_generator'>generator</span><span class='comma'>,</span> <span class='label'>fast_fail_unreachable:</span> <span class='id identifier rubyid_fallback_available'>fallback_available</span>
+    <span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: authenticated via eaccess</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="Authentication/FatalAuthError.html" title="Lich::Common::Authentication::FatalAuthError (class)">FatalAuthError</a></span></span>
+    <span class='comment'># Credentials were rejected -- WebLogin would reject the same
+</span>    <span class='comment'># credentials too, so falling back would just resubmit them to a
+</span>    <span class='comment'># second system for no benefit. Surface the real problem.
+</span>    <span class='id identifier rubyid_raise'>raise</span>
+  <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='kw'>unless</span> <span class='id identifier rubyid_fallback_available'>fallback_available</span>
+
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: EAccess authentication unavailable (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>); falling back to web login</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_with_retry'>with_retry</span> <span class='lbrace'>{</span>
+      <span class='const'><span class='object_link'><a href="Authentication/WebLogin.html" title="Lich::Common::Authentication::WebLogin (module)">WebLogin</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/WebLogin.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::WebLogin.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span><span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span> <span class='label'>password:</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
+    <span class='rbrace'>}</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: authenticated via web login (fallback from eaccess)</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="authenticate_via_eaccess-class_method">
+  
+    .<strong>authenticate_via_eaccess</strong>(account:, password:, character:, game_code:, legacy:, generator:, fast_fail_unreachable: false)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Dispatches to the appropriate EAccess.auth_with_timeout call shape
+based on which of character/game_code/legacy/generator were given.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>account</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>password</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>account password</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>character name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>game_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>game instance code</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>legacy</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>use the legacy multi-game enumeration mode</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>generator</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>enter the character generator</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>fast_fail_unreachable</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>stop after one attempt on a connection-level
+failure instead of retrying -- only pass true when a WebLogin fallback is actually
+available to hand off to (see Authenticator.authenticate)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>see EAccess.auth</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 167</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_authenticate_via_eaccess'>authenticate_via_eaccess</span><span class='lparen'>(</span><span class='label'>account:</span><span class='comma'>,</span> <span class='label'>password:</span><span class='comma'>,</span> <span class='label'>character:</span><span class='comma'>,</span> <span class='label'>game_code:</span><span class='comma'>,</span> <span class='label'>legacy:</span><span class='comma'>,</span> <span class='label'>generator:</span><span class='comma'>,</span> <span class='label'>fast_fail_unreachable:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_with_retry'>with_retry</span><span class='lparen'>(</span><span class='label'>fast_fail_unreachable:</span> <span class='id identifier rubyid_fast_fail_unreachable'>fast_fail_unreachable</span><span class='rparen'>)</span> <span class='kw'>do</span>
     <span class='kw'>if</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_character'>character</span> <span class='op'>||</span> <span class='id identifier rubyid_generator'>generator</span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='period'>.</span><span class='id identifier rubyid_auth_with_timeout'><span class='object_link'><a href="Authentication/EAccess.html#auth_with_timeout-class_method" title="Lich::Common::Authentication::EAccess.auth_with_timeout (method)">auth_with_timeout</a></span></span><span class='lparen'>(</span>
         <span class='label'>account:</span> <span class='id identifier rubyid_account'>account</span><span class='comma'>,</span>
@@ -458,9 +840,212 @@ Includes automatic retry with exponential backoff for transient errors</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="unreachable_error?-class_method">
+  
+    .<strong>unreachable_error?</strong>(error)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>True for a connection-level failure (see UNREACHABLE_ERROR_CLASSES),
+or the &quot;timed out authenticating&quot; RuntimeError EAccess/WebLogin's own
+auth_with_timeout watchdogs raise when the endpoint never responds at
+all (a black-holed connection times out rather than refusing
+immediately, so it never raises one of the Errno classes).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>error</span>
+      
+      
+        <span class='type'>(<tt>StandardError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the error caught by with_retry</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+68
+69
+70
+71
+72</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 68</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_unreachable_error?'>unreachable_error?</span><span class='lparen'>(</span><span class='id identifier rubyid_error'>error</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#UNREACHABLE_ERROR_CLASSES-constant" title="Lich::Common::Authentication::UNREACHABLE_ERROR_CLASSES (constant)">UNREACHABLE_ERROR_CLASSES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_klass'>klass</span><span class='op'>|</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='id identifier rubyid_klass'>klass</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+
+  <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>RuntimeError</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_start_with?'>start_with?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>error: timed out authenticating</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="web_fallback_supported?-class_method">
+  
+    .<strong>web_fallback_supported?</strong>(character:, game_code:, legacy:, generator:)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>WebLogin only implements a normal single-character login -- no
+equivalent yet for legacy multi-game enumeration or character
+generator entry (see docs/web-login-protocol-analysis.md).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>character</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>character name</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>game_code</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>game instance code</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>legacy</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>legacy multi-game enumeration mode requested</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>generator</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>character generator entry requested</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if this request shape has a WebLogin equivalent</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+202
+203
+204</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 202</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_web_fallback_supported?'>web_fallback_supported?</span><span class='lparen'>(</span><span class='label'>character:</span><span class='comma'>,</span> <span class='label'>game_code:</span><span class='comma'>,</span> <span class='label'>legacy:</span><span class='comma'>,</span> <span class='label'>generator:</span><span class='rparen'>)</span>
+  <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_character'>character</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_game_code'>game_code</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_legacy'>legacy</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_generator'>generator</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="with_retry-class_method">
   
-    .<strong>with_retry</strong> { ... } &#x21d2; <tt>Object</tt> 
+    .<strong>with_retry</strong>(fast_fail_unreachable: false) { ... } &#x21d2; <tt>Object</tt> 
   
 
   
@@ -473,7 +1058,32 @@ Includes automatic retry with exponential backoff for transient errors</p>
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>fast_fail_unreachable</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>if true, a connection-level failure (see
+.unreachable_error?) stops retrying after the first attempt instead of exhausting
+MAX_AUTH_RETRIES. Only pass true when an alternate provider is actually available to
+hand off to (see Authenticator.authenticate) -- otherwise this just gives up early on
+what may be a genuinely transient, reachable-endpoint error (e.g. an ECONNRESET or
+&quot;SSL_read: unexpected eof&quot; mid-exchange) with nothing to fail over to.</p></div>
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Yields:</p>
 <ul class="yield">
   
@@ -541,62 +1151,78 @@ Includes automatic retry with exponential backoff for transient errors</p>
       <pre class="lines">
 
 
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119</pre>
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 72</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/authenticator.rb', line 218</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_with_retry'>with_retry</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_with_retry'>with_retry</span><span class='lparen'>(</span><span class='label'>fast_fail_unreachable:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_attempts_made'>attempts_made</span> <span class='op'>=</span> <span class='int'>0</span>
 
   <span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_attempt'>attempt</span><span class='op'>|</span>
+    <span class='id identifier rubyid_attempts_made'>attempts_made</span> <span class='op'>=</span> <span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>+</span> <span class='int'>1</span>
+
     <span class='kw'>begin</span>
       <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='kw'>yield</span>
 
@@ -606,29 +1232,36 @@ Includes automatic retry with exponential backoff for transient errors</p>
       <span class='kw'>end</span>
 
       <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
-    <span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="Authentication/EAccess.html" title="Lich::Common::Authentication::EAccess (module)">EAccess</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Authentication/EAccess/AuthenticationError.html" title="Lich::Common::Authentication::EAccess::AuthenticationError (class)">AuthenticationError</a></span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-      <span class='comment'># Check if this is a fatal auth failure
-</span>      <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#FATAL_ERROR_CODES-constant" title="Lich::Common::Authentication::FATAL_ERROR_CODES (constant)">FATAL_ERROR_CODES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_code'>code</span><span class='op'>|</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_error_code'>error_code</span><span class='op'>&amp;.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
-        <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Authentication fatally failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-        <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Authentication/FatalAuthError.html" title="Lich::Common::Authentication::FatalAuthError (class)">FatalAuthError</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span>
-      <span class='kw'>end</span>
-
-      <span class='comment'># Transient auth error - allow retry
-</span>      <span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-
-      <span class='kw'>if</span> <span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>&lt;</span> <span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span> <span class='op'>-</span> <span class='int'>1</span>
-        <span class='id identifier rubyid_delay'>delay</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#AUTH_RETRY_BASE_DELAY-constant" title="Lich::Common::Authentication::AUTH_RETRY_BASE_DELAY (constant)">AUTH_RETRY_BASE_DELAY</a></span></span> <span class='op'>*</span> <span class='lparen'>(</span><span class='int'>2</span><span class='op'>**</span><span class='id identifier rubyid_attempt'>attempt</span><span class='rparen'>)</span>
-        <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: Authentication attempt </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>+</span> <span class='int'>1</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> failed: </span><span class='tstring_end'>&quot;</span></span> \
-                 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>, retrying in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_delay'>delay</span><span class='embexpr_end'>}</span><span class='tstring_content'>s...</span><span class='tstring_end'>&quot;</span></span>
-        <span class='id identifier rubyid_sleep'>sleep</span><span class='lparen'>(</span><span class='id identifier rubyid_delay'>delay</span><span class='rparen'>)</span>
-      <span class='kw'>end</span>
     <span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="Authentication/FatalAuthError.html" title="Lich::Common::Authentication::FatalAuthError (class)">FatalAuthError</a></span></span>
       <span class='comment'># Don&#39;t retry fatal auth failures - re-raise immediately
 </span>      <span class='id identifier rubyid_raise'>raise</span>
     <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+      <span class='comment'># Classified by error_code alone, not exception class, so this
+</span>      <span class='comment'># applies uniformly to any provider&#39;s AuthenticationError
+</span>      <span class='comment'># (EAccess, WebLogin) -- both expose the same error_code shape.
+</span>      <span class='kw'>if</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:error_code</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="#FATAL_ERROR_CODES-constant" title="Lich::Common::Authentication::FATAL_ERROR_CODES (constant)">FATAL_ERROR_CODES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_code'>code</span><span class='op'>|</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_error_code'>error_code</span><span class='op'>&amp;.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+        <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Authentication fatally failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Authentication/FatalAuthError.html" title="Lich::Common::Authentication::FatalAuthError (class)">FatalAuthError</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span>
+      <span class='kw'>end</span>
+
       <span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
 
-      <span class='kw'>if</span> <span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>&lt;</span> <span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span> <span class='op'>-</span> <span class='int'>1</span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_fast_fail_unreachable'>fast_fail_unreachable</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_unreachable_error?'>unreachable_error?</span><span class='lparen'>(</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='rparen'>)</span>
+        <span class='comment'># The endpoint itself didn&#39;t respond, and an alternate
+</span>        <span class='comment'># provider is available -- retrying it again immediately
+</span>        <span class='comment'># isn&#39;t going to help, and every retry here directly delays
+</span>        <span class='comment'># the handoff. Stop now instead of exhausting MAX_AUTH_RETRIES.
+</span>        <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: Authentication endpoint unreachable (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>); not retrying the same endpoint -- an alternate provider is available</span><span class='tstring_end'>&quot;</span></span>
+        <span class='kw'>break</span>
+      <span class='kw'>end</span>
+
+      <span class='comment'># Transient auth error - allow retry (this covers
+</span>      <span class='comment'># unreachable_error? classes too when fast_fail_unreachable is
+</span>      <span class='comment'># false, e.g. legacy/generator EAccess calls or any WebLogin
+</span>      <span class='comment'># call -- there is no alternate provider to fail fast *to* there,
+</span>      <span class='comment'># so a reset mid-exchange gets the same retry chance as any
+</span>      <span class='comment'># other transient error).
+</span>      <span class='kw'>if</span> <span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>&lt;</span> <span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span> <span class='op'>-</span> <span class='int'>1</span>
         <span class='id identifier rubyid_delay'>delay</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#AUTH_RETRY_BASE_DELAY-constant" title="Lich::Common::Authentication::AUTH_RETRY_BASE_DELAY (constant)">AUTH_RETRY_BASE_DELAY</a></span></span> <span class='op'>*</span> <span class='lparen'>(</span><span class='int'>2</span><span class='op'>**</span><span class='id identifier rubyid_attempt'>attempt</span><span class='rparen'>)</span>
         <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warn: Authentication attempt </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attempt'>attempt</span> <span class='op'>+</span> <span class='int'>1</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> failed: </span><span class='tstring_end'>&quot;</span></span> \
                  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>, retrying in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_delay'>delay</span><span class='embexpr_end'>}</span><span class='tstring_content'>s...</span><span class='tstring_end'>&quot;</span></span>
@@ -637,8 +1270,11 @@ Includes automatic retry with exponential backoff for transient errors</p>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 
-  <span class='comment'># All retries exhausted - re-raise the last error
-</span>  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Authentication failed after </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_AUTH_RETRIES-constant" title="Lich::Common::Authentication::MAX_AUTH_RETRIES (constant)">MAX_AUTH_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> attempts: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_last_error'>last_error</span><span class='op'>&amp;.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='comment'># All retries exhausted (or fast-failed early) - re-raise the last
+</span>  <span class='comment'># error, logging how many attempts actually happened rather than
+</span>  <span class='comment'># always claiming MAX_AUTH_RETRIES.
+</span>  <span class='id identifier rubyid_attempt_word'>attempt_word</span> <span class='op'>=</span> <span class='id identifier rubyid_attempts_made'>attempts_made</span> <span class='op'>==</span> <span class='int'>1</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attempt</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attempts</span><span class='tstring_end'>&#39;</span></span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Authentication failed after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attempts_made'>attempts_made</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_attempt_word'>attempt_word</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_last_error'>last_error</span><span class='op'>&amp;.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='id identifier rubyid_raise'>raise</span> <span class='id identifier rubyid_last_error'>last_error</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -651,7 +1287,7 @@ Includes automatic retry with exponential backoff for transient errors</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:22:59 2026 by
+  Generated on Thu Sep 10 03:55:20 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

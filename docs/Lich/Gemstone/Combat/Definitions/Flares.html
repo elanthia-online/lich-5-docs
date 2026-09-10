@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Gemstone::Combat::Definitions::Flares
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Gemstone::Combat::Definitions::Flares";
+  relpath = '../../../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../../../_index.html">Index (F)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Definitions.html" title="Lich::Gemstone::Combat::Definitions (module)">Definitions</a></span></span>
+     &raquo; 
+    <span class="title">Flares</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Gemstone::Combat::Definitions::Flares
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/gemstone/combat/defs/flares.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Namespace for flare pattern definitions and parsing.</p>
+<p>A flare is a proc that rides on an attack: weapon scripts, enchants, gloves,
+GEFs, flourishes. Each flare definition carries metadata about whether a damage
+line is expected, whether it targets a single creature or multiple, and whether
+it spawns an embedded spell as a separate attack.</p>
+<p>Timing (pre-flare vs. post-flare) is determined positionally by the parser
+based on the order flare announces appear in the log relative to attack events.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span>
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="FLARE_DEFS-constant" class="">FLARE_DEFS =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>List of flare pattern definitions.</p>
+<p>Each entry is a FlareDef struct containing a flare name, array of regex patterns
+to match its announce line(s), and three boolean flags:</p>
+<pre class="code ruby"><code class="ruby">- damaging: whether a damage line is expected to follow (false for utility
+flares like acuity or tailwind)
+- aoe: whether the flare can hit multiple targets; false for single-target
+flares even when their parent attack is AoE
+- spawns: whether the flare casts an embedded spell as a separate attack
+(e.g., Blink, sigil_cast), causing subsequent attack events in the same
+chunk to be children rather than independent casts</code></pre>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>frozen array of flare definitions</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Flares.parse (method)">parse</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:acid</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases? a spray of acid! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases? a spray of acid at (?&lt;target&gt;.+?)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? releases? a spray of acid(?: at (?&lt;target&gt;.+?))?! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:acuity</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your .+? glows intensely with a verdant light!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? glows intensely with a verdant light!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:air</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? unleashes a blast of air! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? unleashes a blast of air! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:air_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A fierce whirlwind erupts around .+?, encircling (?&lt;target&gt;.+?) in a suffocating cyclone! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:arcane_reflex</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Vital energy infuses you, hastening your arcane reflexes!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:blink</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your .+? suddenly lights up with hundreds of tiny blue sparks!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:blessings_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A crackling wave arcs across your body, striking (?&lt;target&gt;.+?) with lightning speed!  A spiritual resonance warms your core, lending you renewed strength! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Shimmering arcs of lightning stream from your hands, colliding with (?&lt;target&gt;.+?) in a rapid burst!  A stirring force ignites within you, augmenting your spirit! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Sparkling tendrils of energy weave around your limbs, shocking (?&lt;target&gt;.+?) in a bright flare!  The pulse leaves you feeling spiritually emboldened! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A faint hum courses through you as arcs of electricity coil around your arms, jolting (?&lt;target&gt;.+?) in a vivid burst!  The current resonates with your spirit, boosting your energy! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* You feel a tingling surge channel through your arms, blasting (?&lt;target&gt;.+?) with crackling electricity!  A reassuring feeling of mental acuity settles over you! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Jagged sparks dance along your open palms, lashing out at (?&lt;target&gt;.+?) in a crackling surge!  Your resolve feels bolstered as the energy courses through you! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* An electrified aura coalesces around you, crackling outward to shock (?&lt;target&gt;[^!]+)!  The charge resonates with your spirit, heightening your prowess! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Threads of charged light spiral around your arms, striking (?&lt;target&gt;.+?) with a pulsing shock!  A resonant force ripples through you, amplifying your spirit! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Sparks of crackling energy race along your fingertips, shocking (?&lt;target&gt;.+?) with a brilliant flash!  A surge of spiritual power rushes through your veins! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:breeze</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is buffeted by a burst of wind and pushed back!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is buffeted by a sudden gust of wind!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A gust of wind shoves (?&lt;target&gt;.+?) back!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:briar</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Vines of vicious briars whip out from your [^,]+, raking the \w+ with its thorns\.  The \w+ looks slightly ill as the glistening emerald coating from each briar works itself under its skin\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:chameleon_shroud</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A tenebrous shroud stitches itself into existence around you as you gracefully retreat into the shadows!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:cold</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your .+? glows intensely with a cold blue light!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? glows intensely with a cold blue light!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:cold_gef</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A vortex of razor-sharp ice gusts from .+? and coalesces around (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># (?:&lt;pushBold\/&gt;)? before &quot;the&quot;: the live feed bolds the target
+</span>  <span class='comment'># as &lt;pushBold/&gt;the &lt;a...&gt;name&lt;/a&gt;&lt;popBold/&gt;, so a literal
+</span>  <span class='comment'># &quot; the &quot; glued to the capture never matches in production
+</span>  <span class='comment'># (replay-harness verified 2026-08-21)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:concussive_blows</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your blow slams (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;.+?) with concussive force! \*\*</span><span class='regexp_end'>}</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> blow slams (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;.+?) with concussive force! \*\*</span><span class='regexp_end'>}</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:disintegration</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases a shimmering beam of disintegration! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? releases a shimmering beam of disintegration! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Sphere-interference cascade (&quot;flux crit&quot;): fires when a
+</span>  <span class='comment'># dispel strips a spell whose sphere differs from the sphere
+</span>  <span class='comment'># of a strip moments before - the interaction is what carries
+</span>  <span class='comment'># the damage/crit that follows (owner mechanics 2026-09-04 +
+</span>  <span class='comment'># Dispel flare wiki page). The noun names the stripped
+</span>  <span class='comment'># spell&#39;s sphere: elemental aura = elemental, hazy film =
+</span>  <span class='comment'># spiritual (plasma crit in the wiki example), murky veil =
+</span>  <span class='comment'># mental (by elimination - disruption crit expected). The
+</span>  <span class='comment'># no-flux sphere lines (&quot;wavers.&quot;/&quot;coats X.&quot;/&quot;surrounds X.&quot;)
+</span>  <span class='comment'># stay deliberately unparsed.
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:dispel_flux</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?:elemental aura|hazy film|murky veil) around (?&lt;target&gt;.+?) fluxes chaotically!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:dispel</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='comment'># glows? - plural items (&quot;somnis gauntlets glow&quot;)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? glows? brightly for a moment, consuming the magical energies around (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? glows brightly for a moment, consuming the magical energies around (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:disruption</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases a quivering wave of disruption! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? releases a quivering wave of disruption! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:earth_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Chunks of earth violently orbit .+?, pelting (?&lt;target&gt;.+?) with heavy debris and stone! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:earth_gef</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A violent explosion of frenetic energy rumbles from .+? and pummels (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:energy</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* A beam of .+? energy emits from the tip of your .+? and collides with (?&lt;target&gt;.+?&lt;/a&gt;) .+?! \*\*</span><span class='regexp_end'>}</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:ensorcell</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Necrotic energy from your .+? overflows into you! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># third person: the energy is announced from the wielder&#39;s item
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Necrotic energy from (?&lt;attacker&gt;.+?) flares up momentarily! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fire</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? flares with a burst of flame! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? flares with a burst of flame! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fire_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A blazing inferno erupts around .+?, engulfing (?&lt;target&gt;.+?) and scorching everything in its wake! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fire_gef</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Burning orbs of pure flame burst from .+? and engulf (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:firewheel</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? emits a fist-sized ball of lightning-suffused flames! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:ghezyte</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Cords of plasma-veined grey mist seep from your .+? and entangle (?&lt;target&gt;[^,]+), causing .+? to tremble violently! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># 3p (round-6: 16k)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Cords of plasma-veined grey mist seep from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and entangle (?&lt;target&gt;[^,]+), causing .+? to tremble violently! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:grapple</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases a twisted tendril of force! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? releases a twisted tendril of force! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:guiding_light</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? sprays with a burst of plasma energy! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:holy_water</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? sprays forth a shower of pure water! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hurl_boulder</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You hurl a large boulder at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:immolation</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You bring a hand up to your lips and form a sign with your fingers as you whisper a quiet invocation for Immolation\.\.\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:impact</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your .+? release a blast of vibrating energy at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>}</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:lightning</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? emits a searing bolt of lightning! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? emits? a searing bolt of lightning! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:lightning_gef</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A vicious torrent of crackling lightning surges from .+? and strikes (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:magma</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your .+? expel a glob of molten magma at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>}</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># [Yy] - arrives lowercase mid-sentence from armor flares
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:mana</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[Yy]ou feel \d+ mana surge into you!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:natures_decay</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Soot brown specks of leaf mold trail in the wake of (?&lt;target&gt;.+?) movements, distorted by a murky haze\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The earthy, sweet aroma clinging to (?&lt;target&gt;.+?) grows more pervasive\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># first application (real-feed 2026-09-07; was a typo&#39;d &quot;armoa
+</span>    <span class='comment'># clings&quot; that never matched, so the first proc on each creature
+</span>    <span class='comment'># recorded as a status only, never as a flare)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An earthy, sweet aroma wafts from (?&lt;target&gt;.+?) in a murky haze\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An earthy, sweet aroma clings to (?&lt;target&gt;.+?) in a murky haze, accompanied by soot brown specks of leaf mold\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:necromancy_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A sickly green aura radiates from .+? and seeps into (?&lt;target&gt;.+?) wounds! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:parasite</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A slender .+? and black tendril lashes out from .+? and slashes (?&lt;target&gt;.+?) .+?!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:physical_prowess</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The vitality of nature bestows you with a burst of strength!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:plasma</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? pulses with a burst of plasma energy! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? pulses with a burst of plasma energy! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Glowbark / plasma weapon flare. Three lines, three roles (owner
+</span>  <span class='comment'># breakdown 2026-09-06):
+</span>  <span class='comment'>#   1. PRIMARY - damages the swing&#39;s target, names it.
+</span>  <span class='comment'>#   2. CHAIN TRIGGER - the 25% AoE proc fires; no target, no
+</span>  <span class='comment'>#      damage. It can flush hidden creatures (&quot;... forced out of
+</span>  <span class='comment'>#      hiding!&quot;), so it must NOT be treated as damaging or it
+</span>  <span class='comment'>#      would swallow the next damage line.
+</span>  <span class='comment'>#   3. SECONDARY - one per additional creature the AoE caught;
+</span>  <span class='comment'>#      damages and names each.
+</span>  <span class='comment'># 580 primaries + 123 chain lines were dropped as unmatched flare
+</span>  <span class='comment'># text before this (real-feed, GSIV-Nisugi glowbark long bow).
+</span>  <span class='comment'># The game reworded this flare on 2026-09-06 (&quot;plasma wave&quot; -&gt;
+</span>  <span class='comment'># phosphorescence) and the old wording no longer prints, so only
+</span>  <span class='comment'># the current forms are defined, one name per role (owner naming
+</span>  <span class='comment'># 2026-09-07) so analytics can tell the three lines apart.
+</span>  <span class='comment'># PRIMARY: names and damages the swing&#39;s target
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:phosphorescence</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Countless points of pale phosphorescence awaken across your .+?, rapidly brightening before bursting into brilliant light around (?&lt;target&gt;.+?)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Countless points of pale phosphorescence awaken across (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?, rapidly brightening before bursting into brilliant light around (?&lt;target&gt;.+?)! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># CHAIN TRIGGER: no target, no damage (see note above)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:glowbright</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Phosphorescent light races through the .+? as its entire surface blossoms with dazzling radiance, flooding the surroundings in ghostly light! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># SECONDARY: one bloom per extra creature the chain reached.
+</span>  <span class='comment'># Its target is NOT the swing&#39;s target - the processor must keep
+</span>  <span class='comment'># the damage on this flare (creature-attributed) rather than
+</span>  <span class='comment'># switching the whole event onto the bloom&#39;s creature.
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spectral_bloom</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A bloom of spectral light blossoms around (?&lt;target&gt;.+?), engulfing .+? in searing brilliance! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:psychic_assault</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='comment'># bare form (no target clause) observed 2,148x in round-5 logs;
+</span>    <span class='comment'># optional pushBold before &quot;the&quot; or the targeted-live form dies
+</span>    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your .+? unleashes a blast of psychic energy(?: at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^!]+))?! \*\*</span><span class='regexp_end'>}</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? unleashes a blast of psychic energy(?: at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^!]+))?! \*\*</span><span class='regexp_end'>}</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:religion_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Divine flames kindle around .+?, leaping forth to engulf (?&lt;target&gt;.+?) in a sacred inferno! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:rusalkan</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Succumbing to the force of the tidal wave, (?&lt;target&gt;.+?) is thrown to the ground\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sigil_dispel</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Tendrils of .+? lash out from your .+? toward (?&lt;target&gt;.+?) and cage .+? within bands of concentric geometry that constrict as one, shattering upon impact! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Tendrils of .+? lash out from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? toward (?&lt;target&gt;.+?) and cage .+? within bands of concentric geometry</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># armor-trigger form: the bolt from the caster&#39;s armor lights
+</span>    <span class='comment'># the sigils, then the tendrils lash out in the same line
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A bolt of energy leaps from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and sets the sigils along .+? ablaze\.  Tendrils of .+? lash out at (?&lt;target&gt;.+?) and cage .+? within bands of concentric geometry</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sigil_cast</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Numerous sigils along your .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of your last spell\.\.\. \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Numerous sigils along (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of .+? last spell\.\.\. \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Spiraling sigils flare to sudden visibility along (?:your|(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>) .+?, pulsing forth an echo of the spell within! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:slashing_strikes</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='comment'># anchored on the possessive: the lazy capture used to stop at
+</span>    <span class='comment'># the first word (&quot;the&quot;) instead of the creature. Works on both
+</span>    <span class='comment'># forms - live target spans its link markup up to the &#39;s
+</span>    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your .+? finds its mark, slicing deep into (?:&lt;pushBold/&gt;)?(?:the )?(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?&lt;location&gt;[^!]+)! \*\*</span><span class='regexp_end'>}</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? finds its mark, slicing deep into (?:&lt;pushBold/&gt;)?(?:the )?(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?&lt;location&gt;[^!]+)! \*\*</span><span class='regexp_end'>}</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:somnis</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* For a split second, the striations of your .+? expand into a sinuous pearlescent mist that rushes towards (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^,]+), enveloping .+? entirely(?: and causing .+? to collapse, fast asleep)?! \*\*</span><span class='regexp_end'>}</span></span><span class='comma'>,</span>
+    <span class='comment'># third person - the &quot;causing ... fast asleep&quot; tail is absent
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* For a split second, the striations of (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? expand into a sinuous pearlescent mist that rushes towards (?&lt;target&gt;[^,]+), enveloping .+? entirely! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sprite</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* The .+? sprite on your shoulder sends forth a cylindrical, .+? blast of magic at (?&lt;target&gt;.+?&lt;/a&gt;) .+?! \*\*</span><span class='regexp_end'>}</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:steam</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? erupts with a plume of steam! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\*\* Your .+? erupt with a plume of steam at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>}</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:summoning_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A radiant mist surrounds .+?, unfurling into a whip of plasma that wreathes (?&lt;target&gt;.+?) in its sizzling embrace! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:tailwind</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A favorable tailwind springs up behind you\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You shift position, taking advantage of a favorable tailwind\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The wind turns in your favor\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:telepathy_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Rippling and half-seen, strands of psychic power unravel from .+? to strike at (?&lt;target&gt;.+?)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:terror</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A series of cacophonous caws and screeches fills the air as a murder of crows appears out of nowhere, swarming (?&lt;target&gt;.+?) and pecking .+? relentlessly! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A wave of wicked power surges forth from your .+? and fills (?&lt;target&gt;.+?) with terror, .+? form trembling with unmitigated fear! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># 3p (round-6: 8.3k)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A wave of wicked power surges forth from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and fills (?&lt;target&gt;.+?) with terror, .+? form trembling with unmitigated fear! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:unbalance</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? unleashes an invisible burst of force! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:vacuum</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* As you hit, the (?:edge|outer rim) of your .+? seems to fold inward upon itself drawing everything it touches along with it! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:valence</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A coil of spectral .+? energy bursts out of thin air and strikes (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:wall_of_thorns</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>One of the vines surrounding you lashes out at (?:&lt;pushBold/&gt;)?the (?&lt;target&gt;[^,]+), scraping a thorn across .+? body!  .+? flinches slightly.</span><span class='regexp_end'>}</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:water</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? shoot a blast of water! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:water_flourish</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A watery deluge erupts violently around .+?, crushing (?&lt;target&gt;.+?) with relentless force! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- families first catalogued from the 2026-08-20 arena logs ---
+</span>  <span class='comment'># shield/armor spike proc (arena logs 3p, wiki 2p - the 2p form
+</span>  <span class='comment'># is not **-wrapped for shields but is for armor spikes)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_spike</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A spike on (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? jabs into (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A spike on your .+? jabs into (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A spike on your (?&lt;weapon&gt;.+?) jabs into (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># UAC gloves blood-boil proc (re-tick line is a status, not here)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:boil_blood</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A fiery aura spirals from (?&lt;attacker&gt;.+?) hands into (?&lt;target&gt;.+?) body, roiling .+? blood to a boil! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># envenomed/poisoned weapon proc
+</span>  <span class='comment'># target is .*? not .+? - on our own procs the stripped creature
+</span>  <span class='comment'># link leaves the slot empty and the line must still match
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:weapon_poison</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?:Afflicted|Envenomed) by (?&lt;attacker&gt;.+?), (?&lt;target&gt;.*?) reels as the .+? poison does its work! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Thurfel&#39;s-style summoned thundercloud strike
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:thundercloud</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Suddenly a lightning bolt explodes from the .+? thundercloud and strikes (?&lt;target&gt;.+?) with a brilliant flash!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># vulnerability-exposing procs (arena 3p wordings + wiki 2p)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:vulnerability</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The attack exposes (?:a vulnerability in )?(?&lt;target&gt;.+?) defenses!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your attack exposes a vulnerability in (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> defenses!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- catalogued from wiki Messaging sections ---
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sonic_weapon</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your sonic .+? unleashes a blast of sonic energy at (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* With a loud snap, a blast of energy bursts from your sonic .+?! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:retribution_aura</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your aura unleashes a blast of divine retribution at (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># releases? throughout: plural subjects (&quot;Your somnis boots
+</span>  <span class='comment'># release ...&quot;, 910x round-5) drop the s
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:terror_weapon</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases? a distorted black shadow! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases? a distorted black shadow at (?:the )?(?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? releases? a distorted black shadow(?: at .+?)?! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:vethinye</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* As a resonating song emanates from (?:your|(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>) .+?, it entwines .+? in night blue wisps of ephemera\.  Suddenly, a star-sparked rush of percussive pressure .*?whips out at (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># targeted form (&quot;... glow at the wendigo!&quot;) observed 92x round-5
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:xazkruvrixis</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? emits an ominous black-green glow(?: at (?:the )?(?&lt;target&gt;[^!]+))?! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:forceful_blows</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* With a mighty swing of your .+?, you deal (?&lt;target&gt;.+?) a forceful blow! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:critical_hit</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Critical hit!  Your .+? strikes (?&lt;target&gt;.+?) a savage blow! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Crusade/Repentance/Sanguine deity radiance (2p; color varies)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:crusade</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your (?:.+?|body) surges with power as .+? radiance coalesces around it!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:banshee</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your .+? emits a deafening wail as a bright red glow erupts from its surface, surrounding you!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># incoming ammo/weapon elemental proc - the attacker&#39;s flare, us as victim
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:incoming_elemental</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* As (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?&lt;weapon&gt;.+?) hits you, it emits a burst of flame! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- catalogued from Rysk THW/ambush logs (2026-08-20) ---
+</span>  <span class='comment'># sanctified/blessed weapon; &quot;Consumed by the hallowed flames&quot;
+</span>  <span class='comment'># damage line that follows is already in SPELL_DAMAGE
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:holy_fire</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?:Your|(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>) .+? bursts alight with leaping tongues of holy fire! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># possibly custom messaging, but live and high-volume
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shadow_daggers</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Striking out of the darkness, unseen daggers stab at (?:the )?(?&lt;target&gt;.+?) from behind! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># bloodstone jewelry proc; precedes &quot;suffers an additional N
+</span>  <span class='comment'># damage!&quot; bleed ticks
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:bloodstone</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Sanguine brilliance strikes (?:the )?(?&lt;target&gt;.+?) a rupturing blow! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># arcarium harvested-essence procs (three tails share the prefix)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:arcarium</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Harvested essence stirs within your arcarium, rising to a keening ululation\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:magma_ghosts</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Splashing magma everywhere, charred red ghosts rise out of (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and sail through the air</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- blob-verified corpus additions (2026-08-20) ---
+</span>  <span class='comment'># ethereal spirit-animal weapon procs; the &quot;Riotous misty green
+</span>  <span class='comment'># energy races along the surface&quot; announce is this flare&#39;s PREFIX
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spirit_animal</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* .+? ethereal (?&lt;animal&gt;[\w -]+?) (?:charges forward|rushes forward|dives down|lumbers forward|scurries forward|circles in the air|glides unsteadily downward)</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># offhand echo of the spirit-animal proc (non-damaging)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spirit_animal_echo</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A turbulent cloud of .+? light lashes out from (?:a|an) .+? with an echoing (?:screech|howl|bellow|growl|roar|huff)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># defensive variant: fires on OUR evade, resolves via its own SMR;
+</span>  <span class='comment'># the &quot;angry growl reverberates through your X&quot; line is its PREFIX
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spirit_animal_growl</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A deafening growl impacts (?&lt;target&gt;.+?) with a gust of displaced air!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:gauntlet_tendrils</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Tendrils of energy lash out from your (?&lt;weapon&gt;.+?) and surge towards (?&lt;target&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># weighting proc
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:unyielding_force</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?:Your|(?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>) (?&lt;weapon&gt;.+?) meets (?&lt;target&gt;.+?) with unyielding force! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># sigil-dispel whiff: separate def because :sigil_dispel declares
+</span>  <span class='comment'># damaging=true and this form must not promise a damage line
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sigil_dispel_failed</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Tendrils of .+? lash out from your .+? toward (?&lt;target&gt;.+?) and cage .+? within bands of concentric geometry that constrict as one, but dissipate harmlessly</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Song of Mirrors echo: the image repeats the swing with its own
+</span>  <span class='comment'># AS/DS + damage - damaging, so the flare cursor owns that roll
+</span>  <span class='comment'># and damage instead of leaking them to the next attack
+</span>  <span class='comment'># (real-feed capture, logs/examples/Barrage.txt)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:mirror_image</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Fleeting and insubstantial, a mirror image of you shimmers into view at your side, echoing your attack with one of its own! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># shadow variant (logs/examples/mstrike.txt)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Fleeting and insubstantial, a whisper of shadow coalesces beside you, echoing your attack with one of its own! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># 3p - another player&#39;s mirror echoes THEIR attack (round-6:
+</span>    <span class='comment'># 33k; shadow sibling inferred from the same transformation)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Fleeting and insubstantial, a mirror image of (?&lt;attacker&gt;.+?) shimmers into view beside </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>, echoing </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> attack with one of its own! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Fleeting and insubstantial, a whisper of shadow coalesces beside (?&lt;attacker&gt;.+?), echoing </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> attack with one of its own! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># Hunter&#39;s afterimage: the arrow re-forms in hand and the bow
+</span>  <span class='comment'># fires AGAIN as its own &quot;You fire ...&quot; swing with its own roll
+</span>  <span class='comment'># and damage. The announce arrives while the shot it rode is
+</span>  <span class='comment'># still open (after that shot&#39;s damage/crit), so it attaches
+</span>  <span class='comment'># there; the echo swing that follows opens its own event.
+</span>  <span class='comment'># NOT damaging - the echo&#39;s damage belongs to the echo swing, and
+</span>  <span class='comment'># a damaging flare here would steal the cursor from it. Lineage
+</span>  <span class='comment'># is deliberately not chained (see processor spawn_root notes).
+</span>  <span class='comment'># (real-feed 2026-09-07, gigas hunt; 3p form from corpus.)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hunters_afterimage</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A radiant afterimage of the .+? appears in your ready hand, coalescing to replace its predecessor! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A radiant afterimage of the .+? appears in (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> ready hand, coalescing to replace its predecessor! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># lance/weapon motes proc - rolls its own SMR immediately after
+</span>  <span class='comment'># (logs/examples/weapon_guardant_thrust.txt); damaging so the
+</span>  <span class='comment'># flare cursor owns that roll instead of orphaning it
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:glittering_motes</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A winking spray of glittering motes erupts from your .+?, showering (?&lt;target&gt;.+?) in sparkling flecks of clinging radiance! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A winking spray of glittering motes erupts from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?, showering (?&lt;target&gt;.+?) in sparkling flecks of clinging radiance! \*\*</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+
+  <span class='comment'># --- round-5 corpus additions (2026-08-21) ---
+</span>  <span class='comment'># Reckoning: &quot;Divine guidance intensifies your Reckoning!&quot; is
+</span>  <span class='comment'># its prefix (~3,500)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:reckoning</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Falling like a hammer from the sky, a golden light strikes (?:the )?(?&lt;target&gt;.+?) with resounding force! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:alchemical_fire</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A swirl of alchemical fire, .+?, erupts from your (?&lt;weapon&gt;[^!]+)! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># 2p armor-trigger sigil bolt: separate name so :sigil_dispel&#39;s
+</span>  <span class='comment'># damaging=true promise isn&#39;t inherited - this form runs its own SMR
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sigil_bane</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A bolt of energy leaps from your .+? and sets the sigils along your .+? ablaze\.\s+Tendrils of .+? lash out at (?&lt;target&gt;.+?) and cage</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># UAC gauntlet procs (damage follows each); releases? covers the
+</span>  <span class='comment'># plural-gauntlets bare form per the A2 rule
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spring_rod</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? releases? a small spring-loaded rod! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shadow_strike</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* The shadows surrounding your .+? swirl off and strike! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># defensive armor procs (safe from held-flare mis-claim: the
+</span>  <span class='comment'># pre-flare claim requires a weapon match, and armor names never
+</span>  <span class='comment'># match the swing weapon)
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:filament_corona</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Branching filaments of power snap outward from your .+? in a lambent silver corona! \*\*</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shadow_shroud</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As (?&lt;attacker&gt;.+?) attacks you, a cyclone of shadows emerges? from your .+?\.\s+The shadows swirl around in an attempt to conceal you!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="FLARE_LOOKUP-constant" class="">FLARE_LOOKUP =
+          <div class="docstring">
+  <div class="discussion">
+    <p>[pattern, name, damaging, aoe, spawns] rows, one per pattern</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="#FLARE_DEFS-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_DEFS (constant)">FLARE_DEFS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='op'>|</span>
+  <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_patterns'>patterns</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_rx'>rx</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_rx'>rx</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_spawns'>spawns</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+<span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="WEAPON_LINK-constant" class="">WEAPON_LINK =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Flare announce lines name the flaring weapon as a link:</p>
+<pre class="code ruby"><code class="ruby">Your &lt;a exist=&quot;393573117&quot; noun=&quot;sword&quot;&gt;slim short sword&lt;/a&gt; ...
+</code></pre>
+<p>The exist id is the join key for claiming pre-flares by weapon.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>Your &lt;a exist=&quot;(?&lt;id&gt;\d+)&quot; noun=&quot;[^&quot;]+&quot;&gt;(?&lt;name&gt;[^&lt;]+)&lt;/a&gt;</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(line)  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parse a flare announce line.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="parse-class_method">
+  
+    .<strong>parse</strong>(line)  &#x21d2; <tt><span class='object_link'><a href="../../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parse a flare announce line.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>{ name:, damaging:, aoe:, spawns:, target:, weapon: }
+target is the named capture when the pattern has one (may be nil);
+weapon is { id:, name: } when the line links the flaring weapon.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/flares.rb', line 423</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'>GATE</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>ALWAYS_SCAN</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_rx'>rx</span><span class='op'>|</span> <span class='id identifier rubyid_rx'>rx</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+
+  <span class='const'><span class='object_link'><a href="#FLARE_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_LOOKUP (constant)">FLARE_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='id identifier rubyid_spawns'>spawns</span><span class='op'>|</span>
+    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>damaging:</span> <span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='label'>aoe:</span> <span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='label'>spawns:</span> <span class='id identifier rubyid_spawns'>spawns</span> <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#WEAPON_LINK-constant" title="Lich::Gemstone::Combat::Definitions::Flares::WEAPON_LINK (constant)">WEAPON_LINK</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:weapon</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>id:</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span>
+  <span class='kw'>end</span>
+  <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Thu Sep 10 03:55:23 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

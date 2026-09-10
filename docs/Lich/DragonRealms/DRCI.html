@@ -88,16 +88,28 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>DragonRealms Common Items module.</p>
-<p>Low-level, stateless methods for interacting with items in the game world:
-getting, putting, wearing, removing, counting, searching, and querying hand
-contents. All methods in this module operate independently of game state beyond
-what the method itself queries or mutates.</p>
+    <p>DragonRealms Common Items - low-level, stateless methods for item manipulation.</p>
+<p>DRCI provides the foundational API for getting, wearing, storing, and querying
+items in the game world. All methods are module-level (stateless) and operate
+on item nouns or Item objects. This module depends only on DRC (common) and
+should not depend on higher-level modules like crafting or combat.</p>
+<p>Methods are organized by category: Retrieval, Storage, Wearing, Tying, Queries,
+Existence checks, Counting, Container operations, Trash disposal, Transfers,
+and Gem Pouch handling. See the module documentation for the full method index.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></li>
+    
+      <li><span class='object_link'><a href="EquipmentManager.html" title="Lich::DragonRealms::EquipmentManager (class)">EquipmentManager</a></span></li>
+    
+  </ul>
 
 </div>
   
@@ -128,9 +140,10 @@ Default trash-receptacle nouns. Players extend this at runtime via the
         <dt id="DROP_TRASH_SUCCESS_PATTERNS-constant" class="">DROP_TRASH_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item disposal via drop/put commands.</p>
-<p>Used by <span class='object_link'>#dispose_trash</span> to recognize when an item has been successfully
-dropped or placed in a trash receptacle.</p>
+    <p>Game response patterns indicating successful item disposal.</p>
+<p>Matches when an item is dropped, put away, spread, smashed, fed to a gelapod,
+or naturally destroyed (e.g., moonblade crumbling). Used by <span class='object_link'><a href="#dispose_trash-class_method" title="Lich::DragonRealms::DRCI.dispose_trash (method)">dispose_trash</a></span>
+and <span class='object_link'><a href="#execute_dispose_command-class_method" title="Lich::DragonRealms::DRCI.execute_dispose_command (method)">execute_dispose_command</a></span>.</p>
 
   </div>
 </div>
@@ -143,8 +156,9 @@ dropped or placed in a trash receptacle.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You drop the rock.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You put the rock in the trash.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>As you open your hand to release the moonblade, it crumbles away.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You put the apple on the ground.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You spread the flour on the ground.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You feed the apple to the domesticated gelapod.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -174,9 +188,10 @@ dropped or placed in a trash receptacle.</p>
         <dt id="DROP_TRASH_FAILURE_PATTERNS-constant" class="">DROP_TRASH_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item disposal attempts.</p>
-<p>Used by <span class='object_link'>#dispose_trash</span> to recognize when an item cannot be disposed,
-usually due to game restrictions (cursed items, loitering rules, full containers).</p>
+    <p>Game response patterns indicating item disposal failure.</p>
+<p>Matches when disposal is not possible due to missing item, full hands, cursed
+state, guarded location, non-empty containers, or game restrictions. Used by
+<span class='object_link'><a href="#dispose_trash-class_method" title="Lich::DragonRealms::DRCI.dispose_trash (method)">dispose_trash</a></span> and <span class='object_link'><a href="#execute_dispose_command-class_method" title="Lich::DragonRealms::DRCI.execute_dispose_command (method)">execute_dispose_command</a></span>.</p>
 
   </div>
 </div>
@@ -189,6 +204,7 @@ usually due to game restrictions (cursed items, loitering rules, full containers
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Perhaps you should be holding that first.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>No littering in the bank.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You can&#39;t put that there.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
@@ -253,9 +269,10 @@ To continue you must retry the command.</p>
         <dt id="WORN_TRASHCAN_VERB_PATTERNS-constant" class="">WORN_TRASHCAN_VERB_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match activation of worn trash-disposal containers.</p>
-<p>Used by <span class='object_link'>#dispose_trash</span> when a worn_trashcan_verb (e.g., &quot;tap&quot;, &quot;drum&quot;)
-is executed to empty the container after item disposal.</p>
+    <p>Game response patterns when activating a worn trashcan via verb (e.g., tap, drum).</p>
+<p>Indicates the worn container (e.g., shroud, compactor) has been activated to
+process the item inside. Used by <span class='object_link'><a href="#dispose_trash-class_method" title="Lich::DragonRealms::DRCI.dispose_trash (method)">dispose_trash</a></span> after putting item into a
+worn receptacle.</p>
 
   </div>
 </div>
@@ -267,8 +284,9 @@ is executed to empty the container after item disposal.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You drum your fingers on the shroud.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pull a lever on the refuse bin.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You drum your fingers along the shroud.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pull a lever on the compactor.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You poke your finger around inside.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -276,7 +294,7 @@ is executed to empty the container after item disposal.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'>#dispose_trash</span></li>
+      <li><span class='object_link'><a href="#dispose_trash-class_method" title="Lich::DragonRealms::DRCI.dispose_trash (method)">dispose_trash</a></span></li>
     
   </ul>
 
@@ -291,9 +309,10 @@ is executed to empty the container after item disposal.</p>
         <dt id="GET_ITEM_SUCCESS_PATTERNS-constant" class="">GET_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item retrieval via GET command.</p>
-<p>Used by <span class='object_link'>#get_item_unsafe</span> to verify that an item was successfully
-picked up and placed in the character's hands.</p>
+    <p>Game response patterns indicating successful item retrieval.</p>
+<p>Matches when an item is picked up, drawn, plucked, or obtained by any method.
+Includes messages for items already held, for magically concealed retrieval,
+and for careful/deft removal. Used by <span class='object_link'><a href="#get_item_unsafe-class_method" title="Lich::DragonRealms::DRCI.get_item_unsafe (method)">get_item_unsafe</a></span> and related methods.</p>
 
   </div>
 </div>
@@ -306,9 +325,9 @@ picked up and placed in the character's hands.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You get the sword.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pick up the shield.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are already holding the dagger.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>With a flick of your wrist, you stealthily unsheath the blade.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You draw your shield.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pick up the key.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are already holding the amulet.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -317,6 +336,8 @@ picked up and placed in the character's hands.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#GET_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_FAILURE_PATTERNS (constant)">GET_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#get_item%3F-class_method" title="Lich::DragonRealms::DRCI.get_item? (method)">get_item?</a></span></li>
     
   </ul>
 
@@ -340,9 +361,10 @@ picked up and placed in the character's hands.</p>
         <dt id="GET_ITEM_FAILURE_PATTERNS-constant" class="">GET_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item retrieval attempts.</p>
-<p>Used by <span class='object_link'>#get_item_unsafe</span> to recognize when an item cannot be retrieved,
-usually due to game restrictions (hands full, injured limbs, item decay).</p>
+    <p>Game response patterns indicating item retrieval failure.</p>
+<p>Matches when retrieval is impossible due to magical force, full hands, injured
+limbs, item capacity, cursed state, decay, or game restrictions. Used by
+<span class='object_link'><a href="#get_item_unsafe-class_method" title="Lich::DragonRealms::DRCI.get_item_unsafe (method)">get_item_unsafe</a></span> to determine if an item was successfully obtained.</p>
 
   </div>
 </div>
@@ -354,9 +376,10 @@ usually due to game restrictions (hands full, injured limbs, item decay).</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You need both hands free to do that.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You can&#39;t reach that from here.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The leather jacket rapidly decays away.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You need both hands free.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>A magical force keeps you from grasping it.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Your left hand is too injured.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>That would push you over the item limit.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -365,6 +388,8 @@ usually due to game restrictions (hands full, injured limbs, item decay).</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#GET_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_SUCCESS_PATTERNS (constant)">GET_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#get_item%3F-class_method" title="Lich::DragonRealms::DRCI.get_item? (method)">get_item?</a></span></li>
     
   </ul>
 
@@ -397,9 +422,11 @@ usually due to game restrictions (hands full, injured limbs, item decay).</p>
         <dt id="WEAR_ITEM_SUCCESS_PATTERNS-constant" class="">WEAR_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item wearing via WEAR command.</p>
-<p>Matches diverse equipping verbs (put, strap, sling, slip, etc.) used by
-different item types and armor pieces.</p>
+    <p>Game response patterns indicating successful item donning.</p>
+<p>Matches when an item is worn, put on, attached, strapped, slipped, placed,
+or worn by any verb. Includes messages for items already worn, complex items
+(boots, gloves), and special enchanted items (ice-veined leather, bearskin).
+Used by <span class='object_link'><a href="#wear_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.wear_item_unsafe? (method)">wear_item_unsafe?</a></span>.</p>
 
   </div>
 </div>
@@ -412,8 +439,9 @@ different item types and armor pieces.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You put on the cloak.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You strap the shield to your arm.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are already wearing the ring.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pull the amulet around your neck.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are already wearing the boots.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You slip your feet into the boots.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -422,6 +450,8 @@ different item types and armor pieces.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#WEAR_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_FAILURE_PATTERNS (constant)">WEAR_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#wear_item%3F-class_method" title="Lich::DragonRealms::DRCI.wear_item? (method)">wear_item?</a></span></li>
     
   </ul>
 
@@ -462,9 +492,9 @@ different item types and armor pieces.</p>
         <dt id="WEAR_ITEM_FAILURE_PATTERNS-constant" class="">WEAR_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item wearing attempts.</p>
-<p>Used by <span class='object_link'>#wear_item_unsafe?</span> to recognize when an item cannot be equipped,
-usually due to game restrictions (incompatible items, unloaded weapons).</p>
+    <p>Game response patterns indicating item donning failure.</p>
+<p>Matches when an item cannot be worn due to unloaded container, game
+restrictions, or invalid target. Used by <span class='object_link'><a href="#wear_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.wear_item_unsafe? (method)">wear_item_unsafe?</a></span>.</p>
 
   </div>
 </div>
@@ -477,6 +507,7 @@ usually due to game restrictions (incompatible items, unloaded weapons).</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You can&#39;t wear that.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You should unload it first.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Wear what?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -486,6 +517,8 @@ usually due to game restrictions (incompatible items, unloaded weapons).</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#WEAR_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_SUCCESS_PATTERNS (constant)">WEAR_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#wear_item%3F-class_method" title="Lich::DragonRealms::DRCI.wear_item? (method)">wear_item?</a></span></li>
     
   </ul>
 
@@ -504,9 +537,9 @@ usually due to game restrictions (incompatible items, unloaded weapons).</p>
         <dt id="TIE_ITEM_SUCCESS_PATTERNS-constant" class="">TIE_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item tying via TIE command.</p>
-<p>Used by <span class='object_link'>#tie_item?</span> to verify that an item (e.g., gem pouch, bundle)
-has been successfully tied or attached.</p>
+    <p>Game response patterns indicating successful item tying.</p>
+<p>Matches when an item (typically a container or bag) is tied, attached, or
+already tied. Used by <span class='object_link'><a href="#tie_item%3F-class_method" title="Lich::DragonRealms::DRCI.tie_item? (method)">tie_item?</a></span>.</p>
 
   </div>
 </div>
@@ -519,7 +552,8 @@ has been successfully tied or attached.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tie the pouch to your belt.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>This item has already been tied off.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You attach the cord to the bag.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The pouch has already been tied off.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -528,6 +562,8 @@ has been successfully tied or attached.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#TIE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_FAILURE_PATTERNS (constant)">TIE_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#tie_item%3F-class_method" title="Lich::DragonRealms::DRCI.tie_item? (method)">tie_item?</a></span></li>
     
   </ul>
 
@@ -543,9 +579,9 @@ has been successfully tied or attached.</p>
         <dt id="TIE_ITEM_FAILURE_PATTERNS-constant" class="">TIE_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item tying attempts.</p>
-<p>Used by <span class='object_link'>#tie_item?</span> to recognize when an item cannot be tied,
-usually due to lack of attachment points or item design.</p>
+    <p>Game response patterns indicating item tying failure.</p>
+<p>Matches when an item cannot be tied due to lack of ties, busy state, injured
+limbs, or fit issues. Used by <span class='object_link'><a href="#tie_item%3F-class_method" title="Lich::DragonRealms::DRCI.tie_item? (method)">tie_item?</a></span>.</p>
 
   </div>
 </div>
@@ -557,8 +593,9 @@ usually due to lack of attachment points or item design.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There&#39;s no more free ties on this container.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>This item doesn&#39;t seem to fit.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There&#39;s no more free ties.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>This doesn&#39;t seem to fit.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -567,6 +604,8 @@ usually due to lack of attachment points or item design.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#TIE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_SUCCESS_PATTERNS (constant)">TIE_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#tie_item%3F-class_method" title="Lich::DragonRealms::DRCI.tie_item? (method)">tie_item?</a></span></li>
     
   </ul>
 
@@ -586,9 +625,8 @@ usually due to lack of attachment points or item design.</p>
         <dt id="UNTIE_ITEM_SUCCESS_PATTERNS-constant" class="">UNTIE_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item untying via UNTIE command.</p>
-<p>Used by <span class='object_link'>#untie_item?</span> to verify that an item has been successfully
-untied or detached from a container.</p>
+    <p>Game response patterns indicating successful item untying.</p>
+<p>Matches when a tied item is removed or untied. Used by <span class='object_link'><a href="#untie_item%3F-class_method" title="Lich::DragonRealms::DRCI.untie_item? (method)">untie_item?</a></span>.</p>
 
   </div>
 </div>
@@ -601,7 +639,7 @@ untied or detached from a container.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You remove the pouch from your belt.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You untie the bundle.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You untie the cord.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -610,6 +648,8 @@ untied or detached from a container.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#UNTIE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::UNTIE_ITEM_FAILURE_PATTERNS (constant)">UNTIE_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#untie_item%3F-class_method" title="Lich::DragonRealms::DRCI.untie_item? (method)">untie_item?</a></span></li>
     
   </ul>
 
@@ -623,9 +663,9 @@ untied or detached from a container.</p>
         <dt id="UNTIE_ITEM_FAILURE_PATTERNS-constant" class="">UNTIE_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item untying attempts.</p>
-<p>Used by <span class='object_link'>#untie_item?</span> to recognize when an item cannot be untied,
-usually due to character restrictions (busy, fumbling, moving).</p>
+    <p>Game response patterns indicating item untying failure.</p>
+<p>Matches when an item cannot be untied due to busy state, fumbled attempt,
+or invalid target. Used by <span class='object_link'><a href="#untie_item%3F-class_method" title="Lich::DragonRealms::DRCI.untie_item? (method)">untie_item?</a></span>.</p>
 
   </div>
 </div>
@@ -637,7 +677,8 @@ usually due to character restrictions (busy, fumbling, moving).</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You fumble with the ties and fail to get it loose.</span><span class='tstring_end'>&quot;</span></span>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You fumble with the ties.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Untie what?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -647,6 +688,8 @@ usually due to character restrictions (busy, fumbling, moving).</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#UNTIE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::UNTIE_ITEM_SUCCESS_PATTERNS (constant)">UNTIE_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#untie_item%3F-class_method" title="Lich::DragonRealms::DRCI.untie_item? (method)">untie_item?</a></span></li>
     
   </ul>
 
@@ -664,9 +707,10 @@ usually due to character restrictions (busy, fumbling, moving).</p>
         <dt id="REMOVE_ITEM_SUCCESS_PATTERNS-constant" class="">REMOVE_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item removal via REMOVE command.</p>
-<p>Matches diverse removal verbs (pull, slide, detach, untie, etc.) used by
-different worn item types (armor, shields, boots, gloves, etc.).</p>
+    <p>Game response patterns indicating successful item removal from worn slots.</p>
+<p>Matches when a worn item is taken off, detached, loosened, slipped, untied,
+or pulled from the body. Includes messages for complex items (boots, gloves)
+and enchanted items. Used by <span class='object_link'><a href="#remove_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.remove_item_unsafe? (method)">remove_item_unsafe?</a></span>.</p>
 
   </div>
 </div>
@@ -678,9 +722,10 @@ different worn item types (armor, shields, boots, gloves, etc.).</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pull off the gloves.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The boots slide off your feet.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You remove the cloak.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You slip off the gloves.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You detach the amulet.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You pull off the boots.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Grunting, you pull off your combat boots.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -689,6 +734,8 @@ different worn item types (armor, shields, boots, gloves, etc.).</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#REMOVE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::REMOVE_ITEM_FAILURE_PATTERNS (constant)">REMOVE_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#remove_item%3F-class_method" title="Lich::DragonRealms::DRCI.remove_item? (method)">remove_item?</a></span></li>
     
   </ul>
 
@@ -724,9 +771,9 @@ different worn item types (armor, shields, boots, gloves, etc.).</p>
         <dt id="REMOVE_ITEM_FAILURE_PATTERNS-constant" class="">REMOVE_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item removal attempts.</p>
-<p>Used by <span class='object_link'>#remove_item_unsafe?</span> to recognize when an item cannot be removed,
-usually due to game restrictions (hand damage, not wearing item).</p>
+    <p>Game response patterns indicating item removal failure.</p>
+<p>Matches when an item cannot be removed due to full hands, injured limbs,
+item not worn, or movement restriction. Used by <span class='object_link'><a href="#remove_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.remove_item_unsafe? (method)">remove_item_unsafe?</a></span>.</p>
 
   </div>
 </div>
@@ -739,7 +786,8 @@ usually due to game restrictions (hand damage, not wearing item).</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You aren&#39;t wearing that.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You need a free hand to do that.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You need a free hand.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -748,6 +796,8 @@ usually due to game restrictions (hand damage, not wearing item).</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#REMOVE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::REMOVE_ITEM_SUCCESS_PATTERNS (constant)">REMOVE_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#remove_item%3F-class_method" title="Lich::DragonRealms::DRCI.remove_item? (method)">remove_item?</a></span></li>
     
   </ul>
 
@@ -901,9 +951,11 @@ sheath responses when the default storage is a sheath/harness.</p>
         <dt id="PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" class="">PUT_AWAY_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item storage via PUT or STOW commands.</p>
-<p>Used by <span class='object_link'>#put_away_item_unsafe?</span> to recognize when an item cannot be stowed,
-usually due to container limitations (full, closed, incompatible items).</p>
+    <p>Game response patterns indicating item storage failure.</p>
+<p>Matches when an item cannot be stowed or put into a container due to capacity,
+container design, cursed state, or game restrictions. Includes messages for
+items too large, too heavy, or incompatible with container. Used by
+<span class='object_link'><a href="#put_away_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.put_away_item_unsafe? (method)">put_away_item_unsafe?</a></span>.</p>
 
   </div>
 </div>
@@ -915,8 +967,10 @@ usually due to container limitations (full, closed, incompatible items).</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There isn&#39;t any more room in the backpack.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>That doesn&#39;t belong in there.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There isn&#39;t any more room in that.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>That&#39;s too heavy to go in there.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The backpack is not designed to carry anything.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Containers can&#39;t be placed in containers.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -991,9 +1045,10 @@ To continue you must retry the command.</p>
         <dt id="STOW_ITEM_SUCCESS_PATTERNS-constant" class="">STOW_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item stowing via STOW command.</p>
+    <p>Game response patterns indicating successful item stowing.</p>
 <p>Combines <span class='object_link'><a href="#GET_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_SUCCESS_PATTERNS (constant)">GET_ITEM_SUCCESS_PATTERNS</a></span> and <span class='object_link'><a href="#PUT_AWAY_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_SUCCESS_PATTERNS (constant)">PUT_AWAY_ITEM_SUCCESS_PATTERNS</a></span>
-since STOW both picks up and stores an item in a single command.</p>
+to match both retrieval and storage phases of the STOW command. Used by
+<span class='object_link'><a href="#stow_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item_unsafe? (method)">stow_item_unsafe?</a></span> and <span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span>.</p>
 
   </div>
 </div>
@@ -1006,6 +1061,8 @@ since STOW both picks up and stores an item in a single command.</p>
       <li><span class='object_link'><a href="#STOW_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::STOW_ITEM_FAILURE_PATTERNS (constant)">STOW_ITEM_FAILURE_PATTERNS</a></span></li>
     
       <li><span class='object_link'><a href="#STOW_ITEM_RETRY_PATTERNS-constant" title="Lich::DragonRealms::DRCI::STOW_ITEM_RETRY_PATTERNS (constant)">STOW_ITEM_RETRY_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#stow_item%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item? (method)">stow_item?</a></span></li>
     
   </ul>
 
@@ -1019,9 +1076,10 @@ since STOW both picks up and stores an item in a single command.</p>
         <dt id="STOW_ITEM_FAILURE_PATTERNS-constant" class="">STOW_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item stowing via STOW command.</p>
+    <p>Game response patterns indicating item stowing failure.</p>
 <p>Combines <span class='object_link'><a href="#GET_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_FAILURE_PATTERNS (constant)">GET_ITEM_FAILURE_PATTERNS</a></span> and <span class='object_link'><a href="#PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_FAILURE_PATTERNS (constant)">PUT_AWAY_ITEM_FAILURE_PATTERNS</a></span>
-to cover both retrieval and storage failures.</p>
+to match failures in either retrieval or storage phases of the STOW command.
+Used by <span class='object_link'><a href="#stow_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item_unsafe? (method)">stow_item_unsafe?</a></span> and <span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span>.</p>
 
   </div>
 </div>
@@ -1035,6 +1093,8 @@ to cover both retrieval and storage failures.</p>
     
       <li><span class='object_link'><a href="#STOW_ITEM_RETRY_PATTERNS-constant" title="Lich::DragonRealms::DRCI::STOW_ITEM_RETRY_PATTERNS (constant)">STOW_ITEM_RETRY_PATTERNS</a></span></li>
     
+      <li><span class='object_link'><a href="#stow_item%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item? (method)">stow_item?</a></span></li>
+    
   </ul>
 
 </div>
@@ -1047,9 +1107,10 @@ to cover both retrieval and storage failures.</p>
         <dt id="STOW_ITEM_RETRY_PATTERNS-constant" class="">STOW_ITEM_RETRY_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that trigger automatic retry of STOW command.</p>
-<p>Contains <span class='object_link'><a href="#PUT_AWAY_ITEM_RETRY_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_RETRY_PATTERNS (constant)">PUT_AWAY_ITEM_RETRY_PATTERNS</a></span> for messages like outdated items
-that require a second attempt to complete.</p>
+    <p>Game response patterns that warrant retry during item stowing.</p>
+<p>Combines <span class='object_link'><a href="#PUT_AWAY_ITEM_RETRY_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_RETRY_PATTERNS (constant)">PUT_AWAY_ITEM_RETRY_PATTERNS</a></span> for messages that indicate transient
+conditions (item updates, game state changes) where retry should succeed.
+Used by <span class='object_link'><a href="#stow_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item_unsafe? (method)">stow_item_unsafe?</a></span> and <span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span>.</p>
 
   </div>
 </div>
@@ -1062,6 +1123,8 @@ that require a second attempt to complete.</p>
       <li><span class='object_link'><a href="#STOW_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::STOW_ITEM_SUCCESS_PATTERNS (constant)">STOW_ITEM_SUCCESS_PATTERNS</a></span></li>
     
       <li><span class='object_link'><a href="#STOW_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::STOW_ITEM_FAILURE_PATTERNS (constant)">STOW_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#stow_item%3F-class_method" title="Lich::DragonRealms::DRCI.stow_item? (method)">stow_item?</a></span></li>
     
   </ul>
 
@@ -1270,9 +1333,10 @@ match whether or not the tag is present, without assuming its inner values.</p>
         <dt id="RUMMAGE_SUCCESS_PATTERNS-constant" class="">RUMMAGE_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful RUMMAGE command output.</p>
-<p>Used by <span class='object_link'>#rummage_container</span> and <span class='object_link'>#list_container_contents</span> to extract
-container contents lists from the game response.</p>
+    <p>Game response patterns indicating successful container rummage.</p>
+<p>Matches when container contents are successfully listed via RUMMAGE,
+including empty containers. Used by <span class='object_link'><a href="#rummage_container-class_method" title="Lich::DragonRealms::DRCI.rummage_container (method)">rummage_container</a></span> and
+<span class='object_link'><a href="#list_container_contents-class_method" title="Lich::DragonRealms::DRCI.list_container_contents (method)">list_container_contents</a></span>.</p>
 
   </div>
 </div>
@@ -1284,8 +1348,9 @@ container contents lists from the game response.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You rummage through the backpack and see a sword, a shield, and some rope.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>In the chest you see a pair of gloves.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You rummage through the backpack and see a sword, shield, and amulet.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>In the pouch you see three gems.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There is nothing interesting in there.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1308,9 +1373,10 @@ container contents lists from the game response.</p>
         <dt id="RUMMAGE_FAILURE_PATTERNS-constant" class="">RUMMAGE_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed RUMMAGE command attempts.</p>
-<p>Used by <span class='object_link'>#rummage_container</span> and <span class='object_link'>#list_container_contents</span> to recognize
-when a container cannot be accessed or rummaged.</p>
+    <p>Game response patterns indicating rummage failure.</p>
+<p>Matches when container contents cannot be accessed due to inability to move,
+missing container, or invalid reference. Used by <span class='object_link'><a href="#rummage_container-class_method" title="Lich::DragonRealms::DRCI.rummage_container (method)">rummage_container</a></span> and
+<span class='object_link'><a href="#list_container_contents-class_method" title="Lich::DragonRealms::DRCI.list_container_contents (method)">list_container_contents</a></span>.</p>
 
   </div>
 </div>
@@ -1323,6 +1389,7 @@ when a container cannot be accessed or rummaged.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>I could not find what you were referring to.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -1347,9 +1414,10 @@ when a container cannot be accessed or rummaged.</p>
         <dt id="TAP_SUCCESS_PATTERNS-constant" class="">TAP_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful TAP command output.</p>
-<p>Used by <span class='object_link'>#tap</span>, <span class='object_link'>#exists?</span>, <span class='object_link'>#wearing?</span>, and <span class='object_link'>#inside?</span> to verify that
-an item exists and determine its location (worn, stowed, in a container, etc.).</p>
+    <p>Game response patterns indicating successful item tap.</p>
+<p>Matches when tapping an item returns information about its location (worn,
+stowed, inside container) or other status. Response text is parsed by
+<span class='object_link'><a href="#wearing%3F-class_method" title="Lich::DragonRealms::DRCI.wearing? (method)">wearing?</a></span>, <span class='object_link'><a href="#inside%3F-class_method" title="Lich::DragonRealms::DRCI.inside? (method)">inside?</a></span>, and <span class='object_link'><a href="#exists%3F-class_method" title="Lich::DragonRealms::DRCI.exists? (method)">exists?</a></span>. Used by <span class='object_link'><a href="#tap-class_method" title="Lich::DragonRealms::DRCI.tap (method)">tap</a></span>.</p>
 
   </div>
 </div>
@@ -1361,8 +1429,10 @@ an item exists and determine its location (worn, stowed, in a container, etc.).<
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap the pouch and it&#39;s inside your backpack.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap the ring and it&#39;s wearing.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap a steel sword (wearing).</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap a shield (inside your backpack).</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap a key.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You tap a person on the shoulder.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1371,6 +1441,8 @@ an item exists and determine its location (worn, stowed, in a container, etc.).<
   <ul class="see">
     
       <li><span class='object_link'><a href="#TAP_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TAP_FAILURE_PATTERNS (constant)">TAP_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#tap-class_method" title="Lich::DragonRealms::DRCI.tap (method)">tap</a></span></li>
     
   </ul>
 
@@ -1388,9 +1460,9 @@ an item exists and determine its location (worn, stowed, in a container, etc.).<
         <dt id="TAP_FAILURE_PATTERNS-constant" class="">TAP_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed TAP command attempts.</p>
-<p>Used by <span class='object_link'>#tap</span>, <span class='object_link'>#exists?</span>, <span class='object_link'>#wearing?</span>, and <span class='object_link'>#inside?</span> to recognize
-when an item does not exist in inventory or a container.</p>
+    <p>Game response patterns indicating item tap failure.</p>
+<p>Matches when an item cannot be tapped due to inability to move, missing item,
+or invalid reference. Used by <span class='object_link'><a href="#tap-class_method" title="Lich::DragonRealms::DRCI.tap (method)">tap</a></span>.</p>
 
   </div>
 </div>
@@ -1403,6 +1475,7 @@ when an item does not exist in inventory or a container.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>I could not find what you were referring to.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -1412,6 +1485,8 @@ when an item does not exist in inventory or a container.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#TAP_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TAP_SUCCESS_PATTERNS (constant)">TAP_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#tap-class_method" title="Lich::DragonRealms::DRCI.tap (method)">tap</a></span></li>
     
   </ul>
 
@@ -1427,9 +1502,9 @@ when an item does not exist in inventory or a container.</p>
         <dt id="OPEN_CONTAINER_SUCCESS_PATTERNS-constant" class="">OPEN_CONTAINER_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful container opening via OPEN command.</p>
-<p>Used by <span class='object_link'>#open_container?</span> to verify that a container is now open
-and accessible.</p>
+    <p>Game response patterns indicating successful container opening.</p>
+<p>Matches when a container is opened or is already open. Used by
+<span class='object_link'><a href="#open_container%3F-class_method" title="Lich::DragonRealms::DRCI.open_container? (method)">open_container?</a></span>.</p>
 
   </div>
 </div>
@@ -1442,7 +1517,8 @@ and accessible.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You open the backpack.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>It&#39;s already open.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The chest is already open.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You unbutton the pouch.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1451,6 +1527,8 @@ and accessible.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#OPEN_CONTAINER_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::OPEN_CONTAINER_FAILURE_PATTERNS (constant)">OPEN_CONTAINER_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#open_container%3F-class_method" title="Lich::DragonRealms::DRCI.open_container? (method)">open_container?</a></span></li>
     
   </ul>
 
@@ -1461,16 +1539,17 @@ and accessible.</p>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You slowly open</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The .* opens</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You unbutton</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(It&#39;s|is) already open</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>([Ii]t&#39;s|is) already open</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You spread your arms, carefully holding your bag well away from your body</span><span class='regexp_end'>/</span></span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="OPEN_CONTAINER_FAILURE_PATTERNS-constant" class="">OPEN_CONTAINER_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed container opening attempts.</p>
-<p>Used by <span class='object_link'>#open_container?</span> to recognize when a container cannot be opened,
-usually due to game restrictions or commands being invalid.</p>
+    <p>Game response patterns indicating container opening failure.</p>
+<p>Matches when a container cannot be opened due to magical/spell interference,
+location restrictions, busy state, or game restrictions. Used by
+<span class='object_link'><a href="#open_container%3F-class_method" title="Lich::DragonRealms::DRCI.open_container? (method)">open_container?</a></span>.</p>
 
   </div>
 </div>
@@ -1482,7 +1561,8 @@ usually due to game restrictions or commands being invalid.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t want to ruin your spell just for that.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>This is probably not the time nor place for that.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Open what?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -1492,6 +1572,8 @@ usually due to game restrictions or commands being invalid.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#OPEN_CONTAINER_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::OPEN_CONTAINER_SUCCESS_PATTERNS (constant)">OPEN_CONTAINER_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#open_container%3F-class_method" title="Lich::DragonRealms::DRCI.open_container? (method)">open_container?</a></span></li>
     
   </ul>
 
@@ -1513,8 +1595,9 @@ usually due to game restrictions or commands being invalid.</p>
         <dt id="CLOSE_CONTAINER_SUCCESS_PATTERNS-constant" class="">CLOSE_CONTAINER_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful container closing via CLOSE command.</p>
-<p>Used by <span class='object_link'>#close_container?</span> to verify that a container is now closed.</p>
+    <p>Game response patterns indicating successful container closing.</p>
+<p>Matches when a container is closed or is already closed. Used by
+<span class='object_link'><a href="#close_container%3F-class_method" title="Lich::DragonRealms::DRCI.close_container? (method)">close_container?</a></span>.</p>
 
   </div>
 </div>
@@ -1527,7 +1610,8 @@ usually due to game restrictions or commands being invalid.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You close the backpack.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>It is already closed.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The chest is already closed.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You quickly close the pouch.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1536,6 +1620,8 @@ usually due to game restrictions or commands being invalid.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#CLOSE_CONTAINER_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::CLOSE_CONTAINER_FAILURE_PATTERNS (constant)">CLOSE_CONTAINER_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#close_container%3F-class_method" title="Lich::DragonRealms::DRCI.close_container? (method)">close_container?</a></span></li>
     
   </ul>
 
@@ -1551,8 +1637,10 @@ usually due to game restrictions or commands being invalid.</p>
         <dt id="CLOSE_CONTAINER_FAILURE_PATTERNS-constant" class="">CLOSE_CONTAINER_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed container closing attempts.</p>
-<p>Used by <span class='object_link'>#close_container?</span> to recognize when a container cannot be closed.</p>
+    <p>Game response patterns indicating container closing failure.</p>
+<p>Matches when a container cannot be closed due to magical/spell interference,
+location restrictions, busy state, or game restrictions. Used by
+<span class='object_link'><a href="#close_container%3F-class_method" title="Lich::DragonRealms::DRCI.close_container? (method)">close_container?</a></span>.</p>
 
   </div>
 </div>
@@ -1564,7 +1652,8 @@ usually due to game restrictions or commands being invalid.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t want to ruin your spell just for that.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>This is probably not the time nor place for that.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1573,6 +1662,8 @@ usually due to game restrictions or commands being invalid.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#CLOSE_CONTAINER_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::CLOSE_CONTAINER_SUCCESS_PATTERNS (constant)">CLOSE_CONTAINER_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#close_container%3F-class_method" title="Lich::DragonRealms::DRCI.close_container? (method)">close_container?</a></span></li>
     
   </ul>
 
@@ -1593,10 +1684,10 @@ usually due to game restrictions or commands being invalid.</p>
         <dt id="CONTAINER_IS_CLOSED_PATTERNS-constant" class="">CONTAINER_IS_CLOSED_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match messages indicating a closed container.</p>
-<p>Used by <span class='object_link'>#list_container_contents</span> and <span class='object_link'>#put_away_item_unsafe?</span> to detect
-when a container must be opened before access is possible, triggering
-automatic retry with the container open.</p>
+    <p>Game response patterns indicating a container is closed.</p>
+<p>Matches messages that indicate an operation cannot proceed because the
+target container is closed. Used by retry logic in <span class='object_link'><a href="#put_away_item_unsafe%3F-class_method" title="Lich::DragonRealms::DRCI.put_away_item_unsafe? (method)">put_away_item_unsafe?</a></span>,
+<span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span>, and <span class='object_link'><a href="#list_container_contents-class_method" title="Lich::DragonRealms::DRCI.list_container_contents (method)">list_container_contents</a></span>.</p>
 
   </div>
 </div>
@@ -1609,7 +1700,7 @@ automatic retry with the container open.</p>
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
       <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>But that&#39;s closed.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>While it&#39;s closed, you can&#39;t reach in.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>While it&#39;s closed, you can&#39;t do that.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1632,9 +1723,9 @@ automatic retry with the container open.</p>
         <dt id="LOWER_SUCCESS_PATTERNS-constant" class="">LOWER_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item lowering to the ground via LOWER command.</p>
-<p>Used by <span class='object_link'>#lower_item?</span> to verify that a held item has been successfully
-placed on the ground at the character's feet.</p>
+    <p>Game response patterns indicating successful item lowering to ground.</p>
+<p>Matches when a held item is lowered to the feet slot. Includes messages for
+items that crumble during lowering (e.g., moonblade). Used by <span class='object_link'><a href="#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span>.</p>
 
   </div>
 </div>
@@ -1646,7 +1737,8 @@ placed on the ground at the character's feet.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You lower the sword to the ground.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You lower the sword to the ground.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>As you open your hand to release the moonblade, it crumbles.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1655,6 +1747,8 @@ placed on the ground at the character's feet.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#LOWER_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::LOWER_FAILURE_PATTERNS (constant)">LOWER_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span></li>
     
   </ul>
 
@@ -1669,8 +1763,9 @@ placed on the ground at the character's feet.</p>
         <dt id="LOWER_FAILURE_PATTERNS-constant" class="">LOWER_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item lowering attempts.</p>
-<p>Used by <span class='object_link'>#lower_item?</span> to recognize when an item cannot be lowered.</p>
+    <p>Game response patterns indicating item lowering failure.</p>
+<p>Matches when an item cannot be lowered due to empty hands, movement
+restriction, or invalid reference. Used by <span class='object_link'><a href="#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span>.</p>
 
   </div>
 </div>
@@ -1682,8 +1777,9 @@ placed on the ground at the character's feet.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>But you aren&#39;t holding anything.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>But you aren&#39;t holding anything.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1692,6 +1788,8 @@ placed on the ground at the character's feet.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#LOWER_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::LOWER_SUCCESS_PATTERNS (constant)">LOWER_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span></li>
     
   </ul>
 
@@ -1708,9 +1806,8 @@ placed on the ground at the character's feet.</p>
         <dt id="LIFT_SUCCESS_PATTERNS-constant" class="">LIFT_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item lifting from the ground via LIFT command.</p>
-<p>Used by <span class='object_link'>#lift?</span> to verify that an item lying at the character's feet
-has been successfully picked up.</p>
+    <p>Game response patterns indicating successful item lifting from ground.</p>
+<p>Matches when an item is picked up from the ground/feet slot. Used by <span class='object_link'><a href="#lift%3F-class_method" title="Lich::DragonRealms::DRCI.lift? (method)">lift?</a></span>.</p>
 
   </div>
 </div>
@@ -1732,6 +1829,8 @@ has been successfully picked up.</p>
     
       <li><span class='object_link'><a href="#LIFT_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::LIFT_FAILURE_PATTERNS (constant)">LIFT_FAILURE_PATTERNS</a></span></li>
     
+      <li><span class='object_link'><a href="#lift%3F-class_method" title="Lich::DragonRealms::DRCI.lift? (method)">lift?</a></span></li>
+    
   </ul>
 
 </div>
@@ -1743,8 +1842,9 @@ has been successfully picked up.</p>
         <dt id="LIFT_FAILURE_PATTERNS-constant" class="">LIFT_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item lifting attempts.</p>
-<p>Used by <span class='object_link'>#lift?</span> to recognize when an item cannot be lifted from the ground.</p>
+    <p>Game response patterns indicating item lifting failure.</p>
+<p>Matches when an item cannot be lifted from the ground due to missing items,
+weakness, or movement restriction. Used by <span class='object_link'><a href="#lift%3F-class_method" title="Lich::DragonRealms::DRCI.lift? (method)">lift?</a></span>.</p>
 
   </div>
 </div>
@@ -1756,7 +1856,8 @@ has been successfully picked up.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are not strong enough to pick that up.</span><span class='tstring_end'>&quot;</span></span>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There are no items lying at your feet.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You are not strong enough to pick that up.</span><span class='tstring_end'>&quot;</span></span>
 <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What did you want to try and lift?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
@@ -1766,6 +1867,8 @@ has been successfully picked up.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#LIFT_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::LIFT_SUCCESS_PATTERNS (constant)">LIFT_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#lift%3F-class_method" title="Lich::DragonRealms::DRCI.lift? (method)">lift?</a></span></li>
     
   </ul>
 
@@ -1781,9 +1884,9 @@ has been successfully picked up.</p>
         <dt id="GIVE_ITEM_SUCCESS_PATTERNS-constant" class="">GIVE_ITEM_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful item transfer via GIVE command.</p>
-<p>Used by <span class='object_link'>#give_item?</span> to recognize when an item has been accepted by
-the target (player or NPC), including repair-service confirmations.</p>
+    <p>Game response patterns indicating successful item giving/trade.</p>
+<p>Matches when an NPC or player accepts an offered item, typically during
+repairs, trades, or quests. Used by <span class='object_link'><a href="#give_item%3F-class_method" title="Lich::DragonRealms::DRCI.give_item? (method)">give_item?</a></span>.</p>
 
   </div>
 </div>
@@ -1795,8 +1898,8 @@ the target (player or NPC), including repair-service confirmations.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>They accept your offer.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You hand them your ticket and are handed back a repair ticket.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Ragge has accepted your offer.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You hand Ragge your ticket and are handed back a sword.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1805,6 +1908,8 @@ the target (player or NPC), including repair-service confirmations.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#GIVE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GIVE_ITEM_FAILURE_PATTERNS (constant)">GIVE_ITEM_FAILURE_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#give_item%3F-class_method" title="Lich::DragonRealms::DRCI.give_item? (method)">give_item?</a></span></li>
     
   </ul>
 
@@ -1821,9 +1926,9 @@ the target (player or NPC), including repair-service confirmations.</p>
         <dt id="GIVE_ITEM_FAILURE_PATTERNS-constant" class="">GIVE_ITEM_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed item transfer or rejected offers.</p>
-<p>Used by <span class='object_link'>#give_item?</span> to recognize when an item transfer fails, including
-NPC refusals (non-repairable items) and player rejections.</p>
+    <p>Game response patterns indicating item giving failure.</p>
+<p>Matches when an NPC or player declines the offer, is unavailable, or the item
+is not in the required state for the transaction. Used by <span class='object_link'><a href="#give_item%3F-class_method" title="Lich::DragonRealms::DRCI.give_item? (method)">give_item?</a></span>.</p>
 
   </div>
 </div>
@@ -1835,8 +1940,10 @@ NPC refusals (non-repairable items) and player rejections.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>They decline the offer.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There isn&#39;t a scratch on that.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>I don&#39;t repair those here.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>has declined the offer.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Your offer has expired.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>That isn&#39;t damaged!</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1845,6 +1952,8 @@ NPC refusals (non-repairable items) and player rejections.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#GIVE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GIVE_ITEM_SUCCESS_PATTERNS (constant)">GIVE_ITEM_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#give_item%3F-class_method" title="Lich::DragonRealms::DRCI.give_item? (method)">give_item?</a></span></li>
     
   </ul>
 
@@ -1866,9 +1975,10 @@ NPC refusals (non-repairable items) and player rejections.</p>
         <dt id="FILL_POUCH_SUCCESS_PATTERNS-constant" class="">FILL_POUCH_SUCCESS_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match successful gem pouch filling via FILL command.</p>
-<p>Used by <span class='object_link'>#fill_gem_pouch_with_container</span> to recognize when gems have been
-successfully transferred into a pouch.</p>
+    <p>Game response patterns indicating successful gem pouch filling.</p>
+<p>Matches when gems are transferred from a container into a pouch, or when
+the pouch contains no gems to transfer. Used by
+<span class='object_link'><a href="#fill_gem_pouch_with_container-class_method" title="Lich::DragonRealms::DRCI.fill_gem_pouch_with_container (method)">fill_gem_pouch_with_container</a></span>.</p>
 
   </div>
 </div>
@@ -1880,8 +1990,9 @@ successfully transferred into a pouch.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You fill your black pouch with gems.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There aren&#39;t any gems in that container.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You open the pouch.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You fill your black gem pouch with the gems from the container.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There aren&#39;t any gems to fill with.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1908,9 +2019,10 @@ successfully transferred into a pouch.</p>
         <dt id="FILL_POUCH_NEEDS_TIE_PATTERNS-constant" class="">FILL_POUCH_NEEDS_TIE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns indicating a gem pouch must be tied before further filling.</p>
-<p>Used by <span class='object_link'>#fill_gem_pouch_with_container</span> to trigger tying when a partially-filled
-pouch needs to be secured before additional gems can be added.</p>
+    <p>Game response patterns indicating pouch must be tied before filling.</p>
+<p>Matches when a gem pouch requires tying before additional gems can be added.
+Used by <span class='object_link'><a href="#fill_gem_pouch_with_container-class_method" title="Lich::DragonRealms::DRCI.fill_gem_pouch_with_container (method)">fill_gem_pouch_with_container</a></span> to trigger tying or treating the
+pouch as full and swapping it out.</p>
 
   </div>
 </div>
@@ -1922,13 +2034,16 @@ pouch needs to be secured before additional gems can be added.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You&#39;d better tie it up before putting more in.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You&#39;d better tie it up before putting more gems in.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You&#39;ll need to tie it up before we can continue.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
+    
+      <li><span class='object_link'><a href="#FILL_POUCH_FULL_PATTERN-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_FULL_PATTERN (constant)">FILL_POUCH_FULL_PATTERN</a></span></li>
     
       <li><span class='object_link'><a href="#FILL_POUCH_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_SUCCESS_PATTERNS (constant)">FILL_POUCH_SUCCESS_PATTERNS</a></span></li>
     
@@ -1944,9 +2059,9 @@ pouch needs to be secured before additional gems can be added.</p>
         <dt id="FILL_POUCH_FULL_PATTERN-constant" class="">FILL_POUCH_FULL_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching a full gem pouch that cannot accept more gems.</p>
-<p>Used by <span class='object_link'>#fill_gem_pouch_with_container</span> to trigger pouch-swap operations
-when the current pouch reaches capacity.</p>
+    <p>Game response pattern indicating gem pouch is at capacity.</p>
+<p>Matches when a gem pouch cannot hold more gems. Triggers swapping out
+the full pouch for a spare in <span class='object_link'><a href="#fill_gem_pouch_with_container-class_method" title="Lich::DragonRealms::DRCI.fill_gem_pouch_with_container (method)">fill_gem_pouch_with_container</a></span>.</p>
 
   </div>
 </div>
@@ -1958,7 +2073,7 @@ when the current pouch reaches capacity.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Your black pouch is too full to fit that in.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The pouch is too full to fit another gem.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -1967,6 +2082,8 @@ when the current pouch reaches capacity.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#FILL_POUCH_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_SUCCESS_PATTERNS (constant)">FILL_POUCH_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#FILL_POUCH_NEEDS_TIE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_NEEDS_TIE_PATTERNS (constant)">FILL_POUCH_NEEDS_TIE_PATTERNS</a></span></li>
     
   </ul>
 
@@ -1977,9 +2094,9 @@ when the current pouch reaches capacity.</p>
         <dt id="FILL_POUCH_FAILURE_PATTERNS-constant" class="">FILL_POUCH_FAILURE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match failed gem pouch filling attempts.</p>
-<p>Used by <span class='object_link'>#fill_gem_pouch_with_container</span> to recognize command errors
-or invalid container references.</p>
+    <p>Game response patterns indicating gem pouch filling failure.</p>
+<p>Matches when gems cannot be transferred due to invalid command or reference.
+Used by <span class='object_link'><a href="#fill_gem_pouch_with_container-class_method" title="Lich::DragonRealms::DRCI.fill_gem_pouch_with_container (method)">fill_gem_pouch_with_container</a></span>.</p>
 
   </div>
 </div>
@@ -1991,7 +2108,8 @@ or invalid container references.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Please rephrase that command.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>What were you referring to?</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -2000,6 +2118,8 @@ or invalid container references.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#FILL_POUCH_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_SUCCESS_PATTERNS (constant)">FILL_POUCH_SUCCESS_PATTERNS</a></span></li>
+    
+      <li><span class='object_link'><a href="#FILL_POUCH_FULL_PATTERN-constant" title="Lich::DragonRealms::DRCI::FILL_POUCH_FULL_PATTERN (constant)">FILL_POUCH_FULL_PATTERN</a></span></li>
     
   </ul>
 
@@ -2013,9 +2133,9 @@ or invalid container references.</p>
         <dt id="INV_BELT_START_PATTERN-constant" class="">INV_BELT_START_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching the start of INVENTORY BELT output.</p>
-<p>Used by <span class='object_link'>#check_belt_for_pouch?</span> to identify the beginning of belt
-inventory listing for parsing.</p>
+    <p>Game response pattern marking the start of INVENTORY BELT output.</p>
+<p>Used as the start marker in <span class='object_link'><a href="#check_belt_for_pouch%3F-class_method" title="Lich::DragonRealms::DRCI.check_belt_for_pouch? (method)">check_belt_for_pouch?</a></span> to parse belt
+contents via <span class='object_link'><a href="../Util.html#issue_command-class_method" title="Lich::Util.issue_command (method)">Util.issue_command</a></span>.</p>
 
   </div>
 </div>
@@ -2027,7 +2147,7 @@ inventory listing for parsing.</p>
     
       <li><span class='object_link'><a href="#INV_BELT_END_PATTERN-constant" title="Lich::DragonRealms::DRCI::INV_BELT_END_PATTERN (constant)">INV_BELT_END_PATTERN</a></span></li>
     
-      <li><span class='object_link'>#check_belt_for_pouch?</span></li>
+      <li><span class='object_link'><a href="#check_belt_for_pouch%3F-class_method" title="Lich::DragonRealms::DRCI.check_belt_for_pouch? (method)">check_belt_for_pouch?</a></span></li>
     
   </ul>
 
@@ -2038,9 +2158,9 @@ inventory listing for parsing.</p>
         <dt id="INV_BELT_END_PATTERN-constant" class="">INV_BELT_END_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching the end of INVENTORY BELT output.</p>
-<p>Used by <span class='object_link'>#check_belt_for_pouch?</span> to identify the end of belt
-inventory listing for parsing.</p>
+    <p>Game response pattern marking the end of INVENTORY BELT output.</p>
+<p>Used as the end marker in <span class='object_link'><a href="#check_belt_for_pouch%3F-class_method" title="Lich::DragonRealms::DRCI.check_belt_for_pouch? (method)">check_belt_for_pouch?</a></span> to parse belt
+contents via <span class='object_link'><a href="../Util.html#issue_command-class_method" title="Lich::Util.issue_command (method)">Util.issue_command</a></span>.</p>
 
   </div>
 </div>
@@ -2052,7 +2172,7 @@ inventory listing for parsing.</p>
     
       <li><span class='object_link'><a href="#INV_BELT_START_PATTERN-constant" title="Lich::DragonRealms::DRCI::INV_BELT_START_PATTERN (constant)">INV_BELT_START_PATTERN</a></span></li>
     
-      <li><span class='object_link'>#check_belt_for_pouch?</span></li>
+      <li><span class='object_link'><a href="#check_belt_for_pouch%3F-class_method" title="Lich::DragonRealms::DRCI.check_belt_for_pouch? (method)">check_belt_for_pouch?</a></span></li>
     
   </ul>
 
@@ -2063,9 +2183,10 @@ inventory listing for parsing.</p>
         <dt id="COUNT_PART_PATTERNS-constant" class="">COUNT_PART_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns that match item part-count responses from COUNT command.</p>
-<p>Used by <span class='object_link'>#count_item_parts</span> to extract numeric counts from game output
-when counting stackable items like crafting materials and ammunition.</p>
+    <p>Game response patterns for parsing COUNT command output.</p>
+<p>Matches when counting parts/uses/scrolls remaining in an item. Captures
+the numeric count value via named group <code>count</code>. Used by
+<span class='object_link'><a href="#count_item_parts-class_method" title="Lich::DragonRealms::DRCI.count_item_parts (method)">count_item_parts</a></span> to sum parts across multiple stacks.</p>
 
   </div>
 </div>
@@ -2077,9 +2198,10 @@ when counting stackable items like crafting materials and ammunition.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There are 45 leather left.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You count out 120 pieces of stone there.</span><span class='tstring_end'>&quot;</span></span>
-<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The wand has 8 uses remaining.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There are 45 parts left.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The leather has 10 uses remaining.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>There are enough left to create 3 more items.</span><span class='tstring_end'>&quot;</span></span>
+<span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You count out 20 pieces of material there.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -2087,7 +2209,7 @@ when counting stackable items like crafting materials and ammunition.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'>#count_item_parts</span></li>
+      <li><span class='object_link'><a href="#count_item_parts-class_method" title="Lich::DragonRealms::DRCI.count_item_parts (method)">count_item_parts</a></span></li>
     
   </ul>
 
@@ -2106,9 +2228,10 @@ when counting stackable items like crafting materials and ammunition.</p>
         <dt id="BRAID_TOO_LONG_PATTERN-constant" class="">BRAID_TOO_LONG_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching when a braided item is too long to stow.</p>
-<p>Used by <span class='object_link'>#stow_hand</span> to detect oversized braids that must be disposed
-as trash before the hand can be emptied.</p>
+    <p>Game response pattern indicating a braided item is too long to stow.</p>
+<p>Matches when a braid (hairstyle) is too long to fit in the default stow
+container. Captures the braid name via named group <code>braid_name</code> for disposal.
+Used by <span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span> to detect and dispose of oversized braids.</p>
 
   </div>
 </div>
@@ -2120,7 +2243,7 @@ as trash before the hand can be emptied.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The braided silver chain is too long to fit through any of the openings.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The braided rope is too long.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -2128,9 +2251,7 @@ as trash before the hand can be emptied.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'>#stow_hand</span></li>
-    
-      <li><span class='object_link'>#dispose_trash</span></li>
+      <li><span class='object_link'><a href="#stow_hand-class_method" title="Lich::DragonRealms::DRCI.stow_hand (method)">stow_hand</a></span></li>
     
   </ul>
 
@@ -2141,9 +2262,9 @@ as trash before the hand can be emptied.</p>
         <dt id="ACCEPT_SUCCESS_PATTERN-constant" class="">ACCEPT_SUCCESS_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching successful item acceptance from another player.</p>
-<p>Used by <span class='object_link'>#accept_item?</span> to extract the name of the player whose offer
-was accepted and verify the transaction completed.</p>
+    <p>Game response pattern indicating successful item offer acceptance.</p>
+<p>Matches when a player accepts another player's item offer. Captures the
+offering player's name via named group <code>name</code>. Used by <span class='object_link'><a href="#accept_item%3F-class_method" title="Lich::DragonRealms::DRCI.accept_item? (method)">accept_item?</a></span>.</p>
 
   </div>
 </div>
@@ -2155,7 +2276,7 @@ was accepted and verify the transaction completed.</p>
       
         <h5 class="example_title"><div class='inline'><p>Matches</p></div></h5>
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You accept Falicor&#39;s offer and are now holding a steel sword.</span><span class='tstring_end'>&quot;</span></span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You accept Thorgrim&#39;s offer and are now holding a sword.</span><span class='tstring_end'>&quot;</span></span></code></pre>
     
   </div>
 
@@ -2163,7 +2284,9 @@ was accepted and verify the transaction completed.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'>#accept_item?</span></li>
+      <li><span class='object_link'><a href="#accept_item%3F-class_method" title="Lich::DragonRealms::DRCI.accept_item? (method)">accept_item?</a></span></li>
+    
+      <li><span class='object_link'><a href="#give_item%3F-class_method" title="Lich::DragonRealms::DRCI.give_item? (method)">give_item?</a></span></li>
     
   </ul>
 
@@ -3632,14 +3755,14 @@ or false if no offer pending or hands full</p></div>
       <pre class="lines">
 
 
-2270
-2271
-2272
-2273
-2274</pre>
+2360
+2361
+2362
+2363
+2364</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2270</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2360</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_accept_item?'>accept_item?</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>accept</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ACCEPT_SUCCESS_PATTERN-constant" title="Lich::DragonRealms::DRCI::ACCEPT_SUCCESS_PATTERN (constant)">ACCEPT_SUCCESS_PATTERN</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You have no offers</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Both of your hands are full</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>would push you over your item limit</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -3729,26 +3852,26 @@ the pouch adjective and noun.</p>
       <pre class="lines">
 
 
-2289
-2290
-2291
-2292
-2293
-2294
-2295
-2296
-2297
-2298
-2299
-2300
-2301
-2302
-2303
-2304
-2305</pre>
+2379
+2380
+2381
+2382
+2383
+2384
+2385
+2386
+2387
+2388
+2389
+2390
+2391
+2392
+2393
+2394
+2395</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2289</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2379</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check_belt_for_pouch?'>check_belt_for_pouch?</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_belt_contents'>belt_contents</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_issue_command'><span class='object_link'><a href="../Util.html#issue_command-class_method" title="Lich::Util.issue_command (method)">issue_command</a></span></span><span class='lparen'>(</span>
@@ -3837,16 +3960,16 @@ the pouch adjective and noun.</p>
       <pre class="lines">
 
 
-2190
-2191
-2192
-2193
-2194
-2195
-2196</pre>
+2279
+2280
+2281
+2282
+2283
+2284
+2285</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2190</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2279</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_close_container?'>close_container?</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>close </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_container'>container</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CLOSE_CONTAINER_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::CLOSE_CONTAINER_SUCCESS_PATTERNS (constant)">CLOSE_CONTAINER_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CLOSE_CONTAINER_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::CLOSE_CONTAINER_FAILURE_PATTERNS (constant)">CLOSE_CONTAINER_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
@@ -3919,12 +4042,12 @@ nil if unable to determine (e.g., cannot open or look in container)</p></div>
       <pre class="lines">
 
 
-1944
-1945
-1946</pre>
+2033
+2034
+2035</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1944</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2033</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_container_is_empty?'>container_is_empty?</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_look_in_container'>look_in_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='op'>&amp;.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -3994,25 +4117,25 @@ too_hard containers from settings.</p>
       <pre class="lines">
 
 
-1465
-1466
-1467
-1468
-1469
-1470
-1471
-1472
-1473
-1474
-1475
-1476
-1477
-1478
-1479
-1480</pre>
+1554
+1555
+1556
+1557
+1558
+1559
+1560
+1561
+1562
+1563
+1564
+1565
+1566
+1567
+1568
+1569</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1465</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1554</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_all_boxes'>count_all_boxes</span><span class='lparen'>(</span><span class='id identifier rubyid_settings'>settings</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_current_box_count'>current_box_count</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -4104,41 +4227,41 @@ not stackable.</p>
       <pre class="lines">
 
 
-1355
-1356
-1357
-1358
-1359
-1360
-1361
-1362
-1363
-1364
-1365
-1366
-1367
-1368
-1369
-1370
-1371
-1372
-1373
-1374
-1375
-1376
-1377
-1378
-1379
-1380
-1381
-1382
-1383
-1384
-1385
-1386</pre>
+1444
+1445
+1446
+1447
+1448
+1449
+1450
+1451
+1452
+1453
+1454
+1455
+1456
+1457
+1458
+1459
+1460
+1461
+1462
+1463
+1464
+1465
+1466
+1467
+1468
+1469
+1470
+1471
+1472
+1473
+1474
+1475</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1355</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1444</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_item_parts'>count_item_parts</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_count'>count</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -4244,16 +4367,16 @@ delegates to <span class='object_link'><a href="#count_items_in_container-class_
       <pre class="lines">
 
 
-1397
-1398
-1399
-1400
-1401
-1402
-1403</pre>
+1486
+1487
+1488
+1489
+1490
+1491
+1492</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1397</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1486</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_items'>count_items</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_tap_result'>tap_result</span> <span class='op'>=</span> <span class='id identifier rubyid_tap'>tap</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -4346,15 +4469,15 @@ delegates to <span class='object_link'><a href="#count_items_in_container-class_
       <pre class="lines">
 
 
-1412
-1413
-1414
-1415
-1416
-1417</pre>
+1501
+1502
+1503
+1504
+1505
+1506</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1412</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1501</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_items_in_container'>count_items_in_container</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_contents'>contents</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>rummage /C </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span><span class='embexpr_end'>}</span><span class='tstring_content'> in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You rummage .*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>That would accomplish nothing</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -4433,14 +4556,14 @@ delegates to <span class='object_link'><a href="#count_items_in_container-class_
       <pre class="lines">
 
 
-1427
-1428
-1429
-1430
-1431</pre>
+1516
+1517
+1518
+1519
+1520</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1427</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1516</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_lockpick_container'>count_lockpick_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>appraise </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'> quick</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>it appears to be full</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>it might hold an additional \d+</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\d+ lockpicks would probably fit</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -4510,13 +4633,13 @@ delegates to <span class='object_link'><a href="#count_items_in_container-class_
       <pre class="lines">
 
 
-1453
-1454
-1455
-1456</pre>
+1542
+1543
+1544
+1545</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1453</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1542</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_count_necro_stacker'>count_necro_stacker</span><span class='lparen'>(</span><span class='id identifier rubyid_necro_stacker'>necro_stacker</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>study </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_necro_stacker'>necro_stacker</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>currently holds \d+ items</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -4651,93 +4774,6 @@ receptacles, and finally drops the item on the ground.</p>
       <pre class="lines">
 
 
-1040
-1041
-1042
-1043
-1044
-1045
-1046
-1047
-1048
-1049
-1050
-1051
-1052
-1053
-1054
-1055
-1056
-1057
-1058
-1059
-1060
-1061
-1062
-1063
-1064
-1065
-1066
-1067
-1068
-1069
-1070
-1071
-1072
-1073
-1074
-1075
-1076
-1077
-1078
-1079
-1080
-1081
-1082
-1083
-1084
-1085
-1086
-1087
-1088
-1089
-1090
-1091
-1092
-1093
-1094
-1095
-1096
-1097
-1098
-1099
-1100
-1101
-1102
-1103
-1104
-1105
-1106
-1107
-1108
-1109
-1110
-1111
-1112
-1113
-1114
-1115
-1116
-1117
-1118
-1119
-1120
-1121
-1122
-1123
-1124
-1125
-1126
 1127
 1128
 1129
@@ -4750,10 +4786,97 @@ receptacles, and finally drops the item on the ground.</p>
 1136
 1137
 1138
-1139</pre>
+1139
+1140
+1141
+1142
+1143
+1144
+1145
+1146
+1147
+1148
+1149
+1150
+1151
+1152
+1153
+1154
+1155
+1156
+1157
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172
+1173
+1174
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+1188
+1189
+1190
+1191
+1192
+1193
+1194
+1195
+1196
+1197
+1198
+1199
+1200
+1201
+1202
+1203
+1204
+1205
+1206
+1207
+1208
+1209
+1210
+1211
+1212
+1213
+1214
+1215
+1216
+1217
+1218
+1219
+1220
+1221
+1222
+1223
+1224
+1225
+1226</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1040</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1127</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dispose_trash'>dispose_trash</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_worn_trashcan'>worn_trashcan</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_worn_trashcan_verb'>worn_trashcan_verb</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -4964,21 +5087,21 @@ receptacles, and finally drops the item on the ground.</p>
       <pre class="lines">
 
 
-1150
-1151
-1152
-1153
-1154
-1155
-1156
-1157
-1158
-1159
-1160
-1161</pre>
+1237
+1238
+1239
+1240
+1241
+1242
+1243
+1244
+1245
+1246
+1247
+1248</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1150</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1237</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_execute_dispose_command'>execute_dispose_command</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_retries'>retries</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_retry_args'>retry_args</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#DROP_TRASH_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::DROP_TRASH_SUCCESS_PATTERNS (constant)">DROP_TRASH_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#DROP_TRASH_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::DROP_TRASH_FAILURE_PATTERNS (constant)">DROP_TRASH_FAILURE_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#DROP_TRASH_RETRY_PATTERNS-constant" title="Lich::DragonRealms::DRCI::DROP_TRASH_RETRY_PATTERNS (constant)">DROP_TRASH_RETRY_PATTERNS</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Perhaps you should be holding that first</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^But you aren&#39;t holding that</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -5080,17 +5203,17 @@ receptacles, and finally drops the item on the ground.</p>
       <pre class="lines">
 
 
-1204
-1205
-1206
-1207
-1208
-1209
-1210
-1211</pre>
+1291
+1292
+1293
+1294
+1295
+1296
+1297
+1298</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1204</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1291</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_exists?'>exists?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_tap'>tap</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -5251,72 +5374,72 @@ them when requested.</p>
       <pre class="lines">
 
 
-2407
-2408
-2409
-2410
-2411
-2412
-2413
-2414
-2415
-2416
-2417
-2418
-2419
-2420
-2421
-2422
-2423
-2424
-2425
-2426
-2427
-2428
-2429
-2430
-2431
-2432
-2433
-2434
-2435
-2436
-2437
-2438
-2439
-2440
-2441
-2442
-2443
-2444
-2445
-2446
-2447
-2448
-2449
-2450
-2451
-2452
-2453
-2454
-2455
-2456
-2457
-2458
-2459
-2460
-2461
-2462
-2463
-2464
-2465
-2466
-2467
-2468
-2469</pre>
+2497
+2498
+2499
+2500
+2501
+2502
+2503
+2504
+2505
+2506
+2507
+2508
+2509
+2510
+2511
+2512
+2513
+2514
+2515
+2516
+2517
+2518
+2519
+2520
+2521
+2522
+2523
+2524
+2525
+2526
+2527
+2528
+2529
+2530
+2531
+2532
+2533
+2534
+2535
+2536
+2537
+2538
+2539
+2540
+2541
+2542
+2543
+2544
+2545
+2546
+2547
+2548
+2549
+2550
+2551
+2552
+2553
+2554
+2555
+2556
+2557
+2558
+2559</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2407</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2497</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fill_gem_pouch_with_container'>fill_gem_pouch_with_container</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_source_container'>source_container</span><span class='comma'>,</span> <span class='id identifier rubyid_full_pouch_container'>full_pouch_container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_spare_gem_pouch_container'>spare_gem_pouch_container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_should_tie_gem_pouches'>should_tie_gem_pouches</span> <span class='op'>=</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>10</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -5444,12 +5567,12 @@ them when requested.</p>
       <pre class="lines">
 
 
-1437
-1438
-1439</pre>
+1526
+1527
+1528</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1437</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1526</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_box_list_in_container'>get_box_list_in_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rummage'><span class='object_link'><a href="DRC.html#rummage-class_method" title="Lich::DragonRealms::DRC.rummage (method)">rummage</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>B</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -5536,35 +5659,35 @@ combat, or any slot from INVENTORY SLOTS LIST</p></div>
       <pre class="lines">
 
 
-1959
-1960
-1961
-1962
-1963
-1964
-1965
-1966
-1967
-1968
-1969
-1970
-1971
-1972
-1973
-1974
-1975
-1976
-1977
-1978
-1979
-1980
-1981
-1982
-1983
-1984</pre>
+2048
+2049
+2050
+2051
+2052
+2053
+2054
+2055
+2056
+2057
+2058
+2059
+2060
+2061
+2062
+2063
+2064
+2065
+2066
+2067
+2068
+2069
+2070
+2071
+2072
+2073</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1959</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2048</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_inventory_by_type'>get_inventory_by_type</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>combat</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_start_pattern'>start_pattern</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^All of your |^You aren&#39;t wearing anything like that|^Both of your hands are empty</span><span class='regexp_end'>/</span></span>
@@ -5677,18 +5800,18 @@ Delegates to <span class='object_link'><a href="#get_item_safe-class_method" tit
       <pre class="lines">
 
 
-1592
-1593
-1594
-1595
-1596
-1597
-1598
-1599
-1600</pre>
+1681
+1682
+1683
+1684
+1685
+1686
+1687
+1688
+1689</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1592</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1681</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item'>get_item</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_container'>container</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
@@ -5801,12 +5924,12 @@ Delegates to <span class='object_link'><a href="#get_item_safe-class_method" tit
       <pre class="lines">
 
 
-1579
-1580
-1581</pre>
+1668
+1669
+1670</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1579</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1668</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item?'>get_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_get_item'>get_item</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -5901,22 +6024,22 @@ before its contents are available for retrieval.</p>
       <pre class="lines">
 
 
-1683
-1684
-1685
-1686
-1687
-1688
-1689
-1690
-1691
-1692
-1693
-1694
-1695</pre>
+1772
+1773
+1774
+1775
+1776
+1777
+1778
+1779
+1780
+1781
+1782
+1783
+1784</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1683</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1772</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_from_eddy_portal?'>get_item_from_eddy_portal?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='comment'># Ensure the eddy is open then look in it to force the contents to be loaded.
@@ -6029,15 +6152,15 @@ retrieved.</p>
       <pre class="lines">
 
 
-1557
-1558
-1559
-1560
-1561
-1562</pre>
+1646
+1647
+1648
+1649
+1650
+1651</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1557</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1646</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_if_not_held?'>get_item_if_not_held?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -6143,17 +6266,17 @@ LOOK returns short names (e.g., &quot;grey ice skates&quot;), which is easier to
       <pre class="lines">
 
 
-2000
-2001
-2002
-2003
-2004
-2005
-2006
-2007</pre>
+2089
+2090
+2091
+2092
+2093
+2094
+2095
+2096</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2000</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2089</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_list'>get_item_list</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='id identifier rubyid_verb'>verb</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rummage</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_verb'>verb</span>
@@ -6184,7 +6307,7 @@ LOOK returns short names (e.g., &quot;grey ice skates&quot;), which is easier to
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
 <p>Gets an item with &quot;my &quot; prefix on item and container names.</p>
-<p>Delegates to <span class='object_link'>#get_item_safe?</span> for implementation.</p>
+<p>Predicate-named convenience wrapper for <span class='object_link'><a href="#get_item_safe%3F-class_method" title="Lich::DragonRealms::DRCI.get_item_safe? (method)">get_item_safe?</a></span>.</p>
 
   </div>
 </div>
@@ -6247,12 +6370,12 @@ LOOK returns short names (e.g., &quot;grey ice skates&quot;), which is easier to
       <pre class="lines">
 
 
-1622
-1623
-1624</pre>
+1711
+1712
+1713</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1622</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1711</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_safe'>get_item_safe</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_get_item_safe?'>get_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -6340,14 +6463,14 @@ LOOK returns short names (e.g., &quot;grey ice skates&quot;), which is easier to
       <pre class="lines">
 
 
-1608
-1609
-1610
-1611
-1612</pre>
+1697
+1698
+1699
+1700
+1701</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1608</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1697</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_safe?'>get_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -6471,26 +6594,26 @@ between the text response and the GameObj update.</p>
       <pre class="lines">
 
 
-1654
-1655
-1656
-1657
-1658
-1659
-1660
-1661
-1662
-1663
-1664
-1665
-1666
-1667
-1668
-1669
-1670</pre>
+1743
+1744
+1745
+1746
+1747
+1748
+1749
+1750
+1751
+1752
+1753
+1754
+1755
+1756
+1757
+1758
+1759</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1654</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1743</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_unsafe'>get_item_unsafe</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_from'>from</span> <span class='op'>=</span> <span class='id identifier rubyid_container'>container</span>
@@ -6572,12 +6695,12 @@ between the text response and the GameObj update.</p>
       <pre class="lines">
 
 
-1445
-1446
-1447</pre>
+1534
+1535
+1536</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1445</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1534</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_scroll_list_in_container'>get_scroll_list_in_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rummage'><span class='object_link'><a href="DRC.html#rummage-class_method" title="Lich::DragonRealms::DRC.rummage (method)">rummage</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SC</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -6696,45 +6819,45 @@ Uses a 35-second timeout to allow the target time to accept.</p>
       <pre class="lines">
 
 
-2216
-2217
-2218
-2219
-2220
-2221
-2222
-2223
-2224
-2225
-2226
-2227
-2228
-2229
-2230
-2231
-2232
-2233
-2234
-2235
-2236
-2237
-2238
-2239
-2240
-2241
-2242
-2243
-2244
-2245
-2246
-2247
-2248
-2249
-2250
-2251</pre>
+2305
+2306
+2307
+2308
+2309
+2310
+2311
+2312
+2313
+2314
+2315
+2316
+2317
+2318
+2319
+2320
+2321
+2322
+2323
+2324
+2325
+2326
+2327
+2328
+2329
+2330
+2331
+2332
+2333
+2334
+2335
+2336
+2337
+2338
+2339
+2340</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2216</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2305</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_give_item?'>give_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_target'>target</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>5</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -6851,27 +6974,27 @@ find items inside containers that TAP cannot reach.</p>
       <pre class="lines">
 
 
-1300
-1301
-1302
-1303
-1304
-1305
-1306
-1307
-1308
-1309
-1310
-1311
-1312
-1313
-1314
-1315
-1316
-1317</pre>
+1387
+1388
+1389
+1390
+1391
+1392
+1393
+1394
+1395
+1396
+1397
+1398
+1399
+1400
+1401
+1402
+1403
+1404</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1300</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1387</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_have_item_by_look?'>have_item_by_look?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -6987,27 +7110,27 @@ converted to Item objects for regex matching against hand contents.</p>
       <pre class="lines">
 
 
-1273
-1274
-1275
-1276
-1277
-1278
-1279
-1280
-1281
-1282
-1283
-1284
-1285
-1286
-1287
-1288
-1289
-1290</pre>
+1360
+1361
+1362
+1363
+1364
+1365
+1366
+1367
+1368
+1369
+1370
+1371
+1372
+1373
+1374
+1375
+1376
+1377</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1273</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1360</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_in_hand?'>in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_which_hand'>which_hand</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>either</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -7097,12 +7220,12 @@ converted to Item objects for regex matching against hand contents.</p>
       <pre class="lines">
 
 
-1235
-1236
-1237</pre>
+1322
+1323
+1324</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1235</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1322</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_in_hands?'>in_hands?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_in_hand?'>in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>either</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -7177,12 +7300,12 @@ converted to Item objects for regex matching against hand contents.</p>
       <pre class="lines">
 
 
-1245
-1246
-1247</pre>
+1332
+1333
+1334</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1245</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1332</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_in_left_hand?'>in_left_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_in_hand?'>in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -7257,12 +7380,12 @@ converted to Item objects for regex matching against hand contents.</p>
       <pre class="lines">
 
 
-1255
-1256
-1257</pre>
+1342
+1343
+1344</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1255</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1342</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_in_right_hand?'>in_right_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_in_hand?'>in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -7346,12 +7469,12 @@ converted to Item objects for regex matching against hand contents.</p>
       <pre class="lines">
 
 
-1191
-1192
-1193</pre>
+1278
+1279
+1280</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1191</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1278</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_inside?'>inside?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_tap'>tap</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>inside</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -7432,14 +7555,14 @@ or uses item ID syntax (starts with &quot;#&quot;).</p>
       <pre class="lines">
 
 
-58
-59
-60
-61
-62</pre>
+65
+66
+67
+68
+69</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 58</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 65</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_value'>value</span> <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_value'>value</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(my |#)</span><span class='regexp_end'>/i</span></span>
@@ -7548,26 +7671,26 @@ if true, stows to default container; if nil/false, just lifts</p></div>
       <pre class="lines">
 
 
-1917
-1918
-1919
-1920
-1921
-1922
-1923
-1924
-1925
-1926
-1927
-1928
-1929
-1930
-1931
-1932
-1933</pre>
+2006
+2007
+2008
+2009
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019
+2020
+2021
+2022</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1917</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2006</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lift?'>lift?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_stow'>stow</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -7717,35 +7840,35 @@ game response into an item list.</p>
       <pre class="lines">
 
 
-2059
-2060
-2061
-2062
-2063
-2064
-2065
-2066
-2067
-2068
-2069
-2070
-2071
-2072
-2073
-2074
-2075
-2076
-2077
-2078
-2079
-2080
-2081
-2082
-2083
-2084</pre>
+2148
+2149
+2150
+2151
+2152
+2153
+2154
+2155
+2156
+2157
+2158
+2159
+2160
+2161
+2162
+2163
+2164
+2165
+2166
+2167
+2168
+2169
+2170
+2171
+2172
+2173</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2059</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2148</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_list_container_contents'>list_container_contents</span><span class='lparen'>(</span><span class='id identifier rubyid_verb'>verb</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>2</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_parse_block'>parse_block</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
@@ -7854,19 +7977,19 @@ before looking.</p>
       <pre class="lines">
 
 
-2036
-2037
-2038
-2039
-2040
-2041
-2042
-2043
-2044
-2045</pre>
+2125
+2126
+2127
+2128
+2129
+2130
+2131
+2132
+2133
+2134</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2036</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2125</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_look_in_container'>look_in_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>2</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_list_container_contents'>list_container_contents</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>look in</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='id identifier rubyid_retries'>retries</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_contents'>contents</span><span class='op'>|</span>
@@ -7950,21 +8073,21 @@ before looking.</p>
       <pre class="lines">
 
 
-1889
-1890
-1891
-1892
-1893
-1894
-1895
-1896
-1897
-1898
-1899
-1900</pre>
+1978
+1979
+1980
+1981
+1982
+1983
+1984
+1985
+1986
+1987
+1988
+1989</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1889</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1978</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lower_item?'>lower_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_in_hands?'>in_hands?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -8048,16 +8171,16 @@ before looking.</p>
       <pre class="lines">
 
 
-2176
-2177
-2178
-2179
-2180
-2181
-2182</pre>
+2265
+2266
+2267
+2268
+2269
+2270
+2271</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2176</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2265</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_open_container?'>open_container?</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>open </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_container'>container</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#OPEN_CONTAINER_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::OPEN_CONTAINER_SUCCESS_PATTERNS (constant)">OPEN_CONTAINER_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#OPEN_CONTAINER_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::OPEN_CONTAINER_FAILURE_PATTERNS (constant)">OPEN_CONTAINER_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
@@ -8175,18 +8298,18 @@ some may be full).</p>
       <pre class="lines">
 
 
-2110
-2111
-2112
-2113
-2114
-2115
-2116
-2117
-2118</pre>
+2199
+2200
+2201
+2202
+2203
+2204
+2205
+2206
+2207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2110</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2199</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_put_away_item?'>put_away_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_container'>container</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
@@ -8280,12 +8403,12 @@ some may be full).</p>
       <pre class="lines">
 
 
-2126
-2127
-2128</pre>
+2215
+2216
+2217</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2126</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2215</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_put_away_item_safe?'>put_away_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_put_away_item_unsafe?'>put_away_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -8407,33 +8530,33 @@ on closed containers or retry-pattern responses.</p>
       <pre class="lines">
 
 
-2141
-2142
-2143
-2144
-2145
-2146
-2147
-2148
-2149
-2150
-2151
-2152
-2153
-2154
-2155
-2156
-2157
-2158
-2159
-2160
-2161
-2162
-2163
-2164</pre>
+2230
+2231
+2232
+2233
+2234
+2235
+2236
+2237
+2238
+2239
+2240
+2241
+2242
+2243
+2244
+2245
+2246
+2247
+2248
+2249
+2250
+2251
+2252
+2253</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2141</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2230</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_put_away_item_unsafe?'>put_away_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_preposition'>preposition</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>in</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -8556,17 +8679,17 @@ on closed containers or retry-pattern responses.</p>
       <pre class="lines">
 
 
-2331
-2332
-2333
-2334
-2335
-2336
-2337
-2338</pre>
+2421
+2422
+2423
+2424
+2425
+2426
+2427
+2428</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2331</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2421</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_and_stow_pouch?'>remove_and_stow_pouch?</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_full_pouch_container'>full_pouch_container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_pouch'>pouch</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -8655,12 +8778,12 @@ on closed containers or retry-pattern responses.</p>
       <pre class="lines">
 
 
-1795
-1796
-1797</pre>
+1884
+1885
+1886</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1795</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1884</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_item?'>remove_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_remove_item_safe?'>remove_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -8732,12 +8855,12 @@ on closed containers or retry-pattern responses.</p>
       <pre class="lines">
 
 
-1804
-1805
-1806</pre>
+1893
+1894
+1895</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1804</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1893</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_item_safe?'>remove_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_remove_item_unsafe?'>remove_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -8809,17 +8932,17 @@ on closed containers or retry-pattern responses.</p>
       <pre class="lines">
 
 
-1813
-1814
-1815
-1816
-1817
-1818
-1819
-1820</pre>
+1902
+1903
+1904
+1905
+1906
+1907
+1908
+1909</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1813</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1902</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_item_unsafe?'>remove_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>remove </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#REMOVE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::REMOVE_ITEM_SUCCESS_PATTERNS (constant)">REMOVE_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#REMOVE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::REMOVE_ITEM_FAILURE_PATTERNS (constant)">REMOVE_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
@@ -8910,19 +9033,19 @@ before rummaging.</p>
       <pre class="lines">
 
 
-2017
-2018
-2019
-2020
-2021
-2022
-2023
-2024
-2025
-2026</pre>
+2106
+2107
+2108
+2109
+2110
+2111
+2112
+2113
+2114
+2115</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2017</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2106</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rummage_container'>rummage_container</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>2</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_list_container_contents'>list_container_contents</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>rummage</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='id identifier rubyid_retries'>retries</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_contents'>contents</span><span class='op'>|</span>
@@ -9005,12 +9128,12 @@ before rummaging.</p>
       <pre class="lines">
 
 
-1174
-1175
-1176</pre>
+1261
+1262
+1263</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1174</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1261</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_search?'>search?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>inv search </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You can&#39;t seem to find anything</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:An?|Some) .+ is (?:in|being)</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:An?|Some) .+ is (?:in|being)</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -9099,27 +9222,27 @@ before rummaging.</p>
       <pre class="lines">
 
 
-1519
-1520
-1521
-1522
-1523
-1524
-1525
-1526
-1527
-1528
-1529
-1530
-1531
-1532
-1533
-1534
-1535
-1536</pre>
+1608
+1609
+1610
+1611
+1612
+1613
+1614
+1615
+1616
+1617
+1618
+1619
+1620
+1621
+1622
+1623
+1624
+1625</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1519</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1608</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_hand'>stow_hand</span><span class='lparen'>(</span><span class='id identifier rubyid_hand'>hand</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -9193,13 +9316,13 @@ or successfully stowed.</p>
       <pre class="lines">
 
 
-1494
-1495
-1496
-1497</pre>
+1583
+1584
+1585
+1586</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1494</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1583</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_hands'>stow_hands</span>
   <span class='lparen'>(</span><span class='op'>!</span><span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span> <span class='op'>||</span> <span class='id identifier rubyid_stow_hand'>stow_hand</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
@@ -9285,12 +9408,12 @@ Retries automatically on retry-pattern responses.</p>
       <pre class="lines">
 
 
-1838
-1839
-1840</pre>
+1927
+1928
+1929</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1838</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1927</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_item?'>stow_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_stow_item_safe?'>stow_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -9362,12 +9485,12 @@ Retries automatically on retry-pattern responses.</p>
       <pre class="lines">
 
 
-1847
-1848
-1849</pre>
+1936
+1937
+1938</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1847</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1936</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_item_safe?'>stow_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_stow_item_unsafe?'>stow_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -9462,24 +9585,24 @@ rather than one in your inventory.</p></div>
       <pre class="lines">
 
 
-1860
-1861
-1862
-1863
-1864
-1865
-1866
-1867
-1868
-1869
-1870
-1871
-1872
-1873
-1874</pre>
+1949
+1950
+1951
+1952
+1953
+1954
+1955
+1956
+1957
+1958
+1959
+1960
+1961
+1962
+1963</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1860</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1949</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_item_unsafe?'>stow_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -9623,46 +9746,46 @@ an existing spare before getting one from the spare container.</p>
       <pre class="lines">
 
 
-2351
-2352
-2353
-2354
-2355
-2356
-2357
-2358
-2359
-2360
-2361
-2362
-2363
-2364
-2365
-2366
-2367
-2368
-2369
-2370
-2371
-2372
-2373
-2374
-2375
-2376
-2377
-2378
-2379
-2380
-2381
-2382
-2383
-2384
-2385
-2386
-2387</pre>
+2441
+2442
+2443
+2444
+2445
+2446
+2447
+2448
+2449
+2450
+2451
+2452
+2453
+2454
+2455
+2456
+2457
+2458
+2459
+2460
+2461
+2462
+2463
+2464
+2465
+2466
+2467
+2468
+2469
+2470
+2471
+2472
+2473
+2474
+2475
+2476
+2477</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2351</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2441</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_swap_out_full_gempouch?'>swap_out_full_gempouch?</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_full_pouch_container'>full_pouch_container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_spare_gem_pouch_container'>spare_gem_pouch_container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_should_tie_gem_pouches'>should_tie_gem_pouches</span> <span class='op'>=</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -9782,16 +9905,16 @@ container, etc. Used by <span class='object_link'><a href="#wearing%3F-class_met
       <pre class="lines">
 
 
-1221
-1222
-1223
-1224
-1225
-1226
-1227</pre>
+1308
+1309
+1310
+1311
+1312
+1313
+1314</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1221</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1308</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tap'>tap</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -9830,14 +9953,14 @@ container, etc. Used by <span class='object_link'><a href="#wearing%3F-class_met
       <pre class="lines">
 
 
-2318
-2319
-2320
-2321
-2322</pre>
+2408
+2409
+2410
+2411
+2412</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2318</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2408</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tie_gem_pouch'>tie_gem_pouch</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_tie_gem_pouch?'>tie_gem_pouch?</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='rparen'>)</span>
@@ -9925,12 +10048,12 @@ container, etc. Used by <span class='object_link'><a href="#wearing%3F-class_met
       <pre class="lines">
 
 
-2313
-2314
-2315</pre>
+2403
+2404
+2405</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2313</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 2403</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tie_gem_pouch?'>tie_gem_pouch?</span><span class='lparen'>(</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='comma'>,</span> <span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_tie_item?'>tie_item?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_gem_pouch_adjective'>gem_pouch_adjective</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_gem_pouch_noun'>gem_pouch_noun</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -10031,18 +10154,18 @@ container, etc. Used by <span class='object_link'><a href="#wearing%3F-class_met
       <pre class="lines">
 
 
-1711
-1712
-1713
-1714
-1715
-1716
-1717
-1718
-1719</pre>
+1800
+1801
+1802
+1803
+1804
+1805
+1806
+1807
+1808</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1711</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1800</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tie_item?'>tie_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_place'>place</span> <span class='op'>=</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='kw'>nil</span>
@@ -10108,12 +10231,12 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-77
-78
-79</pre>
+84
+85
+86</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 77</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 84</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_trash_storage'>trash_storage</span>
   <span class='const'><span class='object_link'><a href="CustomSubstitutions.html" title="Lich::DragonRealms::CustomSubstitutions (module)">CustomSubstitutions</a></span></span><span class='period'>.</span><span class='id identifier rubyid_resolve'><span class='object_link'><a href="CustomSubstitutions.html#resolve-class_method" title="Lich::DragonRealms::CustomSubstitutions.resolve (method)">resolve</a></span></span><span class='lparen'>(</span><span class='symbol'>:custom_trash_storage</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TRASH_STORAGE-constant" title="Lich::DragonRealms::DRCI::TRASH_STORAGE (constant)">TRASH_STORAGE</a></span></span><span class='comma'>,</span> <span class='label'>type:</span> <span class='symbol'>:names</span><span class='rparen'>)</span>
@@ -10204,18 +10327,18 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-1728
-1729
-1730
-1731
-1732
-1733
-1734
-1735
-1736</pre>
+1817
+1818
+1819
+1820
+1821
+1822
+1823
+1824
+1825</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1728</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1817</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_untie_item?'>untie_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_place'>place</span> <span class='op'>=</span> <span class='id identifier rubyid_container'>container</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>from </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='kw'>nil</span>
@@ -10305,12 +10428,12 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-1753
-1754
-1755</pre>
+1842
+1843
+1844</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1753</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1842</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_item?'>wear_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_wear_item_safe?'>wear_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -10382,12 +10505,12 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-1762
-1763
-1764</pre>
+1851
+1852
+1853</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1762</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1851</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_item_safe?'>wear_item_safe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_wear_item_unsafe?'>wear_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item_ref'>item_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -10459,17 +10582,17 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-1771
-1772
-1773
-1774
-1775
-1776
-1777
-1778</pre>
+1860
+1861
+1862
+1863
+1864
+1865
+1866
+1867</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1771</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1860</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_item_unsafe?'>wear_item_unsafe?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wear </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WEAR_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_SUCCESS_PATTERNS (constant)">WEAR_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WEAR_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_FAILURE_PATTERNS (constant)">WEAR_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
@@ -10542,12 +10665,12 @@ not yet know, without a Lich release.</p>
       <pre class="lines">
 
 
-1182
-1183
-1184</pre>
+1269
+1270
+1271</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1182</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-items.rb', line 1269</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wearing?'>wearing?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_tap'>tap</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>wearing</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
@@ -10562,7 +10685,7 @@ not yet know, without a Lich release.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:03 2026 by
+  Generated on Thu Sep 10 03:55:27 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

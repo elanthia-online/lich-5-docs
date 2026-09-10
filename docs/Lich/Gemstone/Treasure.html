@@ -104,15 +104,24 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Treasure drop configuration for a creature template.</p>
-<p>Tracks what loot a creature may carry: coins, gems, containers, skin,
-magic items, and other valuables. Also records whether blunt weapons are
-required to harvest the skin.</p>
+    <p>Treasure drops available on a creature template.</p>
+<p>Tracks currency (coins/gems), loot boxes, corpse harvest items (skin),
+and equipment by category (magic items, armaments, transmogs).</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_treasure'>treasure</span> <span class='op'>=</span> <span class='const'>Treasure</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Treasure#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>coins:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>gems:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>blunt_required:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_treasure'>treasure</span><span class='period'>.</span><span class='id identifier rubyid_has_coins?'>has_coins?</span> <span class='comment'>#=&gt; true
+</span><span class='id identifier rubyid_treasure'>treasure</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span> <span class='comment'>#=&gt; {coins: true, gems: false, ...}</span></code></pre>
+    
+  </div>
+
 
 </div>
 
@@ -146,7 +155,29 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether blunt weapons are required to harvest the skin.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature must be killed with blunt damage for item drops.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#has_armaments%3F-instance_method" title="#has_armaments? (instance method)">#<strong>has_armaments?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature carries armaments (weapons/armor).</p></div></span>
   
 </li>
 
@@ -168,7 +199,7 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether this creature may carry boxes.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature drops loot boxes.</p></div></span>
   
 </li>
 
@@ -190,7 +221,7 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether this creature may carry coins.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature drops coins.</p></div></span>
   
 </li>
 
@@ -212,7 +243,7 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether this creature may carry gems.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature drops gems.</p></div></span>
   
 </li>
 
@@ -234,7 +265,29 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether this creature has harvestable skin.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature's corpse yields harvestable skin.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#has_transmogs%3F-instance_method" title="#has_transmogs? (instance method)">#<strong>has_transmogs?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns whether the creature carries transmog items.</p></div></span>
   
 </li>
 
@@ -258,7 +311,7 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes treasure configuration from template data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes treasure configuration from a creature template data hash.</p></div></span>
   
 </li>
 
@@ -280,7 +333,7 @@ required to harvest the skin.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the raw treasure data hash.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the treasure configuration as a hash.</p></div></span>
   
 </li>
 
@@ -303,9 +356,8 @@ required to harvest the skin.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes treasure configuration from template data.</p>
-<p>Sets defaults for all treasure types (false/nil) then merges in data from
-the template.</p>
+    <p>Initializes treasure configuration from a creature template data hash.</p>
+<p>Merges provided data into defaults (all false/nil), allowing partial specs.</p>
 
   </div>
 </div>
@@ -325,8 +377,7 @@ the template.</p>
       
       
         &mdash;
-        <div class='inline'><p>template treasure data; keys are :coins, :gems, :boxes,
-:skin, :magic_items, :other, :blunt_required</p></div>
+        <div class='inline'><p>treasure attributes; unspecified keys retain defaults</p></div>
       
     </li>
   
@@ -339,20 +390,22 @@ the template.</p>
       <pre class="lines">
 
 
-631
-632
-633
-634
-635
-636
-637
-638
-639
-640
-641</pre>
+864
+865
+866
+867
+868
+869
+870
+871
+872
+873
+874
+875
+876</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 631</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 864</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='ivar'>@data</span> <span class='op'>=</span> <span class='lbrace'>{</span>
@@ -362,6 +415,8 @@ the template.</p>
     <span class='label'>skin:</span> <span class='kw'>nil</span><span class='comma'>,</span>
     <span class='label'>magic_items:</span> <span class='kw'>nil</span><span class='comma'>,</span>
     <span class='label'>other:</span> <span class='kw'>nil</span><span class='comma'>,</span>
+    <span class='label'>armaments:</span> <span class='kw'>nil</span><span class='comma'>,</span>
+    <span class='label'>transmogs:</span> <span class='kw'>nil</span><span class='comma'>,</span>
     <span class='label'>blunt_required:</span> <span class='kw'>false</span>
   <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_merge'>merge</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
@@ -388,7 +443,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether blunt weapons are required to harvest the skin.</p>
+    <p>Returns whether the creature must be killed with blunt damage for item drops.</p>
 
   </div>
 </div>
@@ -414,12 +469,66 @@ the template.</p>
       <pre class="lines">
 
 
-662</pre>
+905</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 662</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 905</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_blunt_required?'>blunt_required?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:blunt_required</span><span class='rbracket'>]</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="has_armaments?-instance_method">
+  
+    #<strong>has_armaments?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns whether the creature carries armaments (weapons/armor).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+897
+898
+899
+900</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 897</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_has_armaments?'>has_armaments?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:armaments</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>Array</span><span class='lparen'>(</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:armaments</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span><span class='rparen'>)</span>
+<span class='comment'># Returns whether the creature carries transmog items.
+</span><span class='comment'>#
+</span><span class='comment'># @return [Boolean]</span></pre>
     </td>
   </tr>
 </table>
@@ -436,7 +545,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether this creature may carry boxes.</p>
+    <p>Returns whether the creature drops loot boxes.</p>
 
   </div>
 </div>
@@ -462,16 +571,16 @@ the template.</p>
       <pre class="lines">
 
 
-654
-655
-656
-657</pre>
+889
+890
+891
+892</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 654</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 889</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_boxes?'>has_boxes?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:boxes</span><span class='rbracket'>]</span>
-<span class='comment'># Returns whether this creature has harvestable skin.
+<span class='comment'># Returns whether the creature&#39;s corpse yields harvestable skin.
 </span><span class='comment'>#
 </span><span class='comment'># @return [Boolean]</span></pre>
     </td>
@@ -490,7 +599,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether this creature may carry coins.</p>
+    <p>Returns whether the creature drops coins.</p>
 
   </div>
 </div>
@@ -516,16 +625,16 @@ the template.</p>
       <pre class="lines">
 
 
-646
-647
-648
-649</pre>
+881
+882
+883
+884</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 646</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 881</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_coins?'>has_coins?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:coins</span><span class='rbracket'>]</span>
-<span class='comment'># Returns whether this creature may carry gems.
+<span class='comment'># Returns whether the creature drops gems.
 </span><span class='comment'>#
 </span><span class='comment'># @return [Boolean]</span></pre>
     </td>
@@ -544,7 +653,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether this creature may carry gems.</p>
+    <p>Returns whether the creature drops gems.</p>
 
   </div>
 </div>
@@ -570,16 +679,16 @@ the template.</p>
       <pre class="lines">
 
 
-650
-651
-652
-653</pre>
+885
+886
+887
+888</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 650</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 885</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_gems?'>has_gems?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:gems</span><span class='rbracket'>]</span>
-<span class='comment'># Returns whether this creature may carry boxes.
+<span class='comment'># Returns whether the creature drops loot boxes.
 </span><span class='comment'>#
 </span><span class='comment'># @return [Boolean]</span></pre>
     </td>
@@ -598,7 +707,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether this creature has harvestable skin.</p>
+    <p>Returns whether the creature's corpse yields harvestable skin.</p>
 
   </div>
 </div>
@@ -624,16 +733,70 @@ the template.</p>
       <pre class="lines">
 
 
-658
-659
-660
-661</pre>
+893
+894
+895
+896</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 658</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 893</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_skin?'>has_skin?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:skin</span><span class='rbracket'>]</span>
-<span class='comment'># Returns whether blunt weapons are required to harvest the skin.
+<span class='comment'># Returns whether the creature carries armaments (weapons/armor).
+</span><span class='comment'>#
+</span><span class='comment'># @return [Boolean]</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="has_transmogs?-instance_method">
+  
+    #<strong>has_transmogs?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns whether the creature carries transmog items.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+901
+902
+903
+904</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 901</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_has_transmogs?'>has_transmogs?</span> <span class='op'>=</span> <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:transmogs</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>Array</span><span class='lparen'>(</span><span class='ivar'>@data</span><span class='lbracket'>[</span><span class='symbol'>:transmogs</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span><span class='rparen'>)</span>
+<span class='comment'># Returns whether the creature must be killed with blunt damage for item drops.
 </span><span class='comment'>#
 </span><span class='comment'># @return [Boolean]</span></pre>
     </td>
@@ -652,7 +815,7 @@ the template.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the raw treasure data hash.</p>
+    <p>Returns the treasure configuration as a hash.</p>
 
   </div>
 </div>
@@ -668,6 +831,9 @@ the template.</p>
       
       
       
+        &mdash;
+        <div class='inline'><p>the underlying treasure data</p></div>
+      
     </li>
   
 </ul>
@@ -678,10 +844,10 @@ the template.</p>
       <pre class="lines">
 
 
-667</pre>
+910</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 667</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 910</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_h'>to_h</span> <span class='op'>=</span> <span class='ivar'>@data</span></pre>
     </td>
@@ -694,7 +860,7 @@ the template.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:08 2026 by
+  Generated on Thu Sep 10 03:55:36 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

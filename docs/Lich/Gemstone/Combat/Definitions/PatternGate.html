@@ -132,7 +132,7 @@ useful gate (they must be tried on every line).</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#build-class_method" title="build (class method)">.<strong>build</strong>(patterns)  &#x21d2; Array </a>
+      <a href="#build-class_method" title="build (class method)">.<strong>build</strong>(patterns)  &#x21d2; Array(Regexp, nil, Array&lt;Regexp&gt;) </a>
     
 
     
@@ -143,10 +143,10 @@ useful gate (they must be tried on every line).</p>
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Builds a gate for a list of patterns that pre-filters lines before expensive regex matching.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Builds a literal-substring gate for a list of patterns to accelerate pattern matching.</p></div></span>
   
 </li>
 
@@ -190,7 +190,7 @@ useful gate (they must be tried on every line).</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Convenience: true when the line can't possibly match any gated pattern (no literal present and no ungated patterns exist).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Convenience: true when the line can't possibly match any pattern in this table, so the caller may skip the full scan.</p></div></span>
   
 </li>
 
@@ -208,7 +208,7 @@ useful gate (they must be tried on every line).</p>
       <div class="method_details first">
   <h3 class="signature first" id="build-class_method">
   
-    .<strong>build</strong>(patterns)  &#x21d2; <tt>Array</tt> 
+    .<strong>build</strong>(patterns)  &#x21d2; <tt>Array(Regexp, nil, Array&lt;Regexp&gt;)</tt> 
   
 
   
@@ -216,15 +216,12 @@ useful gate (they must be tried on every line).</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Builds a gate for a list of patterns that pre-filters lines before expensive regex matching.</p>
-<p>Extracts the longest literal substring from each pattern using <span class='object_link'><a href="#longest_literal-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.longest_literal (method)">longest_literal</a></span>.
-Patterns whose literal is at least <span class='object_link'><a href="#MIN_LITERAL-constant" title="Lich::Gemstone::Combat::Definitions::PatternGate::MIN_LITERAL (constant)">MIN_LITERAL</a></span> (4) characters long are added to
-a Regexp.union gate; shorter or literal-free patterns are returned in the
-always_scan list and must be tried on every line.</p>
+    <p>Builds a literal-substring gate for a list of patterns to accelerate pattern matching.</p>
+<p>Extracts the longest guaranteed-literal run from each pattern using <span class='object_link'><a href="#longest_literal-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.longest_literal (method)">longest_literal</a></span>,
+then creates a fast Regexp.union gate that rejects lines lacking those substrings before
+attempting full pattern matches. Patterns with literals shorter than MIN_LITERAL (4 chars)
+are placed in the always_scan list and must be tried on every line. Returns a tuple
+that <span class='object_link'><a href="#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span> uses to make reject-or-scan decisions.</p>
 
   </div>
 </div>
@@ -234,9 +231,9 @@ always_scan list and must be tried on every line.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_gate'>gate</span><span class='comma'>,</span> <span class='id identifier rubyid_always_scan'>always_scan</span> <span class='op'>=</span> <span class='id identifier rubyid_build'>build</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>lightning</span><span class='regexp_end'>/i</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\\d+ damage</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
-<span class='id identifier rubyid_gate'>gate</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You cast lightning</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; MatchData
-</span><span class='id identifier rubyid_always_scan'>always_scan</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='comment'>#=&gt; false (short literal)</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_gate'>gate</span><span class='comma'>,</span> <span class='id identifier rubyid_always_scan'>always_scan</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_build'>build</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\bwounds\s+(\.+)</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You \w+ a</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_gate'>gate</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>serious wounds...</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; #&lt;MatchData &quot;wounds&quot;&gt;
+</span><span class='id identifier rubyid_always_scan'>always_scan</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='comment'>#=&gt; 0 (both literals met threshold)</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -252,7 +249,7 @@ always_scan list and must be tried on every line.</p>
       
       
         &mdash;
-        <div class='inline'><p>the patterns to gate</p></div>
+        <div class='inline'><p>regex patterns to gate</p></div>
       
     </li>
   
@@ -264,14 +261,15 @@ always_scan list and must be tried on every line.</p>
     <li>
       
       
-        <span class='type'>(<tt>Array</tt>)</span>
+        <span class='type'>(<tt>Array(Regexp, nil, Array&lt;Regexp&gt;)</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a two-element array: [union_regex, always_scan] where union_regex
-is a frozen Regexp (or nil if no literals met the threshold) and always_scan is
-a frozen Array of patterns that bypassed the gate</p></div>
+        <div class='inline'><p>tuple of [union_regex_or_nil, always_scan_patterns];
+union_regex is frozen and matches iff some pattern's literal is present (nil if no
+patterns have literals &gt;= MIN_LITERAL); always_scan is a frozen array of patterns
+that must be tried on every candidate line</p></div>
       
     </li>
   
@@ -283,22 +281,22 @@ a frozen Array of patterns that bypassed the gate</p></div>
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83</pre>
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 84</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_build'>build</span><span class='lparen'>(</span><span class='id identifier rubyid_patterns'>patterns</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_literals'>literals</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -349,24 +347,24 @@ alternation with no guaranteed text - returns nil (always scan).</p>
       <pre class="lines">
 
 
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
 45
 46
-47</pre>
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 45</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_longest_literal'>longest_literal</span><span class='lparen'>(</span><span class='id identifier rubyid_regex'>regex</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_source'>source</span> <span class='op'>=</span> <span class='id identifier rubyid_regex'>regex</span><span class='period'>.</span><span class='id identifier rubyid_source'>source</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
@@ -399,8 +397,13 @@ alternation with no guaranteed text - returns nil (always scan).</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Convenience: true when the line can't possibly match any gated
-pattern (no literal present and no ungated patterns exist).</p>
+    <p>Convenience: true when the line can't possibly match any pattern in
+this table, so the caller may skip the full scan. A line is only
+rejectable when BOTH the literal gate misses AND no ungated
+(always_scan) pattern matches. Any always_scan pattern that matches
+keeps the line in play; a non-empty always_scan does NOT blanket-
+disable rejection (that was the old bug - it reverted the whole
+table to full-scan the moment one short-literal pattern existed).</p>
 
   </div>
 </div>
@@ -426,15 +429,19 @@ pattern (no literal present and no ungated patterns exist).</p>
       <pre class="lines">
 
 
-87
-88
-89</pre>
+105
+106
+107
+108
+109</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 87</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/pattern_gate.rb', line 105</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rejects?'>rejects?</span><span class='lparen'>(</span><span class='id identifier rubyid_gate'>gate</span><span class='comma'>,</span> <span class='id identifier rubyid_always_scan'>always_scan</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_always_scan'>always_scan</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_gate'>gate</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='op'>!</span><span class='id identifier rubyid_gate'>gate</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_gate'>gate</span><span class='op'>&amp;.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_always_scan'>always_scan</span><span class='period'>.</span><span class='id identifier rubyid_none?'>none?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_rx'>rx</span><span class='op'>|</span> <span class='id identifier rubyid_rx'>rx</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -446,7 +453,7 @@ pattern (no literal present and no ungated patterns exist).</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:03 2026 by
+  Generated on Thu Sep 10 03:55:27 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

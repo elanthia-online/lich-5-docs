@@ -182,6 +182,28 @@
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#crtr_flags%3F-instance_method" title="#crtr_flags? (instance method)">#<strong>crtr_flags?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether any <code>&lt;crtrStatus&gt;</code> classification has been seen for this creature yet.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#flag_active%3F-instance_method" title="#flag_active? (instance method)">#<strong>flag_active?</strong>(key)  &#x21d2; Boolean </a>
     
 
@@ -383,31 +405,61 @@ falls back to <span class='object_link'><a href="../CreatureBase.html#STATUS_DUR
       <pre class="lines">
 
 
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444</pre>
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 431</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 452</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_status'>add_status</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='comma'>,</span> <span class='id identifier rubyid_duration'>duration</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
-  <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
+  <span class='comment'># Canonicalize case at the boundary, not per producer: the crit
+</span>  <span class='comment'># tables report position as &quot;PRONE&quot;/&quot;KNEELING&quot;/&quot;SITTING&quot; while
+</span>  <span class='comment'># messaging and &lt;crtrStatus&gt; use lowercase, and @status membership
+</span>  <span class='comment'># is exact - an uppercase add could never be removed or matched.
+</span>  <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
+  <span class='kw'>if</span> <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
+    <span class='comment'># Re-adding with an explicit duration extends the lock: without
+</span>    <span class='comment'># this, a 3s roundtime followed by an overlapping 20s one kept
+</span>    <span class='comment'># the 3s expiry and reported the creature free ~19s early.
+</span>    <span class='comment'># Never shorten - the longest known source wins.
+</span>    <span class='kw'>if</span> <span class='id identifier rubyid_duration'>duration</span>
+      <span class='id identifier rubyid_expires'>expires</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>+</span> <span class='id identifier rubyid_duration'>duration</span>
+      <span class='id identifier rubyid_current'>current</span> <span class='op'>=</span> <span class='ivar'>@status_timestamps</span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='rbracket'>]</span>
+      <span class='ivar'>@status_timestamps</span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_expires'>expires</span> <span class='kw'>if</span> <span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_expires'>expires</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_current'>current</span>
+    <span class='kw'>end</span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
 
   <span class='ivar'>@status</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_status'>status</span>
 
-  <span class='id identifier rubyid_duration'>duration</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="../CreatureBase.html#STATUS_DURATIONS-constant" title="Lich::Common::CreatureBase::STATUS_DURATIONS (constant)">STATUS_DURATIONS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_duration'>duration</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="../CreatureBase.html#STATUS_DURATIONS-constant" title="Lich::Common::CreatureBase::STATUS_DURATIONS (constant)">STATUS_DURATIONS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='rbracket'>]</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_duration'>duration</span>
     <span class='ivar'>@status_timestamps</span><span class='lbracket'>[</span><span class='id identifier rubyid_status'>status</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>+</span> <span class='id identifier rubyid_duration'>duration</span>
     <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>+status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='embexpr_end'>}</span><span class='tstring_content'> (expires in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_duration'>duration</span><span class='embexpr_end'>}</span><span class='tstring_content'>s)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -444,19 +496,19 @@ falls back to <span class='object_link'><a href="../CreatureBase.html#STATUS_DUR
       <pre class="lines">
 
 
-460
-461
-462
-463
-464
-465
-466
-467
-468
-469</pre>
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 460</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 500</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@status_timestamps</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -530,15 +582,72 @@ booleans, so an unknown or unseen flag is false, not nil.</p>
       <pre class="lines">
 
 
-522
-523
-524</pre>
+569
+570
+571</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 522</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 569</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='ivar'>@crtr_flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='kw'>false</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="crtr_flags?-instance_method">
+  
+    #<strong>crtr_flags?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether any <code>&lt;crtrStatus&gt;</code> classification has been seen for this
+creature yet.</p>
+<p>Callers filtering on a flag need to tell &quot;the feed said this is not
+hostile&quot; apart from &quot;the feed has not told us anything&quot; - an absent
+flag is unknown, not false. A ridden mount, for instance, carries a
+bold creature link but never a <code>&lt;crtrStatus&gt;</code> of its own.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+582
+583
+584</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 582</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_crtr_flags?'>crtr_flags?</span>
+  <span class='op'>!</span><span class='ivar'>@crtr_flags</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -602,12 +711,12 @@ on any known flag name without caring which bucket stores it.</p>
       <pre class="lines">
 
 
-533
-534
-535</pre>
+593
+594
+595</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 533</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 593</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_flag_active?'>flag_active?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
@@ -672,17 +781,17 @@ on any known flag name without caring which bucket stores it.</p>
       <pre class="lines">
 
 
-475
-476
-477
-478</pre>
+515
+516
+517
+518</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 475</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 515</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span>
-  <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+  <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -713,14 +822,14 @@ on any known flag name without caring which bucket stores it.</p>
       <pre class="lines">
 
 
-415
-416
-417
-418
-419</pre>
+436
+437
+438
+439
+440</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 415</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 436</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize_status_tracking'>initialize_status_tracking</span>
   <span class='ivar'>@status</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -774,20 +883,28 @@ on any known flag name without caring which bucket stores it.</p>
       <pre class="lines">
 
 
-450
-451
-452
-453
-454
-455</pre>
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 450</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 486</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_status'>remove_status</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_status'>status</span> <span class='op'>=</span> <span class='id identifier rubyid_status'>status</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
   <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
   <span class='ivar'>@status_timestamps</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
+  <span class='comment'># A stun removal (message or &lt;crtrStatus&gt; snapshot) is authoritative
+</span>  <span class='comment'># and retires any crit-table duration estimate with it, however much
+</span>  <span class='comment'># time that estimate had left. GemStone-only hook.
+</span>  <span class='id identifier rubyid_clear_stun_estimate'>clear_stun_estimate</span> <span class='kw'>if</span> <span class='id identifier rubyid_status'>status</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:clear_stun_estimate</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>-status: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status'>status</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -832,13 +949,13 @@ on any known flag name without caring which bucket stores it.</p>
       <pre class="lines">
 
 
-483
-484
-485
-486</pre>
+523
+524
+525
+526</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 483</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 523</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_statuses'>statuses</span>
   <span class='id identifier rubyid_cleanup_expired_statuses'>cleanup_expired_statuses</span>
@@ -895,29 +1012,43 @@ ignored.</p>
       <pre class="lines">
 
 
-497
-498
-499
-500
-501
-502
-503
-504
-505
-506
-507
-508
-509
-510
-511
-512
-513</pre>
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 497</span>
+      <pre class="code"><span class="info file"># File 'documented/common/creature/creature_base.rb', line 537</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sync_crtr_status'>sync_crtr_status</span><span class='lparen'>(</span><span class='id identifier rubyid_attrs'>attrs</span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="../CreatureBase.html#CRTR_STATUS_FLAGS-constant" title="Lich::Common::CreatureBase::CRTR_STATUS_FLAGS (constant)">CRTR_STATUS_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_xml_name'>xml_name</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span><span class='op'>|</span>
+  <span class='comment'># Scoped to CRTR_STATUS_FLAGS on purpose: @status has two writers,
+</span>  <span class='comment'># this feed and the combat parser reading messaging. The feed is a
+</span>  <span class='comment'># full snapshot only of the states it reports, so it owns removal
+</span>  <span class='comment'># for exactly those - and must not touch the rest. blind,
+</span>  <span class='comment'># poisoned, natures_decay and the other message-only effects never
+</span>  <span class='comment'># appear in the tag; reconciling them here would clear them on the
+</span>  <span class='comment'># next one and make them impossible to model.
+</span>  <span class='const'><span class='object_link'><a href="../CreatureBase.html#CRTR_STATUS_FLAGS-constant" title="Lich::Common::CreatureBase::CRTR_STATUS_FLAGS (constant)">CRTR_STATUS_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_xml_name'>xml_name</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span><span class='op'>|</span>
     <span class='kw'>if</span> <span class='id identifier rubyid_attrs'>attrs</span><span class='lbracket'>[</span><span class='id identifier rubyid_xml_name'>xml_name</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>1</span><span class='tstring_end'>&#39;</span></span>
       <span class='id identifier rubyid_add_status'>add_status</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
     <span class='kw'>elsif</span> <span class='ivar'>@status</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_status'>status</span><span class='rparen'>)</span>
@@ -943,7 +1074,7 @@ ignored.</p>
 </div>
 
       <div id="footer">
-  Generated on Mon Aug 31 21:23:01 2026 by
+  Generated on Thu Sep 10 03:55:24 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>
