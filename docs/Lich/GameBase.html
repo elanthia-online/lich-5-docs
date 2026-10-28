@@ -88,8 +88,8 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Base module providing common game functionality shared between GemStone IV
-and DragonRealms.</p>
+    <p>Namespace for game-instance base classes, mixins, and shared server-stream
+processing logic used by both GemStone and DragonRealms.</p>
 
   </div>
 </div>
@@ -125,17 +125,20 @@ only unambiguous truncation signal, since a complete line cannot end inside
 an open tag, attribute list, or quoted value. (In practice genuine
 truncation is an edge case: reads are newline-delimited via @socket.gets,
 Simu keeps each tag on one line, multi-line content is reassembled upstream
-by buffer_room_objs, and #4's tag_end guard keeps @active_tags balanced
+by buffer_split_line, and #4's tag_end guard keeps @active_tags balanced
 regardless. This is a backstop for a partial read at disconnect.)</p>
 <p>Ox also fires the callback for Simu's routine almost-XML -- bare text and
 multiple top-level elements ('text not terminated', 'multiple top level
-elements'), nested quotes ('no attribute value'), unescaped ampersands
-('Invalid special character sequence'), missing </d> end tags ('Start End
-Mismatch: ... not closed') -- none of which match these patterns, so they
-stay tolerated. The message prefix matters: 'Unexpected Character: element
-not closed' (a start tag that never got its '&gt;') is truncation, while the
-similarly worded 'Start End Mismatch: element ... not closed' (an element
-missing its end tag) is routine.</p>
+elements'), unescaped ampersands ('Invalid special character sequence'),
+missing </d> end tags ('Start End Mismatch: ... not closed') -- none of
+which match these patterns, so they stay tolerated. Nested quotes are the
+exception: alongside 'no attribute value' they can also report 'document
+not terminated' and 'element not closed' on a complete line, which is why
+process_xml_data repairs them before checking.</p>
+<p>The message prefix matters: 'Unexpected Character: element not closed' (a
+start tag that never got its '&gt;') is truncation, while the similarly
+worded 'Start End Mismatch: element ... not closed' (an element missing
+its end tag) is routine.</p>
 <p>'attribute value not in quotes' is intentionally NOT here: it fires on a
 <em>complete</em> unquoted-attribute line (<a x=y>), so matching it false-resets a
 fully-parsed fragment. A truncated unquoted attr (&lt;a x=y) still resets via
@@ -187,7 +190,7 @@ repairs leave it unchanged so no reparse happens.)</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:13 2026 by
+  Generated on Wed Oct 28 05:27:09 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

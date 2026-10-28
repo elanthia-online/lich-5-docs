@@ -104,24 +104,22 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents a list of ready items and their storage in the game.</p>
-<p>This class manages the items that a player can have ready for use,
-including weapons and shields, and provides methods to check their
-validity and reset the lists.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Entries are stored as GameObj instances; <span class='object_link'><a href="#valid%3F-class_method" title="Lich::Gemstone::ReadyList.valid? (method)">ReadyList.valid?</a></span> confirms all stored items remain in
+inventory, containers, or hands.</p></div>
+  </div>
+
+<p>Tracks equipped items and storage locations from the &quot;ready list&quot; command in GemStone IV.</p>
+<p>Maintains two parallel lists: a ready list of currently equipped items (shields, weapons, wands, etc.)
+and a store list of items staged for retrieval from storage. Use <span class='object_link'><a href="#check-class_method" title="Lich::Gemstone::ReadyList.check (method)">ReadyList.check</a></span> to sync state from the
+game server, then read individual entries via accessor methods like weapon or store_weapon.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li>#ready_list</li>
-    
-      <li>#store_list</li>
-    
-  </ul>
 
 </div>
   
@@ -133,12 +131,48 @@ validity and reset the lists.</p>
     <dl class="constants">
       
         <dt id="ORIGINAL_READY_LIST-constant" class="">ORIGINAL_READY_LIST =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Standard game-provided ready list entry types.</p>
+<p>Represents the default equipment slots GemStone IV tracks: shields, primary/secondary weapons,
+ranged weapons, ammo bundles, sheaths, and wands.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ORIGINAL_STORE_LIST-constant" title="Lich::Gemstone::ReadyList::ORIGINAL_STORE_LIST (constant)">ORIGINAL_STORE_LIST</a></span></li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span><span class='symbol'>:shield</span><span class='comma'>,</span> <span class='symbol'>:weapon</span><span class='comma'>,</span> <span class='symbol'>:secondary_weapon</span><span class='comma'>,</span> <span class='symbol'>:ranged_weapon</span><span class='comma'>,</span> <span class='symbol'>:ammo_bundle</span><span class='comma'>,</span> <span class='symbol'>:ammo2_bundle</span><span class='comma'>,</span> <span class='symbol'>:sheath</span><span class='comma'>,</span> <span class='symbol'>:secondary_sheath</span><span class='comma'>,</span> <span class='symbol'>:wand</span><span class='rbracket'>]</span></pre></dd>
       
         <dt id="ORIGINAL_STORE_LIST-constant" class="">ORIGINAL_STORE_LIST =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Standard game-provided store list entry types.</p>
+<p>Subset of ORIGINAL_READY_LIST used for tracking items awaiting retrieval from storage.
+Excludes ammo2_bundle, sheath, and secondary_sheath.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ORIGINAL_READY_LIST-constant" title="Lich::Gemstone::ReadyList::ORIGINAL_READY_LIST (constant)">ORIGINAL_READY_LIST</a></span></li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span><span class='symbol'>:shield</span><span class='comma'>,</span> <span class='symbol'>:weapon</span><span class='comma'>,</span> <span class='symbol'>:secondary_weapon</span><span class='comma'>,</span> <span class='symbol'>:ranged_weapon</span><span class='comma'>,</span> <span class='symbol'>:ammo_bundle</span><span class='comma'>,</span> <span class='symbol'>:wand</span><span class='rbracket'>]</span></pre></dd>
       
@@ -176,7 +210,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks the current settings of the ready list in the game.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Syncs ready list state from the game server by parsing &quot;ready list&quot; command output.</p></div></span>
   
 </li>
 
@@ -184,7 +218,7 @@ validity and reset the lists.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#checked=-class_method" title="checked= (class method)">.<strong>checked=</strong>(value)  &#x21d2; Object </a>
+      <a href="#checked=-class_method" title="checked= (class method)">.<strong>checked=</strong>(value)  &#x21d2; Boolean </a>
     
 
     
@@ -195,10 +229,10 @@ validity and reset the lists.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets the checked state flag.</p></div></span>
   
 </li>
 
@@ -220,7 +254,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns true if <span class='object_link'><a href="#check-class_method" title="Lich::Gemstone::ReadyList.check (method)">ReadyList.check</a></span> has successfully synced state from the game server.</p></div></span>
   
 </li>
 
@@ -228,7 +262,7 @@ validity and reset the lists.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#ready_list-class_method" title="ready_list (class method)">.<strong>ready_list</strong>  &#x21d2; Object </a>
+      <a href="#ready_list-class_method" title="ready_list (class method)">.<strong>ready_list</strong>  &#x21d2; Hash{Symbol =&gt; GameObj, nil} </a>
     
 
     
@@ -242,7 +276,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the internal hash mapping equipment slot names to GameObj instances.</p></div></span>
   
 </li>
 
@@ -264,7 +298,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resets the ready and store lists to nil.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Clears all stored entries and sets checked state to false.</p></div></span>
   
 </li>
 
@@ -272,7 +306,7 @@ validity and reset the lists.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#store_list-class_method" title="store_list (class method)">.<strong>store_list</strong>  &#x21d2; Object </a>
+      <a href="#store_list-class_method" title="store_list (class method)">.<strong>store_list</strong>  &#x21d2; Hash{Symbol =&gt; GameObj, nil} </a>
     
 
     
@@ -286,7 +320,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the internal hash mapping storage slot names to GameObj instances.</p></div></span>
   
 </li>
 
@@ -308,7 +342,7 @@ validity and reset the lists.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the current ready items are valid.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Verifies that all stored equipment items still exist in inventory, containers, or hands.</p></div></span>
   
 </li>
 
@@ -334,18 +368,24 @@ validity and reset the lists.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>This method updates the checked state based on the results.</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Checks the current settings of the ready list in the game.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Syncs ready list state from the game server by parsing &quot;ready list&quot; command output.</p>
+<p>Waits for roundtime, issues the &quot;ready list&quot; command, and reads equipment assignments from
+the server response. Parses the response to extract item IDs and slot types, populating
+<span class='object_link'><a href="#ready_list-class_method" title="Lich::Gemstone::ReadyList.ready_list (method)">ready_list</a></span> and <span class='object_link'><a href="#store_list-class_method" title="Lich::Gemstone::ReadyList.store_list (method)">store_list</a></span>. Sets <span class='object_link'><a href="#checked%3F-class_method" title="Lich::Gemstone::ReadyList.checked? (method)">checked?</a></span> to true only if the response contains
+&quot;Your current settings are:&quot;, indicating a valid ready list from the server.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_check'>check</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -360,7 +400,7 @@ validity and reset the lists.</p>
       
       
         &mdash;
-        <div class='inline'><p>if true, suppresses output</p></div>
+        <div class='inline'><p>if true, suppress command echoing to the script window (default: false)</p></div>
       
     </li>
   
@@ -376,12 +416,20 @@ validity and reset the lists.</p>
       
       
         &mdash;
-        <div class='inline'><p>if true, uses a quieter output pattern</p></div>
+        <div class='inline'><p>if true, use compact XML output format instead of human-readable
+(default: false); affects the start_pattern used to parse server response</p></div>
       
     </li>
   
 </ul>
 
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#checked%3F-class_method" title="Lich::Gemstone::ReadyList.checked? (method)">.ready_list</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -389,19 +437,19 @@ validity and reset the lists.</p>
       <pre class="lines">
 
 
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117</pre>
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 108</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check'>check</span><span class='lparen'>(</span><span class='label'>silent:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_quiet'>quiet</span>
@@ -421,24 +469,71 @@ validity and reset the lists.</p>
       <div class="method_details ">
   <h3 class="signature " id="checked=-class_method">
   
-    .<strong>checked=</strong>(value)  &#x21d2; <tt>Object</tt> 
+    .<strong>checked=</strong>(value)  &#x21d2; <tt>Boolean</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Sets the checked state flag.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the ready list is considered in sync with the server</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the assigned value</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-62
-63
-64</pre>
+100
+101
+102</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 62</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 100</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_checked='>checked=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='ivar'>@checked</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
@@ -459,7 +554,7 @@ validity and reset the lists.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Returns true if <span class='object_link'><a href="#check-class_method" title="Lich::Gemstone::ReadyList.check (method)">check</a></span> has successfully synced state from the game server.</p>
 
   </div>
 </div>
@@ -475,9 +570,19 @@ validity and reset the lists.</p>
       
       
       
+        &mdash;
+        <div class='inline'><p>true if the ready list has been checked; false initially or after <span class='object_link'><a href="#reset-class_method" title="Lich::Gemstone::ReadyList.reset (method)">reset</a></span></p></div>
+      
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#check-class_method" title="Lich::Gemstone::ReadyList.check (method)">check</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -485,12 +590,12 @@ validity and reset the lists.</p>
       <pre class="lines">
 
 
-58
-59
-60</pre>
+91
+92
+93</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 58</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 91</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_checked?'>checked?</span>
   <span class='ivar'>@checked</span>
@@ -503,24 +608,60 @@ validity and reset the lists.</p>
       <div class="method_details ">
   <h3 class="signature " id="ready_list-class_method">
   
-    .<strong>ready_list</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>ready_list</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; GameObj, nil}</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the internal hash mapping equipment slot names to GameObj instances.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_ready_list'>ready_list</span>
+<span class='comment'>#=&gt; {:shield=&gt;nil, :weapon=&gt;#&lt;GameObj id=12345&gt;, ...}</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; GameObj, nil}</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>keys are :shield, :weapon, :secondary_weapon,
+:ranged_weapon, :ammo_bundle, :ammo2_bundle, :sheath, :secondary_sheath, :wand;
+values are GameObj or nil if unset</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-50
-51
-52</pre>
+72
+73
+74</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 50</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 72</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ready_list'>ready_list</span>
   <span class='ivar'>@ready_list</span>
@@ -541,12 +682,21 @@ validity and reset the lists.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Resets the ready and store lists to nil.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Clears all stored entries and sets checked state to false.</p>
+<p>Sets <span class='object_link'><a href="#checked=-class_method" title="Lich::Gemstone::ReadyList.checked= (method)">checked=</a></span> to false, then nilifies entries in ready_list and store_list.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_reset'>reset</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -561,12 +711,20 @@ validity and reset the lists.</p>
       
       
         &mdash;
-        <div class='inline'><p>if true, resets all items regardless of original list</p></div>
+        <div class='inline'><p>if true, reset all entries; if false (default), reset only entries
+in ORIGINAL_READY_LIST and ORIGINAL_STORE_LIST</p></div>
       
     </li>
   
 </ul>
 
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#checked=-class_method" title="Lich::Gemstone::ReadyList.checked= (method)">checked=</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -574,20 +732,20 @@ validity and reset the lists.</p>
       <pre class="lines">
 
 
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100</pre>
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 90</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 142</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset'>reset</span><span class='lparen'>(</span><span class='label'>all:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='ivar'>@checked</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -608,24 +766,59 @@ validity and reset the lists.</p>
       <div class="method_details ">
   <h3 class="signature " id="store_list-class_method">
   
-    .<strong>store_list</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>store_list</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; GameObj, nil}</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the internal hash mapping storage slot names to GameObj instances.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_store_list'>store_list</span>
+<span class='comment'>#=&gt; {:shield=&gt;nil, :weapon=&gt;#&lt;GameObj id=67890&gt;, ...}</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; GameObj, nil}</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>keys are :shield, :weapon, :secondary_weapon,
+:ranged_weapon, :ammo_bundle, :wand; values are GameObj or nil if unset</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-54
-55
-56</pre>
+83
+84
+85</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 54</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 83</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_store_list'>store_list</span>
   <span class='ivar'>@store_list</span>
@@ -646,13 +839,11 @@ validity and reset the lists.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>This method relies on the checked state being true.</p></div>
-  </div>
-
-<p>Checks if the current ready items are valid.</p>
+    <p>Verifies that all stored equipment items still exist in inventory, containers, or hands.</p>
+<p>Confirms <span class='object_link'><a href="#checked%3F-class_method" title="Lich::Gemstone::ReadyList.checked? (method)">checked?</a></span> is true, then iterates the ready list verifying each non-wand entry
+either has a nil value or the GameObj (by id) still appears in GameObj.inv, GameObj.containers,
+GameObj.right_hand, or GameObj.left_hand. Wand entries are excluded from validation.
+Sets <span class='object_link'><a href="#checked=-class_method" title="Lich::Gemstone::ReadyList.checked= (method)">checked=</a></span> to false if any item is missing.</p>
 
   </div>
 </div>
@@ -662,9 +853,8 @@ validity and reset the lists.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Check validity of ready items</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_ready_list'>ready_list</span><span class='period'>.</span><span class='id identifier rubyid_valid?'>valid?</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_check'><span class='object_link'><a href="#check-class_method" title="Lich::Gemstone::ReadyList.check (method)">check</a></span></span>
+<span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ReadyList (class)">ReadyList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid?'>valid?</span> <span class='comment'>#=&gt; true</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -682,7 +872,8 @@ validity and reset the lists.</p>
       
       
         &mdash;
-        <div class='inline'><p>if true, checks all items regardless of original list</p></div>
+        <div class='inline'><p>if true, validate all ready_list entries; if false (default), validate
+only entries in ORIGINAL_READY_LIST</p></div>
       
     </li>
   
@@ -699,11 +890,19 @@ validity and reset the lists.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if all checked items are valid, false otherwise</p></div>
+        <div class='inline'><p>true if checked and all relevant items are valid; false if not checked or
+an item is missing</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#checked%3F-class_method" title="Lich::Gemstone::ReadyList.checked? (method)">checked?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -711,28 +910,28 @@ validity and reset the lists.</p>
       <pre class="lines">
 
 
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84</pre>
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 73</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/readylist.rb', line 119</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_valid?'>valid?</span><span class='lparen'>(</span><span class='label'>all:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='comment'># check if existing ready items are valid or not
 </span>  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_checked?'>checked?</span>
   <span class='ivar'>@ready_list</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span>
     <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_all'>all</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="#ORIGINAL_READY_LIST-constant" title="Lich::Gemstone::ReadyList::ORIGINAL_READY_LIST (constant)">ORIGINAL_READY_LIST</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
-    <span class='kw'>unless</span> <span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='symbol'>:wand</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_inv'>inv</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:id</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_containers'>containers</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:id</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='symbol'>:wand</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_inv'>inv</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:id</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_containers'>containers</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:id</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_eql?'>eql?</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
       <span class='ivar'>@checked</span> <span class='op'>=</span> <span class='kw'>false</span>
       <span class='kw'>return</span> <span class='kw'>false</span>
     <span class='kw'>end</span>
@@ -749,7 +948,7 @@ validity and reset the lists.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:37 2026 by
+  Generated on Wed Oct 28 05:27:26 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

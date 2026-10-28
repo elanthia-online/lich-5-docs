@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Common::WebSocket::Handshake
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Common::WebSocket::Handshake";
+  relpath = '../../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../../_index.html">Index (H)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../WebSocket.html" title="Lich::Common::WebSocket (module)">WebSocket</a></span></span>
+     &raquo; 
+    <span class="title">Handshake</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Common::WebSocket::Handshake
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/common/websocket/handshake.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Builds the RFC 6455 HTTP/1.1 Upgrade request and validates the
+server's response -- the opening handshake that precedes framed
+WebSocket traffic (see <span class='object_link'><a href="Frame.html" title="Lich::Common::WebSocket::Frame (module)">Frame</a></span>).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span>
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="MAGIC_GUID-constant" class="">MAGIC_GUID =
+          <div class="docstring">
+  <div class="discussion">
+    <p>RFC 6455 1.3: fixed GUID concatenated with the client's key before
+hashing to produce Sec-WebSocket-Accept.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>258EAFA5-E914-47DA-95CA-C5AB0DC85B11</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#accept_for-class_method" title="accept_for (class method)">.<strong>accept_for</strong>(key)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The Sec-WebSocket-Accept value a compliant server must answer with.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#generate_key-class_method" title="generate_key (class method)">.<strong>generate_key</strong>  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>A fresh, base64-encoded 16-byte Sec-WebSocket-Key.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#request-class_method" title="request (class method)">.<strong>request</strong>(host:, path:, key:, origin: nil, subprotocol: nil, user_agent: nil, extra_headers: {})  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Builds the raw HTTP request bytes for the opening handshake.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#validate_response-class_method" title="validate_response (class method)">.<strong>validate_response</strong>(raw_response, key:, subprotocol: nil)  &#x21d2; Hash{String =&gt; String} </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Parses and validates the server's handshake response.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="accept_for-class_method">
+  
+    .<strong>accept_for</strong>(key)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the Sec-WebSocket-Accept value a compliant server must answer with.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Sec-WebSocket-Key a request sent</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Sec-WebSocket-Accept value a compliant server must answer with</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+37
+38
+39</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/websocket/handshake.rb', line 37</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_accept_for'>accept_for</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+  <span class='const'>Base64</span><span class='period'>.</span><span class='id identifier rubyid_strict_encode64'>strict_encode64</span><span class='lparen'>(</span><span class='const'>Digest</span><span class='op'>::</span><span class='const'>SHA1</span><span class='period'>.</span><span class='id identifier rubyid_digest'>digest</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_key'>key</span><span class='embexpr_end'>}</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAGIC_GUID-constant" title="Lich::Common::WebSocket::Handshake::MAGIC_GUID (constant)">MAGIC_GUID</a></span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="generate_key-class_method">
+  
+    .<strong>generate_key</strong>  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns a fresh, base64-encoded 16-byte Sec-WebSocket-Key.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a fresh, base64-encoded 16-byte Sec-WebSocket-Key</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+31
+32
+33</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/websocket/handshake.rb', line 31</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_generate_key'>generate_key</span>
+  <span class='const'>Base64</span><span class='period'>.</span><span class='id identifier rubyid_strict_encode64'>strict_encode64</span><span class='lparen'>(</span><span class='const'>SecureRandom</span><span class='period'>.</span><span class='id identifier rubyid_bytes'>bytes</span><span class='lparen'>(</span><span class='int'>16</span><span class='rparen'>)</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="request-class_method">
+  
+    .<strong>request</strong>(host:, path:, key:, origin: nil, subprotocol: nil, user_agent: nil, extra_headers: {})  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Builds the raw HTTP request bytes for the opening handshake.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>host</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Host header value (the game host, not the shim path)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>path</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>request path, e.g. &quot;/shim/1234&quot;</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>this request's Sec-WebSocket-Key (see <span class='object_link'><a href="#generate_key-class_method" title="Lich::Common::WebSocket::Handshake.generate_key (method)">generate_key</a></span>)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>origin</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Origin header -- play.net's WAF has previously
+been observed rejecting requests missing a browser-like identity (see
+docs/connection/web-login-protocol-analysis.md); unconfirmed whether the shim itself checks it</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>subprotocol</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Sec-WebSocket-Protocol to request</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>user_agent</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>extra_headers</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>additional/overriding headers, applied last</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the full request, including the trailing blank line</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if <code>path</code>, a header name, or a header value contains a
+CR or LF -- none of the current callers can trigger this (host is remapped
+to a fixed *.play.net literal, everything else is a static default), but
+interpolating unvalidated values into raw request/header lines is
+request-smuggling-shaped regardless of how trusted today's callers happen to be</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/websocket/handshake.rb', line 58</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='label'>host:</span><span class='comma'>,</span> <span class='label'>path:</span><span class='comma'>,</span> <span class='label'>key:</span><span class='comma'>,</span> <span class='label'>origin:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>subprotocol:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>user_agent:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>extra_headers:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_reject_crlf!'>reject_crlf!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>request path</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_headers'>headers</span> <span class='op'>=</span> <span class='lbrace'>{</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Host</span><span class='tstring_end'>&quot;</span></span>                  <span class='op'>=&gt;</span> <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Upgrade</span><span class='tstring_end'>&quot;</span></span>               <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>websocket</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Connection</span><span class='tstring_end'>&quot;</span></span>            <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Upgrade</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Sec-WebSocket-Key</span><span class='tstring_end'>&quot;</span></span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid_key'>key</span><span class='comma'>,</span>
+    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Sec-WebSocket-Version</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>13</span><span class='tstring_end'>&quot;</span></span>
+  <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Origin</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_origin'>origin</span> <span class='kw'>if</span> <span class='id identifier rubyid_origin'>origin</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Sec-WebSocket-Protocol</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_subprotocol'>subprotocol</span> <span class='kw'>if</span> <span class='id identifier rubyid_subprotocol'>subprotocol</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>User-Agent</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_user_agent'>user_agent</span> <span class='kw'>if</span> <span class='id identifier rubyid_user_agent'>user_agent</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='period'>.</span><span class='id identifier rubyid_merge!'>merge!</span><span class='lparen'>(</span><span class='id identifier rubyid_extra_headers'>extra_headers</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span>
+    <span class='id identifier rubyid_reject_crlf!'>reject_crlf!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> header name</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_reject_crlf!'>reject_crlf!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> header</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GET </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'> HTTP/1.1</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_headers'>headers</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span> <span class='id identifier rubyid_lines'>lines</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_value'>value</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\r\n\r\n</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="validate_response-class_method">
+  
+    .<strong>validate_response</strong>(raw_response, key:, subprotocol: nil)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span> =&gt; <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>}</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Parses and validates the server's handshake response.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>raw_response</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the status line + headers block,
+WITHOUT the trailing &quot;\r\n\r\n&quot; or any bytes beyond it -- the
+caller (see <span class='object_link'><a href="Stream.html#connect-class_method" title="Lich::Common::WebSocket::Stream.connect (method)">Stream.connect</a></span>) is responsible for splitting the
+header block off from whatever frame bytes may follow it in the
+same read</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Sec-WebSocket-Key the matching request sent</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>subprotocol</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>if given, the response's
+negotiated Sec-WebSocket-Protocol must match exactly</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span> =&gt; <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>}</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>lower-cased response headers</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>on a non-101 status, a missing/mismatched Upgrade or
+Connection header, an accept-key mismatch, or an unexpected subprotocol</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/websocket/handshake.rb', line 103</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_validate_response'>validate_response</span><span class='lparen'>(</span><span class='id identifier rubyid_raw_response'>raw_response</span><span class='comma'>,</span> <span class='label'>key:</span><span class='comma'>,</span> <span class='label'>subprotocol:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='id identifier rubyid_raw_response'>raw_response</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\r\n</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_status_line'>status_line</span> <span class='op'>=</span> <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_shift'>shift</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handshake rejected: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_status_line'>status_line</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>(empty response)</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='id identifier rubyid_status_line'>status_line</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_status_line'>status_line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\AHTTP/1\.[01]\s+101\b</span><span class='regexp_end'>}</span></span>
+
+  <span class='id identifier rubyid_headers'>headers</span> <span class='op'>=</span> <span class='id identifier rubyid_parse_headers'>parse_headers</span><span class='lparen'>(</span><span class='id identifier rubyid_lines'>lines</span><span class='rparen'>)</span>
+
+  <span class='kw'>unless</span> <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>upgrade</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_downcase'>downcase</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>websocket</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handshake response missing &#39;Upgrade: websocket&#39; header: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_headers'>headers</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>connection</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='op'>&amp;.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='op'>&amp;.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>,\s*</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='op'>&amp;.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>upgrade</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handshake response missing &#39;Connection: Upgrade&#39; header: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_headers'>headers</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_expected_accept'>expected_accept</span> <span class='op'>=</span> <span class='id identifier rubyid_accept_for'>accept_for</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_actual_accept'>actual_accept</span> <span class='op'>=</span> <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sec-websocket-accept</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_actual_accept'>actual_accept</span> <span class='op'>!=</span> <span class='id identifier rubyid_expected_accept'>expected_accept</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Sec-WebSocket-Accept mismatch (expected </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_expected_accept'>expected_accept</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'>, got </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_actual_accept'>actual_accept</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='kw'>if</span> <span class='id identifier rubyid_subprotocol'>subprotocol</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sec-websocket-protocol</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='op'>!=</span> <span class='id identifier rubyid_subprotocol'>subprotocol</span>
+    <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="Handshake/Error.html" title="Lich::Common::WebSocket::Handshake::Error (class)">Error</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>server did not accept subprotocol </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_subprotocol'>subprotocol</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'> (got </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_headers'>headers</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sec-websocket-protocol</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_headers'>headers</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Wed Oct 28 05:27:16 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

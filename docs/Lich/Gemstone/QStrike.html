@@ -88,14 +88,48 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Module for handling QStrike combat mechanics.</p>
-<p>This module includes methods for calculating attack costs,
-managing combat settings, and executing attacks.</p>
+    <p>QStrike module calculates optimal QSTRIKE roundtime reduction
+while avoiding negative stamina. Accounts for weapon speeds,
+attack costs, and Striking Asp stance discounts.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Basic calculation</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_calculate'><span class='object_link'><a href="#calculate-class_method" title="Lich::Gemstone::QStrike.calculate (method)">calculate</a></span></span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='int'>1</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='symbol'>:cripple</span><span class='rparen'>)</span>
+<span class='comment'># =&gt; { seconds: 2, stamina_cost: 30, qstrike_cmd: &quot;qstrike -2&quot;, ... }</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Get just the command string</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_command'><span class='object_link'><a href="#command-class_method" title="Lich::Gemstone::QStrike.command (method)">command</a></span></span><span class='lparen'>(</span><span class='label'>attack_name:</span> <span class='symbol'>:tackle</span><span class='comma'>,</span> <span class='label'>reserve:</span> <span class='int'>5</span><span class='rparen'>)</span>
+<span class='comment'># =&gt; &quot;qstrike -3&quot;</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Execute qstrike + attack</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="#use-class_method" title="Lich::Gemstone::QStrike.use (method)">use</a></span></span><span class='lparen'>(</span><span class='label'>reduction:</span> <span class='op'>-</span><span class='int'>3</span><span class='comma'>,</span> <span class='label'>attack:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>cripple</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>target:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>kobold</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='comment'># Executes: put &quot;qstrike -3&quot; then CMan.use(&quot;cripple&quot;, &quot;kobold&quot;)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Absolute RT mode (reduce to 2 second RT)</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="#use-class_method" title="Lich::Gemstone::QStrike.use (method)">use</a></span></span><span class='lparen'>(</span><span class='label'>reduction:</span> <span class='int'>2</span><span class='comma'>,</span> <span class='label'>attack:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>attack</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>target:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>troll</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Set defaults</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_set_default'><span class='object_link'><a href="#set_default-class_method" title="Lich::Gemstone::QStrike.set_default (method)">set_default</a></span></span><span class='lparen'>(</span><span class='symbol'>:reserve</span><span class='comma'>,</span> <span class='int'>5</span><span class='rparen'>)</span>
+<span class='const'>QStrike</span><span class='period'>.</span><span class='id identifier rubyid_set_default'><span class='object_link'><a href="#set_default-class_method" title="Lich::Gemstone::QStrike.set_default (method)">set_default</a></span></span><span class='lparen'>(</span><span class='symbol'>:adaptive</span><span class='comma'>,</span> <span class='kw'>true</span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+
 
 </div>
   
@@ -129,20 +163,12 @@ Applied per-weapon to calculate Equipment Speed</p>
         <dt id="DEFAULT_MULTIPLIER-constant" class="">DEFAULT_MULTIPLIER =
           <div class="docstring">
   <div class="discussion">
-    <p>Default speed multiplier for weapons not categorized.</p>
+    <p>All others default to 1.0</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'>DEFAULT_MULTIPLIER</span> <span class='comment'># =&gt; 1.0</span></code></pre>
-    
-  </div>
-
 
 </div>
         </dt>
@@ -195,6 +221,39 @@ Rank 1 = 2/3 cost, Rank 2 = 1/2 cost, Rank 3 = 1/3 cost</p>
         </dt>
         <dd><pre class="code"><span class='int'>8</span></pre></dd>
       
+        <dt id="MSTRIKE_COST-constant" class="">MSTRIKE_COST =
+          <div class="docstring">
+  <div class="discussion">
+    <p>MSTRIKE's own stamina cost (Multi Opponent Combat/Multistrike):
+nothing outside its recovery period; during it, base + per * weapon
+speed, where a second weapon adds (its speed - 2, at least 0).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span>
+  <span class='label'>open:</span> <span class='lbrace'>{</span> <span class='label'>base:</span> <span class='int'>20</span><span class='comma'>,</span> <span class='label'>per_speed:</span> <span class='int'>3</span> <span class='rbrace'>}</span><span class='comma'>,</span>
+  <span class='label'>focused:</span> <span class='lbrace'>{</span> <span class='label'>base:</span> <span class='int'>30</span><span class='comma'>,</span> <span class='label'>per_speed:</span> <span class='int'>4</span> <span class='rbrace'>}</span>
+<span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="MSTRIKE_COOLDOWN-constant" class="">MSTRIKE_COOLDOWN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The cooldown Effects names while MSTRIKE is in its recovery period</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Multi-Strike</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
         <dt id="VALID_ACTIONS-constant" class="">VALID_ACTIONS =
           <div class="docstring">
   <div class="discussion">
@@ -216,21 +275,12 @@ Rank 1 = 2/3 cost, Rank 2 = 1/2 cost, Rank 3 = 1/3 cost</p>
         <dt id="DEFAULT_SETTINGS-constant" class="">DEFAULT_SETTINGS =
           <div class="docstring">
   <div class="discussion">
-    <p>Default settings
-Default settings for QStrike module.</p>
+    <p>Default settings</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'>DEFAULT_SETTINGS</span> <span class='comment'># =&gt; { reserve: 1, adaptive: false }</span></code></pre>
-    
-  </div>
-
 
 </div>
         </dt>
@@ -291,7 +341,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the QStrike reduction can be afforded with current stamina.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if any QSTRIKE reduction is affordable.</p></div></span>
   
 </li>
 
@@ -313,7 +363,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the base RT for the currently equipped weapon.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get base RT for current weapon setup Uses the primary weapon's base RT.</p></div></span>
   
 </li>
 
@@ -321,7 +371,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#build_attack_command-class_method" title="build_attack_command (class method)">.<strong>build_attack_command</strong>(attack, target = nil)  &#x21d2; Object </a>
+      <a href="#build_attack_command-class_method" title="build_attack_command (class method)">.<strong>build_attack_command</strong>(attack, target = nil)  &#x21d2; String </a>
     
 
     
@@ -335,7 +385,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Build attack command string.</p></div></span>
   
 </li>
 
@@ -357,7 +407,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Store cost in cache with current hand state.</p></div></span>
   
 </li>
 
@@ -379,7 +429,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the QStrike reduction based on provided parameters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate optimal QSTRIKE reduction that won't cause negative stamina.</p></div></span>
   
 </li>
 
@@ -401,7 +451,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Clear the cache (call if you know equipment changed).</p></div></span>
   
 </li>
 
@@ -423,7 +473,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Generates the QStrike command based on the current settings.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Convenience method: returns just the command string.</p></div></span>
   
 </li>
 
@@ -445,7 +495,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the cost for a given reduction in seconds.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate stamina cost for a specific reduction amount.</p></div></span>
   
 </li>
 
@@ -467,7 +517,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the cost per second for QStrike reduction.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate stamina cost per second of RT reduction Formula: (10 + primary_equipment_speed + (secondary_equipment_speed / 2)) * asp_multiplier.</p></div></span>
   
 </li>
 
@@ -475,7 +525,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#debug_calculation-class_method" title="debug_calculation (class method)">.<strong>debug_calculation</strong>  &#x21d2; Object </a>
+      <a href="#debug_calculation-class_method" title="debug_calculation (class method)">.<strong>debug_calculation</strong>  &#x21d2; void </a>
     
 
     
@@ -489,7 +539,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Display detailed calculation breakdown for debugging Shows all intermediate values used in cost calculation.</p></div></span>
   
 </li>
 
@@ -511,7 +561,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the value of a specific default setting.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get a default value.</p></div></span>
   
 </li>
 
@@ -533,7 +583,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads and returns the default settings for QStrike.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get current defaults.</p></div></span>
   
 </li>
 
@@ -541,7 +591,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#defaults=-class_method" title="defaults= (class method)">.<strong>defaults=</strong>(new_defaults)  &#x21d2; void </a>
+      <a href="#defaults=-class_method" title="defaults= (class method)">.<strong>defaults=</strong>(new_defaults)  &#x21d2; Object </a>
     
 
     
@@ -555,7 +605,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates the default settings with new values.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set all defaults at once.</p></div></span>
   
 </li>
 
@@ -577,7 +627,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if a module is defined.</p></div></span>
   
 </li>
 
@@ -585,7 +635,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#detect_attack_type-class_method" title="detect_attack_type (class method)">.<strong>detect_attack_type</strong>(name)  &#x21d2; Object </a>
+      <a href="#detect_attack_type-class_method" title="detect_attack_type (class method)">.<strong>detect_attack_type</strong>(name)  &#x21d2; Symbol </a>
     
 
     
@@ -599,7 +649,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Detect what type of attack this is.</p></div></span>
   
 </li>
 
@@ -607,7 +657,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#execute_attack-class_method" title="execute_attack (class method)">.<strong>execute_attack</strong>(attack, target = nil)  &#x21d2; void </a>
+      <a href="#execute_attack-class_method" title="execute_attack (class method)">.<strong>execute_attack</strong>(attack, target = nil)  &#x21d2; Object </a>
     
 
     
@@ -621,7 +671,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Executes the specified attack against a target.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Execute the attack command using appropriate method.</p></div></span>
   
 </li>
 
@@ -629,7 +679,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#execute_qstrike-class_method" title="execute_qstrike (class method)">.<strong>execute_qstrike</strong>(reduction)  &#x21d2; void </a>
+      <a href="#execute_qstrike-class_method" title="execute_qstrike (class method)">.<strong>execute_qstrike</strong>(reduction)  &#x21d2; Object </a>
     
 
     
@@ -643,7 +693,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Executes the QStrike command with the specified reduction.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Execute the qstrike command.</p></div></span>
   
 </li>
 
@@ -665,7 +715,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Determines the maximum number of seconds that can be afforded based on stamina.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Find maximum seconds of reduction affordable.</p></div></span>
   
 </li>
 
@@ -687,7 +737,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Finds the weapon stats for a given hand.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Find weapon stats using multiple lookup strategies Tries: noun, then extracts weapon type from full name.</p></div></span>
   
 </li>
 
@@ -695,7 +745,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#hand_cache_key-class_method" title="hand_cache_key (class method)">.<strong>hand_cache_key</strong>(hand)  &#x21d2; Object </a>
+      <a href="#hand_cache_key-class_method" title="hand_cache_key (class method)">.<strong>hand_cache_key</strong>(hand)  &#x21d2; String </a>
     
 
     
@@ -709,7 +759,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get a cache key for a hand (handles empty hands).</p></div></span>
   
 </li>
 
@@ -717,7 +767,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#load_settings-class_method" title="load_settings (class method)">.<strong>load_settings</strong>  &#x21d2; Object </a>
+      <a href="#load_settings-class_method" title="load_settings (class method)">.<strong>load_settings</strong>  &#x21d2; void </a>
     
 
     
@@ -731,7 +781,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Load settings from DB_Store (per-character).</p></div></span>
   
 </li>
 
@@ -753,7 +803,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Looks up the cost of an attack by its name.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Look up stamina cost for a CMan or Weapon technique, or for MSTRIKE (&quot;mstrike&quot; is an open strike, &quot;mstrike_focused&quot; / &quot;focused_mstrike&quot; a focused one).</p></div></span>
   
 </li>
 
@@ -775,7 +825,73 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Looks up the technique cost for a given name and type.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Generic technique cost lookup.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#mstrike_cost-class_method" title="mstrike_cost (class method)">.<strong>mstrike_cost</strong>(focused: false)  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>MSTRIKE's stamina cost right now: free outside its recovery period (the Multi-Strike cooldown), else MSTRIKE_COST by kind and weapon speed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#mstrike_recovering%3F-class_method" title="mstrike_recovering? (class method)">.<strong>mstrike_recovering?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Is MSTRIKE in its recovery period (its cooldown active)?.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#mstrike_weapon_speed-class_method" title="mstrike_weapon_speed (class method)">.<strong>mstrike_weapon_speed</strong>  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The weapon speed MSTRIKE's cost is priced on: the primary weapon's base speed, plus (offhand speed - 2, at least 0) for a second weapon; a shield or an empty hand adds nothing.</p></div></span>
   
 </li>
 
@@ -797,7 +913,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Normalizes the attack name for consistent lookup.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Normalize attack name for lookup.</p></div></span>
   
 </li>
 
@@ -819,7 +935,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the equipment speed for the primary weapon.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get primary hand equipment speed For ranged: LEFT hand is primary For melee: RIGHT hand is primary.</p></div></span>
   
 </li>
 
@@ -841,7 +957,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the currently equipped weapon is a ranged weapon.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Determine if using ranged weapon (bow/crossbow in LEFT hand).</p></div></span>
   
 </li>
 
@@ -863,7 +979,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the reduction needed to reach a target RT.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate reduction needed to achieve target absolute RT.</p></div></span>
   
 </li>
 
@@ -871,7 +987,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset_defaults-class_method" title="reset_defaults (class method)">.<strong>reset_defaults</strong>  &#x21d2; void </a>
+      <a href="#reset_defaults-class_method" title="reset_defaults (class method)">.<strong>reset_defaults</strong>  &#x21d2; Object </a>
     
 
     
@@ -885,7 +1001,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resets all default settings to their initial values.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset defaults to factory values.</p></div></span>
   
 </li>
 
@@ -893,7 +1009,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset_settings_cache-class_method" title="reset_settings_cache (class method)">.<strong>reset_settings_cache</strong>  &#x21d2; Object </a>
+      <a href="#reset_settings_cache-class_method" title="reset_settings_cache (class method)">.<strong>reset_settings_cache</strong>  &#x21d2; void </a>
     
 
     
@@ -907,7 +1023,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset settings loaded flag (for testing).</p></div></span>
   
 </li>
 
@@ -929,7 +1045,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the reduction value based on the input parameters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolve reduction value to actual seconds Handles :max, negative (reduce by N), and positive (target RT).</p></div></span>
   
 </li>
 
@@ -937,7 +1053,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#save_settings-class_method" title="save_settings (class method)">.<strong>save_settings</strong>  &#x21d2; Object </a>
+      <a href="#save_settings-class_method" title="save_settings (class method)">.<strong>save_settings</strong>  &#x21d2; void </a>
     
 
     
@@ -951,7 +1067,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Save settings to DB_Store (per-character).</p></div></span>
   
 </li>
 
@@ -973,7 +1089,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the equipment speed for the secondary weapon.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get secondary hand equipment speed For ranged: RIGHT hand is secondary For melee: LEFT hand is secondary Only weapons count - shields and non-weapons = 0.</p></div></span>
   
 </li>
 
@@ -981,7 +1097,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#set_default-class_method" title="set_default (class method)">.<strong>set_default</strong>(key, value)  &#x21d2; void </a>
+      <a href="#set_default-class_method" title="set_default (class method)">.<strong>set_default</strong>(key, value)  &#x21d2; Object </a>
     
 
     
@@ -995,7 +1111,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets a specific default setting to a new value.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Set a single default value (persists to DB_Store for per-character storage).</p></div></span>
   
 </li>
 
@@ -1017,7 +1133,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the Striking Asp buff is currently active.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if Striking Asp stance is active.</p></div></span>
   
 </li>
 
@@ -1039,7 +1155,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the multiplier for the Striking Asp buff based on its rank.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get the cost multiplier based on Striking Asp status.</p></div></span>
   
 </li>
 
@@ -1047,7 +1163,7 @@ Default settings for QStrike module.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#striking_asp_rank-class_method" title="striking_asp_rank (class method)">.<strong>striking_asp_rank</strong>  &#x21d2; Object </a>
+      <a href="#striking_asp_rank-class_method" title="striking_asp_rank (class method)">.<strong>striking_asp_rank</strong>  &#x21d2; Integer </a>
     
 
     
@@ -1061,7 +1177,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get Striking Asp rank (1, 2, or 3).</p></div></span>
   
 </li>
 
@@ -1083,7 +1199,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Executes a QStrike reduction and attack.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Execute QSTRIKE with an attack command.</p></div></span>
   
 </li>
 
@@ -1105,7 +1221,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if cached value is still valid (hands haven't changed).</p></div></span>
   
 </li>
 
@@ -1127,7 +1243,7 @@ Default settings for QStrike module.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the speed for a given weapon based on its stats.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get weapon stats and equipment speed for a hand.</p></div></span>
   
 </li>
 
@@ -1153,7 +1269,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the QStrike reduction can be afforded with current stamina.</p>
+    <p>Check if any QSTRIKE reduction is affordable</p>
 
   </div>
 </div>
@@ -1173,7 +1289,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina reserve to consider.</p></div>
+        <div class='inline'><p>Minimum stamina to keep (uses default if nil)</p></div>
       
     </li>
   
@@ -1189,7 +1305,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost of the attack.</p></div>
+        <div class='inline'><p>Stamina cost of attack</p></div>
       
     </li>
   
@@ -1198,14 +1314,14 @@ Default settings for QStrike module.</p>
         <span class='name'>attack_name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to look up.</p></div>
+        <div class='inline'><p>Name of attack to look up cost</p></div>
       
     </li>
   
@@ -1221,7 +1337,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current RT of the attack.</p></div>
+        <div class='inline'><p>The attack's actual roundtime (caps max useful reduction)</p></div>
       
     </li>
   
@@ -1238,7 +1354,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the reduction can be afforded, false otherwise.</p></div>
+        <div class='inline'><p>true if at least 1 second of reduction is affordable</p></div>
       
     </li>
   
@@ -1250,13 +1366,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-221
-222
-223
-224</pre>
+249
+250
+251
+252</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 221</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 249</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_affordable?'>affordable?</span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_cost:</span> <span class='int'>0</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_rt:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_calculate'>calculate</span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='id identifier rubyid_reserve'>reserve</span><span class='comma'>,</span> <span class='label'>attack_cost:</span> <span class='id identifier rubyid_attack_cost'>attack_cost</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='id identifier rubyid_attack_name'>attack_name</span><span class='comma'>,</span> <span class='label'>attack_rt:</span> <span class='id identifier rubyid_attack_rt'>attack_rt</span><span class='rparen'>)</span>
@@ -1278,7 +1394,8 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the base RT for the currently equipped weapon.</p>
+    <p>Get base RT for current weapon setup
+Uses the primary weapon's base RT</p>
 
   </div>
 </div>
@@ -1295,7 +1412,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the base RT of the weapon.</p></div>
+        <div class='inline'><p>Base roundtime in seconds</p></div>
       
     </li>
   
@@ -1307,13 +1424,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-318
-319
-320
-321</pre>
+360
+361
+362
+363</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 318</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 360</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_base_rt'>base_rt</span>
   <span class='id identifier rubyid_hand'>hand</span> <span class='op'>=</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span> <span class='op'>?</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span> <span class='op'>:</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span>
@@ -1327,28 +1444,87 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="build_attack_command-class_method">
   
-    .<strong>build_attack_command</strong>(attack, target = nil)  &#x21d2; <tt>Object</tt> 
+    .<strong>build_attack_command</strong>(attack, target = nil)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Build attack command string</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>attack</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Attack command</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>target</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>Target</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Full command string</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-747
-748
-749
-750
-751
-752
-753</pre>
+862
+863
+864
+865
+866
+867
+868</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 747</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 862</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_build_attack_command'>build_attack_command</span><span class='lparen'>(</span><span class='id identifier rubyid_attack'>attack</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_target'>target</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_target'>target</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -1371,22 +1547,49 @@ Default settings for QStrike module.</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Store cost in cache with current hand state</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>cost</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The calculated cost to cache</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-567
-568
-569
-570
-571
-572
-573</pre>
+629
+630
+631
+632
+633
+634
+635</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 567</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 629</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cache_cost'>cache_cost</span><span class='lparen'>(</span><span class='id identifier rubyid_cost'>cost</span><span class='rparen'>)</span>
   <span class='ivar'>@cached_cost</span> <span class='op'>=</span> <span class='id identifier rubyid_cost'>cost</span>
@@ -1411,7 +1614,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the QStrike reduction based on provided parameters.</p>
+    <p>Calculate optimal QSTRIKE reduction that won't cause negative stamina</p>
 
   </div>
 </div>
@@ -1431,7 +1634,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina reserve to consider.</p></div>
+        <div class='inline'><p>Minimum stamina to keep after QSTRIKE + attack (uses default if nil)</p></div>
       
     </li>
   
@@ -1447,7 +1650,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost of the attack.</p></div>
+        <div class='inline'><p>Stamina cost of attack being performed (default: 0)</p></div>
       
     </li>
   
@@ -1456,14 +1659,14 @@ Default settings for QStrike module.</p>
         <span class='name'>attack_name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to look up.</p></div>
+        <div class='inline'><p>Name of CMan/Weapon technique to look up cost (optional)</p></div>
       
     </li>
   
@@ -1479,7 +1682,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current RT of the attack.</p></div>
+        <div class='inline'><p>The attack's actual roundtime (caps max useful reduction)</p></div>
       
     </li>
   
@@ -1496,7 +1699,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash containing the calculated values.</p></div>
+        <div class='inline'><p>Result hash with :seconds, :stamina_cost, :qstrike_cmd, etc.</p></div>
       
     </li>
   
@@ -1508,34 +1711,6 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
 169
 170
 171
@@ -1568,10 +1743,38 @@ Default settings for QStrike module.</p>
 198
 199
 200
-201</pre>
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 141</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_calculate'>calculate</span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_cost:</span> <span class='int'>0</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_rt:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_reserve'>reserve</span> <span class='op'>||=</span> <span class='id identifier rubyid_default'>default</span><span class='lparen'>(</span><span class='symbol'>:reserve</span><span class='rparen'>)</span>
@@ -1648,20 +1851,29 @@ Default settings for QStrike module.</p>
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Clear the cache (call if you know equipment changed)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-575
-576
-577
-578
-579</pre>
+638
+639
+640
+641
+642</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 575</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 638</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear_cache'>clear_cache</span>
   <span class='ivar'>@cached_cost</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -1684,7 +1896,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Generates the QStrike command based on the current settings.</p>
+    <p>Convenience method: returns just the command string</p>
 
   </div>
 </div>
@@ -1704,7 +1916,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina reserve to consider.</p></div>
+        <div class='inline'><p>Minimum stamina to keep (uses default if nil)</p></div>
       
     </li>
   
@@ -1720,7 +1932,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost of the attack.</p></div>
+        <div class='inline'><p>Stamina cost of attack</p></div>
       
     </li>
   
@@ -1729,14 +1941,14 @@ Default settings for QStrike module.</p>
         <span class='name'>attack_name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to look up.</p></div>
+        <div class='inline'><p>Name of attack to look up cost</p></div>
       
     </li>
   
@@ -1752,7 +1964,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current RT of the attack.</p></div>
+        <div class='inline'><p>The attack's actual roundtime (caps max useful reduction)</p></div>
       
     </li>
   
@@ -1769,7 +1981,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the generated QStrike command.</p></div>
+        <div class='inline'><p>&quot;qstrike -N&quot; or nil if can't afford any reduction</p></div>
       
     </li>
   
@@ -1781,12 +1993,12 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-210
-211
-212</pre>
+238
+239
+240</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 210</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 238</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_command'>command</span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_cost:</span> <span class='int'>0</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attack_rt:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_calculate'>calculate</span><span class='lparen'>(</span><span class='label'>reserve:</span> <span class='id identifier rubyid_reserve'>reserve</span><span class='comma'>,</span> <span class='label'>attack_cost:</span> <span class='id identifier rubyid_attack_cost'>attack_cost</span><span class='comma'>,</span> <span class='label'>attack_name:</span> <span class='id identifier rubyid_attack_name'>attack_name</span><span class='comma'>,</span> <span class='label'>attack_rt:</span> <span class='id identifier rubyid_attack_rt'>attack_rt</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:qstrike_cmd</span><span class='rbracket'>]</span>
@@ -1807,7 +2019,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the cost for a given reduction in seconds.</p>
+    <p>Calculate stamina cost for a specific reduction amount</p>
 
   </div>
 </div>
@@ -1825,7 +2037,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the number of seconds to reduce.</p></div>
+        <div class='inline'><p>Seconds of RT reduction</p></div>
       
     </li>
   
@@ -1842,7 +2054,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost associated with the reduction.</p></div>
+        <div class='inline'><p>Stamina cost</p></div>
       
     </li>
   
@@ -1854,14 +2066,14 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-309
-310
-311
-312
-313</pre>
+350
+351
+352
+353
+354</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 309</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 350</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cost_for_reduction'>cost_for_reduction</span><span class='lparen'>(</span><span class='id identifier rubyid_seconds'>seconds</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_seconds'>seconds</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_seconds'>seconds</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -1884,7 +2096,8 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the cost per second for QStrike reduction.</p>
+    <p>Calculate stamina cost per second of RT reduction
+Formula: (10 + primary_equipment_speed + (secondary_equipment_speed / 2)) * asp_multiplier</p>
 
   </div>
 </div>
@@ -1901,7 +2114,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost per second for reduction.</p></div>
+        <div class='inline'><p>Cost per second (with Striking Asp discount if active)</p></div>
       
     </li>
   
@@ -1913,27 +2126,27 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444
-445
-446
-447</pre>
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 430</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 479</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cost_per_second_reduction'>cost_per_second_reduction</span>
   <span class='comment'># Check memoization cache
@@ -1961,71 +2174,28 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="debug_calculation-class_method">
   
-    .<strong>debug_calculation</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>debug_calculation</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Display detailed calculation breakdown for debugging
+Shows all intermediate values used in cost calculation</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-449
-450
-451
-452
-453
-454
-455
-456
-457
-458
-459
-460
-461
-462
-463
-464
-465
-466
-467
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477
-478
-479
-480
-481
-482
-483
-484
-485
-486
-487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
-498
-499
-500
-501
 502
 503
 504
@@ -2039,10 +2209,63 @@ Default settings for QStrike module.</p>
 512
 513
 514
-515</pre>
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 449</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 502</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_debug_calculation'>debug_calculation</span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=== QStrike Debug Calculation ===</span><span class='tstring_end'>&quot;</span></span>
@@ -2127,7 +2350,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the value of a specific default setting.</p>
+    <p>Get a default value</p>
 
   </div>
 </div>
@@ -2145,7 +2368,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the setting key to retrieve.</p></div>
+        <div class='inline'><p>Setting name</p></div>
       
     </li>
   
@@ -2162,7 +2385,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the value of the specified setting.</p></div>
+        <div class='inline'><p>Current value</p></div>
       
     </li>
   
@@ -2174,13 +2397,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-94
-95
-96
-97</pre>
+117
+118
+119
+120</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 94</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 117</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_default'>default</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_load_settings'>load_settings</span>
@@ -2202,7 +2425,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Loads and returns the default settings for QStrike.</p>
+    <p>Get current defaults</p>
 
   </div>
 </div>
@@ -2219,7 +2442,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the current default settings.</p></div>
+        <div class='inline'><p>Current default settings</p></div>
       
     </li>
   
@@ -2231,16 +2454,16 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-61
-62
-63
-64
-65
-66
-67</pre>
+89
+90
+91
+92
+93
+94
+95</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 61</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 89</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_defaults'>defaults</span>
   <span class='id identifier rubyid_load_settings'>load_settings</span>
@@ -2257,7 +2480,7 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="defaults=-class_method">
   
-    .<strong>defaults=</strong>(new_defaults)  &#x21d2; <tt>void</tt> 
+    .<strong>defaults=</strong>(new_defaults)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2265,7 +2488,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates the default settings with new values.</p>
+    <p>Set all defaults at once</p>
 
   </div>
 </div>
@@ -2283,7 +2506,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>new settings to apply.</p></div>
+        <div class='inline'><p>New default values</p></div>
       
     </li>
   
@@ -2296,14 +2519,14 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-73
-74
-75
-76
-77</pre>
+99
+100
+101
+102
+103</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 73</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 99</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_defaults='>defaults=</span><span class='lparen'>(</span><span class='id identifier rubyid_new_defaults'>new_defaults</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_load_settings'>load_settings</span>
@@ -2326,12 +2549,30 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if a module is defined</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>mod_name</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Module name</p></div>
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -2352,14 +2593,14 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-629
-630
-631
-632
-633</pre>
+735
+736
+737
+738
+739</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 629</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 735</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_defined_module?'>defined_module?</span><span class='lparen'>(</span><span class='id identifier rubyid_mod_name'>mod_name</span><span class='rparen'>)</span>
   <span class='const'>Object</span><span class='period'>.</span><span class='id identifier rubyid_const_defined?'>const_defined?</span><span class='lparen'>(</span><span class='id identifier rubyid_mod_name'>mod_name</span><span class='rparen'>)</span>
@@ -2374,36 +2615,79 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="detect_attack_type-class_method">
   
-    .<strong>detect_attack_type</strong>(name)  &#x21d2; <tt>Object</tt> 
+    .<strong>detect_attack_type</strong>(name)  &#x21d2; <tt>Symbol</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Detect what type of attack this is</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Normalized attack name</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>:cman, :weapon, :shield, or :basic</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-731
-732
-733
-734
-735
-736
-737
-738
-739
-740
-741
-742
-743
-744
-745</pre>
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 731</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 841</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detect_attack_type'>detect_attack_type</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#TECHNIQUE_MODULES-constant" title="Lich::Gemstone::QStrike::TECHNIQUE_MODULES (constant)">TECHNIQUE_MODULES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_mod_name'>mod_name</span><span class='comma'>,</span> <span class='id identifier rubyid_class_var'>class_var</span><span class='comma'>,</span> <span class='id identifier rubyid_type'>type</span><span class='op'>|</span>
@@ -2428,7 +2712,7 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="execute_attack-class_method">
   
-    .<strong>execute_attack</strong>(attack, target = nil)  &#x21d2; <tt>void</tt> 
+    .<strong>execute_attack</strong>(attack, target = nil)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2436,7 +2720,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Executes the specified attack against a target.</p>
+    <p>Execute the attack command using appropriate method</p>
 
   </div>
 </div>
@@ -2449,12 +2733,12 @@ Default settings for QStrike module.</p>
         <span class='name'>attack</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to execute.</p></div>
+        <div class='inline'><p>Attack name or command</p></div>
       
     </li>
   
@@ -2470,7 +2754,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the target of the attack.</p></div>
+        <div class='inline'><p>Target for the attack</p></div>
       
     </li>
   
@@ -2483,40 +2767,40 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-699
-700
-701
-702
-703
-704
-705
-706
-707
-708
-709
-710
-711
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727
-728
-729</pre>
+805
+806
+807
+808
+809
+810
+811
+812
+813
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833
+834
+835</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 699</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 805</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute_attack'>execute_attack</span><span class='lparen'>(</span><span class='id identifier rubyid_attack'>attack</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_attack_str'>attack_str</span> <span class='op'>=</span> <span class='id identifier rubyid_attack'>attack</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
@@ -2528,7 +2812,7 @@ Default settings for QStrike module.</p>
   <span class='kw'>case</span> <span class='id identifier rubyid_attack_type'>attack_type</span>
   <span class='kw'>when</span> <span class='symbol'>:cman</span>
     <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="CMan.html" title="Lich::Gemstone::CMan (module)">CMan</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="CMan.html" title="Lich::Gemstone::CMan (module)">CMan</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:use</span><span class='rparen'>)</span>
-      <span class='const'><span class='object_link'><a href="CMan.html" title="Lich::Gemstone::CMan (module)">CMan</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="CMan.html#use-class_method" title="Lich::Gemstone::CMan.use (method)">use</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_normalized'>normalized</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
+      <span class='const'><span class='object_link'><a href="CMan.html" title="Lich::Gemstone::CMan (module)">CMan</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="PSMS/Technique.html#use-instance_method" title="Lich::Gemstone::PSMS::Technique#use (method)">use</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_normalized'>normalized</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
     <span class='kw'>else</span>
       <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='id identifier rubyid_build_attack_command'>build_attack_command</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_str'>attack_str</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
     <span class='kw'>end</span>
@@ -2540,7 +2824,7 @@ Default settings for QStrike module.</p>
     <span class='kw'>end</span>
   <span class='kw'>when</span> <span class='symbol'>:shield</span>
     <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Shield.html" title="Lich::Gemstone::Shield (module)">Shield</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="Shield.html" title="Lich::Gemstone::Shield (module)">Shield</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:use</span><span class='rparen'>)</span>
-      <span class='const'><span class='object_link'><a href="Shield.html" title="Lich::Gemstone::Shield (module)">Shield</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="Shield.html#use-class_method" title="Lich::Gemstone::Shield.use (method)">use</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_normalized'>normalized</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
+      <span class='const'><span class='object_link'><a href="Shield.html" title="Lich::Gemstone::Shield (module)">Shield</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'><span class='object_link'><a href="PSMS/Technique.html#use-instance_method" title="Lich::Gemstone::PSMS::Technique#use (method)">use</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_normalized'>normalized</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
     <span class='kw'>else</span>
       <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='id identifier rubyid_build_attack_command'>build_attack_command</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_str'>attack_str</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
     <span class='kw'>end</span>
@@ -2557,7 +2841,7 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="execute_qstrike-class_method">
   
-    .<strong>execute_qstrike</strong>(reduction)  &#x21d2; <tt>void</tt> 
+    .<strong>execute_qstrike</strong>(reduction)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -2565,7 +2849,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Executes the QStrike command with the specified reduction.</p>
+    <p>Execute the qstrike command</p>
 
   </div>
 </div>
@@ -2583,7 +2867,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the amount of reduction to apply.</p></div>
+        <div class='inline'><p>Seconds of reduction</p></div>
       
     </li>
   
@@ -2596,14 +2880,14 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-688
-689
-690
-691
-692</pre>
+795
+796
+797
+798
+799</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 688</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 795</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute_qstrike'>execute_qstrike</span><span class='lparen'>(</span><span class='id identifier rubyid_reduction'>reduction</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_reduction'>reduction</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_reduction'>reduction</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -2626,7 +2910,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Determines the maximum number of seconds that can be afforded based on stamina.</p>
+    <p>Find maximum seconds of reduction affordable</p>
 
   </div>
 </div>
@@ -2644,7 +2928,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the available stamina to use.</p></div>
+        <div class='inline'><p>Stamina available for QSTRIKE</p></div>
       
     </li>
   
@@ -2658,7 +2942,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost per second of reduction.</p></div>
+        <div class='inline'><p>Cost per second of reduction</p></div>
       
     </li>
   
@@ -2675,7 +2959,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the maximum seconds that can be afforded.</p></div>
+        <div class='inline'><p>Max seconds (0 if can't afford any)</p></div>
       
     </li>
   
@@ -2687,18 +2971,18 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-640
-641
-642
-643
-644
-645
-646
-647
-648</pre>
+746
+747
+748
+749
+750
+751
+752
+753
+754</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 640</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 746</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_max_seconds'>find_max_seconds</span><span class='lparen'>(</span><span class='id identifier rubyid_available_stamina'>available_stamina</span><span class='comma'>,</span> <span class='id identifier rubyid_cost_per_second'>cost_per_second</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_cost_per_second'>cost_per_second</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -2725,7 +3009,8 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Finds the weapon stats for a given hand.</p>
+    <p>Find weapon stats using multiple lookup strategies
+Tries: noun, then extracts weapon type from full name</p>
 
   </div>
 </div>
@@ -2738,12 +3023,12 @@ Default settings for QStrike module.</p>
         <span class='name'>hand</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt>GameObj</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the weapon object to analyze.</p></div>
+        <div class='inline'><p>The hand to check</p></div>
       
     </li>
   
@@ -2760,7 +3045,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the weapon stats or nil if not found.</p></div>
+        <div class='inline'><p>WeaponStats data or nil if not found</p></div>
       
     </li>
   
@@ -2772,45 +3057,45 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-339
-340
-341
-342
-343
-344
-345
-346
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
-367
-368
-369
-370
-371
-372
-373
-374</pre>
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 339</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 383</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_weapon_stats'>find_weapon_stats</span><span class='lparen'>(</span><span class='id identifier rubyid_hand'>hand</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_hand'>hand</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2856,28 +3141,71 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="hand_cache_key-class_method">
   
-    .<strong>hand_cache_key</strong>(hand)  &#x21d2; <tt>Object</tt> 
+    .<strong>hand_cache_key</strong>(hand)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get a cache key for a hand (handles empty hands)</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>hand</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>The hand object</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Cache key representing this hand state</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-548
-549
-550
-551
-552
-553
-554</pre>
+606
+607
+608
+609
+610
+611
+612</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 548</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_hand_cache_key'>hand_cache_key</span><span class='lparen'>(</span><span class='id identifier rubyid_hand'>hand</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>empty</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_hand'>hand</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2894,34 +3222,43 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="load_settings-class_method">
   
-    .<strong>load_settings</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>load_settings</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Load settings from DB_Store (per-character)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119</pre>
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 107</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 130</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_settings'>load_settings</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@settings_loaded</span>
@@ -2952,7 +3289,9 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Looks up the cost of an attack by its name.</p>
+    <p>Look up stamina cost for a CMan or Weapon technique, or for MSTRIKE
+(&quot;mstrike&quot; is an open strike, &quot;mstrike_focused&quot; / &quot;focused_mstrike&quot;
+a focused one)</p>
 
   </div>
 </div>
@@ -2965,12 +3304,12 @@ Default settings for QStrike module.</p>
         <span class='name'>name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to look up.</p></div>
+        <div class='inline'><p>Attack name</p></div>
       
     </li>
   
@@ -2987,7 +3326,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina cost of the attack.</p></div>
+        <div class='inline'><p>Stamina cost, or 0 if not found</p></div>
       
     </li>
   
@@ -2999,29 +3338,31 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-594
-595
-596
-597
-598
-599
-600
-601
-602
-603
-604
-605
-606
-607
-608
-609
-610</pre>
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 594</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 697</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_lookup_attack_cost'>lookup_attack_cost</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[\s-]+</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_mstrike_cost'>mstrike_cost</span><span class='lparen'>(</span><span class='label'>focused:</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>focus</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\Amstrike(?:_|\z)|_mstrike\z</span><span class='regexp_end'>/</span></span>
 
   <span class='comment'># Handle explicit type prefixes for disambiguation
 </span>  <span class='const'><span class='object_link'><a href="#TECHNIQUE_MODULES-constant" title="Lich::Gemstone::QStrike::TECHNIQUE_MODULES (constant)">TECHNIQUE_MODULES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid_type'>type</span><span class='op'>|</span>
@@ -3053,7 +3394,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Looks up the technique cost for a given name and type.</p>
+    <p>Generic technique cost lookup</p>
 
   </div>
 </div>
@@ -3071,7 +3412,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the technique to look up.</p></div>
+        <div class='inline'><p>Normalized attack name</p></div>
       
     </li>
   
@@ -3085,7 +3426,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the type of technique (e.g., :cman, :weapon).</p></div>
+        <div class='inline'><p>Technique type (:cman, :weapon, :shield)</p></div>
       
     </li>
   
@@ -3102,7 +3443,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina cost of the technique.</p></div>
+        <div class='inline'><p>Stamina cost, or 0 if not found</p></div>
       
     </li>
   
@@ -3114,20 +3455,20 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-617
-618
-619
-620
-621
-622
-623
-624
-625
-626
-627</pre>
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 617</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 720</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_lookup_technique_cost'>lookup_technique_cost</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_type'>type</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_mod_name'>mod_name</span><span class='comma'>,</span> <span class='id identifier rubyid_class_var'>class_var</span><span class='comma'>,</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#TECHNIQUE_MODULES-constant" title="Lich::Gemstone::QStrike::TECHNIQUE_MODULES (constant)">TECHNIQUE_MODULES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid_t'>t</span><span class='op'>|</span> <span class='id identifier rubyid_t'>t</span> <span class='op'>==</span> <span class='id identifier rubyid_type'>type</span> <span class='rbrace'>}</span>
@@ -3146,6 +3487,209 @@ Default settings for QStrike module.</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="mstrike_cost-class_method">
+  
+    .<strong>mstrike_cost</strong>(focused: false)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>MSTRIKE's stamina cost right now: free outside its recovery period
+(the Multi-Strike cooldown), else MSTRIKE_COST by kind and weapon
+speed. Not in the technique tables, so priced here.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>focused</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>a focused (single target) strike, else open</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Stamina cost</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+661
+662
+663
+664
+665
+666</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 661</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_mstrike_cost'>mstrike_cost</span><span class='lparen'>(</span><span class='label'>focused:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>unless</span> <span class='id identifier rubyid_mstrike_recovering?'>mstrike_recovering?</span>
+
+  <span class='id identifier rubyid_cost'>cost</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#MSTRIKE_COST-constant" title="Lich::Gemstone::QStrike::MSTRIKE_COST (constant)">MSTRIKE_COST</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_focused'>focused</span> <span class='op'>?</span> <span class='symbol'>:focused</span> <span class='op'>:</span> <span class='symbol'>:open</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_cost'>cost</span><span class='lbracket'>[</span><span class='symbol'>:base</span><span class='rbracket'>]</span> <span class='op'>+</span> <span class='id identifier rubyid_cost'>cost</span><span class='lbracket'>[</span><span class='symbol'>:per_speed</span><span class='rbracket'>]</span> <span class='op'>*</span> <span class='id identifier rubyid_mstrike_weapon_speed'>mstrike_weapon_speed</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="mstrike_recovering?-class_method">
+  
+    .<strong>mstrike_recovering?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Is MSTRIKE in its recovery period (its cooldown active)?</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+671
+672
+673
+674
+675</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 671</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_mstrike_recovering?'>mstrike_recovering?</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Cooldowns-constant" title="Lich::Gemstone::Effects::Cooldowns (constant)">Cooldowns</a></span></span><span class='rparen'>)</span>
+
+  <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Cooldowns-constant" title="Lich::Gemstone::Effects::Cooldowns (constant)">Cooldowns</a></span></span><span class='period'>.</span><span class='id identifier rubyid_active?'>active?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#MSTRIKE_COOLDOWN-constant" title="Lich::Gemstone::QStrike::MSTRIKE_COOLDOWN (constant)">MSTRIKE_COOLDOWN</a></span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="mstrike_weapon_speed-class_method">
+  
+    .<strong>mstrike_weapon_speed</strong>  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The weapon speed MSTRIKE's cost is priced on: the primary weapon's
+base speed, plus (offhand speed - 2, at least 0) for a second
+weapon; a shield or an empty hand adds nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+682
+683
+684
+685
+686
+687
+688
+689</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 682</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_mstrike_weapon_speed'>mstrike_weapon_speed</span>
+  <span class='id identifier rubyid_primary'>primary</span> <span class='op'>=</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span> <span class='op'>?</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span> <span class='op'>:</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span>
+  <span class='id identifier rubyid_offhand'>offhand</span> <span class='op'>=</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span> <span class='op'>?</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span> <span class='op'>:</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span>
+  <span class='id identifier rubyid_speed'>speed</span> <span class='op'>=</span> <span class='id identifier rubyid_weapon_speed_for'>weapon_speed_for</span><span class='lparen'>(</span><span class='id identifier rubyid_primary'>primary</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:base_rt</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_off'>off</span> <span class='op'>=</span> <span class='id identifier rubyid_weapon_speed_for'>weapon_speed_for</span><span class='lparen'>(</span><span class='id identifier rubyid_offhand'>offhand</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:base_rt</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_speed'>speed</span> <span class='op'>+=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_off'>off</span> <span class='op'>-</span> <span class='int'>2</span><span class='comma'>,</span> <span class='int'>0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_max'>max</span> <span class='kw'>if</span> <span class='id identifier rubyid_off'>off</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+  <span class='id identifier rubyid_speed'>speed</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="normalize_attack_name-class_method">
   
     .<strong>normalize_attack_name</strong>(attack)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
@@ -3156,7 +3700,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Normalizes the attack name for consistent lookup.</p>
+    <p>Normalize attack name for lookup</p>
 
   </div>
 </div>
@@ -3169,12 +3713,12 @@ Default settings for QStrike module.</p>
         <span class='name'>attack</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the attack name to normalize.</p></div>
+        <div class='inline'><p>Attack name or command</p></div>
       
     </li>
   
@@ -3191,7 +3735,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the normalized attack name.</p></div>
+        <div class='inline'><p>Normalized name</p></div>
       
     </li>
   
@@ -3203,12 +3747,12 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-680
-681
-682</pre>
+788
+789
+790</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 680</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 788</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_attack_name'>normalize_attack_name</span><span class='lparen'>(</span><span class='id identifier rubyid_attack'>attack</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_attack'>attack</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[\s-]+</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[^a-z0-9_]</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -3229,7 +3773,9 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the equipment speed for the primary weapon.</p>
+    <p>Get primary hand equipment speed
+For ranged: LEFT hand is primary
+For melee: RIGHT hand is primary</p>
 
   </div>
 </div>
@@ -3246,7 +3792,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the equipment speed of the primary weapon.</p></div>
+        <div class='inline'><p>Equipment speed (base_rt * multiplier)</p></div>
       
     </li>
   
@@ -3258,13 +3804,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-414
-415
-416
-417</pre>
+459
+460
+461
+462</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 414</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 459</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_primary_equipment_speed'>primary_equipment_speed</span>
   <span class='id identifier rubyid_hand'>hand</span> <span class='op'>=</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span> <span class='op'>?</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span> <span class='op'>:</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span>
@@ -3286,7 +3832,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the currently equipped weapon is a ranged weapon.</p>
+    <p>Determine if using ranged weapon (bow/crossbow in LEFT hand)</p>
 
   </div>
 </div>
@@ -3303,7 +3849,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the weapon is ranged, false otherwise.</p></div>
+        <div class='inline'><p>true if ranged weapon detected in left hand</p></div>
       
     </li>
   
@@ -3315,16 +3861,16 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-379
-380
-381
-382
-383
-384
-385</pre>
+422
+423
+424
+425
+426
+427
+428</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 379</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 422</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span>
   <span class='id identifier rubyid_left'>left</span> <span class='op'>=</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span>
@@ -3349,7 +3895,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the reduction needed to reach a target RT.</p>
+    <p>Calculate reduction needed to achieve target absolute RT</p>
 
   </div>
 </div>
@@ -3367,7 +3913,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the target RT to achieve.</p></div>
+        <div class='inline'><p>Desired final roundtime</p></div>
       
     </li>
   
@@ -3384,7 +3930,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the calculated reduction.</p></div>
+        <div class='inline'><p>Seconds of reduction needed (0 if target &gt;= base)</p></div>
       
     </li>
   
@@ -3396,15 +3942,15 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-327
-328
-329
-330
-331
-332</pre>
+369
+370
+371
+372
+373
+374</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 327</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 369</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reduction_for_target_rt'>reduction_for_target_rt</span><span class='lparen'>(</span><span class='id identifier rubyid_target_rt'>target_rt</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_current_base'>current_base</span> <span class='op'>=</span> <span class='id identifier rubyid_base_rt'>base_rt</span>
@@ -3420,7 +3966,7 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset_defaults-class_method">
   
-    .<strong>reset_defaults</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>reset_defaults</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3428,7 +3974,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Resets all default settings to their initial values.</p>
+    <p>Reset defaults to factory values</p>
 
   </div>
 </div>
@@ -3441,13 +3987,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-102
-103
-104
-105</pre>
+123
+124
+125
+126</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 102</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 123</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reset_defaults'>reset_defaults</span>
   <span class='ivar'>@settings</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#DEFAULT_SETTINGS-constant" title="Lich::Gemstone::QStrike::DEFAULT_SETTINGS (constant)">DEFAULT_SETTINGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
@@ -3461,25 +4007,34 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset_settings_cache-class_method">
   
-    .<strong>reset_settings_cache</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>reset_settings_cache</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Reset settings loaded flag (for testing)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-128
-129
-130
-131</pre>
+155
+156
+157
+158</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 128</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 155</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reset_settings_cache'>reset_settings_cache</span>
   <span class='ivar'>@settings_loaded</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -3501,7 +4056,8 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the reduction value based on the input parameters.</p>
+    <p>Resolve reduction value to actual seconds
+Handles :max, negative (reduce by N), and positive (target RT)</p>
 
   </div>
 </div>
@@ -3519,7 +4075,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the requested reduction value.</p></div>
+        <div class='inline'><p>Reduction specification</p></div>
       
     </li>
   
@@ -3533,7 +4089,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina reserve to consider.</p></div>
+        <div class='inline'><p>Stamina reserve</p></div>
       
     </li>
   
@@ -3547,7 +4103,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cost of the attack.</p></div>
+        <div class='inline'><p>Attack stamina cost</p></div>
       
     </li>
   
@@ -3564,7 +4120,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the resolved reduction value.</p></div>
+        <div class='inline'><p>Actual seconds of reduction, or nil if invalid</p></div>
       
     </li>
   
@@ -3576,27 +4132,27 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-657
-658
-659
-660
-661
-662
-663
-664
-665
-666
-667
-668
-669
-670
-671
-672
-673
-674</pre>
+765
+766
+767
+768
+769
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779
+780
+781
+782</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 657</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 765</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_reduction'>resolve_reduction</span><span class='lparen'>(</span><span class='id identifier rubyid_reduction'>reduction</span><span class='comma'>,</span> <span class='id identifier rubyid_reserve'>reserve</span><span class='comma'>,</span> <span class='id identifier rubyid_attack_cost'>attack_cost</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_reduction'>reduction</span>
@@ -3624,27 +4180,36 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="save_settings-class_method">
   
-    .<strong>save_settings</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>save_settings</strong>  &#x21d2; <tt>void</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Save settings to DB_Store (per-character)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-121
-122
-123
-124
-125
-126</pre>
+146
+147
+148
+149
+150
+151</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 121</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 146</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_save_settings'>save_settings</span>
   <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/DB_Store.html" title="Lich::Common::DB_Store (module)">DB_Store</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -3668,7 +4233,10 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the equipment speed for the secondary weapon.</p>
+    <p>Get secondary hand equipment speed
+For ranged: RIGHT hand is secondary
+For melee: LEFT hand is secondary
+Only weapons count - shields and non-weapons = 0</p>
 
   </div>
 </div>
@@ -3685,7 +4253,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the equipment speed of the secondary weapon.</p></div>
+        <div class='inline'><p>Equipment speed (base_rt * multiplier), or 0 if not a weapon</p></div>
       
     </li>
   
@@ -3697,13 +4265,13 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-422
-423
-424
-425</pre>
+470
+471
+472
+473</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 422</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 470</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_secondary_equipment_speed'>secondary_equipment_speed</span>
   <span class='id identifier rubyid_hand'>hand</span> <span class='op'>=</span> <span class='id identifier rubyid_ranged_weapon?'>ranged_weapon?</span> <span class='op'>?</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span> <span class='op'>:</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span>
@@ -3717,7 +4285,7 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="set_default-class_method">
   
-    .<strong>set_default</strong>(key, value)  &#x21d2; <tt>void</tt> 
+    .<strong>set_default</strong>(key, value)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -3725,7 +4293,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets a specific default setting to a new value.</p>
+    <p>Set a single default value (persists to DB_Store for per-character storage)</p>
 
   </div>
 </div>
@@ -3743,7 +4311,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the setting key to update.</p></div>
+        <div class='inline'><p>Setting name (:reserve, :adaptive)</p></div>
       
     </li>
   
@@ -3757,7 +4325,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the new value for the setting.</p></div>
+        <div class='inline'><p>New value</p></div>
       
     </li>
   
@@ -3770,14 +4338,14 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-84
-85
-86
-87
-88</pre>
+108
+109
+110
+111
+112</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 84</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 108</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_set_default'>set_default</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_load_settings'>load_settings</span>
@@ -3800,7 +4368,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the Striking Asp buff is currently active.</p>
+    <p>Check if Striking Asp stance is active</p>
 
   </div>
 </div>
@@ -3816,9 +4384,6 @@ Default settings for QStrike module.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if active, false otherwise.</p></div>
-      
     </li>
   
 </ul>
@@ -3829,16 +4394,16 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-521
-522
-523
-524
-525
-526
-527</pre>
+574
+575
+576
+577
+578
+579
+580</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 521</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 574</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_striking_asp_active?'>striking_asp_active?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Buffs-constant" title="Lich::Gemstone::Effects::Buffs (constant)">Buffs</a></span></span><span class='rparen'>)</span>
@@ -3863,7 +4428,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the multiplier for the Striking Asp buff based on its rank.</p>
+    <p>Get the cost multiplier based on Striking Asp status</p>
 
   </div>
 </div>
@@ -3880,7 +4445,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the multiplier for the Striking Asp buff.</p></div>
+        <div class='inline'><p>1.0 if not active, or discounted multiplier if active</p></div>
       
     </li>
   
@@ -3892,15 +4457,15 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-540
-541
-542
-543
-544
-545</pre>
+594
+595
+596
+597
+598
+599</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 540</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 594</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_striking_asp_multiplier'>striking_asp_multiplier</span>
   <span class='kw'>return</span> <span class='float'>1.0</span> <span class='kw'>unless</span> <span class='id identifier rubyid_striking_asp_active?'>striking_asp_active?</span>
@@ -3916,28 +4481,53 @@ Default settings for QStrike module.</p>
       <div class="method_details ">
   <h3 class="signature " id="striking_asp_rank-class_method">
   
-    .<strong>striking_asp_rank</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>striking_asp_rank</strong>  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Get Striking Asp rank (1, 2, or 3)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Rank, or 0 if not known</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-529
-530
-531
-532
-533
-534
-535</pre>
+584
+585
+586
+587
+588
+589
+590</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 529</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 584</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_striking_asp_rank'>striking_asp_rank</span>
   <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="CMan.html" title="Lich::Gemstone::CMan (module)">CMan</a></span></span><span class='rparen'>)</span>
@@ -3962,12 +4552,32 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Executes a QStrike reduction and attack.</p>
+    <p>Execute QSTRIKE with an attack command</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Reduce RT by 3 seconds</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::QStrike (module)">QStrike</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'>use</span><span class='lparen'>(</span><span class='label'>reduction:</span> <span class='op'>-</span><span class='int'>3</span><span class='comma'>,</span> <span class='label'>attack:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>cripple</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>target:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>kobold</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Target absolute 2 second RT</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::QStrike (module)">QStrike</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'>use</span><span class='lparen'>(</span><span class='label'>reduction:</span> <span class='int'>2</span><span class='comma'>,</span> <span class='label'>attack:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>attack</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>target:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>troll</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Use maximum affordable reduction</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::QStrike (module)">QStrike</a></span></span><span class='period'>.</span><span class='id identifier rubyid_use'>use</span><span class='lparen'>(</span><span class='label'>reduction:</span> <span class='symbol'>:max</span><span class='comma'>,</span> <span class='label'>attack:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>mstrike</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -3980,7 +4590,8 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the amount of reduction to apply.</p></div>
+        <div class='inline'><p>RT reduction: negative = reduce by N seconds,
+positive = target absolute RT</p></div>
       
     </li>
   
@@ -3989,12 +4600,12 @@ Default settings for QStrike module.</p>
         <span class='name'>attack</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the name of the attack to execute.</p></div>
+        <div class='inline'><p>Attack to perform (e.g., &quot;cripple&quot;, &quot;attack&quot;, &quot;mstrike&quot;)</p></div>
       
     </li>
   
@@ -4010,7 +4621,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the target of the attack.</p></div>
+        <div class='inline'><p>Target for the attack (optional)</p></div>
       
     </li>
   
@@ -4026,7 +4637,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>the stamina reserve to consider.</p></div>
+        <div class='inline'><p>Stamina to reserve (uses default if nil)</p></div>
       
     </li>
   
@@ -4042,7 +4653,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>whether to adaptively reduce the attack.</p></div>
+        <div class='inline'><p>If true, use max affordable when can't afford requested (uses default if nil)</p></div>
       
     </li>
   
@@ -4059,7 +4670,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash containing the result of the operation.</p></div>
+        <div class='inline'><p>Result with :success, :reduction_used, :reason, etc.</p></div>
       
     </li>
   
@@ -4071,46 +4682,6 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247
-248
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
 275
 276
 277
@@ -4139,17 +4710,59 @@ Default settings for QStrike module.</p>
 300
 301
 302
-303</pre>
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 235</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 275</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_use'>use</span><span class='lparen'>(</span><span class='label'>reduction:</span><span class='comma'>,</span> <span class='label'>attack:</span><span class='comma'>,</span> <span class='label'>target:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>reserve:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>adaptive:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_reserve'>reserve</span> <span class='op'>||=</span> <span class='id identifier rubyid_default'>default</span><span class='lparen'>(</span><span class='symbol'>:reserve</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_adaptive'>adaptive</span> <span class='op'>=</span> <span class='id identifier rubyid_default'>default</span><span class='lparen'>(</span><span class='symbol'>:adaptive</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_adaptive'>adaptive</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
   <span class='id identifier rubyid_attack_name'>attack_name</span> <span class='op'>=</span> <span class='id identifier rubyid_normalize_attack_name'>normalize_attack_name</span><span class='lparen'>(</span><span class='id identifier rubyid_attack'>attack</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_attack_cost'>attack_cost</span> <span class='op'>=</span> <span class='id identifier rubyid_lookup_attack_cost'>lookup_attack_cost</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_name'>attack_name</span><span class='rparen'>)</span>
+  <span class='comment'># A targeted mstrike is a focused one, whatever the name says
+</span>  <span class='id identifier rubyid_attack_cost'>attack_cost</span> <span class='op'>=</span> <span class='id identifier rubyid_attack_name'>attack_name</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>mstrike</span><span class='tstring_end'>&#39;</span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_target'>target</span> <span class='op'>?</span> <span class='id identifier rubyid_mstrike_cost'>mstrike_cost</span><span class='lparen'>(</span><span class='label'>focused:</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_lookup_attack_cost'>lookup_attack_cost</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_name'>attack_name</span><span class='rparen'>)</span>
 
   <span class='comment'># Determine the actual reduction to attempt
 </span>  <span class='id identifier rubyid_actual_reduction'>actual_reduction</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_reduction'>resolve_reduction</span><span class='lparen'>(</span><span class='id identifier rubyid_reduction'>reduction</span><span class='comma'>,</span> <span class='id identifier rubyid_reserve'>reserve</span><span class='comma'>,</span> <span class='id identifier rubyid_attack_cost'>attack_cost</span><span class='rparen'>)</span>
@@ -4229,7 +4842,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Check if cached value is still valid (hands haven't changed)</p>
 
   </div>
 </div>
@@ -4255,19 +4868,19 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565</pre>
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 556</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 616</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_valid_cache?'>valid_cache?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@cached_cost</span>
@@ -4295,7 +4908,7 @@ Default settings for QStrike module.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the speed for a given weapon based on its stats.</p>
+    <p>Get weapon stats and equipment speed for a hand</p>
 
   </div>
 </div>
@@ -4308,12 +4921,12 @@ Default settings for QStrike module.</p>
         <span class='name'>hand</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt>GameObj</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the weapon object to analyze.</p></div>
+        <div class='inline'><p>The hand to check</p></div>
       
     </li>
   
@@ -4330,7 +4943,7 @@ Default settings for QStrike module.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash containing the weapon's speed stats.</p></div>
+        <div class='inline'><p>{ base_rt: N, category: :sym, equipment_speed: N }</p></div>
       
     </li>
   
@@ -4342,28 +4955,28 @@ Default settings for QStrike module.</p>
       <pre class="lines">
 
 
-391
-392
-393
-394
-395
-396
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
-408
-409</pre>
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 391</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/psms/qstrike.rb', line 434</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_weapon_speed_for'>weapon_speed_for</span><span class='lparen'>(</span><span class='id identifier rubyid_hand'>hand</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_empty_result'>empty_result</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>base_rt:</span> <span class='int'>0</span><span class='comma'>,</span> <span class='label'>category:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>equipment_speed:</span> <span class='int'>0</span> <span class='rbrace'>}</span>
@@ -4394,7 +5007,7 @@ Default settings for QStrike module.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:19 2026 by
+  Generated on Wed Oct 28 05:27:13 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

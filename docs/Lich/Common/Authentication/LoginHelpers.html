@@ -88,9 +88,11 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Collection of utilities for login argument parsing, character data lookup, and game instance resolution.</p>
-<p>Provides methods for CLI argument parsing, saved character discovery across YAML and legacy formats,
-and frontend/instance resolution for login workflows.</p>
+    <p>Collection of utilities for game login, character selection, and CLI argument resolution.</p>
+<p>Provides methods to parse login credentials, resolve game instances and frontends
+from command-line arguments, search and select characters across accounts, and
+manage game/realm mappings. All methods are accessible via
+<code>Lich::Common::Authentication::LoginHelpers.method_name</code>.</p>
 
   </div>
 </div>
@@ -212,10 +214,10 @@ other values are treated as frontend launch selectors/modifiers.</p>
         <dt id="REGISTERED_FRONTEND_PATTERN-constant" class="">REGISTERED_FRONTEND_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Matches long-form frontend identifier arguments with registry-backed custom names.</p>
-<p>Captures the frontend identifier portion in the <code>fe</code> named group.
-The identifier must begin with an alphanumeric character and may contain
-alphanumerics, underscores, and hyphens (up to 64 characters total).</p>
+    <p>Matches a long-form custom frontend identifier flag.</p>
+<p>Captures the frontend name (1-64 characters: alphanumeric, hyphen, underscore)
+from <code>--frontend=NAME</code> syntax. Used to validate registry-backed custom frontend
+launch configurations.</p>
 
   </div>
 </div>
@@ -225,8 +227,14 @@ alphanumerics, underscores, and hyphens (up to 64 characters total).</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=my-custom-client</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>REGISTERED_FRONTEND_PATTERN</span>  <span class='comment'>#=&gt; 0 (match)
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=_invalid</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>REGISTERED_FRONTEND_PATTERN</span>          <span class='comment'>#=&gt; nil (no match)</span></code></pre>
+        <h5 class="example_title"><div class='inline'><p>Match a custom frontend</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=my-custom-frontend</span><span class='tstring_end'>&quot;</span></span><span class='lbracket'>[</span><span class='const'>REGISTERED_FRONTEND_PATTERN</span><span class='comma'>,</span> <span class='symbol'>:fe</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;my-custom-frontend&quot;</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>No match for invalid name length</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend=a</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>REGISTERED_FRONTEND_PATTERN</span> <span class='comment'>#=&gt; 0 (matches header only, not full)</span></code></pre>
     
   </div>
 
@@ -247,9 +255,10 @@ alphanumerics, underscores, and hyphens (up to 64 characters total).</p>
         <dt id="INSTANCE_PATTERN-constant" class="">INSTANCE_PATTERN =
           <div class="docstring">
   <div class="discussion">
-    <p>Matches game instance code arguments with optional single-character suffix.</p>
-<p>Captures the full instance code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;DR&quot;, &quot;DRX&quot;) in the <code>inst</code> named group.
-Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes (DR followed by 0–1 characters).</p>
+    <p>Matches a CLI flag for a game instance code (GS3, GST, GSF, GSX, DR, DRT, DRX, DRF).</p>
+<p>Captures the instance identifier from <code>--GSXX</code> or <code>--DRXX</code> syntax, case-insensitive.
+Accepts any two-letter game prefix followed by zero or one character, allowing
+both short forms (--gs, --dr) and full codes (--GS3, --DRT).</p>
 
   </div>
 </div>
@@ -259,10 +268,19 @@ Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes 
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GS3</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;GS3&quot;)
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--gst</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;gst&quot;, case-insensitive)
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--DRX</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>    <span class='comment'>#=&gt; 0 (match, inst: &quot;DRX&quot;)
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GST2</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>INSTANCE_PATTERN</span>   <span class='comment'>#=&gt; nil (no match; max 1 suffix char)</span></code></pre>
+        <h5 class="example_title"><div class='inline'><p>Match GemStone instance</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--GS3</span><span class='tstring_end'>&quot;</span></span><span class='lbracket'>[</span><span class='const'>INSTANCE_PATTERN</span><span class='comma'>,</span> <span class='symbol'>:inst</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;GS3&quot;</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Match DragonRealms instance</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--DRX</span><span class='tstring_end'>&quot;</span></span><span class='lbracket'>[</span><span class='const'>INSTANCE_PATTERN</span><span class='comma'>,</span> <span class='symbol'>:inst</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;DRX&quot;</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Case-insensitive</p></div></h5>
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--gs3</span><span class='tstring_end'>&quot;</span></span><span class='lbracket'>[</span><span class='const'>INSTANCE_PATTERN</span><span class='comma'>,</span> <span class='symbol'>:inst</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;gs3&quot;</span></code></pre>
     
   </div>
 
@@ -307,8 +325,9 @@ Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes 
 </div>
         </dt>
         <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='words_sep'>
+  </span><span class='tstring_content'>keep-fe-string</span><span class='words_sep'>
   </span><span class='tstring_content'>login</span><span class='words_sep'> </span><span class='tstring_content'>gui</span><span class='words_sep'> </span><span class='tstring_content'>no-gui</span><span class='words_sep'> </span><span class='tstring_content'>without-frontend</span><span class='words_sep'> </span><span class='tstring_content'>headless</span><span class='words_sep'> </span><span class='tstring_content'>reconnect</span><span class='words_sep'> </span><span class='tstring_content'>reconnected</span><span class='words_sep'> </span><span class='tstring_content'>save</span><span class='words_sep'>
-  </span><span class='tstring_content'>genie</span><span class='words_sep'> </span><span class='tstring_content'>frostbite</span><span class='words_sep'> </span><span class='tstring_content'>wrayth</span><span class='words_sep'> </span><span class='tstring_content'>saga</span><span class='words_sep'> </span><span class='tstring_content'>suks</span><span class='words_sep'>
+  </span><span class='tstring_content'>genie</span><span class='words_sep'> </span><span class='tstring_content'>frostbite</span><span class='words_sep'> </span><span class='tstring_content'>wrayth</span><span class='words_sep'> </span><span class='tstring_content'>saga</span><span class='words_sep'> </span><span class='tstring_content'>suks</span><span class='words_sep'> </span><span class='tstring_content'>sentinel</span><span class='words_sep'> </span><span class='tstring_content'>pipe</span><span class='words_sep'> </span><span class='tstring_content'>no-wine</span><span class='words_sep'> </span><span class='tstring_content'>no-gtk</span><span class='words_sep'> </span><span class='tstring_content'>debug</span><span class='words_sep'>
 </span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="NON_INSTANCE_OPTION_KEYS-constant" class="">NON_INSTANCE_OPTION_KEYS =
@@ -325,10 +344,11 @@ Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes 
         </dt>
         <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='words_sep'>
   </span><span class='tstring_content'>start-scripts</span><span class='words_sep'> </span><span class='tstring_content'>custom-launch</span><span class='words_sep'> </span><span class='tstring_content'>dark-mode</span><span class='words_sep'> </span><span class='tstring_content'>headless</span><span class='words_sep'>
+  </span><span class='tstring_content'>auth-provider</span><span class='words_sep'> </span><span class='tstring_content'>bind-address</span><span class='words_sep'> </span><span class='tstring_content'>game-transport</span><span class='words_sep'> </span><span class='tstring_content'>host</span><span class='words_sep'>
   </span><span class='tstring_content'>home</span><span class='words_sep'> </span><span class='tstring_content'>data</span><span class='words_sep'> </span><span class='tstring_content'>scripts</span><span class='words_sep'> </span><span class='tstring_content'>temp</span><span class='words_sep'> </span><span class='tstring_content'>maps</span><span class='words_sep'> </span><span class='tstring_content'>logs</span><span class='words_sep'> </span><span class='tstring_content'>backup</span><span class='words_sep'> </span><span class='tstring_content'>lib</span><span class='words_sep'>
-  </span><span class='tstring_content'>script-dir</span><span class='words_sep'> </span><span class='tstring_content'>data-dir</span><span class='words_sep'> </span><span class='tstring_content'>temp-dir</span><span class='words_sep'>
+  </span><span class='tstring_content'>script-dir</span><span class='words_sep'> </span><span class='tstring_content'>data-dir</span><span class='words_sep'> </span><span class='tstring_content'>temp-dir</span><span class='words_sep'> </span><span class='tstring_content'>map-dir</span><span class='words_sep'> </span><span class='tstring_content'>log-dir</span><span class='words_sep'> </span><span class='tstring_content'>backup-dir</span><span class='words_sep'> </span><span class='tstring_content'>lib-dir</span><span class='words_sep'> </span><span class='tstring_content'>active-session-dir</span><span class='words_sep'>
   </span><span class='tstring_content'>hosts-dir</span><span class='words_sep'> </span><span class='tstring_content'>hosts-file</span><span class='words_sep'> </span><span class='tstring_content'>account</span><span class='words_sep'> </span><span class='tstring_content'>password</span><span class='words_sep'> </span><span class='tstring_content'>character</span><span class='words_sep'> </span><span class='tstring_content'>frontend</span><span class='words_sep'> </span><span class='tstring_content'>frontend-command</span><span class='words_sep'>
-  </span><span class='tstring_content'>detachable-client</span><span class='words_sep'> </span><span class='tstring_content'>reconnect-delay</span><span class='words_sep'> </span><span class='tstring_content'>game</span><span class='words_sep'> </span><span class='tstring_content'>wine</span><span class='words_sep'> </span><span class='tstring_content'>wine-prefix</span><span class='words_sep'>
+  </span><span class='tstring_content'>detachable-client</span><span class='words_sep'> </span><span class='tstring_content'>reconnect-delay</span><span class='words_sep'> </span><span class='tstring_content'>game</span><span class='words_sep'> </span><span class='tstring_content'>wine</span><span class='words_sep'> </span><span class='tstring_content'>wine-prefix</span><span class='words_sep'> </span><span class='tstring_content'>fe-version</span><span class='words_sep'> </span><span class='tstring_content'>frontend-caps</span><span class='words_sep'>
 </span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GAME_CODE_TO_REALM-constant" class="">GAME_CODE_TO_REALM =
@@ -625,7 +645,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Formats the game instance launch flag for Lich based on version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Formats the game instance launch flag for a spawned Lich session.</p></div></span>
   
 </li>
 
@@ -647,7 +667,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the human-readable game name for a game code, with fallback to the default.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts a game code to its human-readable game name, falling back to default if not found.</p></div></span>
   
 </li>
 
@@ -670,28 +690,6 @@ Game code to realm mappings</p>
 
   
     <span class="summary_desc"><div class='inline'><p>Checks if any Gemstone game flag (including aliases) is present in argv.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#lich_version_at_least%3F-class_method" title="lich_version_at_least? (class method)">.<strong>lich_version_at_least?</strong>(major, minor = 0, patch = 0)  &#x21d2; Boolean </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Checks whether the running Lich version is at least the specified semantic version.</p></div></span>
   
 </li>
 
@@ -757,7 +755,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the realm name associated with a game code, with fallback to the default.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts a game code to its realm name, falling back to default if not mapped.</p></div></span>
   
 </li>
 
@@ -779,7 +777,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the game code associated with a realm name, or nil if not found.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts a realm name to its corresponding game code, or nil if not found.</p></div></span>
   
 </li>
 
@@ -897,6 +895,28 @@ Game code to realm mappings</p>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#resolve_pipe_frontend-class_method" title="resolve_pipe_frontend (class method)">.<strong>resolve_pipe_frontend</strong>(argv)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Resolves the frontend identity for a <code>--pipe -g HOST:PORT</code> launch.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#select_best_fit-class_method" title="select_best_fit (class method)">.<strong>select_best_fit</strong>(char_data_sets:, requested_character:, requested_instance: :__unset, requested_fe: :__unset)  &#x21d2; Hash<sup>?</sup> </a>
     
 
@@ -977,7 +997,7 @@ Game code to realm mappings</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns whether a realm name is valid for elogin.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether a realm name is valid for elogin support.</p></div></span>
   
 </li>
 
@@ -1080,26 +1100,26 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
 374
 375
 376
 377
 378
 379
-380
-381
-382
-383
-384
-385
-386
-387
-388
-389
-390</pre>
+380</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 374</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 364</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_build_character_result'>build_character_result</span><span class='lparen'>(</span><span class='id identifier rubyid_account_name'>account_name</span><span class='comma'>,</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='comma'>,</span> <span class='id identifier rubyid_character'>character</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_character'>character</span> <span class='kw'>if</span> <span class='id identifier rubyid_account_name'>account_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1181,14 +1201,14 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-249
-250
-251
-252
-253</pre>
+239
+240
+241
+242
+243</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 249</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 239</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_data_format'>data_format</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='symbol'>:legacy_array</span> <span class='kw'>if</span> <span class='id identifier rubyid_data'>data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
@@ -1258,12 +1278,12 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
-595
-596
-597</pre>
+585
+586
+587</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 595</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 585</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dragonrealms_flag?'>dragonrealms_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#DRAGONREALMS_FLAGS-constant" title="Lich::Common::Authentication::LoginHelpers::DRAGONREALMS_FLAGS (constant)">DRAGONREALMS_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_flag'>flag</span><span class='op'>|</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -1331,25 +1351,25 @@ For YAML-sourced data, it extracts username/password and flattens the result.</p
       <pre class="lines">
 
 
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
 259
 260
 261
 262
 263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274</pre>
+264</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 259</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 249</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extract_candidate_characters_with_accounts'>extract_candidate_characters_with_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_data_format'>data_format</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
@@ -1511,6 +1531,16 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
 300
 301
 302
@@ -1564,20 +1594,10 @@ other parameters are provided, multiple character records may be returned.</p>
 350
 351
 352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362
-363</pre>
+353</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 300</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 290</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>custom_launch:</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_candidates'>candidates</span> <span class='op'>=</span> <span class='id identifier rubyid_extract_candidate_characters_with_accounts'>extract_candidate_characters_with_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='rparen'>)</span>
@@ -1720,12 +1740,12 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
-413
-414
-415</pre>
+403
+404
+405</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 413</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 403</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name'>find_character_by_name</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='rparen'>)</span>
@@ -1821,12 +1841,12 @@ other parameters are provided, multiple character records may be returned.</p>
       <pre class="lines">
 
 
-423
-424
-425</pre>
+413
+414
+415</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 423</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 413</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name_and_game'>find_character_by_name_and_game</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
@@ -1955,12 +1975,12 @@ frontend filter is ignored for matching purposes.</p>
       <pre class="lines">
 
 
-439
-440
-441</pre>
+429
+430
+431</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 439</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 429</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character_by_name_game_and_frontend'>find_character_by_name_game_and_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='label'>custom_launch:</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='rparen'>)</span>
@@ -2079,13 +2099,13 @@ character from potentially multiple matches.</p>
       <pre class="lines">
 
 
-403
-404
-405
-406</pre>
+393
+394
+395
+396</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 403</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 393</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_first_character_by_attributes'>find_first_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_matches'>matches</span> <span class='op'>=</span> <span class='id identifier rubyid_find_character_by_attributes'>find_character_by_attributes</span><span class='lparen'>(</span><span class='id identifier rubyid_symbolized_data'>symbolized_data</span><span class='comma'>,</span> <span class='label'>char_name:</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='label'>game_code:</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
@@ -2107,9 +2127,12 @@ character from potentially multiple matches.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Formats the game instance launch flag for Lich based on version.</p>
-<p>Older versions of Lich (pre-5.12) only recognize specific lowercase flags
-(e.g., <code>--gst</code>, <code>--drt</code>). Newer versions (5.12+) accept generalized <code>--GAMECODE</code> format.</p>
+    <p>Formats the game instance launch flag for a spawned Lich session.</p>
+<p>Always emits the generalized <code>--GAMECODE</code> form that
+<span class='object_link'><a href="#resolve_instance-class_method" title="Lich::Common::Authentication::LoginHelpers.resolve_instance (method)">resolve_instance</a></span> parses. Every Lich that ships this method
+(5.13.0-beta.3 and later) accepts that form. A non-blank code is
+upcased and passed through unvalidated; the child Lich reports an
+invalid instance itself.</p>
 
   </div>
 </div>
@@ -2122,12 +2145,12 @@ character from potentially multiple matches.</p>
         <span class='name'>game_code</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Symbol</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the game instance code (e.g., 'GS3', 'GST', 'GSX')</p></div>
+        <div class='inline'><p>the game instance code (e.g., 'GS3', 'GST', 'DRX')</p></div>
       
     </li>
   
@@ -2144,7 +2167,7 @@ character from potentially multiple matches.</p>
       
       
         &mdash;
-        <div class='inline'><p>the correctly formatted launch flag (e.g., '--gst', '--GSX'), or nil if not needed</p></div>
+        <div class='inline'><p>the upcased launch flag (e.g., '--GS3', '--GST'), or nil when game_code is blank</p></div>
       
     </li>
   
@@ -2156,16 +2179,6 @@ character from potentially multiple matches.</p>
       <pre class="lines">
 
 
-699
-700
-701
-702
-703
-704
-705
-706
-707
-708
 709
 710
 711
@@ -2173,22 +2186,12 @@ character from potentially multiple matches.</p>
 713</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 699</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 709</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_format_launch_flag'>format_launch_flag</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
 
-  <span class='id identifier rubyid_normalized_code'>normalized_code</span> <span class='op'>=</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span>
-
-  <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'><span class='object_link'><a href="#lich_version_at_least%3F-class_method" title="Lich::Common::Authentication::LoginHelpers.lich_version_at_least? (method)">lich_version_at_least?</a></span></span><span class='lparen'>(</span><span class='int'>5</span><span class='comma'>,</span> <span class='int'>12</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span>
-    <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_normalized_code'>normalized_code</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>else</span>
-    <span class='kw'>case</span> <span class='id identifier rubyid_normalized_code'>normalized_code</span>
-    <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>then</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--gst</span><span class='tstring_end'>&#39;</span></span>
-    <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRT</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>then</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--drt</span><span class='tstring_end'>&#39;</span></span>
-    <span class='kw'>else</span> <span class='kw'>nil</span>
-    <span class='kw'>end</span>
-  <span class='kw'>end</span>
+  <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game_code'>game_code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2206,9 +2209,9 @@ character from potentially multiple matches.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the human-readable game name for a game code, with fallback to the default.</p>
-<p>Maps game codes to their display names (e.g., &quot;GS3&quot; → &quot;GemStone IV&quot;).
-Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
+    <p>Converts a game code to its human-readable game name, falling back to default if not found.</p>
+<p>Maps game codes to their display names used in UI and logging. Unmapped codes
+return the default game name via <code>GameConfig::DEFAULT_GAME_NAME</code>.</p>
 
   </div>
 </div>
@@ -2218,9 +2221,10 @@ Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;GemStone IV&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRX</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;DragonRealms Platinum&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>FAKE</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; (GameConfig::DEFAULT_GAME_NAME)</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;GemStone IV&#39;</span></code></pre>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRX</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;DragonRealms Platinum&#39;</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2236,7 +2240,7 @@ Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
       
       
         &mdash;
-        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;DR&quot;, &quot;DRX&quot;)</p></div>
+        <div class='inline'><p>the game code (e.g., 'GS3', 'DR', 'DRX')</p></div>
       
     </li>
   
@@ -2253,7 +2257,7 @@ Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
       
       
         &mdash;
-        <div class='inline'><p>the human-readable game name (e.g., &quot;GemStone IV&quot;, &quot;DragonRealms&quot;), or the configured default</p></div>
+        <div class='inline'><p>the game name ('GemStone IV', 'DragonRealms', etc.), or default game name</p></div>
       
     </li>
   
@@ -2272,12 +2276,12 @@ Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
       <pre class="lines">
 
 
-174
-175
-176</pre>
+183
+184
+185</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 174</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 183</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_game_name_from_game_code'>game_name_from_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GAME_CODE_TO_NAME-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_NAME (constant)">GAME_CODE_TO_NAME</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='const'>GameConfig</span><span class='op'>::</span><span class='const'>DEFAULT_GAME_NAME</span><span class='rparen'>)</span>
@@ -2345,141 +2349,15 @@ Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.</p>
       <pre class="lines">
 
 
-587
-588
-589</pre>
+577
+578
+579</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 587</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 577</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gemstone_flag?'>gemstone_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GEMSTONE_FLAGS-constant" title="Lich::Common::Authentication::LoginHelpers::GEMSTONE_FLAGS (constant)">GEMSTONE_FLAGS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_flag'>flag</span><span class='op'>|</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="lich_version_at_least?-class_method">
-  
-    .<strong>lich_version_at_least?</strong>(major, minor = 0, patch = 0)  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Always returns false when LICH_VERSION is not defined</p></div>
-  </div>
-
-<p>Checks whether the running Lich version is at least the specified semantic version.</p>
-<p>Returns false immediately if LICH_VERSION is not defined (e.g., in test contexts where
-the constant is unavailable). Uses Gem::Version comparison for robust semantic versioning.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>5</span><span class='comma'>,</span> <span class='int'>12</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span>  <span class='comment'>#=&gt; true  (if running Lich 5.12.0+)
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='int'>6</span><span class='rparen'>)</span>          <span class='comment'>#=&gt; false (if running Lich 5.x)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>major</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>major version number</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>minor</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>0</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>minor version number (default: 0)</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>patch</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>0</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>patch version number (default: 0)</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if LICH_VERSION is defined and &gt;= the specified version; false otherwise</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-204
-205
-206
-207
-208</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 204</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_lich_version_at_least?'>lich_version_at_least?</span><span class='lparen'>(</span><span class='id identifier rubyid_major'>major</span><span class='comma'>,</span> <span class='id identifier rubyid_minor'>minor</span> <span class='op'>=</span> <span class='int'>0</span><span class='comma'>,</span> <span class='id identifier rubyid_patch'>patch</span> <span class='op'>=</span> <span class='int'>0</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='rparen'>)</span>
-
-  <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../top-level-namespace.html#LICH_VERSION-constant" title="LICH_VERSION (constant)">LICH_VERSION</a></span></span><span class='rparen'>)</span> <span class='op'>&gt;=</span> <span class='const'>Gem</span><span class='op'>::</span><span class='const'>Version</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='id identifier rubyid_major'>major</span><span class='comma'>,</span> <span class='id identifier rubyid_minor'>minor</span><span class='comma'>,</span> <span class='id identifier rubyid_patch'>patch</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2543,15 +2421,15 @@ available in the current runtime or isolated spec context.</p>
       <pre class="lines">
 
 
-216
-217
-218
-219
-220
-221</pre>
+206
+207
+208
+209
+210
+211</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 216</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 206</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_messaging_msg'>messaging_msg</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='rparen'>)</span>
@@ -2619,16 +2497,16 @@ available in the current runtime or isolated spec context.</p>
       <pre class="lines">
 
 
-575
-576
-577
-578
-579
-580
-581</pre>
+565
+566
+567
+568
+569
+570
+571</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 575</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 565</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_non_instance_option_flag?'>non_instance_option_flag?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#VALID_FRONTENDS-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_FRONTENDS (constant)">VALID_FRONTENDS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
@@ -2653,9 +2531,10 @@ available in the current runtime or isolated spec context.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the realm name associated with a game code, with fallback to the default.</p>
-<p>Maps legacy Gemstone game codes (GSX, GSF, GST) to their corresponding realm names.
-Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DEFAULT_REALM.</p>
+    <p>Converts a game code to its realm name, falling back to default if not mapped.</p>
+<p>Maps legacy game codes to realm identifiers. Codes not found in the mapping
+(such as 'GS3' and 'DR' which default to 'prime' and 'prime' respectively via
+<code>GameConfig::DEFAULT_REALM</code>) return the default realm.</p>
 
   </div>
 </div>
@@ -2665,9 +2544,10 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GSX</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; &quot;platinum&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; &quot;test&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GS3</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; (GameConfig::DEFAULT_REALM)</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GST</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;test&#39;</span></code></pre>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>GSX</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;platinum&#39;</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2683,7 +2563,7 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       
       
         &mdash;
-        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GST&quot;, &quot;GSX&quot;, &quot;DR&quot;)</p></div>
+        <div class='inline'><p>the game code (e.g., 'GST', 'GSF', 'GSX')</p></div>
       
     </li>
   
@@ -2700,7 +2580,7 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       
       
         &mdash;
-        <div class='inline'><p>the realm name (e.g., &quot;platinum&quot;, &quot;shattered&quot;, &quot;test&quot;), or the configured default</p></div>
+        <div class='inline'><p>the realm name ('prime', 'platinum', 'shattered', 'test'), or default realm</p></div>
       
     </li>
   
@@ -2721,12 +2601,12 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       <pre class="lines">
 
 
-142
-143
-144</pre>
+150
+151
+152</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 142</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 150</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_realm_from_game_code'>realm_from_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#GAME_CODE_TO_REALM-constant" title="Lich::Common::Authentication::LoginHelpers::GAME_CODE_TO_REALM (constant)">GAME_CODE_TO_REALM</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_code'>code</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span><span class='comma'>,</span> <span class='const'>GameConfig</span><span class='op'>::</span><span class='const'>DEFAULT_REALM</span><span class='rparen'>)</span>
@@ -2747,8 +2627,9 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the game code associated with a realm name, or nil if not found.</p>
-<p>Performs a direct lookup in the realm-to-code mapping; no fallback is applied.</p>
+    <p>Converts a realm name to its corresponding game code, or nil if not found.</p>
+<p>Maps realm identifiers to game codes for Lich login. Returns nil when the
+realm is not recognized in the mapping.</p>
 
   </div>
 </div>
@@ -2758,9 +2639,10 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>     <span class='comment'>#=&gt; &quot;GS3&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>platinum</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>  <span class='comment'>#=&gt; &quot;GSX&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; nil</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;GS3&#39;</span></code></pre>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>test</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &#39;GST&#39;</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2776,7 +2658,7 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       
       
         &mdash;
-        <div class='inline'><p>the realm name (e.g., &quot;prime&quot;, &quot;platinum&quot;, &quot;shattered&quot;, &quot;test&quot;)</p></div>
+        <div class='inline'><p>the realm name ('prime', 'platinum', 'shattered', 'test')</p></div>
       
     </li>
   
@@ -2793,7 +2675,7 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       
       
         &mdash;
-        <div class='inline'><p>the game code (e.g., &quot;GS3&quot;, &quot;GSX&quot;, &quot;GSF&quot;, &quot;GST&quot;), or nil if the realm is not mapped</p></div>
+        <div class='inline'><p>the game code ('GS3', 'GSX', 'GSF', 'GST'), or nil if realm is unknown</p></div>
       
     </li>
   
@@ -2814,12 +2696,12 @@ Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DE
       <pre class="lines">
 
 
-158
-159
-160</pre>
+167
+168
+169</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 158</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 167</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_realm_to_game_code'>realm_to_game_code</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#REALM_TO_GAME_CODE-constant" title="Lich::Common::Authentication::LoginHelpers::REALM_TO_GAME_CODE (constant)">REALM_TO_GAME_CODE</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_realm'>realm</span><span class='rbracket'>]</span>
@@ -2889,21 +2771,21 @@ this path so login matching and detachable runtime identity agree.</p>
       <pre class="lines">
 
 
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
 639
-640
-641
-642
-643
-644
-645
-646
-647
-648
-649
-650</pre>
+640</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 639</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 629</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='symbol'>:__unset</span>
@@ -3004,17 +2886,17 @@ XML parser as if it were a tag.</p>
       <pre class="lines">
 
 
-683
-684
-685
-686
-687
-688
-689
-690</pre>
+673
+674
+675
+676
+677
+678
+679
+680</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 683</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 673</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_headless_frontend'>resolve_headless_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='comma'>,</span> <span class='label'>detachable_client:</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
@@ -3091,6 +2973,16 @@ selector is present, or nil for probable invalid instance intent.</p></div>
       <pre class="lines">
 
 
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
 515
 516
 517
@@ -3135,20 +3027,10 @@ selector is present, or nil for probable invalid instance intent.</p></div>
 556
 557
 558
-559
-560
-561
-562
-563
-564
-565
-566
-567
-568
-569</pre>
+559</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 515</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 505</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_instance'>resolve_instance</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_instance_flags_seen'>instance_flags_seen</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -3275,6 +3157,16 @@ Invalid game codes resolve to nil through the canonical game-code validator.</p>
       <pre class="lines">
 
 
+602
+603
+604
+605
+606
+607
+608
+609
+610
+611
 612
 613
 614
@@ -3284,20 +3176,10 @@ Invalid game codes resolve to nil through the canonical game-code validator.</p>
 618
 619
 620
-621
-622
-623
-624
-625
-626
-627
-628
-629
-630
-631</pre>
+621</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 612</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 602</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_login_args'>resolve_login_args</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
@@ -3401,17 +3283,101 @@ when headless mode should ignore frontend during matching</p></div>
       <pre class="lines">
 
 
-663
-664
-665
-666
-667</pre>
+653
+654
+655
+656
+657</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 663</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 653</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_lookup_frontend'>resolve_lookup_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_requested_frontend'>requested_frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='symbol'>:__unset</span> <span class='kw'>if</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--without-frontend</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_requested_frontend'>requested_frontend</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="resolve_pipe_frontend-class_method">
+  
+    .<strong>resolve_pipe_frontend</strong>(argv)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Resolves the frontend identity for a <code>--pipe -g HOST:PORT</code> launch.</p>
+<p>Whatever reads stdout is the client, so an explicit frontend flag
+names it and <code>respond</code> escapes and wraps script output the way that
+frontend expects. With no flag the identity stays 'unknown', which
+keeps the stream untouched for consumers that are not frontends
+(the benchmark harness).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>argv</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>command line arguments</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>frontend identity for Frontend.client</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+692
+693
+694
+695
+696
+697</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 692</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_pipe_frontend'>resolve_pipe_frontend</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_resolve_frontend_arg'>resolve_frontend_arg</span><span class='lparen'>(</span><span class='id identifier rubyid_argv'>argv</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_requested_frontend'>requested_frontend</span> <span class='op'>==</span> <span class='symbol'>:__unset</span>
 
   <span class='id identifier rubyid_requested_frontend'>requested_frontend</span>
 <span class='kw'>end</span></pre>
@@ -3538,6 +3504,16 @@ the first highest-scoring hash encountered is returned.</p>
       <pre class="lines">
 
 
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
 463
 464
 465
@@ -3570,20 +3546,10 @@ the first highest-scoring hash encountered is returned.</p>
 492
 493
 494
-495
-496
-497
-498
-499
-500
-501
-502
-503
-504
-505</pre>
+495</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 463</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 453</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_select_best_fit'>select_best_fit</span><span class='lparen'>(</span><span class='label'>char_data_sets:</span><span class='comma'>,</span> <span class='label'>requested_character:</span><span class='comma'>,</span> <span class='label'>requested_instance:</span> <span class='symbol'>:__unset</span><span class='comma'>,</span> <span class='label'>requested_fe:</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_char_data_sets'>char_data_sets</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_char_data_sets'>char_data_sets</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -3693,22 +3659,22 @@ using Ruby symbols, which is the preferred approach for hash keys in Ruby.</p>
       <pre class="lines">
 
 
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
 231
 232
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243</pre>
+233</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 231</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 221</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_symbolize_keys'>symbolize_keys</span><span class='lparen'>(</span><span class='id identifier rubyid_obj'>obj</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_obj'>obj</span>
@@ -3784,12 +3750,12 @@ Callers remain responsible for any input normalization they require.</p>
       <pre class="lines">
 
 
-30
-31
-32</pre>
+32
+33
+34</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 32</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_valid_game_code?'>valid_game_code?</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#VALID_GAME_CODES-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_GAME_CODES (constant)">VALID_GAME_CODES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_game_code'>game_code</span><span class='rparen'>)</span>
@@ -3810,7 +3776,7 @@ Callers remain responsible for any input normalization they require.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns whether a realm name is valid for elogin.</p>
+    <p>Checks whether a realm name is valid for elogin support.</p>
 
   </div>
 </div>
@@ -3820,9 +3786,10 @@ Callers remain responsible for any input normalization they require.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>     <span class='comment'>#=&gt; true
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>test</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>      <span class='comment'>#=&gt; true
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::LoginHelpers (module)">LoginHelpers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>   <span class='comment'>#=&gt; false</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>prime</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>invalid</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; false</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -3855,7 +3822,7 @@ Callers remain responsible for any input normalization they require.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the realm is in VALID_REALMS; false otherwise</p></div>
+        <div class='inline'><p>true if realm is in the accepted set ('prime', 'platinum', 'shattered', 'test')</p></div>
       
     </li>
   
@@ -3874,12 +3841,12 @@ Callers remain responsible for any input normalization they require.</p>
       <pre class="lines">
 
 
-187
-188
-189</pre>
+196
+197
+198</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 187</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/login_helpers.rb', line 196</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_valid_realm?'>valid_realm?</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#VALID_REALMS-constant" title="Lich::Common::Authentication::LoginHelpers::VALID_REALMS (constant)">VALID_REALMS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_realm'>realm</span><span class='rparen'>)</span>
@@ -3894,7 +3861,7 @@ Callers remain responsible for any input normalization they require.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:29 2026 by
+  Generated on Wed Oct 28 05:27:21 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

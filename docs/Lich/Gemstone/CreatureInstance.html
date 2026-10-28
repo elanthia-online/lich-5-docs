@@ -133,9 +133,10 @@ exclusions.</p>
         <dt id="BODY_PARTS-constant" class="">BODY_PARTS =
           <div class="docstring">
   <div class="discussion">
-    <p>Valid body locations for injury and amputation tracking.</p>
-<p>Matches the 17 body parts exposed by limb-targeting messages and the
-Limb Disruption (708) spell.</p>
+    <p>Valid body part names for injury tracking and amputation.</p>
+<p>Used to validate arguments to #add_injury and #amputate! so only
+recognized anatomy is recorded. Names match GemStone's anatomy model
+(head, chest, abdomen, back, limbs, and paired eyes/ears).</p>
 
   </div>
 </div>
@@ -145,7 +146,9 @@ Limb Disruption (708) spell.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li>#amputate!</li>
+      <li><span class='object_link'><a href="#add_injury-instance_method" title="Lich::Gemstone::CreatureInstance#add_injury (method)">#add_injury</a></span></li>
+    
+      <li>#amputate?</li>
     
   </ul>
 
@@ -808,7 +811,7 @@ deliberately excluded.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculate current HP (max_hp - damage_taken).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate current HP, preserving overkill as a negative value from either the server or the inferred damage model.</p></div></span>
   
 </li>
 
@@ -830,7 +833,7 @@ deliberately excluded.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Check if creature is dead (0 HP).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Check if creature is dead (zero or negative HP).</p></div></span>
   
 </li>
 
@@ -918,7 +921,7 @@ deliberately excluded.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculate HP percentage (0-100).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculate HP percentage, preserving negative overkill.</p></div></span>
   
 </li>
 
@@ -942,7 +945,7 @@ deliberately excluded.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a tracked creature instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a CreatureInstance from server data.</p></div></span>
   
 </li>
 
@@ -1052,7 +1055,7 @@ deliberately excluded.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Get maximum HP from template, with fallback.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Get maximum HP, preferring a usable value from the latest crtrStatus snapshot and otherwise using the established inferred fallback.</p></div></span>
   
 </li>
 
@@ -1351,11 +1354,11 @@ deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a tracked creature instance.</p>
-<p>Sets up mutable runtime state: injury tracking per body part (initialized to 0),
-damage taken, UCS (Unarmed Combat System) position/tierup/smote tracking, and
-stun estimates from critical hits. Status tracking is delegated to the
-CreatureBase mixin.</p>
+    <p>Initializes a CreatureInstance from server data.</p>
+<p>Sets up runtime tracking for a single creature: a unique id, display name
+and noun, empty injury/status maps, zero damage, and nil placeholders for
+health, UCS (Unarmed Combat System) state, and stun estimates. All mutable
+collections are instance copies, not shared.</p>
 
   </div>
 </div>
@@ -1368,12 +1371,12 @@ CreatureBase mixin.</p>
         <span class='name'>id</span>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the creature's game ID (cast to integer)</p></div>
+        <div class='inline'><p>the server creature id (converted to Integer)</p></div>
       
     </li>
   
@@ -1382,12 +1385,12 @@ CreatureBase mixin.</p>
         <span class='name'>noun</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the creature's lowercase noun form (e.g. &quot;orc&quot;, &quot;goblin&quot;)</p></div>
+        <div class='inline'><p>the creature noun from the game</p></div>
       
     </li>
   
@@ -1401,7 +1404,7 @@ CreatureBase mixin.</p>
       
       
         &mdash;
-        <div class='inline'><p>the creature's display name, possibly with boon adjectives</p></div>
+        <div class='inline'><p>the creature name from the game</p></div>
       
     </li>
   
@@ -1414,6 +1417,15 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
+364
+365
+366
+367
+368
+369
+370
+371
+372
 373
 374
 375
@@ -1422,19 +1434,10 @@ CreatureBase mixin.</p>
 378
 379
 380
-381
-382
-383
-384
-385
-386
-387
-388
-389
-390</pre>
+381</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 373</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 364</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='ivar'>@id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -1490,12 +1493,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_created_at'>created_at</span>
   <span class='ivar'>@created_at</span>
@@ -1531,12 +1534,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_damage_taken'>damage_taken</span>
   <span class='ivar'>@damage_taken</span>
@@ -1572,12 +1575,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit'>fatal_crit</span>
   <span class='ivar'>@fatal_crit</span>
@@ -1613,12 +1616,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_health'>health</span>
   <span class='ivar'>@health</span>
@@ -1654,12 +1657,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_id'>id</span>
   <span class='ivar'>@id</span>
@@ -1695,12 +1698,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injuries'>injuries</span>
   <span class='ivar'>@injuries</span>
@@ -1736,12 +1739,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -1777,12 +1780,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_noun'>noun</span>
   <span class='ivar'>@noun</span>
@@ -1818,12 +1821,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status'>status</span>
   <span class='ivar'>@status</span>
@@ -1859,12 +1862,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_status_timestamps'>status_timestamps</span>
   <span class='ivar'>@status_timestamps</span>
@@ -1900,13 +1903,13 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-473
-474
-475
-476</pre>
+464
+465
+466
+467</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 473</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 464</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_position'>ucs_position</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -1943,12 +1946,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_smote'>ucs_smote</span>
   <span class='ivar'>@ucs_smote</span>
@@ -1984,13 +1987,13 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-479
-480
-481
-482</pre>
+470
+471
+472
+473</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 479</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 470</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_tierup'>ucs_tierup</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
@@ -2027,12 +2030,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-341
-342
-343</pre>
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 341</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_updated'>ucs_updated</span>
   <span class='ivar'>@ucs_updated</span>
@@ -2073,12 +2076,12 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-602
-603
-604</pre>
+593
+594
+595</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 602</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 593</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_damage'>add_damage</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>+=</span> <span class='id identifier rubyid_amount'>amount</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -2112,18 +2115,18 @@ CreatureBase mixin.</p>
       <pre class="lines">
 
 
-571
-572
-573
-574
-575
-576
-577
-578
-579</pre>
+562
+563
+564
+565
+566
+567
+568
+569
+570</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 571</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 562</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_injury'>add_injury</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='comma'>,</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#BODY_PARTS-constant" title="Lich::Gemstone::CreatureInstance::BODY_PARTS (constant)">BODY_PARTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
@@ -2207,20 +2210,20 @@ parse time - the async parser can lag the server).</p></div>
       <pre class="lines">
 
 
+492
+493
+494
+495
+496
+497
+498
+499
+500
 501
-502
-503
-504
-505
-506
-507
-508
-509
-510
-511</pre>
+502</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 501</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 492</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_add_stun_estimate'>add_stun_estimate</span><span class='lparen'>(</span><span class='id identifier rubyid_rounds'>rounds</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_rounds'>rounds</span> <span class='op'>=</span> <span class='id identifier rubyid_rounds'>rounds</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -2282,18 +2285,18 @@ gone rather than wounded, cannot be wounded further, and stays gone.</p>
       <pre class="lines">
 
 
-550
-551
-552
-553
-554
-555
-556
-557
-558</pre>
+541
+542
+543
+544
+545
+546
+547
+548
+549</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 550</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 541</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_amputate!'>amputate!</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#BODY_PARTS-constant" title="Lich::Gemstone::CreatureInstance::BODY_PARTS (constant)">BODY_PARTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
@@ -2349,12 +2352,12 @@ gone rather than wounded, cannot be wounded further, and stays gone.</p>
       <pre class="lines">
 
 
-561
-562
-563</pre>
+552
+553
+554</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 561</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 552</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_amputated?'>amputated?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='rparen'>)</span>
   <span class='ivar'>@amputated</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_body_part'>body_part</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
@@ -2404,12 +2407,12 @@ gone rather than wounded, cannot be wounded further, and stays gone.</p>
       <pre class="lines">
 
 
-566
-567
-568</pre>
+557
+558
+559</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 566</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 557</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_amputated_parts'>amputated_parts</span>
   <span class='ivar'>@amputated</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
@@ -2443,14 +2446,14 @@ gone rather than wounded, cannot be wounded further, and stays gone.</p>
       <pre class="lines">
 
 
-460
-461
-462
-463
-464</pre>
+451
+452
+453
+454
+455</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 460</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 451</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_smote'>clear_smote</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -2486,13 +2489,13 @@ gone rather than wounded, cannot be wounded further, and stays gone.</p>
       <pre class="lines">
 
 
-538
-539
-540
-541</pre>
+529
+530
+531
+532</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 538</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 529</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_stun_estimate'>clear_stun_estimate</span>
   <span class='ivar'>@stun_rounds</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -2543,16 +2546,16 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-655
-656
-657
-658
-659
-660
-661</pre>
+637
+638
+639
+640
+641
+642
+643</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 655</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 637</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_coup_eligible?'>coup_eligible?</span><span class='lparen'>(</span><span class='id identifier rubyid_rank'>rank</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_rank'>rank</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='int'>0</span>
@@ -2577,7 +2580,8 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculate current HP (max_hp - damage_taken)</p>
+    <p>Calculate current HP, preserving overkill as a negative value from
+either the server or the inferred damage model.</p>
 
   </div>
 </div>
@@ -2590,17 +2594,19 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-628
-629
-630
-631</pre>
+607
+608
+609
+610
+611</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 628</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 607</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_hp'>current_hp</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
-  <span class='lbracket'>[</span><span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>-</span> <span class='ivar'>@damage_taken</span><span class='comma'>,</span> <span class='int'>0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_max'>max</span>
+  <span class='kw'>return</span> <span class='ivar'>@health</span> <span class='kw'>if</span> <span class='id identifier rubyid_authoritative_health?'>authoritative_health?</span>
+
+  <span class='id identifier rubyid_inferred_max_hp'>inferred_max_hp</span> <span class='op'>-</span> <span class='ivar'>@damage_taken</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2618,7 +2624,7 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Check if creature is dead (0 HP)</p>
+    <p>Check if creature is dead (zero or negative HP)</p>
 
   </div>
 </div>
@@ -2644,15 +2650,15 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-664
-665
-666</pre>
+646
+647
+648</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 664</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 646</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dead?'>dead?</span>
-  <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>==</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_current_hp'>current_hp</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2683,31 +2689,32 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
+684
+685
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
 702
 703
 704
 705
-706
-707
-708
-709
-710
-711
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723</pre>
+706</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 702</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 684</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_essential_data'>essential_data</span>
   <span class='lbrace'>{</span>
@@ -2717,6 +2724,7 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
     <span class='label'>status:</span> <span class='ivar'>@status</span><span class='comma'>,</span>
     <span class='label'>injuries:</span> <span class='ivar'>@injuries</span><span class='comma'>,</span>
     <span class='label'>health:</span> <span class='ivar'>@health</span><span class='comma'>,</span>
+    <span class='label'>max_health:</span> <span class='id identifier rubyid_max_health'>max_health</span><span class='comma'>,</span>
     <span class='label'>damage_taken:</span> <span class='ivar'>@damage_taken</span><span class='comma'>,</span>
     <span class='label'>max_hp:</span> <span class='id identifier rubyid_max_hp'>max_hp</span><span class='comma'>,</span>
     <span class='label'>current_hp:</span> <span class='id identifier rubyid_current_hp'>current_hp</span><span class='comma'>,</span>
@@ -2773,12 +2781,12 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-592
-593
-594</pre>
+583
+584
+585</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 592</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 583</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fatal_crit?'>fatal_crit?</span>
   <span class='ivar'>@fatal_crit</span>
@@ -2825,12 +2833,12 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-403
-404
-405</pre>
+394
+395
+396</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 403</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 394</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_template?'>has_template?</span>
   <span class='op'>!</span><span class='id identifier rubyid_template'>template</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2851,7 +2859,7 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculate HP percentage (0-100)</p>
+    <p>Calculate HP percentage, preserving negative overkill.</p>
 
   </div>
 </div>
@@ -2864,17 +2872,21 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-634
-635
-636
-637</pre>
+614
+615
+616
+617
+618
+619</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 634</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 614</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_max_hp'>max_hp</span> <span class='op'>&gt;</span> <span class='int'>0</span>
-  <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_current_hp'>current_hp</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span> <span class='op'>/</span> <span class='id identifier rubyid_max_hp'>max_hp</span><span class='rparen'>)</span> <span class='op'>*</span> <span class='int'>100</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_round'>round</span><span class='lparen'>(</span><span class='int'>1</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_maximum'>maximum</span> <span class='op'>=</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_maximum'>maximum</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_maximum'>maximum</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+
+  <span class='lparen'>(</span><span class='lparen'>(</span><span class='id identifier rubyid_current_hp'>current_hp</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span> <span class='op'>/</span> <span class='id identifier rubyid_maximum'>maximum</span><span class='rparen'>)</span> <span class='op'>*</span> <span class='int'>100</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_round'>round</span><span class='lparen'>(</span><span class='int'>1</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2918,12 +2930,12 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-582
-583
-584</pre>
+573
+574
+575</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 582</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 573</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured?'>injured?</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='comma'>,</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='lbracket'>[</span><span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rbracket'>]</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span>
@@ -2957,12 +2969,12 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-597
-598
-599</pre>
+588
+589
+590</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 597</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 588</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured_locations'>injured_locations</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='ivar'>@injuries</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__'>_</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span> <span class='id identifier rubyid_value'>value</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_threshold'>threshold</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
@@ -3009,13 +3021,13 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-640
-641
-642
-643</pre>
+622
+623
+624
+625</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 640</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 622</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_low_hp?'>low_hp?</span><span class='lparen'>(</span><span class='id identifier rubyid_threshold'>threshold</span> <span class='op'>=</span> <span class='int'>25</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_hp_percent'>hp_percent</span>
@@ -3050,12 +3062,12 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-587
-588
-589</pre>
+578
+579
+580</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 587</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 578</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mark_fatal_crit!'>mark_fatal_crit!</span>
   <span class='ivar'>@fatal_crit</span> <span class='op'>=</span> <span class='kw'>true</span>
@@ -3076,7 +3088,8 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Get maximum HP from template, with fallback</p>
+    <p>Get maximum HP, preferring a usable value from the latest crtrStatus
+snapshot and otherwise using the established inferred fallback.</p>
 
   </div>
 </div>
@@ -3089,47 +3102,19 @@ what binds on large creatures, so this compares raw HP, not percent.</p>
       <pre class="lines">
 
 
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618
-619
-620
-621
-622
-623
-624
-625</pre>
+599
+600
+601
+602
+603</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 607</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 599</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
-  <span class='comment'># Try template first
-</span>  <span class='id identifier rubyid_hp'>hp</span> <span class='op'>=</span> <span class='id identifier rubyid_template'>template</span><span class='op'>&amp;.</span><span class='id identifier rubyid_max_hp'>max_hp</span>
-  <span class='kw'>return</span> <span class='id identifier rubyid_hp'>hp</span> <span class='kw'>if</span> <span class='id identifier rubyid_hp'>hp</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_hp'>hp</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+  <span class='kw'>return</span> <span class='ivar'>@max_health</span> <span class='kw'>if</span> <span class='id identifier rubyid_authoritative_health?'>authoritative_health?</span>
 
-  <span class='comment'># Fall back to combat tracker setting if available
-</span>  <span class='kw'>begin</span>
-    <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat/Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat/Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:fallback_hp</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_fallback'>fallback</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Combat/Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fallback_hp'><span class='object_link'><a href="Combat/Tracker.html#fallback_hp-class_method" title="Lich::Gemstone::Combat::Tracker.fallback_hp (method)">fallback_hp</a></span></span>
-      <span class='kw'>return</span> <span class='id identifier rubyid_fallback'>fallback</span> <span class='kw'>if</span> <span class='id identifier rubyid_fallback'>fallback</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_fallback'>fallback</span> <span class='op'>&gt;</span> <span class='int'>0</span>
-    <span class='kw'>end</span>
-  <span class='kw'>rescue</span>
-    <span class='comment'># Ignore errors accessing tracker
-</span>  <span class='kw'>end</span>
-
-  <span class='comment'># Last resort: hardcoded fallback
-</span>  <span class='int'>400</span>
+  <span class='id identifier rubyid_inferred_max_hp'>inferred_max_hp</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3179,13 +3164,13 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-691
-692
-693
-694</pre>
+673
+674
+675
+676</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 691</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 673</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_muckled?'><span class='object_link'><a href="../../top-level-namespace.html#muckled%3F-instance_method" title="#muckled? (method)">muckled?</a></span></span>
   <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>webbed</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span> <span class='op'>||</span> <span class='id identifier rubyid_has_status?'>has_status?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span>
@@ -3220,17 +3205,17 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-410
-411
-412
-413
-414
-415
-416
-417</pre>
+401
+402
+403
+404
+405
+406
+407
+408</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 410</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 401</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_pos'>pos</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_pos'>pos</span>
@@ -3269,12 +3254,12 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-697
-698
-699</pre>
+679
+680
+681</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 697</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 679</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset_damage'>reset_damage</span>
   <span class='ivar'>@damage_taken</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -3308,20 +3293,20 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
+411
+412
+413
+414
+415
+416
+417
+418
+419
 420
-421
-422
-423
-424
-425
-426
-427
-428
-429
-430</pre>
+421</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 420</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 411</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_position'>set_ucs_position</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_new_tier'>new_tier</span> <span class='op'>=</span> <span class='id identifier rubyid_position_to_tier'>position_to_tier</span><span class='lparen'>(</span><span class='id identifier rubyid_position'>position</span><span class='rparen'>)</span>
@@ -3363,14 +3348,14 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-433
-434
-435
-436
-437</pre>
+424
+425
+426
+427
+428</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 433</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 424</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_set_ucs_tierup'>set_ucs_tierup</span><span class='lparen'>(</span><span class='id identifier rubyid_attack_type'>attack_type</span><span class='rparen'>)</span>
   <span class='ivar'>@ucs_tierup</span> <span class='op'>=</span> <span class='id identifier rubyid_attack_type'>attack_type</span>
@@ -3406,14 +3391,14 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
-440
-441
-442
-443
-444</pre>
+431
+432
+433
+434
+435</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 440</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 431</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smite!'>smite!</span>
   <span class='ivar'>@ucs_smote</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
@@ -3462,20 +3447,20 @@ acting, not ones that merely penalize or reposition.</p>
       <pre class="lines">
 
 
+438
+439
+440
+441
+442
+443
+444
+445
+446
 447
-448
-449
-450
-451
-452
-453
-454
-455
-456
-457</pre>
+448</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 447</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 438</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_smote?'>smote?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_smote</span>
@@ -3531,13 +3516,13 @@ lapsed or stun is no longer active.</p>
       <pre class="lines">
 
 
-517
-518
-519
-520</pre>
+508
+509
+510
+511</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 517</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 508</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stun_rounds'>stun_rounds</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_stun_estimate_active?'>stun_estimate_active?</span>
@@ -3589,13 +3574,13 @@ size the window.</p>
       <pre class="lines">
 
 
-530
-531
-532
-533</pre>
+521
+522
+523
+524</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 530</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 521</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stunned_for'>stunned_for</span>
   <span class='kw'>return</span> <span class='float'>0.0</span> <span class='kw'>unless</span> <span class='id identifier rubyid_stun_estimate_active?'>stun_estimate_active?</span>
@@ -3632,15 +3617,15 @@ every call the way <code>||=</code> would.</p>
       <pre class="lines">
 
 
-395
-396
-397
-398
-399
-400</pre>
+386
+387
+388
+389
+390
+391</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 395</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 386</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_template'>template</span>
   <span class='kw'>return</span> <span class='ivar'>@template</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='ivar'>@template_looked_up</span><span class='rparen'>)</span>
@@ -3690,13 +3675,13 @@ every call the way <code>||=</code> would.</p>
       <pre class="lines">
 
 
-467
-468
-469
-470</pre>
+458
+459
+460
+461</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 467</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 458</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ucs_expired?'>ucs_expired?</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>unless</span> <span class='ivar'>@ucs_updated</span>
@@ -3747,17 +3732,17 @@ regex-matching a status string.</p>
       <pre class="lines">
 
 
-675
-676
-677
-678
-679
-680
-681
-682</pre>
+657
+658
+659
+660
+661
+662
+663
+664</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 675</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 657</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_valid_target?'>valid_target?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_crtr_flag?'>crtr_flag?</span><span class='lparen'>(</span><span class='symbol'>:dead</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_dead?'>dead?</span>
@@ -3777,7 +3762,7 @@ regex-matching a status string.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:36 2026 by
+  Generated on Wed Oct 28 05:27:25 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

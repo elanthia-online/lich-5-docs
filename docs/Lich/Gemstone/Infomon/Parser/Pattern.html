@@ -64,7 +64,7 @@
       <div id="content"><h1>Module: Lich::Gemstone::Infomon::Parser::Pattern
   
   
-  
+  <span class="private note title">Private</span>
 </h1>
 <div class="box_info">
   
@@ -88,12 +88,14 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Namespace for regular expression patterns that parse game server output lines.</p>
-<p>Patterns are organized by purpose: character stats (CharRaceProf, Stat), experience (RealExp, TotalExp),
-skills and ranks (Skill, SpellRanks), player society and housing (Society, ProfileHouseCHE),
-and status conditions (SleepActive, BindActive, CutthroatActive). Most patterns use named captures
-to extract values. All patterns are frozen and optimized for high-volume line parsing.</p>
-<p>See ALL_LIST and AllStart for pattern union compilation used in the fast-path parser.</p>
+    <p class="note private">
+  <strong>This module is part of a private API.</strong>
+  You should avoid using this module if possible, as it may be removed or be changed in the future.
+</p>
+<p>Namespace for regex patterns that match game output lines.</p>
+<p>Patterns are grouped by category: character stats, experience, skills,
+PSM (Profession Specialization Maneuvers), resources, wealth, status effects,
+spells, and enhancives. Each pattern uses named captures to extract game state.</p>
 
   </div>
 </div>
@@ -112,7 +114,11 @@ to extract values. All patterns are frozen and optimized for high-volume line pa
         <dt id="CharRaceProf-constant" class="">CharRaceProf =
           <div class="docstring">
   <div class="discussion">
-    <p>Regex patterns grouped for Info, Exp, Skill and PSM parsing - calls upsert_batch to reduce db impact</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Regex patterns grouped for Info, Exp, Skill and PSM parsing - calls upsert_batch to reduce db impact</p>
 
   </div>
 </div>
@@ -124,14 +130,31 @@ to extract values. All patterns are frozen and optimized for high-volume line pa
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Name:\s+(?&lt;name&gt;[A-z\s&#39;-]+)\s+Race:\s+(?&lt;race&gt;[A-z]+|[A-z]+(?: |-)[A-z]+)\s+Profession:\s+(?&lt;profession&gt;[-A-z]+)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CharGenderAgeExpLevel-constant" class="">CharGenderAgeExpLevel =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Gender:\s+(?&lt;gender&gt;[A-z]+)\s+Age:\s+(?&lt;age&gt;[,0-9]+)\s+Expr:\s+(?&lt;experience&gt;[0-9,]+)\s+Level:\s+(?&lt;level&gt;[0-9]+)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Stat-constant" class="">Stat =
           <div class="docstring">
   <div class="discussion">
-    <p>Matches both 'info' (2 columns) and 'info full' (3 columns with base stats)
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Matches both 'info' (2 columns) and 'info full' (3 columns with base stats)
 Base stats are optional - only present in 'info full' output</p>
 
   </div>
@@ -144,14 +167,31 @@ Base stats are optional - only present in 'info full' output</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*(?&lt;stat&gt;[A-z]+)\s\((?:STR|CON|DEX|AGI|DIS|AUR|LOG|INT|WIS|INF)\):(?:\s+(?&lt;base_value&gt;\d+)\s+\((?&lt;base_bonus&gt;-?\d+)\)\s+[.]{3})?\s+(?&lt;value&gt;[0-9]+)\s\((?&lt;bonus&gt;-?[0-9]+)\)\s+[.]{3}\s+(?&lt;enhanced_value&gt;\d+)\s+\((?&lt;enhanced_bonus&gt;-?\d+)\)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="StatEnd-constant" class="">StatEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Mana:\s+-?\d+\s+Silver:\s(?&lt;silver&gt;-?[\d,]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Fame-constant" class="">Fame =
           <div class="docstring">
   <div class="discussion">
-    <p>serves as ExprStart</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>serves as ExprStart</p>
 
   </div>
 </div>
@@ -163,25 +203,69 @@ Base stats are optional - only present in 'info full' output</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Level: \d+\s+Fame: (?&lt;fame&gt;-?[\d,]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="RealExp-constant" class="">RealExp =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>^\s+Experience: [\d,]+\s+Field Exp: (?&lt;fxp_current&gt;[\d,]+)/(?&lt;fxp_max&gt;[\d,]+)$</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="AscExp-constant" class="">AscExp =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Ascension Exp: (?&lt;ascension_experience&gt;[\d,]+)\s+Recent Deaths: [\d,]+$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TotalExp-constant" class="">TotalExp =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Total Exp: (?&lt;total_experience&gt;[\d,]+)\s+Death&#39;s Sting: (?&lt;deaths_sting&gt;None|Light|Moderate|Sharp|Harsh|Piercing|Crushing)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="LTE-constant" class="">LTE =
           <div class="docstring">
   <div class="discussion">
-    <p>Matches the Long-Term Experience and Deeds line from the full INFO command output.</p>
-<p>Captures long-term accumulated experience and the count of deeds completed.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Matches the Long-Term Exp line from character status.</p>
+<p>Captures the player's accumulated long-term experience (for exp penalty recovery)
+and deed count. Appears in the experience section of character info.</p>
 
   </div>
 </div>
@@ -191,21 +275,33 @@ Base stats are optional - only present in 'info full' output</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  Long-Term Exp: 12,345,678  Deeds: 42</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Infomon::Parser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'>LTE</span>
-<span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:long_term_experience</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;12,345,678&quot;
-</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:deeds</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;42&quot;</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  Long-Term Exp: 50,000  Deeds: 3</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>LTE</span>
+<span class='comment'>#=&gt; Regexp.last_match[:long_term_experience] #=&gt; &quot;50,000&quot;
+</span><span class='comment'>#=&gt; Regexp.last_match[:deeds] #=&gt; &quot;3&quot;</span></code></pre>
     
   </div>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern with named captures: long_term_experience, deeds</p></div>
+      
+    </li>
+  
+</ul>
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#Fame-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Fame (constant)">Fame</a></span></li>
-    
-      <li><span class='object_link'><a href="#TotalExp-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TotalExp (constant)">TotalExp</a></span></li>
-    
-      <li><span class='object_link'><a href="#ExprEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ExprEnd (constant)">ExprEnd</a></span></li>
+      <li><span class='object_link'><a href="#Fame-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Fame (constant)">Pattern::RealExp</a></span></li>
     
   </ul>
 
@@ -214,57 +310,177 @@ Base stats are optional - only present in 'info full' output</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Long-Term Exp: (?&lt;long_term_experience&gt;[\d,]+)\s+Deeds: (?&lt;deeds&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ExprEnd-constant" class="">ExprEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+Exp (?:until lvl|to next TP): -?[\d,]+</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SkillStart-constant" class="">SkillStart =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s\w+\s\(at level \d+\), your current skill bonuses and ranks</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Skill-constant" class="">Skill =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[[a-zA-Z]\s\-&#39;]+)\.+\|\s+(?&lt;bonus&gt;\d+)\s+(?&lt;ranks&gt;\d+)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SpellRanks-constant" class="">SpellRanks =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[\w\s\-&#39;]+)\.+\|\s+(?&lt;rank&gt;\d+).*$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SkillEnd-constant" class="">SkillEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Training Points: \d+ Phy \d+ Mnt</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GoalsDetected-constant" class="">GoalsDetected =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Skill goals updated!$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GoalsEnded-constant" class="">GoalsEnded =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Further information can be found in the FAQs\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="InnCheckedOut-constant" class="">InnCheckedOut =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Leaving your room, you check back out of .*, wander over to the front desk and hand the room key back to the innkeeper\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="PSMStart-constant" class="">PSMStart =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\w+, the following (?&lt;cat&gt;Ascension Abilities|Armor Specializations|Combat Maneuvers|Feats|Shield Specializations|Weapon Techniques) are available:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="PSM-constant" class="">PSM =
           <div class="docstring">
   <div class="discussion">
-    <p>Matches a single entry from the PSM (Personal Special Maneuver / Specialization / Feat) list output.</p>
-<p>Each line in a PSM category (Armor Specializations, Combat Maneuvers, Weapon Techniques, etc.)
-lists the maneuver name, its slash command, current rank, and maximum rank. The pattern captures
-all four components for storage in the infomon database.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Matches a single PSM (Combat Maneuver, Feat, Specialization, Technique) ability line.</p>
+<p>Captures the ability name, its command, current ranks, and max ranks from
+the output of commands like COMBAT MANEUVERS, FEATS, or armor/shield/weapon lists.</p>
 
   </div>
 </div>
@@ -274,25 +490,35 @@ all four components for storage in the infomon database.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  Shield Slam shield 2/5 abc</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Infomon::Parser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'>PSM</span>
-<span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;Shield Slam&quot;
-</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:command</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;shield&quot;
-</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:ranks</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;2&quot;
-</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:max</span><span class='rbracket'>]</span> <span class='comment'>#=&gt; &quot;5&quot;</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  Shield Bash     shieldbash  3/5</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PSM</span>
+<span class='comment'>#=&gt; Regexp.last_match[:name] #=&gt; &quot;Shield Bash&quot;
+</span><span class='comment'>#=&gt; Regexp.last_match[:command] #=&gt; &quot;shieldbash&quot;
+</span><span class='comment'>#=&gt; Regexp.last_match[:ranks] #=&gt; &quot;3&quot;
+</span><span class='comment'>#=&gt; Regexp.last_match[:max] #=&gt; &quot;5&quot;</span></code></pre>
     
   </div>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>pattern with named captures: name, command, ranks, max</p></div>
+      
+    </li>
+  
+</ul>
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#PSMStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSMStart (constant)">PSMStart</a></span></li>
-    
-      <li><span class='object_link'><a href="#PSMEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSMEnd (constant)">PSMEnd</a></span></li>
-    
-      <li><span class='object_link'><a href="#LearnPSM-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::LearnPSM (constant)">LearnPSM</a></span></li>
-    
-      <li><span class='object_link'><a href="#UnlearnPSM-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::UnlearnPSM (constant)">UnlearnPSM</a></span></li>
+      <li><span class='object_link'><a href="#PSMStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSMStart (constant)">Pattern::PSMEnd</a></span></li>
     
   </ul>
 
@@ -301,14 +527,31 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[A-z\s\-&#39;:]+)\s+(?&lt;command&gt;[a-z]+)\s+(?&lt;ranks&gt;\d+)\/(?&lt;max&gt;\d+).*$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="PSMEnd-constant" class="">PSMEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^   Subcategory: all$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Levelup-constant" class="">Levelup =
           <div class="docstring">
   <div class="discussion">
-    <p>Single / low impact - single db write</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Single / low impact - single db write</p>
 
   </div>
 </div>
@@ -322,7 +565,11 @@ all four components for storage in the infomon database.</p>
         <dt id="SpellsSolo-constant" class="">SpellsSolo =
           <div class="docstring">
   <div class="discussion">
-    <p>from SPELL command</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>from SPELL command</p>
 
   </div>
 </div>
@@ -334,59 +581,193 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?&lt;name&gt;Bard|Cleric|Empath|Minor (?:Elemental|Mental|Spiritual)|Major (?:Elemental|Mental|Spiritual)|Paladin|Ranger|Savant|Sorcerer|Wizard)(?: Base)?\.+(?&lt;rank&gt;\d+).*$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Citizenship-constant" class="">Citizenship =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You currently have .*? citizenship in (?&lt;town&gt;.*)\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="NoCitizenship-constant" class="">NoCitizenship =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You don&#39;t seem to have citizenship\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Society-constant" class="">Society =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+You are a (?&lt;standing&gt;Master|member) (?:in|of) the (?&lt;society&gt;Order of Voln|Council of Light|Guardians of Sunfist)(?: at (?:rank|step) (?&lt;rank&gt;[0-9]+))?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="NoSociety-constant" class="">NoSociety =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+You are not a member of any society at this time.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SocietyStep-constant" class="">SocietyStep =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:Zarak|Faylanna|Draelox|Marl|Vindar|Taryn|Meaha|Oxanna|Cyndelle) traces the outline of a sigil into the air before you and says|^The High Taskmaster looks at you, consults (?:her|his) notes, and then announces in a loud voice|^The monk concludes ceremoniously,</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SocietyJoin-constant" class="">SocietyJoin =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The Grandmaster says, &quot;Welcome to the Order|^The Grandmaster says, &quot;You are now a member of the Guardians of Sunfist|^The Grand Poohbah smiles broadly.  &quot;Welcome to the Lodge,&quot; he cries</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SocietyResign-constant" class="">SocietyResign =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The Grandmaster says, &quot;I&#39;m sorry to hear that.  You are no longer in our service.|^The Poohbah looks at you sternly.  &quot;I had high hopes for you,&quot; he says, &quot;but if this be your decision, so be it\.  I hereby strip you of membership|^The Grandmaster says, &quot;I&#39;m sorry to hear that,.+I wish you well with any of your future endeavors.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Warcries-constant" class="">Warcries =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;(?:Bertrandt&#39;s Bellow|Yertie&#39;s Yowlp|Gerrelle&#39;s Growl|Seanette&#39;s Shout|Carn&#39;s Cry|Horland&#39;s Holler))$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="NoWarcries-constant" class="">NoWarcries =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You must be an active member of the Warrior Guild to use this skill\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="LearnPSM-constant" class="">LearnPSM =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You have now achieved rank (?&lt;rank&gt;\d+) of (?&lt;psm&gt;[A-z\s]+), costing \d+ (?&lt;cat&gt;[A-z]+) .*?points\.$</span><span class='regexp_end'>/</span></span></pre></dd>
       
         <dt id="LearnTechnique-constant" class="">LearnTechnique =
           <div class="docstring">
   <div class="discussion">
-    <p>Technique covers Specialization (Armor and Shield), Technique (Weapon), and Feat</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Technique covers Specialization (Armor and Shield), Technique (Weapon), and Feat</p>
 
   </div>
 </div>
@@ -398,184 +779,679 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\[You have (?:gained|increased to) rank (?&lt;rank&gt;\d+) of (?&lt;cat&gt;[A-z]+).*: (?&lt;psm&gt;[A-z\s\-&#39;:]+)\.\]$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="UnlearnPSM-constant" class="">UnlearnPSM =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You decide to unlearn rank (?&lt;rank&gt;\d+) of (?&lt;psm&gt;[A-z\s\-&#39;:]+), regaining \d+ (?&lt;cat&gt;[A-z]+) .*?points\.$</span><span class='regexp_end'>/</span></span></pre></dd>
       
         <dt id="UnlearnTechnique-constant" class="">UnlearnTechnique =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\[You have decreased to rank (?&lt;rank&gt;\d+) of (?&lt;cat&gt;[A-z]+).*: (?&lt;psm&gt;[A-z\s\-&#39;:]+)\.\]$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="LostTechnique-constant" class="">LostTechnique =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\[You are no longer trained in (?&lt;cat&gt;[A-z]+) .*: (?&lt;psm&gt;[A-z\s\-&#39;:]+)\.\]$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Resource-constant" class="">Resource =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:Essence|Necrotic Energy|Lore Knowledge|Motes of Tranquility|Devotion|Nature&#39;s Grace|Grit|Luck Inspiration|Guile|Vitality): (?&lt;weekly&gt;[0-9,]+)\/50,000 \(Weekly\)\s+(?&lt;total&gt;[0-9,]+)\/200,000 \(Total\)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="Suffused-constant" class="">Suffused =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Suffused (?&lt;type&gt;(?:Essence|Necrotic Energy|Lore Knowledge|Motes of Tranquility|Devotion|Nature&#39;s Grace|Grit|Luck Inspiration|Guile|Vitality)): (?&lt;suffused&gt;[0-9,]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="VolnFavor-constant" class="">VolnFavor =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Voln Favor: (?&lt;favor&gt;[-\d,]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CovertArtsCharges-constant" class="">CovertArtsCharges =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Covert Arts Charges: (?&lt;charges&gt;[-\d,]+)\/200$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ShadowEssence-constant" class="">ShadowEssence =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Accumulated Shadow (?:E|e)ssence: (?&lt;essence&gt;\d)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ShadowEssenceGain-constant" class="">ShadowEssenceGain =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You violently shatter the bond on the soul of the .+\.  As you draw it into yourself, you manipulate the chaotic and broken life forces, forming shadow essence\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ShadowEssenceCap-constant" class="">ShadowEssenceCap =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You begin to sacrifice your victim but immediately sense that it would overwhelm you with shadow essence\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SacrificeMana-constant" class="">SacrificeMana =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You summon the shadow essence from the inner depths of your body, surrounding yourself in a dark halo of power\.  You will the shadows into the eddies and currents of the flows of essence around you, spreading through them like blackened veins of corruption\.  The surroundings glow with silent anguish\.  Everything around you becomes pale and enervated with discoloration, like the life has been drained out of the world\.  There is a flood of power as you feel (?&lt;amount&gt;\d+) mana surge into you!$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SacrificeChannel-constant" class="">SacrificeChannel =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Focusing on the bond to your animate, you force shadow essence into .+, leveraging its broken life forces\.  The backlash of sorcerous violence with the necrotic energy of the \w+ ends in the unnatural revitalization of its animate matter\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SacrificeInfest-constant" class="">SacrificeInfest =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Mastering the struggle against the frantic rush of stolen power, you unleash a dark haze of necrosis upon your unfortunate victim\.  With a small smirk, you force the sickly currents of shadow essence from your body, commanding them to seek and infest .+\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SacrificeFate-constant" class="">SacrificeFate =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You close your eyes momentarily and visualize the strands of fate that tie together the firmament\.  Identifying a susceptible star, you compel the shadow essence within you to corrupt it\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SacrificeShift-constant" class="">SacrificeShift =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Summoning the shadow essence within yourself, you will it to bleed through the veil, exposing your mind to the vast abyss of cosmic horror\.  Countless possible gateways reveal themselves, with runes hidden in the fabric of reality\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GigasArtifactFragments-constant" class="">GigasArtifactFragments =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are carrying (?&lt;gigas_artifact_fragments&gt;[\d,]+) gigas artifact fragments?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="RedsteelMarks-constant" class="">RedsteelMarks =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:\s* Redsteel Marks:           |You are carrying) (?&lt;redsteel_marks&gt;[\d,]+)(?: redsteel marks?\.)?$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="GemstoneDust-constant" class="">GemstoneDust =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are carrying (?&lt;gemstone_dust&gt;[\d,]+) Dust in your reserves?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketGeneral-constant" class="">TicketGeneral =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*General - (?&lt;tickets&gt;[\d,]+) tickets?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketBlackscrip-constant" class="">TicketBlackscrip =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Troubled Waters - (?&lt;blackscrip&gt;[\d,]+) blackscrip\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketBloodscrip-constant" class="">TicketBloodscrip =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Duskruin Arena - (?&lt;bloodscrip&gt;[\d,]+) bloodscrip\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketEtherealScrip-constant" class="">TicketEtherealScrip =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Reim - (?&lt;ethereal_scrip&gt;[\d,]+) ethereal scrip\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketSoulShards-constant" class="">TicketSoulShards =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Ebon Gate - (?&lt;soul_shards&gt;[\d,]+) soul shards?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketRaikhen-constant" class="">TicketRaikhen =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Rumor Woods - (?&lt;raikhen&gt;[\d,]+) raikhen\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketAevit-constant" class="">TicketAevit =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Inquisitor - (?&lt;aevit&gt;[\d,]+) aevit\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="TicketGold-constant" class="">TicketGold =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*Gold - (?&lt;gold&gt;[\d,]+) gold\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="WealthSilver-constant" class="">WealthSilver =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You have (?&lt;silver&gt;no|[,\d]+|but one) silver with you\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="WealthSilverContainer-constant" class="">WealthSilverContainer =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are carrying (?&lt;silver&gt;[\d,]+) silver stored within your </span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
+        <dt id="WealthSilverTotal-constant" class="">WealthSilverTotal =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are carrying a total of (?&lt;silver&gt;[\d,]+) silver\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="WealthNotes-constant" class="">WealthNotes =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Total note value: (?&lt;silver&gt;[\d,]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
         <dt id="AccountName-constant" class="">AccountName =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Account Name:     (?&lt;name&gt;[\w\d\-\_]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="AccountSubscription-constant" class="">AccountSubscription =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Account Type:     (?&lt;subscription&gt;F2P|Standard|Premium|Platinum)(?: with Shattered)?(?: \(\w+\))?$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ProfileStart-constant" class="">ProfileStart =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^PERSONAL INFORMATION$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ProfileName-constant" class="">ProfileName =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Name: (?&lt;name&gt;[\w\s]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ProfileHouseCHE-constant" class="">ProfileHouseCHE =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^[A-Za-z\- ]+? (?:of House of the |of House of |of House |of )(?&lt;house&gt;Argent Aspis|Rising Phoenix|Paupers|Arcane Masters|Brigatta|Twilight Hall|Silvergate Inn|Sovyn|Sylvanfair|Helden Hall|White Haven|Beacon Hall|Rone Academy|Willow Hall|Moonstone Abbey|Obsidian Tower|Cairnfang Manor)(?: Archive)?$|^(?&lt;none&gt;No House affiliation)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ResignCHE-constant" class="">ResignCHE =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:Once you have resigned from your House, you will be unable to rejoin without being inducted again by the |If you wish to renounce your membership in the |Before you can resign from the )(?:House |of House of the |of House of |of House |of )?(?&lt;house&gt;Argent Aspis|Rising Phoenix|Paupers|Arcane Masters|Brigatta|Twilight Hall|Silvergate Inn|Sovyn|Sylvanfair|Helden Hall|White Haven|Beacon Hall|Rone Academy|Willow Hall|Moonstone Abbey|Obsidian Tower|Cairnfang Manor)(?: Archive)?|^(?&lt;none&gt;The RESIGN command is for resigning your membership in a House, but you don&#39;t currently belong to any of the Cooperative Houses of Elanthia)\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ResignConfirmCHE-constant" class="">ResignConfirmCHE =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\[You have resigned from the (?:House |of House of the |of House of |of House |of )?(?&lt;house&gt;Argent Aspis|Rising Phoenix|Paupers|Arcane Masters|Brigatta|Twilight Hall|Silvergate Inn|Sovyn|Sylvanfair|Helden Hall|White Haven|Beacon Hall|Rone Academy|Willow Hall|Moonstone Abbey|Obsidian Tower|Cairnfang Manor)(?: Archive)?\.\]$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SleepActive-constant" class="">SleepActive =
           <div class="docstring">
   <div class="discussion">
-    <p>TODO: refactor / streamline?</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>TODO: refactor / streamline?</p>
 
   </div>
 </div>
@@ -587,44 +1463,139 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Your mind goes completely blank\.$|^You close your eyes and slowly drift off to sleep\.$|^You slump to the ground and immediately fall asleep\.  You must have been exhausted!$|^That is impossible to do while unconscious$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SleepNoActive-constant" class="">SleepNoActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Your thoughts slowly come back to you as you find yourself lying on the ground\.  You must have been sleeping\.$|^You wake up from your slumber\.$|^You are awoken|^You awake|^You slowly come back to alertness and realize you must have been sleeping\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="BindActive-constant" class="">BindActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^An unseen force (?:envelops|entangles) you, restricting (?:all|your) movement|^You are caught fast, the light of (?:Liabo|Lornon|Tilaok|Makiri|the moon) arresting your movements</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="BindNoActive-constant" class="">BindNoActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The restricting force that envelops you dissolves away\.|^You shake off the immobilization that was restricting your movements!|^The restricting force enveloping you fades away\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SilenceActive-constant" class="">SilenceActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^A pall of silence settles over you\.|^The pall of silence settles more heavily over you\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SilenceNoActive-constant" class="">SilenceNoActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The pall of silence leaves you\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CalmActive-constant" class="">CalmActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^A calm washes over you\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CalmNoActive-constant" class="">CalmNoActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are enraged by .*? attack!|^The feeling of calm leaves you\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CutthroatActiveMid-constant" class="">CutthroatActiveMid =
           <div class="docstring">
   <div class="discussion">
-    <p>mid-line: cannot be part of the anchored fast path</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>mid-line: cannot be part of the anchored fast path</p>
 
   </div>
 </div>
@@ -636,44 +1607,139 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>slices deep into your vocal cords!$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CutthroatActiveStart-constant" class="">CutthroatActiveStart =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^All you manage to do is cough up some blood\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CutthroatActive-constant" class="">CutthroatActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#CutthroatActiveMid-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CutthroatActiveMid (constant)">CutthroatActiveMid</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CutthroatActiveStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CutthroatActiveStart (constant)">CutthroatActiveStart</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="CutthroatNoActive-constant" class="">CutthroatNoActive =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s*The horrible pain in your vocal cords subsides as you spit out the last of the blood clogging your throat\.$|^That tingles, but there are no head injuries to repair\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ThornPoisonStart-constant" class="">ThornPoisonStart =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^One of the vines surrounding .*? lashes out at you, driving a thorn into your skin!  You feel poison coursing through your veins\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ThornPoisonProgression-constant" class="">ThornPoisonProgression =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You begin to feel a strange fatigue, spreading throughout your body\.$|^The strange lassitude is growing worse, making it difficult to keep up with any strenuous activities\.$|^You find yourself gradually slowing down, your muscles trembling with fatigue\.$|^It\&#39;s getting increasingly difficult to move. It feels almost as if the air itself is growing thick as molasses\.$|^No longer able to fight this odd paralysis, you collapse to the ground, as limp as an old washrag\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ThornPoisonDeprogression-constant" class="">ThornPoisonDeprogression =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^With a shaky gasp and trembling muscles, you regain at least some small ability to move, however slowly\.$|Although you can\&#39;t seem to move as quickly as you usually can, you\&#39;re feeling better than you were just moments ago\.$|^Fine coordination is difficult, but at least you can move at something close to your normal speed again\.$|^While you\&#39;re still a bit shaky, your muscles are responding better than they were\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ThornPoisonEnd-constant" class="">ThornPoisonEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Your body begins to respond normally again\.$|^Your skin takes on a more pinkish tint\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SpellUpMsgs-constant" class="">SpellUpMsgs =
           <div class="docstring">
   <div class="discussion">
-    <p>Adding spell regexes.  Does not save to infomon.db.  Used by Spell and by ActiveSpells</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Adding spell regexes.  Does not save to infomon.db.  Used by Spell and by ActiveSpells</p>
 
   </div>
 </div>
@@ -685,19 +1751,70 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common/Spell.html" title="Lich::Common::Spell (class)">Spell</a></span></span><span class='period'>.</span><span class='id identifier rubyid_upmsgs'><span class='object_link'><a href="../../../Common/Spell.html#upmsgs-class_method" title="Lich::Common::Spell.upmsgs (method)">upmsgs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>$|^</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>$</span><span class='regexp_end'>/o</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="SpellDnMsgs-constant" class="">SpellDnMsgs =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common/Spell.html" title="Lich::Common::Spell (class)">Spell</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dnmsgs'><span class='object_link'><a href="../../../Common/Spell.html#dnmsgs-class_method" title="Lich::Common::Spell.dnmsgs (method)">dnmsgs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>$|^</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>$</span><span class='regexp_end'>/o</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
+        <dt id="SpellTargetUpMsgs-constant" class="">SpellTargetUpMsgs =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Spells that name the character they land on. The alternation is
+empty when no spell carries a target-start message, and an empty
+union would match every line, so fall back to a pattern that
+matches nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common/Spell.html" title="Lich::Common::Spell (class)">Spell</a></span></span><span class='period'>.</span><span class='id identifier rubyid_target_upmsgs'><span class='object_link'><a href="../../../Common/Spell.html#target_upmsgs-class_method" title="Lich::Common::Spell.target_upmsgs (method)">target_upmsgs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?!)</span><span class='regexp_end'>/</span></span> <span class='op'>:</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../../Common/Spell.html" title="Lich::Common::Spell (class)">Spell</a></span></span><span class='period'>.</span><span class='id identifier rubyid_target_upmsgs'><span class='object_link'><a href="../../../Common/Spell.html#target_upmsgs-class_method" title="Lich::Common::Spell.target_upmsgs (method)">target_upmsgs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>$|^</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>$</span><span class='regexp_end'>/o</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
         <dt id="SpellsongRenewed-constant" class="">SpellsongRenewed =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Your songs? renews?</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveStart-constant" class="">EnhanciveStart =
           <div class="docstring">
   <div class="discussion">
-    <p>Enhancive parsing patterns - from INVENTORY ENHANCIVE TOTALS command</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Enhancive parsing patterns - from INVENTORY ENHANCIVE TOTALS command</p>
 
   </div>
 </div>
@@ -709,79 +1826,265 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Stats:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveStat-constant" class="">EnhanciveStat =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;stat&gt;Strength|Constitution|Dexterity|Agility|Discipline|Aura|Logic|Intuition|Wisdom|Influence)\s+\((?&lt;abbr&gt;\w{3})\):\s*(?&lt;value&gt;\d+)\/(?&lt;cap&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveSkillsSection-constant" class="">EnhanciveSkillsSection =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Skills:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveSkillRanks-constant" class="">EnhanciveSkillRanks =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[\w\s\-&#39;]+?)\s+Ranks:\s*(?&lt;value&gt;\d+)\/(?&lt;cap&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveSkillBonus-constant" class="">EnhanciveSkillBonus =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[\w\s\-&#39;]+?)\s+Bonus:\s*(?&lt;value&gt;\d+)\/(?&lt;cap&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveResourcesSection-constant" class="">EnhanciveResourcesSection =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Resources:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveResource-constant" class="">EnhanciveResource =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[\w\s]+?):\s+(?&lt;value&gt;\d+)\/(?&lt;cap&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveMartialSection-constant" class="">EnhanciveMartialSection =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Martial Knowledge Skills:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveMartialSkill-constant" class="">EnhanciveMartialSkill =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;[\w\s&#39;]+?):\s+\+(?&lt;value&gt;\d+)\s+ranks?$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveSpellsSection-constant" class="">EnhanciveSpellsSection =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Self Knowledge Spells:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveSpells-constant" class="">EnhanciveSpells =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;spells&gt;[\d,\s]+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveStatisticsSection-constant" class="">EnhanciveStatisticsSection =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Statistics:$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveStatistic-constant" class="">EnhanciveStatistic =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^\s+(?&lt;name&gt;Enhancive Items|Enhancive Properties|Total Enhancive Amount):\s*(?&lt;value&gt;\d+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveEnd-constant" class="">EnhanciveEnd =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^For (?:more|fewer) details, see INVENTORY ENHANCIVE TOTALS(?: DETAILS)?\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveNone-constant" class="">EnhanciveNone =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^No enhancive item bonuses found\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveOn-constant" class="">EnhanciveOn =
           <div class="docstring">
   <div class="discussion">
-    <p>Enhancive active state tracking (on/off)</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Enhancive active state tracking (on/off)</p>
 
   </div>
 </div>
@@ -793,37 +2096,79 @@ all four components for storage in the infomon database.</p>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are (?:now|already|currently) accepting the benefits of (?:your|any and all) enhancive (?:inventory )?items(?: in your inventory)?\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EnhanciveOff-constant" class="">EnhanciveOff =
-          
-        </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You (?:are no longer|already are not|are not currently) accepting the benefit(?:s)? of (?:your|any) enhancive (?:inventory )?items(?: in your inventory)?\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
-      
-        <dt id="EnhancivePauses-constant" class="">EnhancivePauses =
-          
-        </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You currently have (?&lt;pauses&gt;\d+) enhancive pauses? available\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
-      
-        <dt id="ALL_LIST-constant" class="">ALL_LIST =
           <div class="docstring">
   <div class="discussion">
-    <p>Comprehensive list of all line-start-anchored regex patterns used by the parser.</p>
-<p>This array is compiled into AllStart, an optimized union regex anchored to \A that serves as
-a guard for the main Parser.parse method. The guard allows the engine to attempt the union only
-at position 0 instead of scanning every position of long lines, reducing server-thread CPU time.
-Mid-line patterns (AllMid) are checked separately outside this union.</p>
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
 
   </div>
 </div>
 <div class="tags">
   
 
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You (?:are no longer|already are not|are not currently) accepting the benefit(?:s)? of (?:your|any) enhancive (?:inventory )?items(?: in your inventory)?\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="EnhancivePauses-constant" class="">EnhancivePauses =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You currently have (?&lt;pauses&gt;\d+) enhancive pauses? available\.$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ALL_LIST-constant" class="">ALL_LIST =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>List of all regex patterns used by Parser.parse for fast-path guarding.</p>
+<p>These patterns are anchored to line start (^) and compiled into a union
+(AllStart) to enable O(1) matching: the regex engine attempts the match
+only at position 0 instead of scanning every position. Mid-line patterns
+that cannot use line-start anchoring are handled separately (AllMid).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Regexp&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>all documented patterns, frozen</p></div>
+      
+    </li>
+  
+</ul>
+
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#AllStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::AllStart (constant)">AllStart</a></span></li>
-    
-      <li><span class='object_link'><a href="#AllMid-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::AllMid (constant)">AllMid</a></span></li>
-    
-      <li><span class='object_link'><a href="../Parser.html#parse-class_method" title="Lich::Gemstone::Infomon::Parser.parse (method)">Lich::Gemstone::Infomon::Parser.parse</a></span></li>
+      <li><span class='object_link'><a href="#AllStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::AllStart (constant)">Pattern::AllMid</a></span></li>
     
   </ul>
 
@@ -833,11 +2178,11 @@ Mid-line patterns (AllMid) are checked separately outside this union.</p>
 <span class='const'><span class='object_link'><a href="#ExprEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ExprEnd (constant)">ExprEnd</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SkillStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SkillStart (constant)">SkillStart</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Skill-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Skill (constant)">Skill</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellRanks-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellRanks (constant)">SpellRanks</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SkillEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SkillEnd (constant)">SkillEnd</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#PSMStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSMStart (constant)">PSMStart</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#PSM-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSM (constant)">PSM</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#PSMEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::PSMEnd (constant)">PSMEnd</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Levelup-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Levelup (constant)">Levelup</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellsSolo-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellsSolo (constant)">SpellsSolo</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#Citizenship-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Citizenship (constant)">Citizenship</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#NoCitizenship-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::NoCitizenship (constant)">NoCitizenship</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Society-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Society (constant)">Society</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#NoSociety-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::NoSociety (constant)">NoSociety</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SleepActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SleepActive (constant)">SleepActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SleepNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SleepNoActive (constant)">SleepNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#BindActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::BindActive (constant)">BindActive</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#BindNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::BindNoActive (constant)">BindNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SilenceActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SilenceActive (constant)">SilenceActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SilenceNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SilenceNoActive (constant)">SilenceNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CalmActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CalmActive (constant)">CalmActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CalmNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CalmNoActive (constant)">CalmNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CutthroatActiveStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CutthroatActiveStart (constant)">CutthroatActiveStart</a></span></span><span class='comma'>,</span>
-<span class='const'><span class='object_link'><a href="#CutthroatNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CutthroatNoActive (constant)">CutthroatNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellUpMsgs-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellUpMsgs (constant)">SpellUpMsgs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellDnMsgs-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellDnMsgs (constant)">SpellDnMsgs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Warcries-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Warcries (constant)">Warcries</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#NoWarcries-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::NoWarcries (constant)">NoWarcries</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SocietyJoin-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SocietyJoin (constant)">SocietyJoin</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SocietyStep-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SocietyStep (constant)">SocietyStep</a></span></span><span class='comma'>,</span>
+<span class='const'><span class='object_link'><a href="#CutthroatNoActive-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CutthroatNoActive (constant)">CutthroatNoActive</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellUpMsgs-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellUpMsgs (constant)">SpellUpMsgs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellTargetUpMsgs-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellTargetUpMsgs (constant)">SpellTargetUpMsgs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellDnMsgs-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellDnMsgs (constant)">SpellDnMsgs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Warcries-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Warcries (constant)">Warcries</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#NoWarcries-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::NoWarcries (constant)">NoWarcries</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SocietyJoin-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SocietyJoin (constant)">SocietyJoin</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SocietyStep-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SocietyStep (constant)">SocietyStep</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#SocietyResign-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SocietyResign (constant)">SocietyResign</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#LearnPSM-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::LearnPSM (constant)">LearnPSM</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#UnlearnPSM-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::UnlearnPSM (constant)">UnlearnPSM</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#LostTechnique-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::LostTechnique (constant)">LostTechnique</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#LearnTechnique-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::LearnTechnique (constant)">LearnTechnique</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#UnlearnTechnique-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::UnlearnTechnique (constant)">UnlearnTechnique</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#Resource-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Resource (constant)">Resource</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#Suffused-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::Suffused (constant)">Suffused</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#VolnFavor-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::VolnFavor (constant)">VolnFavor</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#GigasArtifactFragments-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::GigasArtifactFragments (constant)">GigasArtifactFragments</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#RedsteelMarks-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::RedsteelMarks (constant)">RedsteelMarks</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketGeneral-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketGeneral (constant)">TicketGeneral</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketGold-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketGold (constant)">TicketGold</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#TicketBlackscrip-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketBlackscrip (constant)">TicketBlackscrip</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketBloodscrip-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketBloodscrip (constant)">TicketBloodscrip</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketEtherealScrip-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketEtherealScrip (constant)">TicketEtherealScrip</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketSoulShards-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketSoulShards (constant)">TicketSoulShards</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketRaikhen-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketRaikhen (constant)">TicketRaikhen</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#TicketAevit-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::TicketAevit (constant)">TicketAevit</a></span></span><span class='comma'>,</span>
-<span class='const'><span class='object_link'><a href="#WealthSilver-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthSilver (constant)">WealthSilver</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WealthSilverContainer-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthSilverContainer (constant)">WealthSilverContainer</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#GoalsDetected-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::GoalsDetected (constant)">GoalsDetected</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#GoalsEnded-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::GoalsEnded (constant)">GoalsEnded</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#InnCheckedOut-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::InnCheckedOut (constant)">InnCheckedOut</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellsongRenewed-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellsongRenewed (constant)">SpellsongRenewed</a></span></span><span class='comma'>,</span>
+<span class='const'><span class='object_link'><a href="#WealthSilver-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthSilver (constant)">WealthSilver</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WealthSilverContainer-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthSilverContainer (constant)">WealthSilverContainer</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WealthSilverTotal-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthSilverTotal (constant)">WealthSilverTotal</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#WealthNotes-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::WealthNotes (constant)">WealthNotes</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#GoalsDetected-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::GoalsDetected (constant)">GoalsDetected</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#GoalsEnded-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::GoalsEnded (constant)">GoalsEnded</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#InnCheckedOut-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::InnCheckedOut (constant)">InnCheckedOut</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SpellsongRenewed-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SpellsongRenewed (constant)">SpellsongRenewed</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#ThornPoisonStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ThornPoisonStart (constant)">ThornPoisonStart</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ThornPoisonProgression-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ThornPoisonProgression (constant)">ThornPoisonProgression</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ThornPoisonDeprogression-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ThornPoisonDeprogression (constant)">ThornPoisonDeprogression</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ThornPoisonEnd-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ThornPoisonEnd (constant)">ThornPoisonEnd</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#CovertArtsCharges-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::CovertArtsCharges (constant)">CovertArtsCharges</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#AccountName-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::AccountName (constant)">AccountName</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#AccountSubscription-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::AccountSubscription (constant)">AccountSubscription</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ProfileStart-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ProfileStart (constant)">ProfileStart</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ProfileName-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ProfileName (constant)">ProfileName</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ProfileHouseCHE-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ProfileHouseCHE (constant)">ProfileHouseCHE</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ResignCHE-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ResignCHE (constant)">ResignCHE</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ResignConfirmCHE-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ResignConfirmCHE (constant)">ResignConfirmCHE</a></span></span><span class='comma'>,</span>
 <span class='const'><span class='object_link'><a href="#ShadowEssence-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ShadowEssence (constant)">ShadowEssence</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ShadowEssenceGain-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ShadowEssenceGain (constant)">ShadowEssenceGain</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#ShadowEssenceCap-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::ShadowEssenceCap (constant)">ShadowEssenceCap</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SacrificeMana-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SacrificeMana (constant)">SacrificeMana</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SacrificeChannel-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SacrificeChannel (constant)">SacrificeChannel</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#SacrificeInfest-constant" title="Lich::Gemstone::Infomon::Parser::Pattern::SacrificeInfest (constant)">SacrificeInfest</a></span></span><span class='comma'>,</span>
@@ -850,7 +2195,11 @@ Mid-line patterns (AllMid) are checked separately outside this union.</p>
         <dt id="AllMid-constant" class="">AllMid =
           <div class="docstring">
   <div class="discussion">
-    <p>Mid-line patterns are matched anywhere in the line, so they cannot be part
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Mid-line patterns are matched anywhere in the line, so they cannot be part
 of the \A-anchored fast path. Add future mid-line patterns here (wrap in
 Regexp.union for more than one); the Parser.parse guard does not change.</p>
 
@@ -866,7 +2215,11 @@ Regexp.union for more than one); the Parser.parse guard does not change.</p>
         <dt id="AllStart-constant" class="">AllStart =
           <div class="docstring">
   <div class="discussion">
-    <p>Fast-path guard for Parser.parse. Every pattern in ALL_LIST is anchored to
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Fast-path guard for Parser.parse. Every pattern in ALL_LIST is anchored to
 the start of the line, so anchoring the union with \A lets the engine
 attempt it only at position 0 instead of scanning every position of long
 (usually non-matching) lines -- that scan was ~half of all server-thread
@@ -895,7 +2248,7 @@ CPU. Mid-line patterns (AllMid) keep their own scanning check.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:20 2026 by
+  Generated on Wed Oct 28 05:27:14 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

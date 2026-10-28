@@ -133,6 +133,22 @@ Includes GS-specific features: get_location, peer tags, meta:map tags, player sh
 
     <dl class="constants">
       
+        <dt id="FOG_EXITS_PATTERN-constant" class="">FOG_EXITS_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Pattern for the live exits line when fog hides the exits. The exits
+cannot be compared in that state, so text matching uses the title and
+description alone.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Obvious (?:exits|paths): obscured by a thick fog$</span><span class='regexp_end'>/</span></span></pre></dd>
+      
         <dt id="PEER_TAG_PATTERN-constant" class="">PEER_TAG_PATTERN =
           <div class="docstring">
   <div class="discussion">
@@ -152,6 +168,23 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(set desc on; )?peer [a-z]+ =~ \/.+\/$</span><span class='regexp_end'>/</span></span></pre></dd>
       
+        <dt id="TOLERANT_SENTENCE_MIN_WORDS-constant" class="">TOLERANT_SENTENCE_MIN_WORDS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Fewest words a live description sentence needs to identify a room in
+<span class='object_link'><a href="#tolerant_text_candidates-class_method" title="Lich::Common::Map.tolerant_text_candidates (method)">tolerant_text_candidates</a></span>. Shorter fragments (a closing quote mark, an
+abbreviation cut at its period, a two-word aside) occur in many stored
+descriptions and say nothing about which room this is.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>4</span></pre></dd>
+      
         <dt id="loaded-classvariable" class="">@@loaded =
           
         </dt>
@@ -169,6 +202,21 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
       
         <dt id="fuzzy_room_mutex-classvariable" class="">@@fuzzy_room_mutex =
           
+        </dt>
+        <dd><pre class="code"><span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span></pre></dd>
+      
+        <dt id="resolution_mutex-classvariable" class="">@@resolution_mutex =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The last two room resolutions, each [room_count, room id, live UID,
+nav_count]. See <span class='object_link'><a href="#note_resolution-class_method" title="Lich::Common::Map.note_resolution (method)">note_resolution</a></span> and <span class='object_link'><a href="#anchor_room-class_method" title="Lich::Common::Map.anchor_room (method)">anchor_room</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
         </dt>
         <dd><pre class="code"><span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span></pre></dd>
       
@@ -681,6 +729,50 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#adjacent_candidate-class_method" title="adjacent_candidate (class method)">.<strong>adjacent_candidate</strong>(candidates)  &#x21d2; Lich::Common::Map<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Of <code>candidates</code>, the single one the character can be standing in after leaving the anchor room (see <span class='object_link'><a href="#anchor_room-class_method" title="Lich::Common::Map.anchor_room (method)">Map.anchor_room</a></span>): a room it has a wayto to, or the anchor itself.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#anchor_room-class_method" title="anchor_room (class method)">.<strong>anchor_room</strong>  &#x21d2; Lich::Common::Map<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The room the character was in before the live display, to judge which of several identical rooms it can have reached.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#by_genie_ref-class_method" title="by_genie_ref (class method)">.<strong>by_genie_ref</strong>(zone_id, node_id)  &#x21d2; Map<sup>?</sup> </a>
     
 
@@ -695,7 +787,7 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Looks up a room by its genie (map client) zone and node identifiers.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds a room by its GenieSys zone and node identifiers.</p></div></span>
   
 </li>
 
@@ -835,6 +927,50 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#description_sentences-class_method" title="description_sentences (class method)">.<strong>description_sentences</strong>(description)  &#x21d2; Array&lt;String&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The sentences of a live description that <span class='object_link'><a href="#tolerant_text_candidates-class_method" title="Lich::Common::Map.tolerant_text_candidates (method)">Map.tolerant_text_candidates</a></span> looks for: split at each run of sentence-ending marks (+.+, <code>!</code>, <code>?</code>), stripped, keeping only those of at least <span class='object_link'><a href="#TOLERANT_SENTENCE_MIN_WORDS-constant" title="Lich::Common::Map::TOLERANT_SENTENCE_MIN_WORDS (constant)">TOLERANT_SENTENCE_MIN_WORDS</a></span> words.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#earlier_resolution-class_method" title="earlier_resolution (class method)">.<strong>earlier_resolution</strong>  &#x21d2; Array<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The newest noted resolution made for a room count before the live one.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#fuzzy_room_id-class_method" title="fuzzy_room_id (class method)">.<strong>fuzzy_room_id</strong>  &#x21d2; Integer<sup>?</sup> </a>
     
 
@@ -923,6 +1059,28 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#left_room%3F-class_method" title="left_room? (class method)">.<strong>left_room?</strong>(room)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether the game's own UIDs show the character has left <code>room</code>: the previous <nav> carried a UID that <code>room</code> stores, and the live room shows another UID, or none, that <code>room</code> does not store.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#list-class_method" title="list (class method)">.<strong>list</strong>  &#x21d2; Array&lt;Map&gt; </a>
     
 
@@ -960,6 +1118,28 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
 
   
     <span class="summary_desc"><div class='inline'><p>Replaces the entire room list and normalizes tag lists for efficient searching.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#live_text_candidates-class_method" title="live_text_candidates (class method)">.<strong>live_text_candidates</strong>  &#x21d2; Array&lt;Lich::Common::Map&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The rooms that can be the live room by their text: those matching it exactly (see <span class='object_link'><a href="#text_candidates-class_method" title="Lich::Common::Map.text_candidates (method)">Map.text_candidates</a></span>), or, only when no room does, those whose description merely shares a sentence with it (see <span class='object_link'><a href="#tolerant_text_candidates-class_method" title="Lich::Common::Map.tolerant_text_candidates (method)">Map.tolerant_text_candidates</a></span>).</p></div></span>
   
 </li>
 
@@ -1121,6 +1301,50 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#match_live_text-class_method" title="match_live_text (class method)">.<strong>match_live_text</strong>(honor_peer_tags:)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Resolve the live room from its title, description and exits (see <span class='object_link'><a href="#live_text_candidates-class_method" title="Lich::Common::Map.live_text_candidates (method)">Map.live_text_candidates</a></span>).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#note_resolution-class_method" title="note_resolution (class method)">.<strong>note_resolution</strong>(id)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Remember which room the live display at the current room count resolved to, the UID the game showed with it, and how many arrivals the game had reported by then.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#peer_disambiguation_tag%3F-class_method" title="peer_disambiguation_tag? (class method)">.<strong>peer_disambiguation_tag?</strong>(room)  &#x21d2; Boolean </a>
     
 
@@ -1136,6 +1360,28 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
 
   
     <span class="summary_desc"><div class='inline'><p>Whether <code>room</code> carries a peer-disambiguation tag (see <span class='object_link'><a href="#PEER_TAG_PATTERN-constant" title="Lich::Common::Map::PEER_TAG_PATTERN (constant)">PEER_TAG_PATTERN</a></span>).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pick_text_candidate-class_method" title="pick_text_candidate (class method)">.<strong>pick_text_candidate</strong>(candidates)  &#x21d2; Lich::Common::Map<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Pick the live room from the rooms matching its text.</p></div></span>
   
 </li>
 
@@ -1231,6 +1477,28 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#reset_resolutions-class_method" title="reset_resolutions (class method)">.<strong>reset_resolutions</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Forget the noted resolutions, so no room carries over as an anchor.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#resolve_matched_room-class_method" title="resolve_matched_room (class method)">.<strong>resolve_matched_room</strong>(room, honor_peer_tags:)  &#x21d2; Integer<sup>?</sup> </a>
     
 
@@ -1275,6 +1543,50 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#rooms_matching_live_title_and_exits-class_method" title="rooms_matching_live_title_and_exits (class method)">.<strong>rooms_matching_live_title_and_exits</strong>  &#x21d2; Array&lt;Lich::Common::Map&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Every room whose title and exits match the live room, ignoring the exits under fog.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stored_uids-class_method" title="stored_uids (class method)">.<strong>stored_uids</strong>(room)  &#x21d2; Array&lt;Integer&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The UIDs stored on <code>room</code> that can identify it.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#synchronize_load-class_method" title="synchronize_load (class method)">.<strong>synchronize_load</strong> { ... } &#x21d2; Object </a>
     
 
@@ -1290,6 +1602,72 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
 
   
     <span class="summary_desc"><div class='inline'><p>Executes a block under the map load mutex to ensure thread-safe loading.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#text_candidates-class_method" title="text_candidates (class method)">.<strong>text_candidates</strong>(rooms = rooms_matching_live_title_and_exits)  &#x21d2; Array&lt;Lich::Common::Map&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Every room whose title, description and exits all match the live room.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#tolerant_text_candidates-class_method" title="tolerant_text_candidates (class method)">.<strong>tolerant_text_candidates</strong>(rooms = rooms_matching_live_title_and_exits)  &#x21d2; Array&lt;Lich::Common::Map&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Every room whose title and exits match the live room exactly (title alone under fog) and one of whose stored descriptions contains, as a run of text, at least one sentence of the live description (see <span class='object_link'><a href="#description_sentences-class_method" title="Lich::Common::Map.description_sentences (method)">Map.description_sentences</a></span>).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#uid_vetoes%3F-class_method" title="uid_vetoes? (class method)">.<strong>uid_vetoes?</strong>(room)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether the live game UID rules <code>room</code> out: the game reports a UID and the room stores UIDs, none of which is the live one.</p></div></span>
   
 </li>
 
@@ -1408,10 +1786,10 @@ inline checks in <span class='object_link'><a href="#match_fuzzy-class_method" t
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns extra genie-reference fields for JSON serialization.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Exports GenieSys fields for JSON serialization.</p></div></span>
   
 </li>
 
@@ -1722,9 +2100,6 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-60
-61
-62
 63
 64
 65
@@ -1750,10 +2125,13 @@ the tag index is reset to reflect the new room; during bulk load (when
 85
 86
 87
-88</pre>
+88
+89
+90
+91</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 60</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 63</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_title'>title</span><span class='comma'>,</span> <span class='id identifier rubyid_description'>description</span><span class='comma'>,</span> <span class='id identifier rubyid_paths'>paths</span><span class='comma'>,</span> <span class='id identifier rubyid_uid'>uid</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_location'>location</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span>
                <span class='id identifier rubyid_climate'>climate</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_terrain'>terrain</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_wayto'>wayto</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='id identifier rubyid_timeto'>timeto</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span>
@@ -1820,12 +2198,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check_location'>check_location</span>
   <span class='ivar'>@check_location</span>
@@ -1861,12 +2239,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_climate'>climate</span>
   <span class='ivar'>@climate</span>
@@ -1902,12 +2280,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_description'>description</span>
   <span class='ivar'>@description</span>
@@ -1943,12 +2321,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_genie_id'>genie_id</span>
   <span class='ivar'>@genie_id</span>
@@ -1984,12 +2362,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_genie_pos'>genie_pos</span>
   <span class='ivar'>@genie_pos</span>
@@ -2025,12 +2403,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_genie_zone'>genie_zone</span>
   <span class='ivar'>@genie_zone</span>
@@ -2066,12 +2444,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-29
-30
-31</pre>
+32
+33
+34</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 29</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 32</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_id'>id</span>
   <span class='ivar'>@id</span>
@@ -2107,12 +2485,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_image'>image</span>
   <span class='ivar'>@image</span>
@@ -2148,12 +2526,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_image_coords'>image_coords</span>
   <span class='ivar'>@image_coords</span>
@@ -2189,12 +2567,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_location'>location</span>
   <span class='ivar'>@location</span>
@@ -2230,12 +2608,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_paths'>paths</span>
   <span class='ivar'>@paths</span>
@@ -2271,12 +2649,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_room_objects'>room_objects</span>
   <span class='ivar'>@room_objects</span>
@@ -2328,12 +2706,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-36
-37
-38</pre>
+39
+40
+41</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 36</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 39</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tags'>tags</span>
   <span class='ivar'>@tags</span>
@@ -2369,12 +2747,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_terrain'>terrain</span>
   <span class='ivar'>@terrain</span>
@@ -2410,12 +2788,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_timeto'>timeto</span>
   <span class='ivar'>@timeto</span>
@@ -2451,12 +2829,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_title'>title</span>
   <span class='ivar'>@title</span>
@@ -2492,12 +2870,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_uid'>uid</span>
   <span class='ivar'>@uid</span>
@@ -2533,12 +2911,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_unique_loot'>unique_loot</span>
   <span class='ivar'>@unique_loot</span>
@@ -2574,12 +2952,12 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-30
-31
-32</pre>
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 30</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wayto'>wayto</span>
   <span class='ivar'>@wayto</span>
@@ -2597,7 +2975,190 @@ the tag index is reset to reflect the new room; during bulk load (when
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="by_genie_ref-class_method">
+  <h3 class="signature first" id="adjacent_candidate-class_method">
+  
+    .<strong>adjacent_candidate</strong>(candidates)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Of <code>candidates</code>, the single one the character can be standing in after
+leaving the anchor room (see <span class='object_link'><a href="#anchor_room-class_method" title="Lich::Common::Map.anchor_room (method)">anchor_room</a></span>): a room it has a wayto to,
+or the anchor itself. The anchor counts because a fresh room display
+does not always mean a move, so an identical neighbour must not win over
+it; but not when the game's UIDs show the character has left it (see
+<span class='object_link'><a href="#left_room%3F-class_method" title="Lich::Common::Map.left_room? (method)">left_room?</a></span>), so an identical room just left is never taken for the
+live one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>candidates</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the one reachable candidate; <code>nil</code> with
+no anchor room, or when none or several are reachable</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+516
+517
+518
+519
+520
+521
+522
+523
+524</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 516</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_adjacent_candidate'>adjacent_candidate</span><span class='lparen'>(</span><span class='id identifier rubyid_candidates'>candidates</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_from'>from</span> <span class='op'>=</span> <span class='id identifier rubyid_anchor_room'>anchor_room</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_from'>from</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_stayed'>stayed</span> <span class='op'>=</span> <span class='op'>!</span><span class='id identifier rubyid_left_room?'>left_room?</span><span class='lparen'>(</span><span class='id identifier rubyid_from'>from</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_wayto'>wayto</span> <span class='op'>=</span> <span class='id identifier rubyid_from'>from</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='id identifier rubyid_reachable'>reachable</span> <span class='op'>=</span> <span class='id identifier rubyid_candidates'>candidates</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span> <span class='lparen'>(</span><span class='id identifier rubyid_stayed'>stayed</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>==</span> <span class='id identifier rubyid_from'>from</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_wayto'>wayto</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_reachable'>reachable</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>==</span> <span class='int'>1</span> <span class='op'>?</span> <span class='id identifier rubyid_reachable'>reachable</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span> <span class='op'>:</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="anchor_room-class_method">
+  
+    .<strong>anchor_room</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The room the character was in before the live display, to judge which
+of several identical rooms it can have reached.</p>
+<p>DR resolves a room only on demand, so the last resolved room can be
+several moves old (go2 walks its whole path without asking) or can be
+the live room itself (resolved a moment ago for the same display). The
+game's own record of the room it left comes first: the UID of the
+previous <nav>, when exactly one room has it. Otherwise the room
+resolved for an earlier display is used, but only when it was resolved
+in the room just left (one arrival ago, and shown with the UID the game
+says that room had) or in the live room before any further arrival
+(shown with the live UID). An older resolution is never used. Before
+the first <nav> there is no previous room to check against, so no
+earlier resolution is trusted.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the anchor room, or <code>nil</code> when none can
+be trusted</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 473</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_anchor_room'>anchor_room</span>
+  <span class='id identifier rubyid_previous_uid'>previous_uid</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_previous_nav_rm'>previous_nav_rm</span>
+  <span class='id identifier rubyid_ids'>ids</span> <span class='op'>=</span> <span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span> <span class='op'>?</span> <span class='id identifier rubyid_ids_from_uid'>ids_from_uid</span><span class='lparen'>(</span><span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='cvar'>@@list</span><span class='lbracket'>[</span><span class='id identifier rubyid_ids'>ids</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_ids'>ids</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>==</span> <span class='int'>1</span>
+
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid__count'>_count</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_uid'>uid</span><span class='comma'>,</span> <span class='id identifier rubyid_nav'>nav</span> <span class='op'>=</span> <span class='id identifier rubyid_earlier_resolution'>earlier_resolution</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_id'>id</span> <span class='op'>&gt;=</span> <span class='int'>0</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_nav'>nav</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_arrivals'>arrivals</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_nav_count'>nav_count</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>-</span> <span class='id identifier rubyid_nav'>nav</span>
+  <span class='kw'>return</span> <span class='cvar'>@@list</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_arrivals'>arrivals</span> <span class='op'>==</span> <span class='int'>1</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_uid'>uid</span> <span class='op'>==</span> <span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='kw'>return</span> <span class='cvar'>@@list</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_arrivals'>arrivals</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_uid'>uid</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+
+  <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="by_genie_ref-class_method">
   
     .<strong>by_genie_ref</strong>(zone_id, node_id)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Map</a></span></tt><sup>?</sup> 
   
@@ -2607,13 +3168,7 @@ the tag index is reset to reflect the new room; during bulk load (when
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Triggers .load if not yet loaded</p></div>
-  </div>
-
-<p>Looks up a room by its genie (map client) zone and node identifiers.</p>
+    <p>Finds a room by its GenieSys zone and node identifiers.</p>
 
   </div>
 </div>
@@ -2626,12 +3181,12 @@ the tag index is reset to reflect the new room; during bulk load (when
         <span class='name'>zone_id</span>
       
       
-        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the genie zone identifier</p></div>
+        <div class='inline'><p>the GenieSys zone id</p></div>
       
     </li>
   
@@ -2640,12 +3195,12 @@ the tag index is reset to reflect the new room; during bulk load (when
         <span class='name'>node_id</span>
       
       
-        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the genie node identifier</p></div>
+        <div class='inline'><p>the GenieSys node id</p></div>
       
     </li>
   
@@ -2662,7 +3217,7 @@ the tag index is reset to reflect the new room; during bulk load (when
       
       
         &mdash;
-        <div class='inline'><p>the matched room, or nil if no room carries that genie reference</p></div>
+        <div class='inline'><p>the matching room, or nil if not found</p></div>
       
     </li>
   
@@ -2674,13 +3229,13 @@ the tag index is reset to reflect the new room; during bulk load (when
       <pre class="lines">
 
 
-211
-212
-213
-214</pre>
+215
+216
+217
+218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 211</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 215</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_by_genie_ref'>by_genie_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_zone_id'>zone_id</span><span class='comma'>,</span> <span class='id identifier rubyid_node_id'>node_id</span><span class='rparen'>)</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load'>load</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -2738,23 +3293,25 @@ garbage collection.</p>
       <pre class="lines">
 
 
-511
-512
-513
-514
-515
-516
-517
-518
-519</pre>
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 511</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 715</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
   <span class='cvar'>@@load_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
     <span class='id identifier rubyid_clear_tags_cache'>clear_tags_cache</span>
+    <span class='id identifier rubyid_reset_resolutions'>reset_resolutions</span>
     <span class='cvar'>@@loaded</span> <span class='op'>=</span> <span class='kw'>false</span>
     <span class='const'>GC</span><span class='period'>.</span><span class='id identifier rubyid_start'>start</span>
   <span class='kw'>end</span>
@@ -2793,12 +3350,12 @@ garbage collection.</p>
       <pre class="lines">
 
 
-183
-184
-185</pre>
+186
+187
+188</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 183</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 186</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_tags_cache'>clear_tags_cache</span>
   <span class='id identifier rubyid_reset_tag_index'>reset_tag_index</span>
@@ -2865,24 +3422,24 @@ invoked directly from scripts.</p>
       <pre class="lines">
 
 
-231
-232
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245</pre>
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 231</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 279</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load'>load</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -2928,59 +3485,68 @@ invoked directly from scripts.</p>
       <pre class="lines">
 
 
-420
-421
-422
-423
-424
-425
-426
-427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444
-445
-446
-447
-448
-449
-450
-451
-452
-453
-454
-455
-456
-457
-458
-459
-460
-461
-462
-463
-464
-465
-466
-467
-468
-469</pre>
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 420</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 619</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_current_or_new'>current_or_new</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_current'><span class='object_link'><a href="Script.html#current-class_method" title="Lich::Common::Script.current (method)">current</a></span></span>
@@ -3020,6 +3586,15 @@ invoked directly from scripts.</p>
 </span>    <span class='kw'>return</span> <span class='id identifier rubyid_set_current'>set_current</span><span class='lparen'>(</span><span class='cvar'>@@current_room_id</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='cvar'>@@current_room_id</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='cvar'>@@current_room_id</span> <span class='op'>&gt;=</span> <span class='int'>0</span>
 
     <span class='kw'>return</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># Several rooms fit the live text but none was confirmed as this room:
+</span>  <span class='comment'># the live UID vetoed them, or none could be told apart from the room
+</span>  <span class='comment'># before it. The room may be one of them or a new one; mapping it as
+</span>  <span class='comment'># new keeps identical rooms with no UID mappable, so say so.
+</span>  <span class='id identifier rubyid_twins'>twins</span> <span class='op'>=</span> <span class='id identifier rubyid_live_text_candidates'>live_text_candidates</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_twins'>twins</span> <span class='op'>&gt;</span> <span class='int'>1</span>
+    <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Map: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_twins'>twins</span><span class='embexpr_end'>}</span><span class='tstring_content'> mapped rooms match this room&#39;s text but none could be confirmed as this room; mapping it as a new room</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>end</span>
 
   <span class='id identifier rubyid_id'>id</span> <span class='op'>=</span> <span class='id identifier rubyid_get_free_id'>get_free_id</span>
@@ -3081,12 +3656,12 @@ invoked directly from scripts.</p>
       <pre class="lines">
 
 
-110
-111
-112</pre>
+114
+115
+116</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 110</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 114</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_room_id'>current_room_id</span>
   <span class='cvar'>@@current_room_id</span>
@@ -3158,15 +3733,156 @@ invoked directly from scripts.</p>
       <pre class="lines">
 
 
-119
 120
-121</pre>
+121
+122
+123</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 119</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 120</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_room_id='>current_room_id=</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_note_resolution'>note_resolution</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
   <span class='cvar'>@@current_room_id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="description_sentences-class_method">
+  
+    .<strong>description_sentences</strong>(description)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The sentences of a live description that <span class='object_link'><a href="#tolerant_text_candidates-class_method" title="Lich::Common::Map.tolerant_text_candidates (method)">tolerant_text_candidates</a></span>
+looks for: split at each run of sentence-ending marks (+.+, <code>!</code>, <code>?</code>),
+stripped, keeping only those of at least <span class='object_link'><a href="#TOLERANT_SENTENCE_MIN_WORDS-constant" title="Lich::Common::Map::TOLERANT_SENTENCE_MIN_WORDS (constant)">TOLERANT_SENTENCE_MIN_WORDS</a></span>
+words. An empty description has none.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>description</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+396
+397
+398
+399
+400</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 396</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_description_sentences'>description_sentences</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[.!?]+</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:strip</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_sentence'>sentence</span><span class='op'>|</span>
+    <span class='id identifier rubyid_sentence'>sentence</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>&gt;=</span> <span class='const'><span class='object_link'><a href="#TOLERANT_SENTENCE_MIN_WORDS-constant" title="Lich::Common::Map::TOLERANT_SENTENCE_MIN_WORDS (constant)">TOLERANT_SENTENCE_MIN_WORDS</a></span></span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="earlier_resolution-class_method">
+  
+    .<strong>earlier_resolution</strong>  &#x21d2; <tt>Array</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The newest noted resolution made for a room count before the live one.
+A resolution of the live display itself is never returned: it would make
+the room its own anchor.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>[room_count, room id, live UID, nav_count]</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+263
+264
+265
+266
+267
+268
+269</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 263</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_earlier_resolution'>earlier_resolution</span>
+  <span class='id identifier rubyid_count'>count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+  <span class='id identifier rubyid_records'>records</span> <span class='op'>=</span> <span class='cvar'>@@resolution_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='lbracket'>[</span><span class='cvar'>@@last_resolution</span><span class='comma'>,</span> <span class='cvar'>@@prior_resolution</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_records'>records</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_record'>record</span><span class='op'>|</span>
+    <span class='id identifier rubyid_record'>record</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_record'>record</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_count'>count</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_record'>record</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span> <span class='op'>&lt;</span> <span class='id identifier rubyid_count'>count</span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3374,12 +4090,12 @@ current script context (used in background thread mode).</p>
       <pre class="lines">
 
 
-499
-500
-501</pre>
+706
+707
+708</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 499</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 706</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ids_from_uid'>ids_from_uid</span><span class='lparen'>(</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='rparen'>)</span>
   <span class='cvar'>@@uids</span><span class='lbracket'>[</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span> <span class='op'>?</span> <span class='lbracket'>[</span><span class='rbracket'>]</span> <span class='op'>:</span> <span class='cvar'>@@uids</span><span class='lbracket'>[</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='rbracket'>]</span>
@@ -3426,6 +4142,85 @@ current script context (used in background thread mode).</p>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load'>load</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
   <span class='cvar'>@@images</span> <span class='op'>=</span> <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_each_with_object'>each_with_object</span><span class='lparen'>(</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='comma'>,</span> <span class='id identifier rubyid_h'>h</span><span class='op'>|</span> <span class='id identifier rubyid_h'>h</span><span class='lbracket'>[</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_image'>image</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_h'>h</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_image'>image</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='kw'>if</span> <span class='cvar'>@@images</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
   <span class='cvar'>@@images</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="left_room?-class_method">
+  
+    .<strong>left_room?</strong>(room)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether the game's own UIDs show the character has left <code>room</code>: the
+previous <nav> carried a UID that <code>room</code> stores, and the live room shows
+another UID, or none, that <code>room</code> does not store.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>room</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+496
+497
+498
+499
+500
+501
+502
+503</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 496</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_left_room?'>left_room?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_previous_uid'>previous_uid</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_previous_nav_rm'>previous_nav_rm</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='id identifier rubyid_live_uid'>live_uid</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_previous_uid'>previous_uid</span> <span class='op'>!=</span> <span class='id identifier rubyid_live_uid'>live_uid</span>
+
+  <span class='id identifier rubyid_uids'>uids</span> <span class='op'>=</span> <span class='id identifier rubyid_stored_uids'>stored_uids</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_uids'>uids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_previous_uid'>previous_uid</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_uids'>uids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_live_uid'>live_uid</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3483,13 +4278,13 @@ is being modified.</p>
       <pre class="lines">
 
 
-150
-151
 152
-153</pre>
+153
+154
+155</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 150</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 152</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_list'>list</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load'>load</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -3562,17 +4357,77 @@ is being modified.</p>
       <pre class="lines">
 
 
-167
 168
 169
-170</pre>
+170
+171</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 167</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_list='>list=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='cvar'>@@list</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
   <span class='id identifier rubyid_normalize_tag_lists'>normalize_tag_lists</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="live_text_candidates-class_method">
+  
+    .<strong>live_text_candidates</strong>  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The rooms that can be the live room by their text: those matching it
+exactly (see <span class='object_link'><a href="#text_candidates-class_method" title="Lich::Common::Map.text_candidates (method)">text_candidates</a></span>), or, only when no room does, those whose
+description merely shares a sentence with it (see
+<span class='object_link'><a href="#tolerant_text_candidates-class_method" title="Lich::Common::Map.tolerant_text_candidates (method)">tolerant_text_candidates</a></span>). The tolerant rooms are never mixed with an
+exact match, even an ambiguous or vetoed one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+431
+432
+433
+434
+435</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 431</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_live_text_candidates'>live_text_candidates</span>
+  <span class='id identifier rubyid_rooms'>rooms</span> <span class='op'>=</span> <span class='id identifier rubyid_rooms_matching_live_title_and_exits'>rooms_matching_live_title_and_exits</span>
+  <span class='id identifier rubyid_candidates'>candidates</span> <span class='op'>=</span> <span class='id identifier rubyid_text_candidates'>text_candidates</span><span class='lparen'>(</span><span class='id identifier rubyid_rooms'>rooms</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_candidates'>candidates</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='id identifier rubyid_tolerant_text_candidates'>tolerant_text_candidates</span><span class='lparen'>(</span><span class='id identifier rubyid_rooms'>rooms</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_candidates'>candidates</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3609,24 +4464,24 @@ Called after loading the map file to make UID lookups available.</p>
       <pre class="lines">
 
 
-479
-480
-481
-482
-483
-484
-485
-486
-487
-488
-489
-490
-491
-492
-493</pre>
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 479</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 686</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_uids'>load_uids</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load'>load</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -3751,12 +4606,12 @@ Called after loading the map file to make UID lookups available.</p>
       <pre class="lines">
 
 
-142
 143
-144</pre>
+144
+145</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 142</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 143</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_loaded?'>loaded?</span>
   <span class='cvar'>@@loaded</span>
@@ -3853,12 +4708,12 @@ Called after loading the map file to make UID lookups available.</p>
       <pre class="lines">
 
 
-191
-192
-193</pre>
+194
+195
+196</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 191</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 194</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mark_loaded'>mark_loaded</span>
   <span class='cvar'>@@loaded</span> <span class='op'>=</span> <span class='kw'>true</span>
@@ -3892,93 +4747,25 @@ Called after loading the map file to make UID lookups available.</p>
       <pre class="lines">
 
 
-315
-316
-317
-318
-319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357</pre>
+577
+578
+579
+580
+581
+582
+583
+584
+585</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 315</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 577</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_match_current'>match_current</span><span class='lparen'>(</span><span class='id identifier rubyid__script'>_script</span><span class='rparen'>)</span>
   <span class='cvar'>@@current_room_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
-    <span class='id identifier rubyid_need_set_desc_off'>need_set_desc_off</span> <span class='op'>=</span> <span class='kw'>false</span>
-    <span class='kw'>begin</span>
-      <span class='id identifier rubyid_loop'>loop</span> <span class='kw'>do</span>
-        <span class='cvar'>@@current_room_count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-        <span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Obvious (?:exits|paths): obscured by a thick fog$</span><span class='regexp_end'>/</span></span>
-        <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
-          <span class='comment'># Skip nil holes without relying on Lich&#39;s NilClass patch.
-</span>          <span class='id identifier rubyid_r'>r</span> <span class='op'>&amp;&amp;</span>
-            <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-            <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-            <span class='lparen'>(</span><span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_paths'>paths</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span>
-        <span class='kw'>end</span>
-
-        <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span>
-          <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@current_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-          <span class='kw'>return</span> <span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span> <span class='kw'>false</span><span class='rparen'>)</span>
-        <span class='kw'>else</span>
-          <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@current_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-          <span class='id identifier rubyid_desc_regex'>desc_regex</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_escape'>escape</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.+$</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\\\.(?:\\\.\\\.)?</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>|</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='regexp_end'>/</span></span>
-          <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
-            <span class='comment'># Skip nil holes without relying on Lich&#39;s NilClass patch.
-</span>            <span class='id identifier rubyid_r'>r</span> <span class='op'>&amp;&amp;</span>
-              <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-              <span class='lparen'>(</span><span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_paths'>paths</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-              <span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_window_disabled'>room_window_disabled</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_desc'>desc</span><span class='op'>|</span> <span class='id identifier rubyid_desc'>desc</span> <span class='op'>=~</span> <span class='id identifier rubyid_desc_regex'>desc_regex</span> <span class='rbrace'>}</span><span class='rparen'>)</span>
-          <span class='kw'>end</span>
-
-          <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span>
-            <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@current_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-            <span class='kw'>return</span> <span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span> <span class='kw'>false</span><span class='rparen'>)</span>
-          <span class='kw'>else</span>
-            <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@current_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-            <span class='kw'>return</span> <span class='kw'>nil</span>
-          <span class='kw'>end</span>
-        <span class='kw'>end</span>
-      <span class='kw'>end</span>
-    <span class='kw'>ensure</span>
-      <span class='id identifier rubyid_put'><span class='object_link'><a href="../../top-level-namespace.html#put-instance_method" title="#put (method)">put</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>set description off</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_need_set_desc_off'>need_set_desc_off</span>
+    <span class='id identifier rubyid_loop'>loop</span> <span class='kw'>do</span>
+      <span class='cvar'>@@current_room_count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+      <span class='id identifier rubyid_id'>id</span> <span class='op'>=</span> <span class='id identifier rubyid_match_live_text'>match_live_text</span><span class='lparen'>(</span><span class='label'>honor_peer_tags:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_id'>id</span> <span class='kw'>if</span> <span class='cvar'>@@current_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
@@ -4036,87 +4823,185 @@ has unresolved peer tag requirements.</p>
       <pre class="lines">
 
 
-369
-370
-371
-372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-382
-383
-384
-385
-386
-387
-388
-389
-390
-391
-392
-393
-394
-395
-396
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
-408</pre>
+597
+598
+599
+600
+601
+602
+603
+604
+605</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 369</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 597</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_match_fuzzy'>match_fuzzy</span>
   <span class='cvar'>@@fuzzy_room_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
-    <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
     <span class='id identifier rubyid_loop'>loop</span> <span class='kw'>do</span>
-      <span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Obvious (?:exits|paths): obscured by a thick fog$</span><span class='regexp_end'>/</span></span>
-      <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
-        <span class='comment'># Skip nil holes without relying on Lich&#39;s NilClass patch.
-</span>        <span class='id identifier rubyid_r'>r</span> <span class='op'>&amp;&amp;</span>
-          <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-          <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-          <span class='lparen'>(</span><span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_paths'>paths</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span>
-      <span class='kw'>end</span>
+      <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+      <span class='id identifier rubyid_id'>id</span> <span class='op'>=</span> <span class='id identifier rubyid_match_live_text'>match_live_text</span><span class='lparen'>(</span><span class='label'>honor_peer_tags:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+      <span class='kw'>return</span> <span class='id identifier rubyid_id'>id</span> <span class='kw'>if</span> <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="match_live_text-class_method">
+  
+    .<strong>match_live_text</strong>(honor_peer_tags:)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
 
-      <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span>
-        <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+  
 
-        <span class='kw'>return</span> <span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-      <span class='kw'>else</span>
-        <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-        <span class='id identifier rubyid_desc_regex'>desc_regex</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='embexpr_beg'>#{</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_escape'>escape</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.+$</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\\\.(?:\\\.\\\.)?</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>|</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='regexp_end'>/</span></span>
-        <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
-          <span class='comment'># Skip nil holes without relying on Lich&#39;s NilClass patch.
-</span>          <span class='id identifier rubyid_r'>r</span> <span class='op'>&amp;&amp;</span>
-            <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-            <span class='lparen'>(</span><span class='id identifier rubyid_foggy_exits'>foggy_exits</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_paths'>paths</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
-            <span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_window_disabled'>room_window_disabled</span> <span class='op'>||</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_desc'>desc</span><span class='op'>|</span> <span class='id identifier rubyid_desc'>desc</span> <span class='op'>=~</span> <span class='id identifier rubyid_desc_regex'>desc_regex</span> <span class='rbrace'>}</span><span class='rparen'>)</span>
-        <span class='kw'>end</span>
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Resolve the live room from its title, description and exits (see
+<span class='object_link'><a href="#live_text_candidates-class_method" title="Lich::Common::Map.live_text_candidates (method)">live_text_candidates</a></span>).</p>
 
-        <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span>
-          <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>honor_peer_tags</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>see <span class='object_link'><a href="#resolve_matched_room-class_method" title="Lich::Common::Map.resolve_matched_room (method)">resolve_matched_room</a></span></p></div>
+      
+    </li>
+  
+</ul>
 
-          <span class='kw'>return</span> <span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span> <span class='kw'>true</span><span class='rparen'>)</span>
-        <span class='kw'>else</span>
-          <span class='kw'>redo</span> <span class='kw'>unless</span> <span class='cvar'>@@fuzzy_room_count</span> <span class='op'>==</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
-          <span class='kw'>return</span> <span class='kw'>nil</span>
-        <span class='kw'>end</span>
-      <span class='kw'>end</span>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the resolved room id, or <code>nil</code> when no room, or
+more than one, can be the live room</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+560
+561
+562
+563
+564
+565</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 560</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_match_live_text'>match_live_text</span><span class='lparen'>(</span><span class='label'>honor_peer_tags:</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='id identifier rubyid_pick_text_candidate'>pick_text_candidate</span><span class='lparen'>(</span><span class='id identifier rubyid_live_text_candidates'>live_text_candidates</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span> <span class='id identifier rubyid_honor_peer_tags'>honor_peer_tags</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="note_resolution-class_method">
+  
+    .<strong>note_resolution</strong>(id)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Remember which room the live display at the current room count resolved
+to, the UID the game showed with it, and how many arrivals the game had
+reported by then. A later resolution of the same display replaces the
+record only with a room, never with nil: scriptless matching declines a
+peer-tagged room that a script resolves.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the resolved room id</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 235</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_note_resolution'>note_resolution</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_count'>count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+  <span class='id identifier rubyid_record'>record</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_count'>count</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='comma'>,</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_nav_count'>nav_count</span><span class='rbracket'>]</span>
+  <span class='cvar'>@@resolution_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='kw'>if</span> <span class='cvar'>@@last_resolution</span> <span class='op'>&amp;&amp;</span> <span class='cvar'>@@last_resolution</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_count'>count</span>
+      <span class='cvar'>@@last_resolution</span> <span class='op'>=</span> <span class='id identifier rubyid_record'>record</span> <span class='kw'>unless</span> <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='kw'>else</span>
+      <span class='cvar'>@@prior_resolution</span> <span class='op'>=</span> <span class='cvar'>@@last_resolution</span>
+      <span class='cvar'>@@last_resolution</span> <span class='op'>=</span> <span class='id identifier rubyid_record'>record</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
@@ -4185,15 +5070,109 @@ disambiguate, <code>false</code> otherwise</p></div>
       <pre class="lines">
 
 
-261
-262
-263</pre>
+314
+315
+316</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 261</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 314</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_peer_disambiguation_tag?'>peer_disambiguation_tag?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_tags'>tags</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_tag'>tag</span><span class='op'>|</span> <span class='id identifier rubyid_tag'>tag</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="#PEER_TAG_PATTERN-constant" title="Lich::Common::Map::PEER_TAG_PATTERN (constant)">PEER_TAG_PATTERN</a></span></span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pick_text_candidate-class_method">
+  
+    .<strong>pick_text_candidate</strong>(candidates)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Pick the live room from the rooms matching its text.</p>
+<p>Every candidate the live UID vetoes is dropped. A lone survivor is the
+room. Otherwise the room resolves only when exactly one candidate is
+reachable from the anchor room (see <span class='object_link'><a href="#adjacent_candidate-class_method" title="Lich::Common::Map.adjacent_candidate (method)">adjacent_candidate</a></span>) and
+that candidate survived the veto; in every other case it is unresolved
+rather than the first of them. No candidates is unresolved without
+looking up an anchor room.</p>
+<p>When the veto dropped any candidate, reachability is judged over all the
+candidates, vetoed ones included, and even a lone survivor must be the
+one reachable. The game's UID then belongs to no candidate, so the live
+room may be the vetoed room under a UID the map lacks: a look-alike copy
+elsewhere in the map, or one sharing the vetoed room's neighbours, is not
+taken for it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>candidates</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>rooms matching the live text</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+544
+545
+546
+547
+548
+549
+550
+551
+552</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 544</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pick_text_candidate'>pick_text_candidate</span><span class='lparen'>(</span><span class='id identifier rubyid_candidates'>candidates</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_candidates'>candidates</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='id identifier rubyid_survivors'>survivors</span> <span class='op'>=</span> <span class='id identifier rubyid_candidates'>candidates</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span> <span class='id identifier rubyid_uid_vetoes?'>uid_vetoes?</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_survivors'>survivors</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span> <span class='kw'>if</span> <span class='id identifier rubyid_survivors'>survivors</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>==</span> <span class='int'>1</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_survivors'>survivors</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>==</span> <span class='id identifier rubyid_candidates'>candidates</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
+
+  <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='id identifier rubyid_adjacent_candidate'>adjacent_candidate</span><span class='lparen'>(</span><span class='id identifier rubyid_candidates'>candidates</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_survivors'>survivors</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_room'>room</span> <span class='op'>:</span> <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4249,12 +5228,12 @@ disambiguate, <code>false</code> otherwise</p></div>
       <pre class="lines">
 
 
-219
-220
-221</pre>
+223
+224
+225</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 219</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 223</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_previous'>previous</span>
   <span class='cvar'>@@list</span><span class='lbracket'>[</span><span class='cvar'>@@previous_room_id</span><span class='rbracket'>]</span>
@@ -4308,12 +5287,12 @@ disambiguate, <code>false</code> otherwise</p></div>
       <pre class="lines">
 
 
-126
-127
-128</pre>
+128
+129
+130</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 126</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 128</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_previous_room_id'>previous_room_id</span>
   <span class='cvar'>@@previous_room_id</span>
@@ -4385,12 +5364,12 @@ disambiguate, <code>false</code> otherwise</p></div>
       <pre class="lines">
 
 
-135
 136
-137</pre>
+137
+138</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 135</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 136</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_previous_room_id='>previous_room_id=</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
   <span class='cvar'>@@previous_room_id</span> <span class='op'>=</span> <span class='id identifier rubyid_id'>id</span>
@@ -4425,15 +5404,60 @@ load path, where #list would re-enter the load mutex and deadlock.</p>
       <pre class="lines">
 
 
-157
-158
-159</pre>
+159
+160
+161</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 157</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 159</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_raw_list'>raw_list</span>
   <span class='cvar'>@@list</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="reset_resolutions-class_method">
+  
+    .<strong>reset_resolutions</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Forget the noted resolutions, so no room carries over as an anchor.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+251
+252
+253
+254
+255
+256</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 251</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reset_resolutions'>reset_resolutions</span>
+  <span class='cvar'>@@resolution_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@last_resolution</span> <span class='op'>=</span> <span class='kw'>nil</span>
+    <span class='cvar'>@@prior_resolution</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4458,18 +5482,12 @@ resolvable than an otherwise identical room with no UID.</em></p>
 <ul>
 <li>When the game exposes a live UID (+XMLData.room_id+ is non-zero) and the
 matched room carries one or more UIDs, the match only stands if the live
-UID is among them. This is what keeps distinct rooms that share a
-title/description/paths (day/night variants, look-alike maze cells) from
-collapsing onto one another.</li>
-<li>When the game exposes <em>no</em> UID (+XMLData.room_id+ is zero, a room the
-server does not surface a UID for), UID disambiguation is skipped and the
-title/description/paths match is trusted regardless of any UID stored on
-the room. Previously such a room returned <code>nil</code> here (a stored UID can
-never include the zero live id), so a UID accidentally or provisionally
-stamped onto a no-UID room made that room permanently unresolvable
-(+Map.current+ became <code>nil</code>). Trusting the text match in the no-UID case
-removes that failure mode without weakening disambiguation when the game
-does expose a UID.</li>
+UID is among them (see <span class='object_link'><a href="#uid_vetoes%3F-class_method" title="Lich::Common::Map.uid_vetoes? (method)">uid_vetoes?</a></span>). A stored UID of 0 counts as no
+UID (see <span class='object_link'><a href="#stored_uids-class_method" title="Lich::Common::Map.stored_uids (method)">stored_uids</a></span>).</li>
+<li>When the game exposes <em>no</em> UID (+XMLData.room_id+ is zero), UID
+disambiguation is skipped and the title/description/paths match is
+trusted regardless of any UID stored on the room, so a UID stamped onto
+a room the game shows without one cannot make it unresolvable.</li>
 </ul>
 
   </div>
@@ -4503,9 +5521,10 @@ does expose a UID.</li>
       
         &mdash;
         <div class='inline'><p>when <code>true</code>, a room requiring a manual
-peer to disambiguate (see <span class='object_link'><a href="#peer_disambiguation_tag%3F-class_method" title="Lich::Common::Map.peer_disambiguation_tag? (method)">peer_disambiguation_tag?</a></span>) resolves to <code>nil</code>;
-used by scriptless fuzzy matching, which cannot perform the peer. Exact
-(<span class='object_link'><a href="#match_current-class_method" title="Lich::Common::Map.match_current (method)">match_current</a></span>) matching passes <code>false</code> and never consults peer tags.</p></div>
+peer to disambiguate (see <span class='object_link'><a href="#peer_disambiguation_tag%3F-class_method" title="Lich::Common::Map.peer_disambiguation_tag? (method)">peer_disambiguation_tag?</a></span>) resolves to <code>nil</code>
+unless the live UID confirms it; used by scriptless fuzzy matching,
+which cannot perform the peer. Exact (<span class='object_link'><a href="#match_current-class_method" title="Lich::Common::Map.match_current (method)">match_current</a></span>) matching passes
+<code>false</code> and never consults peer tags.</p></div>
       
     </li>
   
@@ -4522,9 +5541,8 @@ used by scriptless fuzzy matching, which cannot perform the peer. Exact
       
       
         &mdash;
-        <div class='inline'><p>the resolved room id; <code>nil</code> when a UID'd room's
-stored UIDs exclude the live game UID, or when a peer-tagged room cannot
-be disambiguated</p></div>
+        <div class='inline'><p>the resolved room id; <code>nil</code> when the live UID
+vetoes the room, or when a peer-tagged room cannot be disambiguated</p></div>
       
     </li>
   
@@ -4536,22 +5554,20 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-294
-295
-296
-297
-298
-299
-300
-301</pre>
+363
+364
+365
+366
+367
+368
+369</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 294</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 363</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_matched_room'>resolve_matched_room</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='label'>honor_peer_tags:</span><span class='rparen'>)</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_uid'>uid</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span>
-    <span class='kw'>return</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_uid'>uid</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>:</span> <span class='kw'>nil</span>
-  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_uid_vetoes?'>uid_vetoes?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='kw'>if</span> <span class='op'>!</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_stored_uids'>stored_uids</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_honor_peer_tags'>honor_peer_tags</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_peer_disambiguation_tag?'>peer_disambiguation_tag?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
@@ -4616,19 +5632,19 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533</pre>
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 524</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 729</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_room_from_json'>room_from_json</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span>
@@ -4639,6 +5655,151 @@ be disambiguated</p></div>
     <span class='kw'>nil</span><span class='comma'>,</span> <span class='comment'># _room_objects
 </span>    <span class='id identifier rubyid_room'>room</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>genie_id</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_room'>room</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>genie_zone</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_room'>room</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>genie_pos</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
   <span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="rooms_matching_live_title_and_exits-class_method">
+  
+    .<strong>rooms_matching_live_title_and_exits</strong>  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Every room whose title and exits match the live room, ignoring the
+exits under fog. The map is scanned once for both description passes.
+A room missing its title or exits (the map has a few) is skipped
+without relying on Lich's NilClass patch.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the matching rooms, in id order</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 443</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_rooms_matching_live_title_and_exits'>rooms_matching_live_title_and_exits</span>
+  <span class='id identifier rubyid_title'>title</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span>
+  <span class='id identifier rubyid_exits'>exits</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_exits_string'>room_exits_string</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+  <span class='id identifier rubyid_foggy'>foggy</span> <span class='op'>=</span> <span class='id identifier rubyid_exits'>exits</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#FOG_EXITS_PATTERN-constant" title="Lich::Common::Map::FOG_EXITS_PATTERN (constant)">FOG_EXITS_PATTERN</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_exits'>exits</span> <span class='op'>=</span> <span class='id identifier rubyid_exits'>exits</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
+  <span class='cvar'>@@list</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
+    <span class='comment'># Skip nil holes without relying on Lich&#39;s NilClass patch.
+</span>    <span class='id identifier rubyid_r'>r</span> <span class='op'>&amp;&amp;</span>
+      <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_title'>title</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span>
+      <span class='lparen'>(</span><span class='id identifier rubyid_foggy'>foggy</span> <span class='op'>||</span> <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_paths'>paths</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_exits'>exits</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stored_uids-class_method">
+  
+    .<strong>stored_uids</strong>(room)  &#x21d2; <tt>Array&lt;Integer&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The UIDs stored on <code>room</code> that can identify it. A stored 0 is not a UID:
+the parser reads 0 for a room the game shows without one (a bare</p>
+<nav/>), and <span class='object_link'><a href="#ids_from_uid-class_method" title="Lich::Common::Map.ids_from_uid (method)">ids_from_uid</a></span> and <span class='object_link'><a href="#current-class_method" title="Lich::Common::Map.current (method)">current</a></span> already treat it as none.
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>room</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Integer&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+324
+325
+326</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 324</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_stored_uids'>stored_uids</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_uid'>uid</span><span class='rparen'>)</span> <span class='op'>-</span> <span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4705,15 +5866,263 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-200
-201
-202</pre>
+205
+206
+207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 200</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 205</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_synchronize_load'>synchronize_load</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='cvar'>@@load_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="text_candidates-class_method">
+  
+    .<strong>text_candidates</strong>(rooms = rooms_matching_live_title_and_exits)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Every room whose title, description and exits all match the live room.
+Under fog the live exits line carries no exits, so title and description
+alone must match. The description is compared whole.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>rooms</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>rooms_matching_live_title_and_exits</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>rooms already matching the live
+title and exits (see <span class='object_link'><a href="#rooms_matching_live_title_and_exits-class_method" title="Lich::Common::Map.rooms_matching_live_title_and_exits (method)">rooms_matching_live_title_and_exits</a></span>)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the matching rooms, in id order</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+378
+379
+380
+381</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 378</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_text_candidates'>text_candidates</span><span class='lparen'>(</span><span class='id identifier rubyid_rooms'>rooms</span> <span class='op'>=</span> <span class='id identifier rubyid_rooms_matching_live_title_and_exits'>rooms_matching_live_title_and_exits</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_description'>description</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
+  <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span> <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="tolerant_text_candidates-class_method">
+  
+    .<strong>tolerant_text_candidates</strong>(rooms = rooms_matching_live_title_and_exits)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Every room whose title and exits match the live room exactly (title
+alone under fog) and one of whose stored descriptions contains, as a run
+of text, at least one sentence of the live description (see
+<span class='object_link'><a href="#description_sentences-class_method" title="Lich::Common::Map.description_sentences (method)">description_sentences</a></span>). The run need not start or end at a word edge
+of the stored text (&quot;over the road&quot; is found in &quot;over the roadway&quot;).
+This tolerates a description that has drifted from the map: a typo
+fixed in one sentence, a sentence rewritten, a day/night variant the
+map lacks. A live description with no usable sentence, an empty one
+included, matches nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>rooms</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>rooms_matching_live_title_and_exits</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>rooms already matching the live
+title and exits (see <span class='object_link'><a href="#rooms_matching_live_title_and_exits-class_method" title="Lich::Common::Map.rooms_matching_live_title_and_exits (method)">rooms_matching_live_title_and_exits</a></span>)</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the matching rooms, in id order</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+415
+416
+417
+418
+419
+420
+421
+422</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 415</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_tolerant_text_candidates'>tolerant_text_candidates</span><span class='lparen'>(</span><span class='id identifier rubyid_rooms'>rooms</span> <span class='op'>=</span> <span class='id identifier rubyid_rooms_matching_live_title_and_exits'>rooms_matching_live_title_and_exits</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_sentences'>sentences</span> <span class='op'>=</span> <span class='id identifier rubyid_description_sentences'>description_sentences</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='lbracket'>[</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_sentences'>sentences</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+
+  <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span>
+    <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_stored'>stored</span><span class='op'>|</span> <span class='id identifier rubyid_sentences'>sentences</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_sentence'>sentence</span><span class='op'>|</span> <span class='id identifier rubyid_stored'>stored</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_sentence'>sentence</span><span class='rparen'>)</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="uid_vetoes?-class_method">
+  
+    .<strong>uid_vetoes?</strong>(room)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether the live game UID rules <code>room</code> out: the game reports a UID and
+the room stores UIDs, none of which is the live one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>room</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Lich::Common::Map (class)">Lich::Common::Map</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+333
+334
+335
+336
+337
+338</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 333</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_uid_vetoes?'>uid_vetoes?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span>
+
+  <span class='id identifier rubyid_uids'>uids</span> <span class='op'>=</span> <span class='id identifier rubyid_stored_uids'>stored_uids</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_uids'>uids</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_uids'>uids</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4764,12 +6173,12 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-175
-176
-177</pre>
+178
+179
+180</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 175</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 178</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_uids'>uids</span>
   <span class='cvar'>@@uids</span>
@@ -4904,11 +6313,7 @@ be disambiguated</p></div>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns extra genie-reference fields for JSON serialization.</p>
+    <p>Exports GenieSys fields for JSON serialization.</p>
 
   </div>
 </div>
@@ -4925,7 +6330,7 @@ be disambiguated</p></div>
       
       
         &mdash;
-        <div class='inline'><p>genie-related metadata: genie_id, genie_zone, genie_pos</p></div>
+        <div class='inline'><p>hash with :genie_id, :genie_zone, :genie_pos keys</p></div>
       
     </li>
   
@@ -4937,12 +6342,12 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-101
-102
-103</pre>
+105
+106
+107</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 101</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 105</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_json_extra_fields'>json_extra_fields</span>
   <span class='lbrace'>{</span> <span class='label'>genie_id:</span> <span class='ivar'>@genie_id</span><span class='comma'>,</span> <span class='label'>genie_zone:</span> <span class='ivar'>@genie_zone</span><span class='comma'>,</span> <span class='label'>genie_pos:</span> <span class='ivar'>@genie_pos</span> <span class='rbrace'>}</span>
@@ -5000,12 +6405,12 @@ be disambiguated</p></div>
       <pre class="lines">
 
 
-93
-94
-95</pre>
+98
+99
+100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 93</span>
+      <pre class="code"><span class="info file"># File 'documented/common/map/map_dr.rb', line 98</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_s'>to_s</span>
   <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>#</span><span class='embexpr_beg'>#{</span><span class='ivar'>@id</span><span class='embexpr_end'>}</span><span class='tstring_content'> (</span><span class='embexpr_beg'>#{</span><span class='ivar'>@uid</span><span class='lbracket'>[</span><span class='op'>-</span><span class='int'>1</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_content'>):\n</span><span class='embexpr_beg'>#{</span><span class='ivar'>@title</span><span class='lbracket'>[</span><span class='op'>-</span><span class='int'>1</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='embexpr_beg'>#{</span><span class='ivar'>@description</span><span class='lbracket'>[</span><span class='op'>-</span><span class='int'>1</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n</span><span class='embexpr_beg'>#{</span><span class='ivar'>@paths</span><span class='lbracket'>[</span><span class='op'>-</span><span class='int'>1</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -5020,7 +6425,7 @@ be disambiguated</p></div>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:36 2026 by
+  Generated on Wed Oct 28 05:27:25 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

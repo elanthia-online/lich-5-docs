@@ -88,23 +88,19 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Namespace for spell wear-off pattern definitions and parsing.</p>
-<p>This module defines third-person wear-off lines for spell-circle spells,
-keyed by spell number. Patterns are pinned to spells via wiki documentation
-and cross-log timestamp pairing. The generic fallback pattern (spell: nil)
-covers unidentified spell expirations.</p>
+    <p>Parses third-person spell wear-off lines and extracts target names.</p>
+<p>Maintains a curated set of spell-loss patterns keyed by spell number,
+covering ordinary spell-circle spells. Patterns are deliberately pinned to
+specific spells via effect-list wording and cross-log timestamp pairing,
+and only added after identification is confirmed. Unpinned wear-off lines
+are intentionally excluded.</p>
+<p>The module provides a <span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">SpellLosses.parse</a></span> method that matches incoming lines against
+all known patterns and returns the spell ID, spell name, and affected target.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">SpellLosses.parse</a></span></li>
-    
-  </ul>
 
 </div><h2>Defined Under Namespace</h2>
 <p class="children">
@@ -128,18 +124,12 @@ covers unidentified spell expirations.</p>
         <dt id="SPELL_LOSSES-constant" class="">SPELL_LOSSES =
           <div class="docstring">
   <div class="discussion">
-    <p>Array of spell loss definitions, mapping third-person wear-off patterns to
-spell identity (number and name).</p>
-<p>Each entry is a SpellLossDef capturing:</p>
-<ul>
-<li>spell: Integer or nil (nil for the generic fallback pattern)</li>
-<li>spell_name: String descriptive spell name</li>
-<li>patterns: Array of Regexp matching third-person wear-off lines</li>
-</ul>
-<p>Patterns use named capture group <code>:target</code> to extract the affected character.
-The final entry with spell: nil is the game's generic wear-off (&quot;appears
-somehow different&quot;, &quot;seems slightly different&quot;) for spells without bespoke
-end messaging.</p>
+    <p>Curated collection of spell wear-off pattern definitions, keyed by spell number.</p>
+<p>Each entry pairs a spell ID, common name, and an array of frozen Regexp patterns
+that match third-person wear-off lines. Patterns use named capture group <code>target</code>
+to extract the affected character's name. The final entry covers the game's
+generic wear-off wording (&quot;appears somehow different&quot;) with spell: nil, serving
+as a fallback for any spell without bespoke end messaging.</p>
 
   </div>
 </div>
@@ -155,16 +145,12 @@ end messaging.</p>
       
       
       
+        &mdash;
+        <div class='inline'><p>frozen array of spell loss definitions</p></div>
+      
     </li>
   
 </ul>
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::SpellLosses.parse (method)">parse</a></span></li>
-    
-  </ul>
 
 </div>
         </dt>
@@ -200,7 +186,12 @@ end messaging.</p>
 </span>  <span class='comment'># &quot;You become solid again.&quot; - 911 only, no standalone Blur
 </span>  <span class='comment'># entry exists; 1605&#39;s end names the same warmth+spiritual
 </span>  <span class='comment'># force around the arms the third person describes)
-</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>513</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Elemental Focus</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+</span>  <span class='comment'># effect-list end message &quot;A white glow rushes away from you.&quot;
+</span>  <span class='comment'># (owner report 2026-09-09: a skald&#39;s death dropped it and the
+</span>  <span class='comment'># report showed a &quot;dispelled&quot; status with no dispel flare)
+</span>  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>303</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Prayer of Protection</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
+                   <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A white glow rushes away from (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>513</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Elemental Focus</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
                    <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) no longer bristles with energy\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>911</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Mass Blur</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
                    <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) becomes solid again\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
@@ -247,12 +238,10 @@ end messaging.</p>
         <dt id="LOOKUP-constant" class="">LOOKUP =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Flat array of [pattern, SpellLossDef] pairs for efficient pattern matching.</p>
-<p>Enables sequential regex matching against game output lines via .parse.</p>
+    <p>Flattened lookup table mapping each Regexp pattern to its SpellLossDef.</p>
+<p>Constructed by mapping each pattern within every spell loss definition to a
+[pattern, loss_def] pair. Used by <code>.parse</code> to efficiently search all patterns
+in sequence.</p>
 
   </div>
 </div>
@@ -267,6 +256,9 @@ end messaging.</p>
         <span class='type'>(<tt>Array&lt;[Regexp, <span class='object_link'><a href="SpellLosses/SpellLossDef.html" title="Lich::Gemstone::Combat::Definitions::SpellLosses::SpellLossDef (class)">SpellLossDef</a></span>]&gt;</tt>)</span>
       
       
+      
+        &mdash;
+        <div class='inline'><p>frozen array of pattern-definition pairs</p></div>
       
     </li>
   
@@ -352,8 +344,6 @@ target: <raw capture> } or nil.</p>
       <pre class="lines">
 
 
-150
-151
 152
 153
 154
@@ -365,10 +355,12 @@ target: <raw capture> } or nil.</p>
 160
 161
 162
-163</pre>
+163
+164
+165</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/spell_losses.rb', line 150</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/spell_losses.rb', line 152</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>GATE</span><span class='comma'>,</span> <span class='const'>ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
@@ -394,7 +386,7 @@ target: <raw capture> } or nil.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:27 2026 by
+  Generated on Wed Oct 28 05:27:20 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

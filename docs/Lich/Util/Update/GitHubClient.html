@@ -104,14 +104,28 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>HTTP client for GitHub API with caching and token auth.</p>
-<p>Provides JSON and raw GET requests with optional Bearer token auth from
-DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</p>
+    <p>HTTP client for GitHub API with caching and token authentication.</p>
+<p>Fetches JSON from GitHub API endpoints with in-memory caching (TTL-based).
+Supports optional Bearer token authentication from DATA_DIR/githubtoken.txt.
+Failed requests do not print; instead they record a classified FetchError in
+#last_error and write details to the debug log.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Fetch a GitHub repository's release data</p></div></h5>
+      
+      <pre class="example code"><code><span class='id identifier rubyid_client'>client</span> <span class='op'>=</span> <span class='const'>GitHubClient</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Util::Update::GitHubClient#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>cache_ttl:</span> <span class='int'>300</span><span class='rparen'>)</span>
+<span class='id identifier rubyid_data'>data</span> <span class='op'>=</span> <span class='id identifier rubyid_client'>client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/owner/repo/releases</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='id identifier rubyid_puts'>puts</span> <span class='id identifier rubyid_client'>client</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span><span class='period'>.</span><span class='id identifier rubyid_kind'>kind</span> <span class='kw'>if</span> <span class='id identifier rubyid_client'>client</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span></code></pre>
+    
+  </div>
+
 
 </div>
 
@@ -163,7 +177,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#fetch_github_json-instance_method" title="#fetch_github_json (instance method)">#<strong>fetch_github_json</strong>(url)  &#x21d2; Hash<sup>?</sup> </a>
+      <a href="#fetch_github_json-instance_method" title="#fetch_github_json (instance method)">#<strong>fetch_github_json</strong>(url)  &#x21d2; Hash, ... </a>
     
 
     
@@ -177,7 +191,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Fetches JSON data from the specified GitHub URL with caching.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fetches and parses JSON from GitHub API with caching.</p></div></span>
   
 </li>
 
@@ -199,7 +213,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the GitHub authentication token from the specified file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads GitHub token from DATA_DIR/githubtoken.txt (lazy, once).</p></div></span>
   
 </li>
 
@@ -221,7 +235,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Performs a GET request to the specified URL with optional authentication.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Performs HTTP GET request with optional token auth.</p></div></span>
   
 </li>
 
@@ -229,7 +243,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(cache_ttl: 60)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(cache_ttl: 60)  &#x21d2; GitHubClient </a>
     
 
     
@@ -245,7 +259,29 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new GitHubClient instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>A new instance of GitHubClient.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#last_error-instance_method" title="#last_error (instance method)">#<strong>last_error</strong>  &#x21d2; FetchError<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Why the calling thread's most recent request failed, or nil if it succeeded.</p></div></span>
   
 </li>
 
@@ -260,7 +296,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(cache_ttl: 60)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(cache_ttl: 60)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Util::Update::GitHubClient (class)">GitHubClient</a></span></tt> 
   
 
   
@@ -268,7 +304,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new GitHubClient instance.</p>
+    <p>Returns a new instance of GitHubClient.</p>
 
   </div>
 </div>
@@ -288,7 +324,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>time-to-live for cache in seconds</p></div>
+        <div class='inline'><p>cache TTL in seconds (default: 60)</p></div>
       
     </li>
   
@@ -301,21 +337,23 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <pre class="lines">
 
 
-26
-27
-28
-29
-30
-31</pre>
+56
+57
+58
+59
+60
+61
+62</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 56</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>cache_ttl:</span> <span class='int'>60</span><span class='rparen'>)</span>
   <span class='ivar'>@http_cache</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
   <span class='ivar'>@cache_ttl</span> <span class='op'>=</span> <span class='id identifier rubyid_cache_ttl'>cache_ttl</span>
   <span class='ivar'>@github_token</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@github_token_loaded</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='ivar'>@last_error_key</span> <span class='op'>=</span> <span class='symbol'>:&quot;lich5_update_last_error_</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_object_id'>object_id</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -353,12 +391,12 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <pre class="lines">
 
 
-21
-22
-23</pre>
+53
+54
+55</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 21</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 53</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_http_cache'>http_cache</span>
   <span class='ivar'>@http_cache</span>
@@ -378,7 +416,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <div class="method_details first">
   <h3 class="signature first" id="fetch_github_json-instance_method">
   
-    #<strong>fetch_github_json</strong>(url)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+    #<strong>fetch_github_json</strong>(url)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, ... 
   
 
   
@@ -386,23 +424,12 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Fetches JSON data from the specified GitHub URL with caching.</p>
+    <p>Fetches and parses JSON from GitHub API with caching.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Fetching repository data</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_client'>client</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Util::Update::GitHubClient (class)">GitHubClient</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Util::Update::GitHubClient#initialize (method)">new</a></span></span>
-<span class='id identifier rubyid_data'>data</span> <span class='op'>=</span> <span class='id identifier rubyid_client'>client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/user/repo</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -415,7 +442,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>the GitHub API URL to fetch data from</p></div>
+        <div class='inline'><p>API URL</p></div>
       
     </li>
   
@@ -427,12 +454,12 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Array</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>parsed JSON data or nil if an error occurs</p></div>
+        <div class='inline'><p>parsed JSON or nil on error</p></div>
       
     </li>
   
@@ -444,32 +471,35 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <pre class="lines">
 
 
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56</pre>
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 39</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 77</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='id identifier rubyid_url'>url</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
   <span class='id identifier rubyid_entry'>entry</span> <span class='op'>=</span> <span class='ivar'>@http_cache</span><span class='lbracket'>[</span><span class='id identifier rubyid_url'>url</span><span class='rbracket'>]</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_entry'>entry</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span> <span class='op'>-</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:ts</span><span class='rbracket'>]</span> <span class='op'>&lt;</span> <span class='ivar'>@cache_ttl</span><span class='rparen'>)</span>
+    <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='kw'>nil</span>
     <span class='kw'>return</span> <span class='id identifier rubyid_entry'>entry</span><span class='lbracket'>[</span><span class='symbol'>:data</span><span class='rbracket'>]</span>
   <span class='kw'>end</span>
   <span class='kw'>begin</span>
@@ -480,7 +510,8 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
     <span class='ivar'>@http_cache</span><span class='lbracket'>[</span><span class='id identifier rubyid_url'>url</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>ts:</span> <span class='id identifier rubyid_now'>now</span><span class='comma'>,</span> <span class='label'>data:</span> <span class='id identifier rubyid_data'>data</span> <span class='rbrace'>}</span>
     <span class='id identifier rubyid_data'>data</span>
   <span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Update notice: network error fetching </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_url'>url</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/repos/</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span> <span class='op'>||</span> <span class='id identifier rubyid_url'>url</span><span class='embexpr_end'>}</span><span class='tstring_content'> (fetch_github_json): </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>could not parse response from </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_url'>url</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='symbol'>:bad_response</span><span class='rparen'>)</span>
     <span class='kw'>nil</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
@@ -500,13 +531,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>The token is loaded from DATA_DIR/githubtoken.txt</p></div>
-  </div>
-
-<p>Retrieves the GitHub authentication token from the specified file.</p>
+    <p>Loads GitHub token from DATA_DIR/githubtoken.txt (lazy, once).</p>
 
   </div>
 </div>
@@ -523,7 +548,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>the Bearer token or nil if not found or empty</p></div>
+        <div class='inline'><p>Bearer token header value or nil</p></div>
       
     </li>
   
@@ -535,24 +560,24 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <pre class="lines">
 
 
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103</pre>
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 89</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 133</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_github_token'>github_token</span>
   <span class='kw'>return</span> <span class='ivar'>@github_token</span> <span class='kw'>if</span> <span class='ivar'>@github_token_loaded</span>
@@ -585,7 +610,10 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Performs a GET request to the specified URL with optional authentication.</p>
+    <p>Performs HTTP GET request with optional token auth.</p>
+<p>Never prints. On failure, sets #last_error and returns nil. If GitHub
+rejects the token (401), retries once anonymously: public repositories
+do not need a token, so a stale githubtoken.txt should not block updates.</p>
 
   </div>
 </div>
@@ -603,7 +631,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>the URL to send the GET request to</p></div>
+        <div class='inline'><p>target URL</p></div>
       
     </li>
   
@@ -619,7 +647,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>whether to include authentication token (default: true)</p></div>
+        <div class='inline'><p>whether to include token auth (default: true)</p></div>
       
     </li>
   
@@ -636,23 +664,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       
       
         &mdash;
-        <div class='inline'><p>response body or nil if an error occurs</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if a network error occurs</p></div>
+        <div class='inline'><p>response body or nil on error</p></div>
       
     </li>
   
@@ -664,53 +676,107 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
       <pre class="lines">
 
 
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84</pre>
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 63</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 107</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_http_get'>http_get</span><span class='lparen'>(</span><span class='id identifier rubyid_url'>url</span><span class='comma'>,</span> <span class='label'>auth:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='id identifier rubyid_uri'>uri</span> <span class='op'>=</span> <span class='const'>URI</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_url'>url</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_http'>http</span> <span class='op'>=</span> <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_use_ssl'>use_ssl</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_scheme'>scheme</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>https</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_verify_mode'>verify_mode</span> <span class='op'>=</span> <span class='const'>OpenSSL</span><span class='op'>::</span><span class='const'>SSL</span><span class='op'>::</span><span class='const'>VERIFY_PEER</span>
+  <span class='id identifier rubyid_token'>token</span> <span class='op'>=</span> <span class='id identifier rubyid_auth'>auth</span> <span class='op'>?</span> <span class='id identifier rubyid_github_token'>github_token</span> <span class='op'>:</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_perform_get'>perform_get</span><span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='comma'>,</span> <span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span>
 
-  <span class='id identifier rubyid_request'>request</span> <span class='op'>=</span> <span class='const'>Net</span><span class='op'>::</span><span class='const'>HTTP</span><span class='op'>::</span><span class='const'>Get</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_request_uri'>request_uri</span><span class='rparen'>)</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_auth'>auth</span>
-    <span class='id identifier rubyid_token'>token</span> <span class='op'>=</span> <span class='id identifier rubyid_github_token'>github_token</span>
-    <span class='id identifier rubyid_request'>request</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Authorization</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_token'>token</span> <span class='kw'>if</span> <span class='id identifier rubyid_token'>token</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>401</span><span class='tstring_end'>&#39;</span></span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_token'>token</span>
+    <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>HTTP 401 with token fetching </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'>; retrying without token</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_perform_get'>perform_get</span><span class='lparen'>(</span><span class='id identifier rubyid_uri'>uri</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_token_rejected'>token_rejected</span> <span class='kw'>if</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>200</span><span class='tstring_end'>&#39;</span></span>
   <span class='kw'>end</span>
 
-  <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_http'>http</span><span class='period'>.</span><span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='id identifier rubyid_request'>request</span><span class='rparen'>)</span>
-  <span class='kw'>unless</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>200</span><span class='tstring_end'>&#39;</span></span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: HTTP </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span><span class='embexpr_end'>}</span><span class='tstring_content'> fetching </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'>]</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>return</span> <span class='kw'>nil</span>
-  <span class='kw'>end</span>
-  <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_body'>body</span>
-<span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: Network error: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>]</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_body'>body</span> <span class='kw'>if</span> <span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>200</span><span class='tstring_end'>&#39;</span></span>
+
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>HTTP </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_response'>response</span><span class='period'>.</span><span class='id identifier rubyid_code'>code</span><span class='embexpr_end'>}</span><span class='tstring_content'> fetching </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_uri'>uri</span><span class='period'>.</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='id identifier rubyid_classify'>classify</span><span class='lparen'>(</span><span class='id identifier rubyid_response'>response</span><span class='rparen'>)</span>
   <span class='kw'>nil</span>
+<span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+  <span class='id identifier rubyid_debug_log'>debug_log</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>network error fetching </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_url'>url</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='symbol'>:network</span><span class='rparen'>)</span>
+  <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="last_error-instance_method">
+  
+    #<strong>last_error</strong>  &#x21d2; <tt><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Why the calling thread's most recent request failed, or nil if it
+succeeded. Kept per thread: the client is shared, and the login sync
+runs on its own thread while the user may run lich5-update.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+69
+70
+71</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/github_client.rb', line 69</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_last_error'>last_error</span>
+  <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='lbracket'>[</span><span class='ivar'>@last_error_key</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -722,7 +788,7 @@ DATA_DIR/githubtoken.txt. Includes in-memory cache with TTL for API responses.</
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:39 2026 by
+  Generated on Wed Oct 28 05:27:28 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

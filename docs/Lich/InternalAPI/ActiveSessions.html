@@ -71,6 +71,11 @@
 
   
   
+  <dl>
+      <dt>Extended by:</dt>
+      <dd><span class='object_link'><a href="../Common/SharingViolationRetry.html" title="Lich::Common::SharingViolationRetry (module)">Common::SharingViolationRetry</a></span></dd>
+  </dl>
+  
   
   
   
@@ -94,10 +99,7 @@
   <strong>This module is part of a private API.</strong>
   You should avoid using this module if possible, as it may be removed or be changed in the future.
 </p>
-<p>Namespace for active-sessions reporting and lifecycle management.</p>
-<p>Coordinates registration and heartbeat updates with the active-sessions
-service to track live Lich processes and their connection state across
-the GemStone IV and DragonRealms game worlds.</p>
+<p>Namespace for active-sessions registry and lifecycle coordination.</p>
 
   </div>
 </div>
@@ -283,10 +285,50 @@ across processes.</p>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lich-active-sessions.lock</span><span class='tstring_end'>&#39;</span></span></pre></dd>
       
+        <dt id="DISCOVERY_FILESYSTEM_RETRY_DELAYS-constant" class="">DISCOVERY_FILESYSTEM_RETRY_DELAYS =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Backoff used when Windows temporarily denies rename or delete because
+another process still has the discovery file open. The ownership flock
+remains held throughout these bounded retries, so no successor can
+validly publish a competing generation in the meantime.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Float&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/SharingViolationRetry.html" title="Lich::Common::SharingViolationRetry (module)">SharingViolationRetry</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/SharingViolationRetry.html#DELAYS-constant" title="Lich::Common::SharingViolationRetry::DELAYS (constant)">DELAYS</a></span></span></pre></dd>
+      
     </dl>
   
 
 
+
+  
+  
+  <h3 class="inherited">Constants included
+     from <span class='object_link'><a href="../Common/SharingViolationRetry.html" title="Lich::Common::SharingViolationRetry (module)">Common::SharingViolationRetry</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="../Common/SharingViolationRetry.html#DELAYS-constant" title="Lich::Common::SharingViolationRetry::DELAYS (constant)">Common::SharingViolationRetry::DELAYS</a></span></p>
 
 
 
@@ -503,6 +545,13 @@ across processes.</p>
   
 
 
+  
+  
+  
+  
+  
+  
+  
 
   <div id="class_method_details" class="method_details_list">
     <h2>Class Method Details</h2>
@@ -537,22 +586,22 @@ process still owns the service and the shared registry is now empty.</p>
       <pre class="lines">
 
 
-561
-562
-563
-564
-565
-566
-567
-568
-569
-570
-571
-572
-573</pre>
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 561</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 608</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cleanup_discovery_if_last_session!'>cleanup_discovery_if_last_session!</span>
   <span class='id identifier rubyid_discovery'>discovery</span> <span class='op'>=</span> <span class='id identifier rubyid_load_discovery'>load_discovery</span>
@@ -621,18 +670,18 @@ remains safely dormant and returns empty snapshots.</p>
       <pre class="lines">
 
 
-93
-94
-95
-96
-97
-98
-99
-100
-101</pre>
+101
+102
+103
+104
+105
+106
+107
+108
+109</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 93</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 101</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_enabled?'>enabled?</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'>ACTIVE_SESSION_DIR</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>ACTIVE_SESSION_DIR</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -695,14 +744,14 @@ client adapter.</p>
       <pre class="lines">
 
 
-110
-111
-112
-113
-114</pre>
+118
+119
+120
+121
+122</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 110</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 118</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ensure_service!'>ensure_service!</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -763,18 +812,18 @@ available, the result is a normalized fallback payload.</p>
       <pre class="lines">
 
 
-229
-230
-231
-232
-233
-234
-235
-236
-237</pre>
+237
+238
+239
+240
+241
+242
+243
+244
+245</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 229</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 237</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_query_snapshot'>query_snapshot</span>
   <span class='id identifier rubyid_response'>response</span> <span class='op'>=</span> <span class='id identifier rubyid_service_client'>service_client</span><span class='op'>&amp;.</span><span class='id identifier rubyid_snapshot'>snapshot</span>
@@ -852,15 +901,15 @@ available, the result is a normalized fallback payload.</p>
       <pre class="lines">
 
 
-158
-159
-160
-161
-162
-163</pre>
+166
+167
+168
+169
+170
+171</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 158</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 166</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_register_session'>register_session</span><span class='lparen'>(</span><span class='id identifier rubyid_payload'>payload</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -916,19 +965,19 @@ exposing enough information for diagnostics and operator visibility.</p>
       <pre class="lines">
 
 
-245
-246
-247
-248
-249
-250
-251
-252
 253
-254</pre>
+254
+255
+256
+257
+258
+259
+260
+261
+262</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 245</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 253</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_service_info'>service_info</span>
   <span class='id identifier rubyid_discovery'>discovery</span> <span class='op'>=</span> <span class='id identifier rubyid_load_discovery'>load_discovery</span>
@@ -989,20 +1038,20 @@ exposing enough information for diagnostics and operator visibility.</p>
       <pre class="lines">
 
 
-208
-209
-210
-211
-212
-213
-214
-215
 216
 217
-218</pre>
+218
+219
+220
+221
+222
+223
+224
+225
+226</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 208</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 216</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_snapshot'>snapshot</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_fallback_snapshot'>fallback_snapshot</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1051,29 +1100,36 @@ lifecycle teardown for every session consumer.</p>
       <pre class="lines">
 
 
-263
-264
-265
-266
-267
-268
-269
-270
 271
 272
 273
 274
 275
-276</pre>
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 263</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 271</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_stop_service!'>stop_service!</span>
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='ivar'>@server</span><span class='op'>&amp;.</span><span class='id identifier rubyid_stop'>stop</span>
     <span class='ivar'>@server</span> <span class='op'>=</span> <span class='kw'>nil</span>
     <span class='ivar'>@registry</span> <span class='op'>=</span> <span class='kw'>nil</span>
+    <span class='comment'># Keep the native flock through the ownership check and unlink. A
+</span>    <span class='comment'># successor can publish as soon as we release it; checking the pid
+</span>    <span class='comment'># before an unlocked unlink does not protect that new publication.
+</span>    <span class='id identifier rubyid_delete_discovery_if_owned'>delete_discovery_if_owned</span> <span class='kw'>if</span> <span class='id identifier rubyid_own_lock?'>own_lock?</span>
     <span class='id identifier rubyid_release_ownership_lock'>release_ownership_lock</span>
   <span class='kw'>end</span>
   <span class='ivar'>@service_client_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
@@ -1081,7 +1137,6 @@ lifecycle teardown for every session consumer.</p>
     <span class='ivar'>@service_client_token</span> <span class='op'>=</span> <span class='kw'>nil</span>
     <span class='ivar'>@service_client_port</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='kw'>end</span>
-  <span class='id identifier rubyid_delete_discovery_if_owned'>delete_discovery_if_owned</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1147,15 +1202,15 @@ lifecycle teardown for every session consumer.</p>
       <pre class="lines">
 
 
-186
-187
-188
-189
-190
-191</pre>
+194
+195
+196
+197
+198
+199</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 186</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions.rb', line 194</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_unregister_session'>unregister_session</span><span class='lparen'>(</span><span class='label'>pid:</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_enabled?'>enabled?</span>
@@ -1173,7 +1228,7 @@ lifecycle teardown for every session consumer.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:23 2026 by
+  Generated on Wed Oct 28 05:27:17 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

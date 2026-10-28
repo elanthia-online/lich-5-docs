@@ -64,7 +64,7 @@
       <div id="content"><h1>Module: Lich::Util::Update::StatusReporter
   
   
-  
+  <span class="private note title">Private</span>
 </h1>
 <div class="box_info">
   
@@ -86,7 +86,22 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This module is part of a private API.</strong>
+  You should avoid using this module if possible, as it may be removed or be changed in the future.
+</p>
+<p>Utilities for rendering update status messages and tables.</p>
+<p>Provides monospace-aware response wrapper and Terminal::Table formatting
+for sync summaries.</p>
 
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
 
 
 
@@ -104,29 +119,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#render_sync_summary-class_method" title="render_sync_summary (class method)">.<strong>render_sync_summary</strong>(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {})  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Renders a summary of the synchronization process.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#respond_mono-class_method" title="respond_mono (class method)">.<strong>respond_mono</strong>(text)  &#x21d2; String </a>
+      <a href="#render_sync_summary-class_method" title="render_sync_summary (class method)">.<strong>render_sync_summary</strong>(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {}, held_scripts = [])  &#x21d2; void </a>
     
 
     
@@ -140,7 +133,51 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Renders the given text in a monospace format.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Renders sync results as Terminal::Table.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#respond_github_failure-class_method" title="respond_github_failure (class method)">.<strong>respond_github_failure</strong>(error, consequence, subject: nil)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Reports a failed GitHub request as one message stating what was not done and whether the user needs to act.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#respond_mono-class_method" title="respond_mono (class method)">.<strong>respond_mono</strong>(text)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Outputs text with monospace formatting if available.</p></div></span>
   
 </li>
 
@@ -158,7 +195,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="render_sync_summary-class_method">
   
-    .<strong>render_sync_summary</strong>(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {})  &#x21d2; <tt>void</tt> 
+    .<strong>render_sync_summary</strong>(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {}, held_scripts = [])  &#x21d2; <tt>void</tt> 
   
 
   
@@ -166,22 +203,16 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Renders a summary of the synchronization process.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Renders sync results as Terminal::Table.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Render a sync summary</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_render_sync_summary'>render_sync_summary</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>my_repo</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>5</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>script1.rb</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>script2.rb</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>subdir1</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>subdir2</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>script3.rb</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>subdir1</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=&gt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>file1.txt</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='rbrace'>}</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -194,7 +225,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the name of the repository</p></div>
+        <div class='inline'><p>repository display name</p></div>
       
     </li>
   
@@ -208,7 +239,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the number of scripts checked</p></div>
+        <div class='inline'><p>total scripts checked</p></div>
       
     </li>
   
@@ -222,7 +253,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the list of downloaded scripts</p></div>
+        <div class='inline'><p>scripts downloaded</p></div>
       
     </li>
   
@@ -231,12 +262,12 @@
         <span class='name'>downloaded_other</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;&gt;</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a hash of other downloaded files categorized by subdirectory</p></div>
+        <div class='inline'><p>subdir =&gt; files</p></div>
       
     </li>
   
@@ -250,7 +281,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the names of subdirectories</p></div>
+        <div class='inline'><p>subdirectory names</p></div>
       
     </li>
   
@@ -266,7 +297,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the list of failed scripts (default: [])</p></div>
+        <div class='inline'><p>scripts that failed (default: [])</p></div>
       
     </li>
   
@@ -275,14 +306,31 @@
         <span class='name'>failed_other</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;&gt;</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>{}</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>a hash of failed files categorized by subdirectory (default: {})</p></div>
+        <div class='inline'><p>subdir =&gt; failed files (default: {})</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>held_scripts</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;Array(<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>)&gt;</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>[]</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>[file, required Lich version] pairs
+not installed because the running Lich is too old (default: [])</p></div>
       
     </li>
   
@@ -295,36 +343,6 @@
       <pre class="lines">
 
 
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
 74
 75
 76
@@ -343,16 +361,48 @@
 89
 90
 91
-92</pre>
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/status_reporter.rb', line 44</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/status_reporter.rb', line 74</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_render_sync_summary'>render_sync_summary</span><span class='lparen'>(</span><span class='id identifier rubyid_repo_name'>repo_name</span><span class='comma'>,</span> <span class='id identifier rubyid_script_count'>script_count</span><span class='comma'>,</span> <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='comma'>,</span> <span class='id identifier rubyid_downloaded_other'>downloaded_other</span><span class='comma'>,</span> <span class='id identifier rubyid_subdir_names'>subdir_names</span><span class='comma'>,</span> <span class='id identifier rubyid_failed_scripts'>failed_scripts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_failed_other'>failed_other</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_render_sync_summary'>render_sync_summary</span><span class='lparen'>(</span><span class='id identifier rubyid_repo_name'>repo_name</span><span class='comma'>,</span> <span class='id identifier rubyid_script_count'>script_count</span><span class='comma'>,</span> <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='comma'>,</span> <span class='id identifier rubyid_downloaded_other'>downloaded_other</span><span class='comma'>,</span> <span class='id identifier rubyid_subdir_names'>subdir_names</span><span class='comma'>,</span> <span class='id identifier rubyid_failed_scripts'>failed_scripts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_failed_other'>failed_other</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='id identifier rubyid_held_scripts'>held_scripts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_total_downloaded'>total_downloaded</span> <span class='op'>=</span> <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='op'>+</span> <span class='id identifier rubyid_downloaded_other'>downloaded_other</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
   <span class='id identifier rubyid_total_failed'>total_failed</span> <span class='op'>=</span> <span class='id identifier rubyid_failed_scripts'>failed_scripts</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='op'>+</span> <span class='id identifier rubyid_failed_other'>failed_other</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span>
 
-  <span class='kw'>if</span> <span class='id identifier rubyid_total_downloaded'>total_downloaded</span> <span class='op'>==</span> <span class='int'>0</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_total_failed'>total_failed</span> <span class='op'>==</span> <span class='int'>0</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_total_downloaded'>total_downloaded</span> <span class='op'>==</span> <span class='int'>0</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_total_failed'>total_failed</span> <span class='op'>==</span> <span class='int'>0</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_held_scripts'>held_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
     <span class='id identifier rubyid_table'>table</span> <span class='op'>=</span> <span class='const'>Terminal</span><span class='op'>::</span><span class='const'>Table</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span>
       <span class='label'>title:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_repo_name'>repo_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> Sync</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span>
       <span class='label'>rows:</span> <span class='lbracket'>[</span>
@@ -370,6 +420,7 @@
 
   <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_f'>f</span><span class='op'>|</span> <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>script</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_f'>f</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>downloaded</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
   <span class='id identifier rubyid_failed_scripts'>failed_scripts</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_f'>f</span><span class='op'>|</span> <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>script</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_f'>f</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>FAILED (will retry next login)</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_held_scripts'>held_scripts</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_f'>f</span><span class='comma'>,</span> <span class='id identifier rubyid_required'>required</span><span class='op'>|</span> <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>script</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_f'>f</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>needs Lich </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_required'>required</span><span class='embexpr_end'>}</span><span class='tstring_content'>+ (not updated)</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
 
   <span class='id identifier rubyid_downloaded_other'>downloaded_other</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_subdir'>subdir</span><span class='comma'>,</span> <span class='id identifier rubyid_files'>files</span><span class='op'>|</span>
     <span class='id identifier rubyid_files'>files</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_f'>f</span><span class='op'>|</span> <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='id identifier rubyid_subdir'>subdir</span><span class='comma'>,</span> <span class='id identifier rubyid_f'>f</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>downloaded</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
@@ -385,13 +436,14 @@
     <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>up to date</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
   <span class='kw'>end</span>
 
-  <span class='kw'>if</span> <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_failed_scripts'>failed_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_downloaded_scripts'>downloaded_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_failed_scripts'>failed_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_held_scripts'>held_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
     <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scripts</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>--</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_script_count'>script_count</span><span class='embexpr_end'>}</span><span class='tstring_content'> checked, all up to date</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>
   <span class='kw'>end</span>
 
   <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='symbol'>:separator</span>
   <span class='id identifier rubyid_summary'>summary</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Total: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_total_downloaded'>total_downloaded</span><span class='embexpr_end'>}</span><span class='tstring_content'> updated</span><span class='tstring_end'>&quot;</span></span>
   <span class='id identifier rubyid_summary'>summary</span> <span class='op'>+=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_total_failed'>total_failed</span><span class='embexpr_end'>}</span><span class='tstring_content'> failed</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_total_failed'>total_failed</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_summary'>summary</span> <span class='op'>+=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_held_scripts'>held_scripts</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='embexpr_end'>}</span><span class='tstring_content'> need newer Lich</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id identifier rubyid_held_scripts'>held_scripts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
   <span class='id identifier rubyid_table_rows'>table_rows</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='lbrace'>{</span> <span class='label'>value:</span> <span class='id identifier rubyid_summary'>summary</span><span class='comma'>,</span> <span class='label'>colspan:</span> <span class='int'>3</span> <span class='rbrace'>}</span><span class='rbracket'>]</span>
 
   <span class='id identifier rubyid_table'>table</span> <span class='op'>=</span> <span class='const'>Terminal</span><span class='op'>::</span><span class='const'>Table</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='label'>title:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_repo_name'>repo_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> Sync</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>rows:</span> <span class='id identifier rubyid_table_rows'>table_rows</span><span class='rparen'>)</span>
@@ -403,9 +455,9 @@
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="respond_mono-class_method">
+  <h3 class="signature " id="respond_github_failure-class_method">
   
-    .<strong>respond_mono</strong>(text)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+    .<strong>respond_github_failure</strong>(error, consequence, subject: nil)  &#x21d2; <tt>void</tt> 
   
 
   
@@ -417,7 +469,121 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Renders the given text in a monospace format.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Reports a failed GitHub request as one message stating what was not
+done and whether the user needs to act.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>error</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the client's last_error (nil = unclassified)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>consequence</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>what did not happen, e.g. &quot;No scripts have been updated this run.&quot;</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>subject</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>what was being fetched, named in the not-found message</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/status_reporter.rb', line 47</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_respond_github_failure'>respond_github_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_error'>error</span><span class='comma'>,</span> <span class='id identifier rubyid_consequence'>consequence</span><span class='comma'>,</span> <span class='label'>subject:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_message'>message</span> <span class='op'>=</span> <span class='kw'>case</span> <span class='id identifier rubyid_error'>error</span><span class='op'>&amp;.</span><span class='id identifier rubyid_kind'>kind</span>
+            <span class='kw'>when</span> <span class='symbol'>:rate_limited</span>
+              <span class='id identifier rubyid_reset'>reset</span> <span class='op'>=</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_reset_at'>reset_at</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, resets at </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_reset_at'>reset_at</span><span class='period'>.</span><span class='id identifier rubyid_strftime'>strftime</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%H:%M</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
+              <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GitHub check failed (rate limit reached</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_reset'>reset</span><span class='embexpr_end'>}</span><span class='tstring_content'>). </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_consequence'>consequence</span><span class='embexpr_end'>}</span><span class='tstring_content'> This is temporary and will clear once the limit resets.</span><span class='tstring_end'>&quot;</span></span>
+            <span class='kw'>when</span> <span class='symbol'>:not_found</span>
+              <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GitHub check failed (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_subject'>subject</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>repository</span><span class='tstring_end'>&#39;</span></span><span class='embexpr_end'>}</span><span class='tstring_content'> not found). </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_consequence'>consequence</span><span class='embexpr_end'>}</span><span class='tstring_content'> Check that the repository and branch exist.</span><span class='tstring_end'>&quot;</span></span>
+            <span class='kw'>when</span> <span class='symbol'>:rejected</span>
+              <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GitHub check failed (GitHub refused access to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_subject'>subject</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>the repository</span><span class='tstring_end'>&#39;</span></span><span class='embexpr_end'>}</span><span class='tstring_content'>). </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_consequence'>consequence</span><span class='embexpr_end'>}</span><span class='tstring_content'> Check that the repository and branch exist and are public.</span><span class='tstring_end'>&quot;</span></span>
+            <span class='kw'>else</span>
+              <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>GitHub check failed. </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_consequence'>consequence</span><span class='embexpr_end'>}</span><span class='tstring_content'> This is a temporary error that should resolve itself by your next login.</span><span class='tstring_end'>&quot;</span></span>
+            <span class='kw'>end</span>
+  <span class='id identifier rubyid_respond_mono'>respond_mono</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[lich5-update: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>]</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="respond_mono-class_method">
+  
+    .<strong>respond_mono</strong>(text)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Outputs text with monospace formatting if available.</p>
 
   </div>
 </div>
@@ -435,28 +601,12 @@
       
       
         &mdash;
-        <div class='inline'><p>the text to render in monospace</p></div>
+        <div class='inline'><p>text to display</p></div>
       
     </li>
   
 </ul>
 
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the rendered monospace text</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -464,18 +614,18 @@
       <pre class="lines">
 
 
-22
-23
-24
-25
-26
-27
-28
-29
-30</pre>
+30
+31
+32
+33
+34
+35
+36
+37
+38</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/status_reporter.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/status_reporter.rb', line 30</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_respond_mono'>respond_mono</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:mono</span><span class='rparen'>)</span>
@@ -496,7 +646,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:24 2026 by
+  Generated on Wed Oct 28 05:27:17 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

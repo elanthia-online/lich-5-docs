@@ -127,7 +127,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses ARGV into a hash of option flags and values, handling system integration (SGE/SAL linking), game connection modes, authentication, and frontend selection.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses ARGV into an options hash for backward compatibility.</p></div></span>
   
 </li>
 
@@ -149,7 +149,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts the --dark-mode argument value to a strict boolean and stores it.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts a dark-mode string value to a strict boolean.</p></div></span>
   
 </li>
 
@@ -171,7 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves a .sal or .~xt launch file path and stores it in @argv_<a href=":sal">options</a>.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Records a SAL or Gse.~xt file path in argv_options and searches common locations.</p></div></span>
   
 </li>
 
@@ -204,14 +204,15 @@
 
   <div class="note notetag">
     <strong>Note:</strong>
-    <div class='inline'><p>Does not apply side effects; use <span class='object_link'><a href="SideEffects.html#execute-class_method" title="Lich::Main::ArgvOptions::SideEffects.execute (method)">SideEffects.execute</a></span> afterward</p></div>
+    <div class='inline'><p>Mutates ARGV by calling handle_sal_file, which may delete entries</p></div>
   </div>
 
-<p>Parses ARGV into a hash of option flags and values, handling system integration
-(SGE/SAL linking), game connection modes, authentication, and frontend selection.</p>
-<p>Recognizes long-form options (--start-scripts, --host, --game, etc.) and performs
-early exit for installation/system linking operations. Normalizes host:port pairs,
-resolves .sal/.~xt launch files, and applies dark mode settings.</p>
+<p>Parses ARGV into an options hash for backward compatibility.</p>
+<p>Walks ARGV matching each argument against patterns for recognized CLI flags
+(--start-scripts, --host, --game, etc.). Early-exit operations (--install,
+--link-to-sge, --unlink-from-sal, etc.) print to stdout and call exit().
+SAL/Gse files and --dark-mode are handled by helper methods.
+Invalid --fe-version values are tracked and warned about after the loop.</p>
 
   </div>
 </div>
@@ -228,8 +229,8 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash mapping option symbols (:start_scripts, :host, :game, :sal,
-:bind_address, :dark_mode, etc.) to their parsed values; empty if ARGV is empty</p></div>
+        <div class='inline'><p>options hash with Symbol keys (e.g., :host, :game, :account);
+early-exit operations do not return</p></div>
       
     </li>
   
@@ -241,7 +242,6 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
       <pre class="lines">
 
 
-38
 39
 40
 41
@@ -330,14 +330,43 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
 124
 125
 126
-127</pre>
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 38</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 39</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span>
   <span class='ivar'>@argv_options</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
   <span class='id identifier rubyid_bad_args'>bad_args</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_invalid_fe_version'>invalid_fe_version</span> <span class='op'>=</span> <span class='kw'>false</span>
 
   <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_arg'>arg</span><span class='op'>|</span>
     <span class='kw'>case</span> <span class='id identifier rubyid_arg'>arg</span>
@@ -395,6 +424,10 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:game</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--auth-provider=(eaccess|web)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:auth_provider</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--game-transport=(direct|websocket)$</span><span class='regexp_end'>/i</span></span>
+      <span class='comment'># :websocket is opt-in only (Genie5#356 phase 2) -- direct TCP
+</span>      <span class='comment'># to the game port remains the default; see Lich::Common::GameTransport.
+</span>      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:game_transport</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--account=(.+)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:account</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--password=(.+)$</span><span class='regexp_end'>/i</span></span>
@@ -403,12 +436,26 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:character</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--frontend=(.+)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A--fe-version=([A-Za-z0-9._+-]{1,32})\z</span><span class='regexp_end'>/i</span></span>
+      <span class='comment'># \A..\z, not ^..$: the value is written onto the game socket, so an
+</span>      <span class='comment'># embedded newline must not let a valid first line slip through.
+</span>      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:fe_version</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A--fe-version=</span><span class='regexp_end'>/i</span></span>
+      <span class='comment'># Without this, a rejected value would silently send the default /VERSION:.
+</span>      <span class='id identifier rubyid_invalid_fe_version'>invalid_fe_version</span> <span class='op'>=</span> <span class='kw'>true</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--frontend-command=(.+)$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:frontend_command</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--save$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:save</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--pipe$</span><span class='regexp_end'>/i</span></span>
       <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:pipe</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--sentinel$</span><span class='regexp_end'>/i</span></span>
+      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sentinel</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--keep-fe-string$</span><span class='regexp_end'>/i</span></span>
+      <span class='comment'># Kill switch for Frontend.proxy_handshake: forward the front end&#39;s own /FE: line.
+</span>      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:keep_fe_string</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--frontend-caps=(.*)$</span><span class='regexp_end'>/i</span></span>
+      <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:frontend_caps</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='backref'>$1</span>
     <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--wine(?:\-prefix)?=.+$</span><span class='regexp_end'>/i</span></span>
       <span class='kw'>nil</span> <span class='comment'># already used when defining the Wine module
 </span>    <span class='kw'>when</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\.sal$|Gse\.~xt$</span><span class='regexp_end'>/i</span></span>
@@ -421,6 +468,14 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
     <span class='kw'>else</span>
       <span class='id identifier rubyid_bad_args'>bad_args</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span><span class='rparen'>)</span>
     <span class='kw'>end</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># Warn after the loop so the message names the value actually in effect.
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_invalid_fe_version'>invalid_fe_version</span>
+    <span class='id identifier rubyid_warning'>warning</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>warning: ignoring invalid --fe-version (allowed: 1-32 of A-Z a-z 0-9 . _ + -); </span><span class='tstring_end'>&#39;</span></span> \
+              <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>using </span><span class='embexpr_beg'>#{</span><span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:fe_version</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>the default</span><span class='tstring_end'>&#39;</span></span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='id identifier rubyid_warning'>warning</span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='id identifier rubyid_warning'>warning</span>
   <span class='kw'>end</span>
 
   <span class='ivar'>@argv_options</span>
@@ -445,9 +500,10 @@ resolves .sal/.~xt launch files, and applies dark mode settings.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Converts the --dark-mode argument value to a strict boolean and stores it.</p>
-<p>Accepts &quot;true&quot;, &quot;on&quot; (case-insensitive) as truthy; all other values are falsy.
-Ensures the stored value is a pure [Boolean], not a Regexp match result.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Converts a dark-mode string value to a strict boolean.</p>
+<p>Regex matching on &quot;true&quot;|&quot;on&quot; (case-insensitive) is converted to true or false.
+This strict conversion ensures the startup theme handler receives a boolean,
+not a regex match result (Integer or nil).</p>
 
   </div>
 </div>
@@ -465,7 +521,7 @@ Ensures the stored value is a pure [Boolean], not a Regexp match result.</p>
       
       
         &mdash;
-        <div class='inline'><p>the captured regex group from --dark-mode=(true|false|on|off)</p></div>
+        <div class='inline'><p>one of &quot;true&quot;, &quot;false&quot;, &quot;on&quot;, &quot;off&quot; (case-insensitive)</p></div>
       
     </li>
   
@@ -478,13 +534,13 @@ Ensures the stored value is a pure [Boolean], not a Regexp match result.</p>
       <pre class="lines">
 
 
-157
-158
-159
-160</pre>
+185
+186
+187
+188</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 157</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 185</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_dark_mode'>handle_dark_mode</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='comment'># Regex returns Integer/nil; force strict boolean for startup handling.
@@ -510,11 +566,10 @@ Ensures the stored value is a pure [Boolean], not a Regexp match result.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Resolves a .sal or .~xt launch file path and stores it in @argv_<a href=":sal">options</a>.</p>
-<p>Attempts three resolution strategies: use the argument as-is, extract a Windows
-path from ARGV (e.g., C:\folder\file.sal), and translate it to a Wine prefix
-path if Wine is defined. Logs the final resolved path but does not validate
-existence—that is deferred to <span class='object_link'><a href="SideEffects.html#handle_sal_launch-class_method" title="Lich::Main::ArgvOptions::SideEffects.handle_sal_launch (method)">SideEffects.handle_sal_launch</a></span>.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Records a SAL or Gse.~xt file path in argv_options and searches common locations.</p>
+<p>Stores the file path under :sal. If it does not exist, searches ARGV for a
+fully-qualified Windows path (e.g., C:\path\file.sal). If still not found
+and Wine is defined, remaps the path under Wine::PREFIX/drive_c/.</p>
 
   </div>
 </div>
@@ -532,7 +587,7 @@ existence—that is deferred to <span class='object_link'><a href="SideEffects.h
       
       
         &mdash;
-        <div class='inline'><p>the literal argument matched by the .sal/.~xt regex</p></div>
+        <div class='inline'><p>a SAL or Gse.~xt file path (relative, absolute, or Windows)</p></div>
       
     </li>
   
@@ -545,18 +600,18 @@ existence—that is deferred to <span class='object_link'><a href="SideEffects.h
       <pre class="lines">
 
 
-139
-140
-141
-142
-143
-144
-145
-146
-147</pre>
+166
+167
+168
+169
+170
+171
+172
+173
+174</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 139</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 166</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_sal_file'>handle_sal_file</span><span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span><span class='rparen'>)</span>
   <span class='ivar'>@argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_arg'>arg</span>
@@ -577,7 +632,7 @@ existence—that is deferred to <span class='object_link'><a href="SideEffects.h
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:16 2026 by
+  Generated on Wed Oct 28 05:27:12 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

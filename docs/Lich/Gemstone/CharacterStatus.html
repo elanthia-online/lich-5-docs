@@ -140,10 +140,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the GemStone character injury display mode (wounds, scars, or both).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets the GemStone injury display mode (wounds, scars, or both).</p></div></span>
   
 </li>
 
@@ -165,7 +165,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Handles calls to undefined injury body part methods.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Responds to unknown CharacterStatus class methods with a helpful error.</p></div></span>
   
 </li>
 
@@ -191,23 +191,18 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the GemStone character injury display mode (wounds, scars, or both).</p>
-<p>Sends the _injury command and waits up to 7.5 seconds for XMLData.injury_mode
-to reflect the change. Does nothing if the character is already in the requested mode.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Sets the GemStone injury display mode (wounds, scars, or both).</p>
+<p>Sends _injury commands to the server and waits up to 7.5 seconds for XMLData.injury_mode
+to reflect the change. Allows scripts to ensure a consistent view of character wounds/scars.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::CharacterStatus (class)">CharacterStatus</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fix_injury_mode'>fix_injury_mode</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-<span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::CharacterStatus (class)">CharacterStatus</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fix_injury_mode'>fix_injury_mode</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>both</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -222,7 +217,7 @@ to reflect the change. Does nothing if the character is already in the requested
       
       
         &mdash;
-        <div class='inline'><p>the injury mode: 'scar'/'scars' (1), 'wound'/'wounds' (0), or 'both' (2)</p></div>
+        <div class='inline'><p>&quot;scar&quot;/&quot;scars&quot;, &quot;wound&quot;/&quot;wounds&quot;, or &quot;both&quot; (default)</p></div>
       
     </li>
   
@@ -239,7 +234,7 @@ to reflect the change. Does nothing if the character is already in the requested
       
       
         &mdash;
-        <div class='inline'><p>if mode is not 'scar', 'wound', or 'both'</p></div>
+        <div class='inline'><p>if mode is invalid</p></div>
       
     </li>
   
@@ -251,30 +246,30 @@ to reflect the change. Does nothing if the character is already in the requested
       <pre class="lines">
 
 
-1581
-1582
-1583
-1584
-1585
-1586
-1587
-1588
-1589
-1590
-1591
-1592
-1593
-1594
-1595
-1596
-1597
-1598
-1599
-1600
-1601</pre>
+1860
+1861
+1862
+1863
+1864
+1865
+1866
+1867
+1868
+1869
+1870
+1871
+1872
+1873
+1874
+1875
+1876
+1877
+1878
+1879
+1880</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1581</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1860</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fix_injury_mode'><span class='object_link'><a href="../../top-level-namespace.html#fix_injury_mode-instance_method" title="#fix_injury_mode (method)">fix_injury_mode</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_mode'>mode</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>both</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'># Default mode &#39;both&#39; handles wounds (precedence) then scars
 </span>  <span class='kw'>case</span> <span class='id identifier rubyid_mode'>mode</span>
@@ -317,9 +312,8 @@ to reflect the change. Does nothing if the character is already in the requested
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Handles calls to undefined injury body part methods.</p>
-<p>Returns a formatted error message listing valid parts (arms, limbs, torso, etc.)
-extracted from XMLData.injuries.</p>
+<p>Responds to unknown CharacterStatus class methods with a helpful error.</p>
+<p>Returns a bold error message listing valid injury areas (arms, limbs, torso, etc.).</p>
 
   </div>
 </div>
@@ -335,9 +329,6 @@ extracted from XMLData.injuries.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>(the respond method returns nil on success)</p></div>
-      
     </li>
   
 </ul>
@@ -348,14 +339,14 @@ extracted from XMLData.injuries.</p>
       <pre class="lines">
 
 
-1610
-1611
-1612
-1613
-1614</pre>
+1888
+1889
+1890
+1891
+1892</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1610</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 1888</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_method_missing'>method_missing</span><span class='lparen'>(</span><span class='id identifier rubyid__method_name'>_method_name</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_mono'><span class='object_link'><a href="../Messaging.html#mono-class_method" title="Lich::Messaging.mono (method)">mono</a></span></span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg_format'><span class='object_link'><a href="../Messaging.html#msg_format-class_method" title="Lich::Messaging.msg_format (method)">msg_format</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>::</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span><span class='embexpr_end'>}</span><span class='tstring_content'>: Invalid area, try one of these: arms, limbs, torso, </span><span class='embexpr_beg'>#{</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_injuries'>injuries</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -372,7 +363,7 @@ extracted from XMLData.injuries.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:31 2026 by
+  Generated on Wed Oct 28 05:27:22 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

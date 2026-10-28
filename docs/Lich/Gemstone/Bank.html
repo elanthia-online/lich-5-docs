@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Gemstone::Bank
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Gemstone::Bank";
+  relpath = '../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../_index.html">Index (B)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span>
+     &raquo; 
+    <span class="title">Bank</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Gemstone::Bank
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/gemstone/bank.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Bank account management: deposit and withdraw silver, and query account balances.</p>
+<p>Handles standard GemStone bank verbs (DEPOSIT, WITHDRAW, BANK ACCOUNT),
+Pinefar's distinct syntax, and free-to-play account caps with note conversion.
+Assumes the character is already standing at a bank.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Deposit everything</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>Bank</span><span class='period'>.</span><span class='id identifier rubyid_deposit'><span class='object_link'><a href="#deposit-class_method" title="Lich::Gemstone::Bank.deposit (method)">deposit</a></span></span> <span class='comment'>#=&gt; 5000</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Deposit a note</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>Bank</span><span class='period'>.</span><span class='id identifier rubyid_deposit_note'><span class='object_link'><a href="#deposit_note-class_method" title="Lich::Gemstone::Bank.deposit_note (method)">deposit_note</a></span></span> <span class='comment'>#=&gt; 50000</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Withdraw with coins</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>Bank</span><span class='period'>.</span><span class='id identifier rubyid_withdraw'><span class='object_link'><a href="#withdraw-class_method" title="Lich::Gemstone::Bank.withdraw (method)">withdraw</a></span></span><span class='lparen'>(</span><span class='int'>8000</span><span class='rparen'>)</span> <span class='comment'>#=&gt; 8000</span></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Withdraw as a note (f2p)</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'>Bank</span><span class='period'>.</span><span class='id identifier rubyid_withdraw'><span class='object_link'><a href="#withdraw-class_method" title="Lich::Gemstone::Bank.withdraw (method)">withdraw</a></span></span><span class='lparen'>(</span><span class='int'>25000</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='comment'>#=&gt; 25000</span></code></pre>
+    
+  </div>
+
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span>
+    
+  
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="PINEFAR_TITLE-constant" class="">PINEFAR_TITLE =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>[Pinefar, Depository]</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="NOTE_NOUN-constant" class="">NOTE_NOUN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches the noun of a bank note item (note, scrip, or chit).</p>
+<p>Used to identify notes in inventory and containers during deposit/withdrawal loops.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>&quot;scrip&quot;</p></div></h5>
+      
+      <pre class="example code"><code></code></pre>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>&quot;chit&quot;</p></div></h5>
+      
+      <pre class="example code"><code></code></pre>
+    
+  </div>
+
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#note_in_hand-class_method" title="Lich::Gemstone::Bank.note_in_hand (method)">Bank.notes_in</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:note|scrip|chit)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="F2P_NOTE_BUFFER-constant" class="">F2P_NOTE_BUFFER =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Silver kept on hand when the f2p deposit loop sizes a note, so the next
+pass can still deposit something. eloot's number.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>10_000</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#account-class_method" title="account (class method)">.<strong>account</strong>  &#x21d2; Hash<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>BANK ACCOUNT, parsed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#balance-class_method" title="balance (class method)">.<strong>balance</strong>  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Balance at this town's bank, nil without access.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#deposit-class_method" title="deposit (class method)">.<strong>deposit</strong>(amount = :all)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Deposit silver.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#deposit_f2p-class_method" title="deposit_f2p (class method)">.<strong>deposit_f2p</strong>(amount = :all, stow: StowList.default)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Free-to-play deposit: fill the account to its cap, convert the overflow to a note and stow it, repeat until everything carried is put away.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#deposit_note-class_method" title="deposit_note (class method)">.<strong>deposit_note</strong>(note = note_in_hand)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Deposit the note in hand.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#f2p%3F-class_method" title="f2p? (class method)">.<strong>f2p?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Free-to-play account: capped balance, notes for the overflow.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#here%3F-class_method" title="here? (class method)">.<strong>here?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Standing at a bank (a tagged room or the Pinefar depository).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#local_bank-class_method" title="local_bank (class method)">.<strong>local_bank</strong>(names)  &#x21d2; String<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The bank named for the town the character is in (&quot;Four Winds&quot; for a room located on Four Winds Isle).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#note_in_hand-class_method" title="note_in_hand (class method)">.<strong>note_in_hand</strong>  &#x21d2; GameObj<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>A bank note in either hand.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#note_value-class_method" title="note_value (class method)">.<strong>note_value</strong>(note = note_in_hand)  &#x21d2; Integer </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Its value, 0 when unreadable.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#notes_in-class_method" title="notes_in (class method)">.<strong>notes_in</strong>(container = StowList.default)  &#x21d2; Array&lt;GameObj&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Bank notes Lich knows to be in that container.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pinefar%3F-class_method" title="pinefar? (class method)">.<strong>pinefar?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The Pinefar depository, which has a banker NPC and its own verbs.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#wait_for_banker-class_method" title="wait_for_banker (class method)">.<strong>wait_for_banker</strong>(timeout: 30)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The Pinefar banker wanders; give him a moment to be at the counter.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#withdraw-class_method" title="withdraw (class method)">.<strong>withdraw</strong>(amount, note: false)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Withdraw silver, or a note for that amount.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#withdraw_f2p-class_method" title="withdraw_f2p (class method)">.<strong>withdraw_f2p</strong>(amount, stow: StowList.default)  &#x21d2; Integer<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Free-to-play withdrawal: the balance may be short of <code>amount</code> while notes in the stow container hold the rest, so deposit notes until it covers.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="account-class_method">
+  
+    .<strong>account</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>BANK ACCOUNT, parsed. The listing covers every town's account, so
+<code>balance</code> is the one for the town the character is standing in, picked
+by matching the bank's name against the room's location.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p><code>{ balance:, max:, banks:, total: }</code> where <code>banks</code> maps
+town name to silver, <code>max</code> is the f2p cap (nil without one), or nil
+when this town's bank refuses access</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 211</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_account'>account</span>
+  <span class='id identifier rubyid_lines'>lines</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_issue_command'><span class='object_link'><a href="../Util.html#issue_command-class_method" title="Lich::Util.issue_command (method)">issue_command</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bank account</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_START-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_START (constant)">ACCOUNT_START</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_END-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_END (constant)">ACCOUNT_END</a></span></span><span class='comma'>,</span> <span class='label'>silent:</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>quiet:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_l'>l</span><span class='op'>|</span> <span class='id identifier rubyid_l'>l</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#NO_ACCESS-constant" title="Lich::Gemstone::Bank::Pattern::NO_ACCESS (constant)">NO_ACCESS</a></span></span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_banks'>banks</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='id identifier rubyid_total'>total</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_max'>max</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_balance'>balance</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_lines'>lines</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_line'>line</span><span class='op'>|</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_LINE-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_LINE (constant)">ACCOUNT_LINE</a></span></span>
+      <span class='id identifier rubyid_banks'>banks</span><span class='lbracket'>[</span><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:bank</span><span class='rbracket'>]</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:silver</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_TOTAL-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_TOTAL (constant)">ACCOUNT_TOTAL</a></span></span>
+      <span class='id identifier rubyid_total'>total</span> <span class='op'>=</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:silver</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_BALANCE-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_BALANCE (constant)">ACCOUNT_BALANCE</a></span></span>
+      <span class='id identifier rubyid_balance'>balance</span> <span class='op'>=</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:silver</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#ACCOUNT_MAX-constant" title="Lich::Gemstone::Bank::Pattern::ACCOUNT_MAX (constant)">ACCOUNT_MAX</a></span></span>
+      <span class='id identifier rubyid_max'>max</span> <span class='op'>=</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:silver</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_balance'>balance</span> <span class='op'>||=</span> <span class='id identifier rubyid_banks'>banks</span><span class='lbracket'>[</span><span class='id identifier rubyid_local_bank'>local_bank</span><span class='lparen'>(</span><span class='id identifier rubyid_banks'>banks</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='rparen'>)</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='int'>0</span>
+  <span class='lbrace'>{</span> <span class='label'>balance:</span> <span class='id identifier rubyid_balance'>balance</span><span class='comma'>,</span> <span class='label'>max:</span> <span class='id identifier rubyid_max'>max</span><span class='comma'>,</span> <span class='label'>banks:</span> <span class='id identifier rubyid_banks'>banks</span><span class='comma'>,</span> <span class='label'>total:</span> <span class='id identifier rubyid_total'>total</span> <span class='op'>||</span> <span class='id identifier rubyid_banks'>banks</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_sum'>sum</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="balance-class_method">
+  
+    .<strong>balance</strong>  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns balance at this town's bank, nil without access.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>balance at this town's bank, nil without access</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+234
+235
+236</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 234</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_balance'>balance</span>
+  <span class='id identifier rubyid_account'>account</span><span class='op'>&amp;.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='symbol'>:balance</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="deposit-class_method">
+  
+    .<strong>deposit</strong>(amount = :all)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Deposit silver.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>amount</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>:all</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:all</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>silver deposited as the bank reported it, 0 when
+there was nothing to deposit, nil when the bank refused. The Pinefar
+banker confirms without echoing a figure, so a successful deposit
+there reports 0; do not sum these to track silver banked.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 279</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_deposit'>deposit</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span> <span class='op'>=</span> <span class='symbol'>:all</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_deposit_f2p'>deposit_f2p</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_f2p?'>f2p?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_pinefar?'>pinefar?</span>
+
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='id identifier rubyid_pinefar?'>pinefar?</span>
+             <span class='id identifier rubyid_silver'>silver</span> <span class='op'>=</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>==</span> <span class='symbol'>:all</span> <span class='op'>?</span> <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_silver'><span class='object_link'><a href="Currency.html#silver-class_method" title="Lich::Gemstone::Currency.silver (method)">silver</a></span></span><span class='lparen'>(</span><span class='label'>refresh:</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_amount'>amount</span>
+             <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>unless</span> <span class='id identifier rubyid_silver'>silver</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+             <span class='id identifier rubyid_wait_for_banker'>wait_for_banker</span>
+             <span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>give banker </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_silver'>silver</span><span class='embexpr_end'>}</span><span class='tstring_content'> silver</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#DEPOSIT-constant" title="Lich::Gemstone::Bank::Pattern::DEPOSIT (constant)">DEPOSIT</a></span></span><span class='rparen'>)</span>
+           <span class='kw'>else</span>
+             <span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>deposit </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_amount'>amount</span> <span class='op'>==</span> <span class='symbol'>:all</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>all</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='id identifier rubyid_amount'>amount</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#DEPOSIT-constant" title="Lich::Gemstone::Bank::Pattern::DEPOSIT (constant)">DEPOSIT</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#NO_ACCESS-constant" title="Lich::Gemstone::Bank::Pattern::NO_ACCESS (constant)">NO_ACCESS</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+           <span class='kw'>end</span>
+  <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+  <span class='id identifier rubyid_deposited'>deposited</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="deposit_f2p-class_method">
+  
+    .<strong>deposit_f2p</strong>(amount = :all, stow: StowList.default)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Free-to-play deposit: fill the account to its cap, convert the overflow to
+a note and stow it, repeat until everything carried is put away.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>amount</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>:all</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:all</tt>)</em>
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>stow</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>StowList.default</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>where notes go; the STOW default container</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>silver put away in total, nil when the bank refused
+before anything was deposited</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 345</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_deposit_f2p'>deposit_f2p</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span> <span class='op'>=</span> <span class='symbol'>:all</span><span class='comma'>,</span> <span class='label'>stow:</span> <span class='const'><span class='object_link'><a href="StowList.html" title="Lich::Gemstone::StowList (class)">StowList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_default'>default</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_total'>total</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>=</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>==</span> <span class='symbol'>:all</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_amount'>amount</span>
+  <span class='id identifier rubyid_loop'>loop</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_info'>info</span> <span class='op'>=</span> <span class='id identifier rubyid_account'>account</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_info'>info</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_carried'>carried</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_silver'><span class='object_link'><a href="Currency.html#silver-class_method" title="Lich::Gemstone::Currency.silver (method)">silver</a></span></span><span class='lparen'>(</span><span class='label'>refresh:</span> <span class='kw'>true</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='id identifier rubyid_carried'>carried</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_carried'>carried</span><span class='comma'>,</span> <span class='id identifier rubyid_remaining'>remaining</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_min'>min</span> <span class='kw'>if</span> <span class='id identifier rubyid_remaining'>remaining</span>
+    <span class='kw'>break</span> <span class='kw'>unless</span> <span class='id identifier rubyid_carried'>carried</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+
+    <span class='id identifier rubyid_max'>max</span> <span class='op'>=</span> <span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:max</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_max'>max</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:balance</span><span class='rbracket'>]</span> <span class='op'>+</span> <span class='id identifier rubyid_carried'>carried</span> <span class='op'>&lt;</span> <span class='id identifier rubyid_max'>max</span>
+      <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_deposited'>deposited</span><span class='lparen'>(</span><span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>deposit </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_carried'>carried</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#DEPOSIT-constant" title="Lich::Gemstone::Bank::Pattern::DEPOSIT (constant)">DEPOSIT</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='id identifier rubyid_got'>got</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_total'>total</span> <span class='op'>+=</span> <span class='id identifier rubyid_got'>got</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+
+    <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='id identifier rubyid_max'>max</span> <span class='op'>-</span> <span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:balance</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+      <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_deposited'>deposited</span><span class='lparen'>(</span><span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>deposit </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_room'>room</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#DEPOSIT-constant" title="Lich::Gemstone::Bank::Pattern::DEPOSIT (constant)">DEPOSIT</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_got'>got</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+        <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+        <span class='kw'>break</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_total'>total</span> <span class='op'>+=</span> <span class='id identifier rubyid_got'>got</span>
+      <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>-=</span> <span class='id identifier rubyid_got'>got</span> <span class='kw'>if</span> <span class='id identifier rubyid_remaining'>remaining</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_carried'>carried</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_silver'><span class='object_link'><a href="Currency.html#silver-class_method" title="Lich::Gemstone::Currency.silver (method)">silver</a></span></span><span class='lparen'>(</span><span class='label'>refresh:</span> <span class='kw'>true</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='kw'>break</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_remaining'>remaining</span> <span class='op'>&lt;=</span> <span class='int'>0</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='op'>!</span><span class='id identifier rubyid_carried'>carried</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+    <span class='id identifier rubyid_note_size'>note_size</span> <span class='op'>=</span> <span class='id identifier rubyid_carried'>carried</span> <span class='op'>&gt;=</span> <span class='const'><span class='object_link'><a href="#F2P_NOTE_BUFFER-constant" title="Lich::Gemstone::Bank::F2P_NOTE_BUFFER (constant)">F2P_NOTE_BUFFER</a></span></span> <span class='op'>?</span> <span class='id identifier rubyid_max'>max</span> <span class='op'>:</span> <span class='id identifier rubyid_max'>max</span> <span class='op'>-</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#F2P_NOTE_BUFFER-constant" title="Lich::Gemstone::Bank::F2P_NOTE_BUFFER (constant)">F2P_NOTE_BUFFER</a></span></span> <span class='op'>-</span> <span class='id identifier rubyid_carried'>carried</span><span class='rparen'>)</span>
+    <span class='kw'>break</span> <span class='kw'>if</span> <span class='id identifier rubyid_withdraw'>withdraw</span><span class='lparen'>(</span><span class='id identifier rubyid_note_size'>note_size</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='kw'>true</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='id identifier rubyid_note'>note</span> <span class='op'>=</span> <span class='id identifier rubyid_note_in_hand'>note_in_hand</span>
+    <span class='kw'>break</span> <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_stow'>stow</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Stash.html" title="Lich::Stash (module)">Stash</a></span></span><span class='period'>.</span><span class='id identifier rubyid_add_to_bag'><span class='object_link'><a href="../Stash.html#add_to_bag-class_method" title="Lich::Stash.add_to_bag (method)">add_to_bag</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_stow'>stow</span><span class='comma'>,</span> <span class='id identifier rubyid_note'>note</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+  <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+  <span class='id identifier rubyid_refused'>refused</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_total'>total</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_total'>total</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="deposit_note-class_method">
+  
+    .<strong>deposit_note</strong>(note = note_in_hand)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Deposit the note in hand. Pinefar cannot take notes.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>note</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>note_in_hand</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the note's value as the bank reported it, nil when
+there is no note or the bank cannot take it</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+300
+301
+302
+303
+304
+305
+306</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 300</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_deposit_note'>deposit_note</span><span class='lparen'>(</span><span class='id identifier rubyid_note'>note</span> <span class='op'>=</span> <span class='id identifier rubyid_note_in_hand'>note_in_hand</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_pinefar?'>pinefar?</span>
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>deposit #</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#DEPOSIT-constant" title="Lich::Gemstone::Bank::Pattern::DEPOSIT (constant)">DEPOSIT</a></span></span><span class='rparen'>)</span>
+  <span class='int'>20</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='lbrace'>{</span> <span class='kw'>break</span> <span class='kw'>if</span> <span class='id identifier rubyid_note_in_hand'>note_in_hand</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span><span class='semicolon'>;</span> <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.1</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_deposited'>deposited</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="f2p?-class_method">
+  
+    .<strong>f2p?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns free-to-play account: capped balance, notes for the overflow.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>free-to-play account: capped balance, notes for the overflow</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+200
+201
+202</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 200</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_f2p?'>f2p?</span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/Account.html" title="Lich::Common::Account (module)">Account</a></span></span><span class='period'>.</span><span class='id identifier rubyid_type'><span class='object_link'><a href="../Common/Account.html#type-class_method" title="Lich::Common::Account.type (method)">type</a></span></span><span class='period'>.</span><span class='id identifier rubyid_to_s'><span class='object_link'><a href="../../String.html#to_s-instance_method" title="String#to_s (method)">to_s</a></span></span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>FREE</span><span class='tstring_end'>&#39;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="here?-class_method">
+  
+    .<strong>here?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns standing at a bank (a tagged room or the Pinefar depository).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>standing at a bank (a tagged room or the Pinefar depository)</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+190
+191
+192</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 190</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_here?'>here?</span>
+  <span class='id identifier rubyid_pinefar?'>pinefar?</span> <span class='op'>||</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='op'>&amp;.</span><span class='id identifier rubyid_tags'>tags</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bank</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='kw'>true</span> <span class='op'>:</span> <span class='kw'>false</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="local_bank-class_method">
+  
+    .<strong>local_bank</strong>(names)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The bank named for the town the character is in (&quot;Four Winds&quot; for a room
+located on Four Winds Isle).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>names</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>bank names from BANK ACCOUNT</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+243
+244
+245
+246
+247
+248
+249
+250</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 243</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_local_bank'>local_bank</span><span class='lparen'>(</span><span class='id identifier rubyid_names'>names</span><span class='rparen'>)</span>
+  <span class='comment'># Map#location can be false for a room that has not been surveyed, and
+</span>  <span class='comment'># false.to_s is &quot;false&quot; -- a non-empty string that matches no bank.
+</span>  <span class='id identifier rubyid_location'>location</span> <span class='op'>=</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='op'>&amp;.</span><span class='id identifier rubyid_location'>location</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_start_with?'>start_with?</span><span class='lparen'>(</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='rparen'>)</span> <span class='rbrace'>}</span> <span class='op'>||</span> <span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_location'>location</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_n'><span class='object_link'><a href="../../top-level-namespace.html#n-instance_method" title="#n (method)">n</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_location'>location</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="note_in_hand-class_method">
+  
+    .<strong>note_in_hand</strong>  &#x21d2; <tt>GameObj</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns a bank note in either hand.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a bank note in either hand</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+253
+254
+255</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 253</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_note_in_hand'>note_in_hand</span>
+  <span class='lbracket'>[</span><span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_right_hand'>right_hand</span><span class='comma'>,</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_left_hand'>left_hand</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_i'>i</span><span class='op'>|</span> <span class='id identifier rubyid_i'>i</span><span class='period'>.</span><span class='id identifier rubyid_noun'>noun</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="#NOTE_NOUN-constant" title="Lich::Gemstone::Bank::NOTE_NOUN (constant)">NOTE_NOUN</a></span></span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="note_value-class_method">
+  
+    .<strong>note_value</strong>(note = note_in_hand)  &#x21d2; <tt>Integer</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns its value, 0 when unreadable.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>note</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>note_in_hand</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>a note in hand</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>its value, 0 when unreadable</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+265
+266
+267
+268
+269
+270</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 265</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_note_value'>note_value</span><span class='lparen'>(</span><span class='id identifier rubyid_note'>note</span> <span class='op'>=</span> <span class='id identifier rubyid_note_in_hand'>note_in_hand</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+  <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>read #</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#NOTE_READ-constant" title="Lich::Gemstone::Bank::Pattern::NOTE_READ (constant)">NOTE_READ</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#NOTE_VALUE-constant" title="Lich::Gemstone::Bank::Pattern::NOTE_VALUE (constant)">NOTE_VALUE</a></span></span> <span class='op'>?</span> <span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_last_match'>last_match</span><span class='lbracket'>[</span><span class='symbol'>:silver</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>:</span> <span class='int'>0</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="notes_in-class_method">
+  
+    .<strong>notes_in</strong>(container = StowList.default)  &#x21d2; <tt>Array&lt;GameObj&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns bank notes Lich knows to be in that container.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>container</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>StowList.default</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>defaults to the STOW default container</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;GameObj&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>bank notes Lich knows to be in that container</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+259
+260
+261</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 259</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_notes_in'>notes_in</span><span class='lparen'>(</span><span class='id identifier rubyid_container'>container</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="StowList.html" title="Lich::Gemstone::StowList (class)">StowList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_default'>default</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_container'>container</span><span class='op'>&amp;.</span><span class='id identifier rubyid_contents'>contents</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_obj'>obj</span><span class='op'>|</span> <span class='id identifier rubyid_obj'>obj</span><span class='period'>.</span><span class='id identifier rubyid_noun'>noun</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="#NOTE_NOUN-constant" title="Lich::Gemstone::Bank::NOTE_NOUN (constant)">NOTE_NOUN</a></span></span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pinefar?-class_method">
+  
+    .<strong>pinefar?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the Pinefar depository, which has a banker NPC and its own verbs.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the Pinefar depository, which has a banker NPC and its own verbs</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+195
+196
+197</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 195</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pinefar?'>pinefar?</span>
+  <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span> <span class='op'>==</span> <span class='const'><span class='object_link'><a href="#PINEFAR_TITLE-constant" title="Lich::Gemstone::Bank::PINEFAR_TITLE (constant)">PINEFAR_TITLE</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="wait_for_banker-class_method">
+  
+    .<strong>wait_for_banker</strong>(timeout: 30)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The Pinefar banker wanders; give him a moment to be at the counter.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>timeout</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>30</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+450
+451
+452
+453
+454
+455
+456
+457</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 450</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_wait_for_banker'>wait_for_banker</span><span class='lparen'>(</span><span class='label'>timeout:</span> <span class='int'>30</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_deadline'>deadline</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>+</span> <span class='id identifier rubyid_timeout'>timeout</span>
+  <span class='kw'>until</span> <span class='const'>GameObj</span><span class='period'>.</span><span class='id identifier rubyid_npcs'>npcs</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_npc'>npc</span><span class='op'>|</span> <span class='id identifier rubyid_npc'>npc</span><span class='period'>.</span><span class='id identifier rubyid_noun'>noun</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>banker</span><span class='tstring_end'>&#39;</span></span> <span class='rbrace'>}</span>
+    <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_deadline'>deadline</span>
+    <span class='id identifier rubyid_sleep'>sleep</span> <span class='int'>1</span>
+  <span class='kw'>end</span>
+  <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="withdraw-class_method">
+  
+    .<strong>withdraw</strong>(amount, note: false)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Withdraw silver, or a note for that amount.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>amount</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>note</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>take a note rather than coins</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>silver withdrawn (the note's face value for a note),
+nil when the bank refused</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 314</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_withdraw'>withdraw</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_withdraw_f2p'>withdraw_f2p</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_f2p?'>f2p?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_note'>note</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_pinefar?'>pinefar?</span>
+
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_reply'>withdraw_reply</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>withdraw </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_amount'>amount</span><span class='embexpr_end'>}</span><span class='tstring_content'> note</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>5</span><span class='rparen'>)</span>
+    <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_result'>result</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_result'>result</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#WITHDRAW_REFUSED-constant" title="Lich::Gemstone::Bank::Pattern::WITHDRAW_REFUSED (constant)">WITHDRAW_REFUSED</a></span></span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#NOTE_HANDED-constant" title="Lich::Gemstone::Bank::Pattern::NOTE_HANDED (constant)">NOTE_HANDED</a></span></span> <span class='op'>?</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>:</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+
+  <span class='kw'>if</span> <span class='id identifier rubyid_pinefar?'>pinefar?</span>
+    <span class='id identifier rubyid_wait_for_banker'>wait_for_banker</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_reply'>withdraw_reply</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ask banker for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_amount'>amount</span><span class='embexpr_end'>}</span><span class='tstring_content'> silvers</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>3</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+    <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_result'>result</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_result'>result</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#WITHDRAW_REFUSED-constant" title="Lich::Gemstone::Bank::Pattern::WITHDRAW_REFUSED (constant)">WITHDRAW_REFUSED</a></span></span>
+    <span class='comment'># The banker confirms without echoing a figure.
+</span>    <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span> <span class='op'>=~</span> <span class='const'><span class='object_link'><a href="Bank/Pattern.html" title="Lich::Gemstone::Bank::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Bank/Pattern.html#PINEFAR_HANDED-constant" title="Lich::Gemstone::Bank::Pattern::PINEFAR_HANDED (constant)">PINEFAR_HANDED</a></span></span> <span class='op'>?</span> <span class='id identifier rubyid_amount'>amount</span> <span class='op'>:</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_silver'>withdraw_silver</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+  <span class='id identifier rubyid_got'>got</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="withdraw_f2p-class_method">
+  
+    .<strong>withdraw_f2p</strong>(amount, stow: StowList.default)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Free-to-play withdrawal: the balance may be short of <code>amount</code> while notes
+in the stow container hold the rest, so deposit notes until it covers.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>amount</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>stow</span>
+      
+      
+        <span class='type'>(<tt>GameObj</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>StowList.default</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>silver withdrawn, nil when the bank refused</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/bank.rb', line 395</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_withdraw_f2p'>withdraw_f2p</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='comma'>,</span> <span class='label'>stow:</span> <span class='const'><span class='object_link'><a href="StowList.html" title="Lich::Gemstone::StowList (class)">StowList</a></span></span><span class='period'>.</span><span class='id identifier rubyid_default'>default</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_info'>info</span> <span class='op'>=</span> <span class='id identifier rubyid_account'>account</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_info'>info</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+  <span class='id identifier rubyid_bal'>bal</span> <span class='op'>=</span> <span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:balance</span><span class='rbracket'>]</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_bal'>bal</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_amount'>amount</span>
+    <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_silver'>withdraw_silver</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_got'>got</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_taken'>taken</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_want'>want</span> <span class='op'>=</span> <span class='id identifier rubyid_amount'>amount</span>
+  <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>false</span>
+
+  <span class='comment'># Drain what the account already holds before touching any notes: that
+</span>  <span class='comment'># has to happen even when the stow container is empty.
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_bal'>bal</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+    <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_silver'>withdraw_silver</span><span class='lparen'>(</span><span class='id identifier rubyid_bal'>bal</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_got'>got</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+    <span class='kw'>else</span>
+      <span class='id identifier rubyid_taken'>taken</span> <span class='op'>+=</span> <span class='id identifier rubyid_got'>got</span>
+      <span class='id identifier rubyid_want'>want</span> <span class='op'>-=</span> <span class='id identifier rubyid_got'>got</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+
+  <span class='kw'>until</span> <span class='id identifier rubyid_refused'>refused</span> <span class='op'>||</span> <span class='id identifier rubyid_want'>want</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
+    <span class='id identifier rubyid_note'>note</span> <span class='op'>=</span> <span class='id identifier rubyid_notes_in'>notes_in</span><span class='lparen'>(</span><span class='id identifier rubyid_stow'>stow</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>get #</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_note'>note</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_value'>value</span> <span class='op'>=</span> <span class='id identifier rubyid_deposit_note'>deposit_note</span><span class='lparen'>(</span><span class='id identifier rubyid_note'>note</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_got'>got</span> <span class='op'>=</span> <span class='id identifier rubyid_withdraw_silver'>withdraw_silver</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='id identifier rubyid_want'>want</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_min'>min</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_got'>got</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_refused'>refused</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_taken'>taken</span> <span class='op'>+=</span> <span class='id identifier rubyid_got'>got</span>
+    <span class='id identifier rubyid_want'>want</span> <span class='op'>-=</span> <span class='id identifier rubyid_got'>got</span>
+  <span class='kw'>end</span>
+
+  <span class='const'><span class='object_link'><a href="Currency.html" title="Lich::Gemstone::Currency (module)">Currency</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refresh'><span class='object_link'><a href="Currency.html#refresh-class_method" title="Lich::Gemstone::Currency.refresh (method)">refresh</a></span></span>
+  <span class='id identifier rubyid_refused'>refused</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_taken'>taken</span><span class='period'>.</span><span class='id identifier rubyid_zero?'>zero?</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_taken'>taken</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Wed Oct 28 05:27:10 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

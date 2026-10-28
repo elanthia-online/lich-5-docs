@@ -88,9 +88,9 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Loads game-specific and common modules based on the running game.</p>
-<p>Call .load! to initialize the Lich runtime with all required dependencies
-for GemStone IV or DragonRealms.</p>
+    <p>Loader for game-dependent modules and features.</p>
+<p>Handles conditional loading of GemStone IV and DragonRealms-specific code,
+along with shared initialization that applies to both games.</p>
 
   </div>
 </div>
@@ -129,7 +129,7 @@ for GemStone IV or DragonRealms.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Registers post-load hooks to initialize game settings.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Performs post-load initialization common to both games.</p></div></span>
   
 </li>
 
@@ -151,7 +151,7 @@ for GemStone IV or DragonRealms.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads shared modules required by all games.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads common modules required before any game-specific initialization.</p></div></span>
   
 </li>
 
@@ -173,7 +173,7 @@ for GemStone IV or DragonRealms.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads all modules and dependencies for DragonRealms.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads DragonRealms-specific modules and initializes watchers.</p></div></span>
   
 </li>
 
@@ -195,7 +195,7 @@ for GemStone IV or DragonRealms.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads all modules and dependencies for GemStone IV.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Loads GemStone IV-specific modules and initializes watchers.</p></div></span>
   
 </li>
 
@@ -217,7 +217,7 @@ for GemStone IV or DragonRealms.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Loads game-specific modules and initializes the Lich runtime.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Detects the current game and loads its game-specific modules.</p></div></span>
   
 </li>
 
@@ -247,10 +247,11 @@ for GemStone IV or DragonRealms.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Registers post-load hooks to initialize game settings.</p>
-<p>Seeds a valid client record on the game server when the character has never
-logged in with the Wrayth client, ensuring properly formatted settingsInfo
-on future connections.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Performs post-load initialization common to both games.</p>
+<p>Registers a <code>PostLoad</code> hook to handle malformed settingsInfo XML from the game
+server. If the server sends invalid XML (indicating the character has never logged
+in with the Wrayth client), sends a dummy <code>&lt;db&gt;</code> command to seed a valid client
+record so future connections receive properly formatted settingsInfo.</p>
 
   </div>
 </div>
@@ -263,23 +264,23 @@ on future connections.</p>
       <pre class="lines">
 
 
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
 109
 110
-111</pre>
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 98</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 109</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_after'>common_after</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>common</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>postload.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -315,7 +316,7 @@ on future connections.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Loads shared modules required by all games.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads common modules required before any game-specific initialization.</p>
 
   </div>
 </div>
@@ -368,9 +369,10 @@ on future connections.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Loads all modules and dependencies for DragonRealms.</p>
-<p>Initializes character attributes, game-specific features (infomon, creatures,
-settings), and enables the infomon watcher.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads DragonRealms-specific modules and initializes watchers.</p>
+<p>Requires all DragonRealms-specific game mechanics including XML delta parsing,
+settings configuration, creature tracking, and client detachability support.
+Registers <code>DRInfomon</code> watcher to track real-time state changes.</p>
 
   </div>
 </div>
@@ -383,29 +385,33 @@ settings), and enables the infomon watcher.</p>
       <pre class="lines">
 
 
-78
-79
-80
-81
-82
-83
-84
-85
 86
 87
-88</pre>
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 78</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 86</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_dragon_realms'>dragon_realms</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_before'>common_before</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>common</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>map</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>map_dr.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>xml_delta.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attributes</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dependency</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>settings_config.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>drinfomon.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>commons.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>creature.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>dragonrealms</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>detachable_client_init.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='const'>DRInfomon</span><span class='period'>.</span><span class='id identifier rubyid_watch!'>watch!</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_after'>common_after</span>
 <span class='kw'>end</span></pre>
@@ -429,9 +435,10 @@ settings), and enables the infomon watcher.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Loads all modules and dependencies for GemStone IV.</p>
-<p>Initializes character attributes, game-specific features (bounties, society,
-combat tracking, etc.), and enables active spell and infomon watchers.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Loads GemStone IV-specific modules and initializes watchers.</p>
+<p>Requires all GemStone-specific game mechanics including skills, spells, combat,
+infomon state tracking, and client detachability support. Registers <code>ActiveSpell</code>
+and <code>Infomon</code> watchers to track real-time state changes.</p>
 
   </div>
 </div>
@@ -444,7 +451,6 @@ combat tracking, etc.), and enables active spell and infomon watchers.</p>
       <pre class="lines">
 
 
-32
 33
 34
 35
@@ -481,15 +487,23 @@ combat tracking, etc.), and enables active spell and infomon watchers.</p>
 66
 67
 68
-69</pre>
+69
+70
+71
+72
+73
+74
+75
+76</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 32</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 33</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_gemstone'>gemstone</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_before'>common_before</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sk.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>common</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>map</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>map_gs.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>xml_delta.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>effects.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bounty.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>claim.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -501,13 +515,17 @@ combat tracking, etc.), and enables active spell and infomon watchers.</p>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attributes</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>skills.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attributes</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>enhancive.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>society.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>fog.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>infomon</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>status.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stance.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>mana.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>experience.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attributes</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>spellsong.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>infomon</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>activespell.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>psms.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attributes</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>currency.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bank.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='comment'># require File.join(LIB_DIR, &#39;gemstone&#39;, &#39;character&#39;, &#39;disk.rb&#39;) # dup
 </span>  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>group.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>critranks</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -520,6 +538,7 @@ combat tracking, etc.), and enables active spell and infomon watchers.</p>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>readylist.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stowlist.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>armaments.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_require'>require</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>gemstone</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>detachable_client_init.rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='const'>ActiveSpell</span><span class='period'>.</span><span class='id identifier rubyid_watch!'>watch!</span>
   <span class='const'>Infomon</span><span class='period'>.</span><span class='id identifier rubyid_watch!'>watch!</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_common_after'>common_after</span>
@@ -544,9 +563,10 @@ combat tracking, etc.), and enables active spell and infomon watchers.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Loads game-specific modules and initializes the Lich runtime.</p>
-<p>Blocks until the game is identified from the XML data stream, then delegates
-to either .gemstone or .dragon_realms.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Detects the current game and loads its game-specific modules.</p>
+<p>Blocks until XMLData.game is populated by the game server, then loads either
+GemStone IV or DragonRealms code based on the game identifier. Echoes a warning
+to the console if the game identifier does not match either game.</p>
 
   </div>
 </div>
@@ -559,15 +579,15 @@ to either .gemstone or .dragon_realms.</p>
       <pre class="lines">
 
 
-120
-121
-122
-123
-124
-125</pre>
+132
+133
+134
+135
+136
+137</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 120</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gameloader.rb', line 132</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load!'>load!</span>
   <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.1</span> <span class='kw'>while</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='kw'>or</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_game'>game</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -585,7 +605,7 @@ to either .gemstone or .dragon_realms.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:16 2026 by
+  Generated on Wed Oct 28 05:27:12 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

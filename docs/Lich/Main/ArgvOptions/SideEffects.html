@@ -171,7 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Applies side effects implied by parsed argv_options: theme, host directories, bind addresses, detachable client configuration, and SAL file launching.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Applies side effects from parsed ARGV options: theme, hosts, bind address, detachable client, etc.</p></div></span>
   
 </li>
 
@@ -215,7 +215,29 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves --detachable-client address/port and applies --bind-address as default.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves detachable client bind host and port from --detachable-client= argument.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handle_frontend_caps-class_method" title="handle_frontend_caps (class method)">.<strong>handle_frontend_caps</strong>(argv_options)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>--frontend-caps=LIST: the rich-stream capabilities every client gets unless it declares its own with SET_FRONTEND_CAPS, in place of the catalog's for the frontend (see Lich::Common::ClientCapabilities).</p></div></span>
   
 </li>
 
@@ -237,7 +259,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Extracts and validates the --hosts-dir option, storing the normalized path in argv_<a href=":hosts_dir">options</a>.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stores a custom hosts directory path if it exists.</p></div></span>
   
 </li>
 
@@ -259,7 +281,51 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Validates and launches a .sal launch file using system integration (Win32, Wine, or direct system call), then exits.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Launches a SAL file via the Simutronics launcher or system command.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handle_sentinel-class_method" title="handle_sentinel (class method)">.<strong>handle_sentinel</strong>(argv_options)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>--sentinel: the running session gets the origin marker whichever frontend it identifies as.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#port_in_use%3F-class_method" title="port_in_use? (class method)">.<strong>port_in_use?</strong>(host, port)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Plain bind probe (no SO_REUSEADDR on Windows), so a live listener fails it.</p></div></span>
   
 </li>
 
@@ -298,13 +364,13 @@
       <pre class="lines">
 
 
-189
-190
-191
-192</pre>
+234
+235
+236
+237</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 189</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 234</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_announce'>announce</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
   <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_level'>level</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -339,13 +405,13 @@
       <pre class="lines">
 
 
-195
-196
-197
-198</pre>
+240
+241
+242
+243</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 195</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 240</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_die'>die</span><span class='lparen'>(</span><span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_announce'>announce</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>error</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
@@ -371,19 +437,10 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Called after argument parsing; modifies global state ($frontend, Win32
-ShellExecute) and may exit the process</p></div>
-  </div>
-
-<p>Applies side effects implied by parsed argv_options: theme, host directories,
-bind addresses, detachable client configuration, and SAL file launching.</p>
-<p>Resolves hostnames to concrete IP addresses (via <span class='object_link'><a href="../BindAddressOption.html" title="Lich::Main::BindAddressOption (module)">BindAddressOption</a></span> and
-BindHostResolver), handles --hosts-dir path validation, configures detachable
-client binding, and launches .sal files with the appropriate system integration
-(Win32 ShellExecute, Wine, or system). Fatal errors cause immediate exit(1).</p>
+<p>Applies side effects from parsed ARGV options: theme, hosts, bind address, detachable client, etc.</p>
+<p>Calls handlers in sequence to configure dark mode (StartupTheme), hosts directory,
+bind address resolution, detachable client settings, sentinel flag, frontend
+capabilities, and SAL file launch. Returns the modified argv_options hash.</p>
 
   </div>
 </div>
@@ -401,7 +458,7 @@ client binding, and launches .sal files with the appropriate system integration
       
       
         &mdash;
-        <div class='inline'><p>the hash returned by <span class='object_link'><a href="OptionParser.html#execute-class_method" title="Lich::Main::ArgvOptions::OptionParser.execute (method)">OptionParser.execute</a></span></p></div>
+        <div class='inline'><p>the options hash from OptionParser.execute</p></div>
       
     </li>
   
@@ -418,8 +475,8 @@ client binding, and launches .sal files with the appropriate system integration
       
       
         &mdash;
-        <div class='inline'><p>the same argv_options hash, modified in-place with resolved
-addresses, host directories, and client configuration</p></div>
+        <div class='inline'><p>the same argv_options, possibly with keys added or modified
+(e.g., :bind_address resolved to a concrete host, :detachable_client_host set)</p></div>
       
     </li>
   
@@ -431,23 +488,27 @@ addresses, host directories, and client configuration</p></div>
       <pre class="lines">
 
 
-179
-180
-181
-182
-183
-184
-185
-186</pre>
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 179</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 203</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../StartupTheme.html" title="Lich::Main::StartupTheme (module)">StartupTheme</a></span></span><span class='period'>.</span><span class='id identifier rubyid_apply'><span class='object_link'><a href="../StartupTheme.html#apply-class_method" title="Lich::Main::StartupTheme.apply (method)">apply</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_handle_hosts_dir'>handle_hosts_dir</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_handle_bind_address'>handle_bind_address</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_handle_detachable_client'>handle_detachable_client</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_handle_sentinel'>handle_sentinel</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_handle_frontend_caps'>handle_frontend_caps</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_handle_sal_launch'>handle_sal_launch</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_argv_options'>argv_options</span>
 <span class='kw'>end</span></pre>
@@ -484,17 +545,17 @@ exposure warning appears exactly once.</p>
       <pre class="lines">
 
 
-205
-206
-207
-208
-209
-210
-211
-212</pre>
+250
+251
+252
+253
+254
+255
+256
+257</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 205</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 250</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_bind_address'>handle_bind_address</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../BindAddressOption.html" title="Lich::Main::BindAddressOption (module)">BindAddressOption</a></span></span><span class='period'>.</span><span class='id identifier rubyid_apply'><span class='object_link'><a href="../BindAddressOption.html#apply-class_method" title="Lich::Main::BindAddressOption.apply (method)">apply</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:bind_address</span><span class='rbracket'>]</span><span class='rparen'>)</span>
@@ -524,12 +585,12 @@ exposure warning appears exactly once.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Resolves --detachable-client address/port and applies --bind-address as default.</p>
-<p>Parses --detachable-client=<target> format (host and/or port), resolves the
-host keyword (tailscale/lan/any) to a concrete IP via BindHostResolver,
-and defaults to --bind-address or 127.0.0.1. Port is optional. Raises
-<span class='object_link'><a href="../DetachableClientTarget.html#ParseError-constant" title="Lich::Main::DetachableClientTarget::ParseError (constant)">DetachableClientTarget::ParseError</a></span> or BindHostResolver::Error on invalid
-input, which <span class='object_link'><a href="" title="Lich::Main::ArgvOptions::SideEffects (module)">Lich::Main::ArgvOptions::SideEffects</a></span> catches and exits with an error message.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Resolves detachable client bind host and port from --detachable-client= argument.</p>
+<p>Parses the --detachable-client=TARGET argument (e.g., &quot;tailscale&quot;, &quot;lan&quot;,
+&quot;127.0.0.1:9000&quot;) and resolves the host via BindHostResolver. Stores the
+resolved host in :detachable_client_host and the port in :detachable_client_port.
+If no host is specified, defaults to :bind_address or 127.0.0.1. Exits with
+an error message if parsing or resolution fails.</p>
 
   </div>
 </div>
@@ -547,8 +608,7 @@ input, which <span class='object_link'><a href="" title="Lich::Main::ArgvOptions
       
       
         &mdash;
-        <div class='inline'><p>the options hash to update with :detachable_client_host
-and :detachable_client_port keys</p></div>
+        <div class='inline'><p>the options hash to modify</p></div>
       
     </li>
   
@@ -560,24 +620,12 @@ and :detachable_client_port keys</p></div>
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../DetachableClientTarget.html#ParseError-constant" title="Lich::Main::DetachableClientTarget::ParseError (constant)">DetachableClientTarget::ParseError</a></span></tt>)</span>
+        <span class='type'>(<tt>SystemExit</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>if the target syntax is invalid</p></div>
-      
-    </li>
-  
-    <li>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../Common/BindHostResolver.html#Error-constant" title="Lich::Common::BindHostResolver::Error (constant)">Lich::Common::BindHostResolver::Error</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if hostname resolution fails</p></div>
+        <div class='inline'><p>exits with code 1 if target parsing or host resolution fails</p></div>
       
     </li>
   
@@ -589,30 +637,30 @@ and :detachable_client_port keys</p></div>
       <pre class="lines">
 
 
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272</pre>
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 252</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 295</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_detachable_client'>handle_detachable_client</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:detachable_client_host</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:bind_address</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>127.0.0.1</span><span class='tstring_end'>&#39;</span></span>
@@ -641,6 +689,57 @@ and :detachable_client_port keys</p></div>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="handle_frontend_caps-class_method">
+  
+    .<strong>handle_frontend_caps</strong>(argv_options)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>--frontend-caps=LIST: the rich-stream capabilities every client gets
+unless it declares its own with SET_FRONTEND_CAPS, in place of the
+catalog's for the frontend (see Lich::Common::ClientCapabilities).
+An empty LIST (or one with no known name) gives every client the
+legacy rewrites.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+225
+226
+227
+228
+229
+230
+231</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 225</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_frontend_caps'>handle_frontend_caps</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='symbol'>:frontend_caps</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_capabilities'>capabilities</span><span class='comma'>,</span> <span class='id identifier rubyid_unknown'>unknown</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/ClientCapabilities.html" title="Lich::Common::ClientCapabilities (module)">ClientCapabilities</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="../../Common/ClientCapabilities.html#parse-class_method" title="Lich::Common::ClientCapabilities.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:frontend_caps</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_announce'>announce</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>warning</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>--frontend-caps: ignoring unknown capabilities: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_unknown'>unknown</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_unknown'>unknown</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/ClientCapabilities.html" title="Lich::Common::ClientCapabilities (module)">ClientCapabilities</a></span></span><span class='period'>.</span><span class='id identifier rubyid_launch_capabilities'><span class='object_link'><a href="../../Common/ClientCapabilities.html#launch_capabilities-class_method" title="Lich::Common::ClientCapabilities.launch_capabilities (method)">launch_capabilities</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_capabilities'>capabilities</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="handle_hosts_dir-class_method">
   
     .<strong>handle_hosts_dir</strong>(argv_options)  &#x21d2; <tt>void</tt> 
@@ -655,11 +754,11 @@ and :detachable_client_port keys</p></div>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Extracts and validates the --hosts-dir option, storing the normalized path
-in argv_<a href=":hosts_dir">options</a>.</p>
-<p>Removes the argument from ARGV, converts backslashes to forward slashes, and
-ensures the directory ends with '/'. Logs a warning to stdout if the directory
-does not exist, but does not exit or raise.</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Stores a custom hosts directory path if it exists.</p>
+<p>Searches ARGV for --hosts-dir=PATH. If the path exists as a directory,
+normalizes it (convert backslashes to forward slashes, ensure trailing slash),
+removes the argument from ARGV, and stores the path in argv_<a href=":hosts_dir">options</a>.
+If the path does not exist, logs a warning to stdout.</p>
 
   </div>
 </div>
@@ -677,7 +776,7 @@ does not exist, but does not exit or raise.</p>
       
       
         &mdash;
-        <div class='inline'><p>the options hash to update with :hosts_dir key</p></div>
+        <div class='inline'><p>the options hash to modify</p></div>
       
     </li>
   
@@ -690,22 +789,22 @@ does not exist, but does not exit or raise.</p>
       <pre class="lines">
 
 
-224
-225
-226
-227
-228
-229
-230
-231
-232
-233
-234
-235
-236</pre>
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 224</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 269</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_hosts_dir'>handle_hosts_dir</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_arg'>arg</span> <span class='op'>=</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^--hosts-dir=(.+)$</span><span class='regexp_end'>/i</span></span> <span class='rbrace'>}</span><span class='rparen'>)</span>
@@ -740,19 +839,13 @@ does not exist, but does not exit or raise.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Exits the entire process; used only for SAL-file launch mode</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Validates and launches a .sal launch file using system integration (Win32,
-Wine, or direct system call), then exits.</p>
-<p>Checks file existence, logs the path, and for SGE.sal specifically, retrieves
-the Simutronics launcher command and executes it with elevated privileges
-(runas on Win32 non-XP, open otherwise), substituting %1 with the file path.
-On non-SGE files or platforms without Win32, delegates to Wine or system().
-Always exits when invoked (does not return).</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Launches a SAL file via the Simutronics launcher or system command.</p>
+<p>If argv_<a href=":sal">options</a> is set, verifies the file exists. If the file does not
+exist and a detachable client port is in use, appends a message suggesting the
+port may be held by another Lich. For SGE.sal, retrieves the launcher command
+via Lich.get_simu_launcher, substitutes the SAL path, and executes via
+Win32.ShellExecute (Windows), system call under Wine, or bare system call.
+Exits after launch.</p>
 
   </div>
 </div>
@@ -770,12 +863,28 @@ Always exits when invoked (does not return).</p>
       
       
         &mdash;
-        <div class='inline'><p>the options hash (read only; checks :sal key)</p></div>
+        <div class='inline'><p>the options hash (expects :sal, :detachable_client_host, :detachable_client_port)</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>SystemExit</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>exits after launching the SAL file or on error</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -783,50 +892,68 @@ Always exits when invoked (does not return).</p>
       <pre class="lines">
 
 
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296
-297
-298
-299
-300
-301
-302
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320</pre>
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 287</span>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 340</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_sal_launch'>handle_sal_launch</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span>
 
   <span class='kw'>unless</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: launch file does not exist: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msgbox'><span class='object_link'><a href="../../../Lich.html#msgbox-class_method" title="Lich.msgbox (method)">msgbox</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: launch file does not exist: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_msg'>msg</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: launch file does not exist: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+    <span class='comment'># A launcher that deletes its .sal once it reaches the detachable port
+</span>    <span class='comment'># (e.g. Saga) does so early if something else already holds that port.
+</span>    <span class='id identifier rubyid_port'>port</span> <span class='op'>=</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:detachable_client_port</span><span class='rbracket'>]</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_port'>port</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_port_in_use?'>port_in_use?</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:detachable_client_host</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_msg'>msg</span> <span class='op'>+=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\n\nThe detachable client port </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_port'>port</span><span class='embexpr_end'>}</span><span class='tstring_content'> is already in use, most likely by another Lich </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>that is still running. Your launcher may have connected to it and deleted the launch </span><span class='tstring_end'>&quot;</span></span> \
+             <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>file. Close that Lich or choose a different port, then try again.</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='id identifier rubyid_msg'>msg</span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msgbox'><span class='object_link'><a href="../../../Lich.html#msgbox-class_method" title="Lich.msgbox (method)">msgbox</a></span></span><span class='lparen'>(</span><span class='label'>message:</span> <span class='id identifier rubyid_msg'>msg</span><span class='comma'>,</span> <span class='label'>icon:</span> <span class='symbol'>:error</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_exit'>exit</span>
   <span class='kw'>end</span>
   <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: launch file: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sal</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -860,12 +987,114 @@ Always exits when invoked (does not return).</p>
 </table>
 </div>
     
+      <div class="method_details ">
+  <h3 class="signature " id="handle_sentinel-class_method">
+  
+    .<strong>handle_sentinel</strong>(argv_options)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>--sentinel: the running session gets the origin marker whichever
+frontend it identifies as.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+216
+217
+218</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 216</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_handle_sentinel'>handle_sentinel</span><span class='lparen'>(</span><span class='id identifier rubyid_argv_options'>argv_options</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_sentinel_requested'>sentinel_requested</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_argv_options'>argv_options</span><span class='lbracket'>[</span><span class='symbol'>:sentinel</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="port_in_use?-class_method">
+  
+    .<strong>port_in_use?</strong>(host, port)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Plain bind probe (no SO_REUSEADDR on Windows), so a live listener fails it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+318
+319
+320
+321
+322
+323
+324
+325</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/main/argv_options.rb', line 318</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_port_in_use?'>port_in_use?</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span>
+  <span class='const'>TCPServer</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_close'>close</span>
+  <span class='kw'>false</span>
+<span class='kw'>rescue</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>EADDRINUSE</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>EACCES</span>
+  <span class='kw'>true</span>
+<span class='kw'>rescue</span> <span class='const'>StandardError</span>
+  <span class='kw'>false</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
   </div>
 
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:16 2026 by
+  Generated on Wed Oct 28 05:27:12 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

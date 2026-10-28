@@ -106,6 +106,12 @@
   <div class="discussion">
     <p>Structured result from check_health or perceive_health.
 Supports backward-compatible string-key access via [] for dr-scripts callers.</p>
+<p><code>captured</code> is false when the game reply was not captured in full (a
+timeout). The other fields then hold defaults or partial data and do not
+mean &quot;healthy&quot;: callers should treat the result as unknown and check again.
+<code>captured</code> true means a complete reply was read; it does not prove the
+reply was sent in answer to this call (a reply that arrives after an
+earlier call timed out can still be read by the next call).</p>
 
   </div>
 </div>
@@ -142,6 +148,33 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the value of attribute bleeders.</p></div></span>
+  
+</li>
+
+    
+      <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#captured-instance_method" title="#captured (instance method)">#<strong>captured</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+    
+      <span class="note title readonly">readonly</span>
+    
+    
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute captured.</p></div></span>
   
 </li>
 
@@ -422,6 +455,28 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#captured%3F-instance_method" title="#captured? (instance method)">#<strong>captured?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>True when the game reply was captured in full.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#has_tendable_bleeders%3F-instance_method" title="#has_tendable_bleeders? (instance method)">#<strong>has_tendable_bleeders?</strong>  &#x21d2; Boolean </a>
     
 
@@ -436,7 +491,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether the character has bleeders that can be tended.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether the character has any bleeders that can be tended by the healer.</p></div></span>
   
 </li>
 
@@ -444,7 +499,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(wounds: {}, bleeders: {}, parasites: {}, lodged: {}, poisoned: false, diseased: false, score: 0, dead: false, vitality: 100)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(wounds: {}, bleeders: {}, parasites: {}, lodged: {}, poisoned: false, diseased: false, score: 0, dead: false, vitality: 100, captured: true)  &#x21d2; HealthResult </a>
     
 
     
@@ -460,7 +515,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a HealthResult with health diagnostic data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a HealthResult with wound, bleeding, parasite, and disease data.</p></div></span>
   
 </li>
 
@@ -482,7 +537,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether the character has any injuries.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether the character has any wounds.</p></div></span>
   
 </li>
 
@@ -497,7 +552,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(wounds: {}, bleeders: {}, parasites: {}, lodged: {}, poisoned: false, diseased: false, score: 0, dead: false, vitality: 100)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(wounds: {}, bleeders: {}, parasites: {}, lodged: {}, poisoned: false, diseased: false, score: 0, dead: false, vitality: 100, captured: true)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::DragonRealms::DRCH::HealthResult (class)">HealthResult</a></span></tt> 
   
 
   
@@ -505,7 +560,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a HealthResult with health diagnostic data.</p>
+    <p>Initializes a HealthResult with wound, bleeding, parasite, and disease data.</p>
 
   </div>
 </div>
@@ -525,7 +580,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>hash of severity =&gt; [Wound] for regular wounds</p></div>
+        <div class='inline'><p>wounds keyed by severity with arrays of Wound objects</p></div>
       
     </li>
   
@@ -541,7 +596,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>hash of severity =&gt; [Wound] for active bleeders</p></div>
+        <div class='inline'><p>bleeding wounds keyed by severity with arrays of Wound objects</p></div>
       
     </li>
   
@@ -557,7 +612,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>hash of severity =&gt; [Wound] for parasites</p></div>
+        <div class='inline'><p>parasites keyed by severity (typically 1) with arrays of Wound objects</p></div>
       
     </li>
   
@@ -573,7 +628,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>hash of severity =&gt; [Wound] for lodged items</p></div>
+        <div class='inline'><p>lodged items keyed by severity with arrays of Wound objects</p></div>
       
     </li>
   
@@ -589,7 +644,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>whether the character is poisoned</p></div>
+        <div class='inline'><p>true if the character is poisoned (default: false)</p></div>
       
     </li>
   
@@ -605,7 +660,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>whether the character is diseased</p></div>
+        <div class='inline'><p>true if the character has an infection or disease (default: false)</p></div>
       
     </li>
   
@@ -621,7 +676,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>weighted health score (0 for healthy)</p></div>
+        <div class='inline'><p>weighted health score, higher = worse (default: 0)</p></div>
       
     </li>
   
@@ -637,7 +692,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>whether the character is dead</p></div>
+        <div class='inline'><p>true if the character is dead (default: false)</p></div>
       
     </li>
   
@@ -653,7 +708,23 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       
       
         &mdash;
-        <div class='inline'><p>percentage vitality remaining (0-100)</p></div>
+        <div class='inline'><p>perceived vitality percentage, 0-100 (default: 100)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>captured</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the game reply was captured in full (default: true)</p></div>
       
     </li>
   
@@ -666,26 +737,27 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-466
-467
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477
-478</pre>
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 466</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 478</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>wounds:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='label'>bleeders:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='label'>parasites:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='label'>lodged:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span>
                <span class='label'>poisoned:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>diseased:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>score:</span> <span class='int'>0</span><span class='comma'>,</span> <span class='label'>dead:</span> <span class='kw'>false</span><span class='comma'>,</span>
-               <span class='label'>vitality:</span> <span class='int'>100</span><span class='rparen'>)</span>
+               <span class='label'>vitality:</span> <span class='int'>100</span><span class='comma'>,</span> <span class='label'>captured:</span> <span class='kw'>true</span><span class='rparen'>)</span>
   <span class='ivar'>@wounds</span> <span class='op'>=</span> <span class='id identifier rubyid_wounds'>wounds</span>
   <span class='ivar'>@bleeders</span> <span class='op'>=</span> <span class='id identifier rubyid_bleeders'>bleeders</span>
   <span class='ivar'>@parasites</span> <span class='op'>=</span> <span class='id identifier rubyid_parasites'>parasites</span>
@@ -695,6 +767,7 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   <span class='ivar'>@score</span> <span class='op'>=</span> <span class='id identifier rubyid_score'>score</span>
   <span class='ivar'>@dead</span> <span class='op'>=</span> <span class='id identifier rubyid_dead'>dead</span>
   <span class='ivar'>@vitality</span> <span class='op'>=</span> <span class='id identifier rubyid_vitality'>vitality</span>
+  <span class='ivar'>@captured</span> <span class='op'>=</span> <span class='id identifier rubyid_captured'>captured</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -732,15 +805,56 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bleeders'>bleeders</span>
   <span class='ivar'>@bleeders</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      
+      <span id=""></span>
+      <div class="method_details ">
+  <h3 class="signature " id="captured-instance_method">
+  
+    #<strong>captured</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns the value of attribute captured.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+463
+464
+465</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_captured'>captured</span>
+  <span class='ivar'>@captured</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -773,12 +887,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dead'>dead</span>
   <span class='ivar'>@dead</span>
@@ -814,12 +928,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_diseased'>diseased</span>
   <span class='ivar'>@diseased</span>
@@ -855,12 +969,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lodged'>lodged</span>
   <span class='ivar'>@lodged</span>
@@ -896,12 +1010,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parasites'>parasites</span>
   <span class='ivar'>@parasites</span>
@@ -937,12 +1051,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_poisoned'>poisoned</span>
   <span class='ivar'>@poisoned</span>
@@ -978,12 +1092,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_score'>score</span>
   <span class='ivar'>@score</span>
@@ -1019,12 +1133,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_vitality'>vitality</span>
   <span class='ivar'>@vitality</span>
@@ -1060,12 +1174,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-451
-452
-453</pre>
+463
+464
+465</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 451</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 463</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wounds'>wounds</span>
   <span class='ivar'>@wounds</span>
@@ -1106,12 +1220,12 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-481
-482
-483</pre>
+499
+500
+501</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 481</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 499</span>
 
 <span class='kw'>def</span> <span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='rparen'>)</span>
@@ -1158,15 +1272,70 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
       <pre class="lines">
 
 
-492
-493
-494</pre>
+510
+511
+512</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 492</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 510</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bleeding?'>bleeding?</span>
   <span class='id identifier rubyid_bleeders'>bleeders</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:bleeding?</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="captured?-instance_method">
+  
+    #<strong>captured?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns true when the game reply was captured in full.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true when the game reply was captured in full</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+494
+495
+496</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 494</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_captured?'>captured?</span>
+  <span class='ivar'>@captured</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1184,9 +1353,8 @@ Supports backward-compatible string-key access via [] for dr-scripts callers.</p
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether the character has bleeders that can be tended.</p>
-<p>A bleeder is tendable if the character has sufficient First Aid skill
-or if it is a parasite or lodged item.</p>
+    <p>Checks whether the character has any bleeders that can be tended by the healer.</p>
+<p>Considers skill, location, and bleeding rate to determine tendability.</p>
 
   </div>
 </div>
@@ -1203,7 +1371,7 @@ or if it is a parasite or lodged item.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if at least one bleeder is tendable</p></div>
+        <div class='inline'><p>true if any bleeder passes the tendable? check</p></div>
       
     </li>
   
@@ -1215,12 +1383,12 @@ or if it is a parasite or lodged item.</p>
       <pre class="lines">
 
 
-502
-503
-504</pre>
+519
+520
+521</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 502</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 519</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_tendable_bleeders?'>has_tendable_bleeders?</span>
   <span class='id identifier rubyid_bleeders'>bleeders</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:tendable?</span><span class='rparen'>)</span>
@@ -1241,7 +1409,7 @@ or if it is a parasite or lodged item.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether the character has any injuries.</p>
+    <p>Checks whether the character has any wounds.</p>
 
   </div>
 </div>
@@ -1258,7 +1426,7 @@ or if it is a parasite or lodged item.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the health score is greater than 0</p></div>
+        <div class='inline'><p>true if the score is greater than 0</p></div>
       
     </li>
   
@@ -1270,12 +1438,12 @@ or if it is a parasite or lodged item.</p>
       <pre class="lines">
 
 
-488
-489
-490</pre>
+506
+507
+508</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 488</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 506</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_injured?'>injured?</span>
   <span class='id identifier rubyid_score'>score</span> <span class='op'>&gt;</span> <span class='int'>0</span>
@@ -1290,7 +1458,7 @@ or if it is a parasite or lodged item.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:42 2026 by
+  Generated on Wed Oct 28 05:27:30 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -151,7 +151,7 @@ Enhanced with password encryption support</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Changes encryption mode for all accounts Re-encrypts all passwords from current mode to new mode Automatically retrieves old master password from keychain if leaving Enhanced mode Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Changes encryption mode for all accounts Re-encrypts all passwords from current mode to new mode Automatically retrieves old master password from keychain if leaving Enhanced mode Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed) Restores the previous observable keychain value on handled failures before atomic file publication.</p></div></span>
   
 </li>
 
@@ -588,10 +588,10 @@ Enhanced with password encryption support</p>
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Normalizes character names to Title case (first letter capitalized) Ensures consistent character name formatting across the application.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Normalizes character names to Title case per word, stripping and collapsing whitespace.</p></div></span>
   
 </li>
 
@@ -687,28 +687,6 @@ Enhanced with password encryption support</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#restore_backup_and_return_false-class_method" title="restore_backup_and_return_false (class method)">.<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; Object </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  <span class="private note title">private</span>
-
-  
-    <span class="summary_desc"><div class='inline'><p>Restores backup and returns false.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
       <a href="#save_entries-class_method" title="save_entries (class method)">.<strong>save_entries</strong>(data_dir, entry_data)  &#x21d2; Boolean </a>
     
 
@@ -723,7 +701,7 @@ Enhanced with password encryption support</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Saves entry data to YAML file Converts and serializes entry data to the entry.yaml file with encryption support Preserves master_password_validation_test from existing YAML during round-trip conversion Encrypts passwords based on the file's encryption_mode before writing.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Saves entry data to YAML file Converts and serializes entry data to the entry.yaml file with encryption support Preserves master_password_validation_test from existing YAML during round-trip conversion Encrypts passwords based on the file's encryption_mode before writing Publishes the backup and replacement through protected temporary files.</p></div></span>
   
 </li>
 
@@ -753,7 +731,7 @@ Enhanced with password encryption support</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#write_yaml_file-class_method" title="write_yaml_file (class method)">.<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; void </a>
+      <a href="#write_yaml_file-class_method" title="write_yaml_file (class method)">.<strong>write_yaml_file</strong>(yaml_file, yaml_data, backup: false)  &#x21d2; void </a>
     
 
     
@@ -767,7 +745,29 @@ Enhanced with password encryption support</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Writes YAML data to file with standard headers and secure permissions Handles preparation and formatting of YAML data for all save operations.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Writes YAML data to file with standard headers and secure permissions Handles preparation and formatting of YAML data for all save operations Serializes before publication so serialization errors cannot truncate data.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#write_yaml_with_master_password-class_method" title="write_yaml_with_master_password (class method)">.<strong>write_yaml_with_master_password</strong>(yaml_file, yaml_data, password)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Publishes prepared credentials with a new keychain password.</p></div></span>
   
 </li>
 
@@ -938,40 +938,40 @@ Optimized to preserve account ordering in YAML structure</p>
       <pre class="lines">
 
 
-499
-500
-501
-502
-503
-504
-505
-506
-507
-508
-509
-510
-511
-512
-513
-514
-515
-516
-517
-518
-519
-520
-521
-522
-523
-524
-525
-526
-527
 528
-529</pre>
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557
+558</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 499</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 528</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add_favorite'>add_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1023,7 +1023,10 @@ Optimized to preserve account ordering in YAML structure</p>
     <p>Changes encryption mode for all accounts
 Re-encrypts all passwords from current mode to new mode
 Automatically retrieves old master password from keychain if leaving Enhanced mode
-Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed)</p>
+Requires new_master_password if entering Enhanced mode (caller must check keychain first and prompt if needed)
+Restores the previous observable keychain value on handled failures before
+atomic file publication. File and keychain updates are not one transaction:
+process death or a failed keychain rollback still requires manual recovery.</p>
 
   </div>
 </div>
@@ -1100,19 +1103,6 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
       <pre class="lines">
 
 
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
 360
 361
 362
@@ -1211,10 +1201,24 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
 455
 456
 457
-458</pre>
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 347</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 360</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_change_encryption_mode'>change_encryption_mode</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_new_mode'>new_mode</span><span class='comma'>,</span> <span class='id identifier rubyid_new_master_password'>new_master_password</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_file_path'>yaml_file_path</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1235,34 +1239,25 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
     <span class='kw'>return</span> <span class='kw'>true</span>
   <span class='kw'>end</span>
 
-  <span class='comment'># Determine old_master_password
-</span>  <span class='id identifier rubyid_old_master_password'>old_master_password</span> <span class='op'>=</span> <span class='kw'>nil</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_current_mode'>current_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span>
-    <span class='comment'># Auto-retrieve from keychain when leaving Enhanced
-</span>    <span class='id identifier rubyid_old_master_password'>old_master_password</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_retrieve_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#retrieve_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.retrieve_master_password (method)">retrieve_master_password</a></span></span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_old_master_password'>old_master_password</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Master password not found in keychain for encryption mode change</span><span class='tstring_end'>&quot;</span></span>
-      <span class='kw'>return</span> <span class='kw'>false</span>
-    <span class='kw'>end</span>
-  <span class='kw'>end</span>
-
   <span class='comment'># Validate new_master_password if entering Enhanced mode
 </span>  <span class='kw'>if</span> <span class='id identifier rubyid_new_mode'>new_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_new_master_password'>new_master_password</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
     <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: New master password required for Enhanced mode encryption</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>return</span> <span class='kw'>false</span>
   <span class='kw'>end</span>
 
-  <span class='comment'># Create backup
-</span>  <span class='id identifier rubyid_backup_file'>backup_file</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='embexpr_end'>}</span><span class='tstring_content'>.bak</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_keychain_touched'>keychain_touched</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_previous_master_password'>previous_master_password</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_backup_file'>backup_file</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='embexpr_end'>}</span><span class='tstring_content'>.bak</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>begin</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Backup created for encryption mode change: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Failed to create backup: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>return</span> <span class='kw'>false</span>
-  <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_current_mode'>current_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span> <span class='op'>||</span> <span class='id identifier rubyid_new_mode'>new_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span>
+      <span class='id identifier rubyid_previous_master_password'>previous_master_password</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_retrieve_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#retrieve_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.retrieve_master_password (method)">retrieve_master_password</a></span></span><span class='lparen'>(</span><span class='label'>strict:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_current_mode'>current_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_previous_master_password'>previous_master_password</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Master password not found in keychain for encryption mode change</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
 
-  <span class='kw'>begin</span>
+    <span class='id identifier rubyid_write_file_atomically'>write_file_atomically</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_binread'>binread</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span><span class='rparen'>)</span>
+
     <span class='comment'># Re-encrypt all accounts
 </span>    <span class='id identifier rubyid_accounts'>accounts</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
     <span class='id identifier rubyid_accounts'>accounts</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_account_name'>account_name</span><span class='comma'>,</span> <span class='id identifier rubyid_account_data'>account_data</span><span class='op'>|</span>
@@ -1271,12 +1266,11 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
         <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>password</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
         <span class='label'>mode:</span> <span class='id identifier rubyid_current_mode'>current_mode</span><span class='comma'>,</span>
         <span class='label'>account_name:</span> <span class='id identifier rubyid_account_name'>account_name</span><span class='comma'>,</span>
-        <span class='label'>master_password:</span> <span class='id identifier rubyid_old_master_password'>old_master_password</span>
+        <span class='label'>master_password:</span> <span class='id identifier rubyid_previous_master_password'>previous_master_password</span>
       <span class='rparen'>)</span>
 
       <span class='kw'>if</span> <span class='id identifier rubyid_plaintext'>plaintext</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-        <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Failed to decrypt password for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account_name'>account_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-        <span class='kw'>return</span> <span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to decrypt password for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account_name'>account_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
       <span class='kw'>end</span>
 
       <span class='comment'># Encrypt with new mode
@@ -1288,8 +1282,7 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
       <span class='rparen'>)</span>
 
       <span class='kw'>if</span> <span class='id identifier rubyid_encrypted'>encrypted</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-        <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Failed to encrypt password for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account_name'>account_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-        <span class='kw'>return</span> <span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to encrypt password for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_account_name'>account_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
       <span class='kw'>end</span>
 
       <span class='id identifier rubyid_account_data'>account_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>password</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_encrypted'>encrypted</span>
@@ -1302,31 +1295,43 @@ Requires new_master_password if entering Enhanced mode (caller must check keycha
 </span>    <span class='kw'>if</span> <span class='id identifier rubyid_new_mode'>new_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span>
       <span class='comment'># Create validation test
 </span>      <span class='id identifier rubyid_validation_test'>validation_test</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_create_validation_test'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#create_validation_test-class_method" title="Lich::Common::GUI::MasterPasswordManager.create_validation_test (method)">create_validation_test</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_new_master_password'>new_master_password</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to create master password validation test</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_validation_test'>validation_test</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
       <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>master_password_validation_test</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_validation_test'>validation_test</span>
 
-      <span class='comment'># Store in keychain
-</span>      <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_store_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#store_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.store_master_password (method)">store_master_password</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_new_master_password'>new_master_password</span><span class='rparen'>)</span>
-        <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Failed to store master password in keychain</span><span class='tstring_end'>&quot;</span></span>
-        <span class='kw'>return</span> <span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
+      <span class='comment'># A failed store may already have removed or changed the old value.
+</span>      <span class='id identifier rubyid_keychain_touched'>keychain_touched</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_store_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#store_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.store_master_password (method)">store_master_password</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_new_master_password'>new_master_password</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to store master password in keychain</span><span class='tstring_end'>&quot;</span></span>
       <span class='kw'>end</span>
     <span class='kw'>elsif</span> <span class='id identifier rubyid_current_mode'>current_mode</span> <span class='op'>==</span> <span class='symbol'>:enhanced</span>
       <span class='comment'># Remove validation test and keychain when leaving Enhanced
+</span>      <span class='comment'># Refuse the transition if deletion fails; success must not leave a
+</span>      <span class='comment'># stale master password behind in the credential store.
 </span>      <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>master_password_validation_test</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_delete_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#delete_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.delete_master_password (method)">delete_master_password</a></span></span>
+      <span class='id identifier rubyid_keychain_touched'>keychain_touched</span> <span class='op'>=</span> <span class='kw'>true</span>
+      <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span><span class='period'>.</span><span class='id identifier rubyid_delete_master_password'><span class='object_link'><a href="../GUI/MasterPasswordManager.html#delete_master_password-class_method" title="Lich::Common::GUI::MasterPasswordManager.delete_master_password (method)">delete_master_password</a></span></span>
+        <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to delete master password from keychain</span><span class='tstring_end'>&quot;</span></span>
+      <span class='kw'>end</span>
     <span class='kw'>end</span>
 
     <span class='comment'># Save YAML with headers
 </span>    <span class='id identifier rubyid_write_yaml_file'>write_yaml_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
-
-    <span class='comment'># Clean up backup on success
-</span>    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm'>rm</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
-
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Encryption mode changed successfully: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_current_mode'>current_mode</span><span class='embexpr_end'>}</span><span class='tstring_content'> -&gt; </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_mode'>new_mode</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='kw'>true</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+    <span class='comment'># Retain the owner-only backup for recovery after any failed transition.
+</span>    <span class='id identifier rubyid_restore_master_password'>restore_master_password</span><span class='lparen'>(</span><span class='id identifier rubyid_previous_master_password'>previous_master_password</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_keychain_touched'>keychain_touched</span>
     <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Encryption mode change failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
+    <span class='kw'>return</span> <span class='kw'>false</span>
   <span class='kw'>end</span>
+
+  <span class='comment'># Publication succeeded; a backup cleanup failure must not roll back the
+</span>  <span class='comment'># keychain while the entry file already uses the new encryption mode.
+</span>  <span class='kw'>begin</span>
+    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm'>rm</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
+  <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>warning: Could not remove encryption mode backup: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>end</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Encryption mode changed successfully: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_current_mode'>current_mode</span><span class='embexpr_end'>}</span><span class='tstring_content'> -&gt; </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_new_mode'>new_mode</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='kw'>true</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1414,35 +1419,6 @@ Preserves encryption_mode from entries and master_password_validation_test if pr
       <pre class="lines">
 
 
-752
-753
-754
-755
-756
-757
-758
-759
-760
-761
-762
-763
-764
-765
-766
-767
-768
-769
-770
-771
-772
-773
-774
-775
-776
-777
-778
-779
-780
 781
 782
 783
@@ -1466,10 +1442,39 @@ Preserves encryption_mode from entries and master_password_validation_test if pr
 801
 802
 803
-804</pre>
+804
+805
+806
+807
+808
+809
+810
+811
+812
+813
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 752</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 781</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_convert_legacy_to_yaml_format'>convert_legacy_to_yaml_format</span><span class='lparen'>(</span><span class='id identifier rubyid_entry_data'>entry_data</span><span class='comma'>,</span> <span class='id identifier rubyid_validation_test'>validation_test</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rbrace'>}</span>
@@ -1594,35 +1599,6 @@ Handles encrypted passwords transparently</p>
       <pre class="lines">
 
 
-699
-700
-701
-702
-703
-704
-705
-706
-707
-708
-709
-710
-711
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727
 728
 729
 730
@@ -1636,10 +1612,39 @@ Handles encrypted passwords transparently</p>
 738
 739
 740
-741</pre>
+741
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+770</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 699</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 728</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_convert_yaml_to_legacy_format'>convert_yaml_to_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_entries'>entries</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -1793,23 +1798,23 @@ Handles encrypted passwords transparently</p>
       <pre class="lines">
 
 
-243
-244
-245
-246
-247
-248
-249
-250
-251
-252
 253
 254
 255
-256</pre>
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 243</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 253</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_decrypt_password'>decrypt_password</span><span class='lparen'>(</span><span class='id identifier rubyid_encrypted_password'>encrypted_password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_encrypted_password'>encrypted_password</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span> <span class='op'>||</span> <span class='id identifier rubyid_mode'>mode</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -1969,16 +1974,6 @@ master password recovery and Lich begins shutting down</p></div>
       <pre class="lines">
 
 
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
 280
 281
 282
@@ -2011,10 +2006,20 @@ master password recovery and Lich begins shutting down</p></div>
 309
 310
 311
-312</pre>
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 270</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 280</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_decrypt_password_with_recovery'>decrypt_password_with_recovery</span><span class='lparen'>(</span><span class='id identifier rubyid_encrypted_password'>encrypted_password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>validation_test:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='comment'># Try normal decryption first
@@ -2152,26 +2157,26 @@ master password recovery and Lich begins shutting down</p></div>
       <pre class="lines">
 
 
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
 330
 331
 332
 333
 334
 335
-336</pre>
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 320</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 330</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_encrypt_all_passwords'>encrypt_all_passwords</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_mode'>mode</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -2299,17 +2304,17 @@ master password recovery and Lich begins shutting down</p></div>
       <pre class="lines">
 
 
-227
-228
-229
-230
-231
-232
-233
-234</pre>
+237
+238
+239
+240
+241
+242
+243
+244</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 227</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 237</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_encrypt_password'>encrypt_password</span><span class='lparen'>(</span><span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='label'>mode:</span><span class='comma'>,</span> <span class='label'>account_name:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>master_password:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_password'>password</span> <span class='kw'>if</span> <span class='id identifier rubyid_mode'>mode</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span> <span class='op'>||</span> <span class='id identifier rubyid_mode'>mode</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span> <span class='op'>==</span> <span class='symbol'>:plaintext</span>
@@ -2370,42 +2375,42 @@ Creates validation test and stores in Keychain</p>
       <pre class="lines">
 
 
-1068
-1069
-1070
-1071
-1072
-1073
-1074
-1075
-1076
-1077
-1078
-1079
-1080
-1081
-1082
-1083
-1084
-1085
-1086
-1087
-1088
-1089
-1090
-1091
-1092
-1093
-1094
-1095
-1096
-1097
-1098
-1099
-1100</pre>
+1156
+1157
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172
+1173
+1174
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+1188</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1068</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1156</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ensure_master_password_exists'>ensure_master_password_exists</span>
   <span class='comment'># Check if master password already in Keychain
@@ -2582,37 +2587,37 @@ Prioritizes exact frontend matches for newly added characters</p>
       <pre class="lines">
 
 
-868
-869
-870
-871
-872
-873
-874
-875
-876
-877
-878
-879
-880
-881
-882
-883
-884
-885
-886
-887
-888
-889
-890
-891
-892
-893
-894
-895</pre>
+897
+898
+899
+900
+901
+902
+903
+904
+905
+906
+907
+908
+909
+910
+911
+912
+913
+914
+915
+916
+917
+918
+919
+920
+921
+922
+923
+924</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 868</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 897</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_character'>find_character</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_username'>username</span><span class='rbracket'>]</span>
@@ -2785,28 +2790,28 @@ This method reuses the proven matching logic from find_character for consistency
       <pre class="lines">
 
 
-930
-931
-932
-933
-934
-935
-936
-937
-938
-939
-940
-941
-942
-943
-944
-945
-946
-947
-948</pre>
+959
+960
+961
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+972
+973
+974
+975
+976
+977</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 930</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 959</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_find_entry_in_legacy_format'>find_entry_in_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_entry_data'>entry_data</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_entry_data'>entry_data</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_entry'>entry</span><span class='op'>|</span>
@@ -2895,18 +2900,18 @@ Reduces code duplication by providing a common method for formatting YAML output
       <pre class="lines">
 
 
-1035
-1036
-1037
-1038
-1039
-1040
-1041
-1042
-1043</pre>
+1068
+1069
+1070
+1071
+1072
+1073
+1074
+1075
+1076</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1035</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1068</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_generate_yaml_content'>generate_yaml_content</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Prepare YAML with password preservation (clones to avoid mutation)
@@ -2968,32 +2973,32 @@ This handles the case: no YAML, DAT exists, master password in keychain</p>
       <pre class="lines">
 
 
-1108
-1109
-1110
-1111
-1112
-1113
-1114
-1115
-1116
-1117
-1118
-1119
-1120
-1121
-1122
-1123
-1124
-1125
-1126
-1127
-1128
-1129
-1130</pre>
+1196
+1197
+1198
+1199
+1200
+1201
+1202
+1203
+1204
+1205
+1206
+1207
+1208
+1209
+1210
+1211
+1212
+1213
+1214
+1215
+1216
+1217
+1218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1108</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1196</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_existing_master_password_for_migration'>get_existing_master_password_for_migration</span>
   <span class='comment'># Retrieve existing master password from keychain
@@ -3082,45 +3087,45 @@ Returns an array of favorite characters sorted by favorite order</p>
       <pre class="lines">
 
 
-606
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618
-619
-620
-621
-622
-623
-624
-625
-626
-627
-628
-629
-630
-631
-632
-633
-634
 635
 636
 637
 638
 639
 640
-641</pre>
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 606</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 635</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_favorites'>get_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -3222,24 +3227,24 @@ Finds the highest current favorite order and returns the next number</p>
       <pre class="lines">
 
 
-902
-903
-904
-905
-906
-907
-908
-909
-910
-911
-912
-913
-914
-915
-916</pre>
+931
+932
+933
+934
+935
+936
+937
+938
+939
+940
+941
+942
+943
+944
+945</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 902</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 931</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_next_favorite_order'>get_next_favorite_order</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_max_order'>max_order</span> <span class='op'>=</span> <span class='int'>0</span>
@@ -3394,24 +3399,24 @@ Returns true if the specified character is in the favorites list</p>
       <pre class="lines">
 
 
-585
-586
-587
-588
-589
-590
-591
-592
-593
-594
-595
-596
-597
-598
-599</pre>
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 585</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 614</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_is_favorite?'>is_favorite?</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -3507,19 +3512,6 @@ Enhanced to support favorites functionality and encryption with backward compati
       <pre class="lines">
 
 
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
 46
 47
 48
@@ -3541,10 +3533,23 @@ Enhanced to support favorites functionality and encryption with backward compati
 64
 65
 66
-67</pre>
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 46</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_saved_entries'>load_saved_entries</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_autosort_state'>autosort_state</span><span class='rparen'>)</span>
   <span class='comment'># Guard against nil data_dir
@@ -3661,16 +3666,6 @@ Converts entry.dat to entry.yaml format for improved maintainability</p>
       <pre class="lines">
 
 
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
 154
 155
 156
@@ -3735,10 +3730,20 @@ Converts entry.dat to entry.yaml format for improved maintainability</p>
 215
 216
 217
-218</pre>
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 144</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 154</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_from_legacy'>migrate_from_legacy</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='label'>encryption_mode:</span> <span class='symbol'>:plaintext</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_dat_file'>dat_file</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>entry.dat</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -3883,19 +3888,19 @@ Adds encryption_mode field if not present</p>
       <pre class="lines">
 
 
-477
-478
-479
-480
-481
-482
-483
-484
-485
-486</pre>
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 477</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 506</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_to_encryption_format'>migrate_to_encryption_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
@@ -3975,24 +3980,24 @@ Adds favorites fields to existing character records if not present</p>
       <pre class="lines">
 
 
-841
-842
-843
-844
-845
-846
-847
-848
-849
-850
-851
-852
-853
-854
-855</pre>
+870
+871
+872
+873
+874
+875
+876
+877
+878
+879
+880
+881
+882
+883
+884</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 841</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 870</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_migrate_to_favorites_format'>migrate_to_favorites_format</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -4077,13 +4082,13 @@ Prevents duplicate accounts due to case variations</p>
       <pre class="lines">
 
 
-1013
-1014
-1015
-1016</pre>
+1042
+1043
+1044
+1045</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1013</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1042</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_account_name'>normalize_account_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -4105,12 +4110,13 @@ Prevents duplicate accounts due to case variations</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Normalizes character names to Title case (first letter capitalized)
-Ensures consistent character name formatting across the application</p>
+    <p>Normalizes character names to Title case per word, stripping and collapsing
+whitespace. The single normalization used for every char_name write and
+comparison (EntryStore, AccountManager, CLIPassword, manual login), so a
+name always compares equal to the form it was stored in. Comparisons must
+normalize both sides: entry.yaml can hold names written in older forms.</p>
+<p>Per word rather than String#capitalize, which downcases everything after
+the first character and so turns &quot;Alpha Beta&quot; into &quot;Alpha beta&quot;.</p>
 
   </div>
 </div>
@@ -4123,7 +4129,7 @@ Ensures consistent character name formatting across the application</p>
         <span class='name'>name</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
@@ -4145,7 +4151,7 @@ Ensures consistent character name formatting across the application</p>
       
       
         &mdash;
-        <div class='inline'><p>Normalized character name in Title case</p></div>
+        <div class='inline'><p>Normalized character name, '' for nil or blank input</p></div>
       
     </li>
   
@@ -4157,17 +4163,15 @@ Ensures consistent character name formatting across the application</p>
       <pre class="lines">
 
 
-1024
-1025
-1026
-1027</pre>
+1058
+1059
+1060</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1024</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1058</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'>normalize_character_name</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-  <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
+  <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:capitalize</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4239,30 +4243,30 @@ Ensures required top-level fields exist (encryption_mode, master_password_valida
       <pre class="lines">
 
 
-985
-986
-987
-988
-989
-990
-991
-992
-993
-994
-995
-996
-997
-998
-999
-1000
-1001
-1002
-1003
-1004
-1005</pre>
+1014
+1015
+1016
+1017
+1018
+1019
+1020
+1021
+1022
+1023
+1024
+1025
+1026
+1027
+1028
+1029
+1030
+1031
+1032
+1033
+1034</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 985</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1014</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_prepare_yaml_for_serialization'>prepare_yaml_for_serialization</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Clone to avoid mutating caller&#39;s object
@@ -4423,42 +4427,42 @@ Unmarks the specified character as a favorite and reorders remaining favorites</
       <pre class="lines">
 
 
-541
-542
-543
-544
-545
-546
-547
-548
-549
-550
-551
-552
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565
-566
-567
-568
-569
 570
 571
 572
-573</pre>
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 541</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 570</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_favorite'>remove_favorite</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -4545,29 +4549,29 @@ Ensures favorite_order values are consecutive starting from 1</p>
       <pre class="lines">
 
 
-956
-957
-958
-959
-960
-961
-962
-963
-964
-965
-966
-967
-968
-969
-970
-971
-972
-973
-974
-975</pre>
+985
+986
+987
+988
+989
+990
+991
+992
+993
+994
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 956</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 985</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reorder_all_favorites'>reorder_all_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
   <span class='comment'># Collect all favorites
@@ -4667,35 +4671,6 @@ Updates the favorite order for all favorites based on new ordering</p>
       <pre class="lines">
 
 
-649
-650
-651
-652
-653
-654
-655
-656
-657
-658
-659
-660
-661
-662
-663
-664
-665
-666
-667
-668
-669
-670
-671
-672
-673
-674
-675
-676
-677
 678
 679
 680
@@ -4707,10 +4682,39 @@ Updates the favorite order for all favorites based on new ordering</p>
 686
 687
 688
-689</pre>
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 649</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 678</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reorder_favorites'>reorder_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_ordered_favorites'>ordered_favorites</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -4759,59 +4763,6 @@ Updates the favorite order for all favorites based on new ordering</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="restore_backup_and_return_false-class_method">
-  
-    .<strong>restore_backup_and_return_false</strong>(backup_file, yaml_file)  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Restores backup and returns false</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-462
-463
-464
-465
-466
-467
-468
-469</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 462</span>
-
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_restore_backup_and_return_false'>restore_backup_and_return_false</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
-  <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm'>rm</span><span class='lparen'>(</span><span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: Backup restored after encryption mode change failure</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>end</span>
-  <span class='kw'>false</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
   <h3 class="signature " id="save_entries-class_method">
   
     .<strong>save_entries</strong>(data_dir, entry_data)  &#x21d2; <tt>Boolean</tt> 
@@ -4825,7 +4776,9 @@ Updates the favorite order for all favorites based on new ordering</p>
     <p>Saves entry data to YAML file
 Converts and serializes entry data to the entry.yaml file with encryption support
 Preserves master_password_validation_test from existing YAML during round-trip conversion
-Encrypts passwords based on the file's encryption_mode before writing</p>
+Encrypts passwords based on the file's encryption_mode before writing
+Publishes the backup and replacement through protected temporary files.
+A failed publication leaves the previous entry file unchanged.</p>
 
   </div>
 </div>
@@ -4886,21 +4839,6 @@ Encrypts passwords based on the file's encryption_mode before writing</p>
       <pre class="lines">
 
 
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
 92
 93
 94
@@ -4945,10 +4883,20 @@ Encrypts passwords based on the file's encryption_mode before writing</p>
 133
 134
 135
-136</pre>
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 77</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 92</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_save_entries'>save_entries</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_entry_data'>entry_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -4995,14 +4943,9 @@ Encrypts passwords based on the file's encryption_mode before writing</p>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
 
-  <span class='comment'># Create backup of existing file if it exists
-</span>  <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_backup_file'>backup_file</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='embexpr_end'>}</span><span class='tstring_content'>.bak</span><span class='tstring_end'>&quot;</span></span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_backup_file'>backup_file</span><span class='rparen'>)</span>
-  <span class='kw'>end</span>
-
   <span class='comment'># Write YAML data to file with secure permissions
 </span>  <span class='kw'>begin</span>
+    <span class='id identifier rubyid_write_file_atomically'>write_file_atomically</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='embexpr_end'>}</span><span class='tstring_content'>.bak</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_binread'>binread</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_write_yaml_file'>write_yaml_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
     <span class='kw'>true</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
@@ -5093,29 +5036,29 @@ When autosort is disabled, original order is preserved without reordering</p>
       <pre class="lines">
 
 
-814
-815
-816
-817
-818
-819
-820
-821
-822
-823
-824
-825
-826
-827
-828
-829
-830
-831
-832
-833</pre>
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855
+856
+857
+858
+859
+860
+861
+862</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 814</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 843</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sort_entries_with_favorites'>sort_entries_with_favorites</span><span class='lparen'>(</span><span class='id identifier rubyid_entries'>entries</span><span class='comma'>,</span> <span class='id identifier rubyid_autosort_state'>autosort_state</span><span class='rparen'>)</span>
   <span class='comment'># If autosort is disabled, preserve original order without any reordering
@@ -5145,7 +5088,7 @@ When autosort is disabled, original order is preserved without reordering</p>
       <div class="method_details ">
   <h3 class="signature " id="write_yaml_file-class_method">
   
-    .<strong>write_yaml_file</strong>(yaml_file, yaml_data)  &#x21d2; <tt>void</tt> 
+    .<strong>write_yaml_file</strong>(yaml_file, yaml_data, backup: false)  &#x21d2; <tt>void</tt> 
   
 
   
@@ -5158,7 +5101,8 @@ When autosort is disabled, original order is preserved without reordering</p>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
 <p class="note returns_void">This method returns an undefined value.</p><p>Writes YAML data to file with standard headers and secure permissions
-Handles preparation and formatting of YAML data for all save operations</p>
+Handles preparation and formatting of YAML data for all save operations
+Serializes before publication so serialization errors cannot truncate data.</p>
 
   </div>
 </div>
@@ -5194,6 +5138,22 @@ Handles preparation and formatting of YAML data for all save operations</p>
       
     </li>
   
+    <li>
+      
+        <span class='name'>backup</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>preserve the previous bytes in an owner-only .bak</p></div>
+      
+    </li>
+  
 </ul>
 
 
@@ -5203,26 +5163,147 @@ Handles preparation and formatting of YAML data for all save operations</p>
       <pre class="lines">
 
 
-1052
-1053
-1054
-1055
-1056
-1057
-1058
-1059
-1060</pre>
+1087
+1088
+1089
+1090
+1091</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1052</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1087</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_write_yaml_file'>write_yaml_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_prepared_yaml'>prepared_yaml</span> <span class='op'>=</span> <span class='id identifier rubyid_prepare_yaml_for_serialization'>prepare_yaml_for_serialization</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_write_yaml_file'>write_yaml_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='label'>backup:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_content'>content</span> <span class='op'>=</span> <span class='id identifier rubyid_generate_yaml_content'>generate_yaml_content</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_write_file_atomically'>write_file_atomically</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='embexpr_end'>}</span><span class='tstring_content'>.bak</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_binread'>binread</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_backup'>backup</span> <span class='op'>&amp;&amp;</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_write_file_atomically'>write_file_atomically</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_content'>content</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="write_yaml_with_master_password-class_method">
+  
+    .<strong>write_yaml_with_master_password</strong>(yaml_file, yaml_data, password)  &#x21d2; <tt>void</tt> 
+  
 
-  <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>w</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='int'>0o600</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_file'>file</span><span class='op'>|</span>
-    <span class='id identifier rubyid_file'>file</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'># Lich 5 Login Entries - YAML Format</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_file'>file</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'># Generated: </span><span class='embexpr_beg'>#{</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_file'>file</span><span class='period'>.</span><span class='id identifier rubyid_write'>write</span><span class='lparen'>(</span><span class='const'>YAML</span><span class='period'>.</span><span class='id identifier rubyid_dump'>dump</span><span class='lparen'>(</span><span class='id identifier rubyid_prepared_yaml'>prepared_yaml</span><span class='comma'>,</span> <span class='label'>permitted_classes:</span> <span class='lbracket'>[</span><span class='const'>Symbol</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Publishes prepared credentials with a new keychain password. On handled
+failure, restores the previously observed keychain value; file publication
+is atomic, but process death between resources is not recoverable here.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>yaml_file</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>credential destination</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>yaml_data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>already re-encrypted credentials and validation data</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>password</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>new master password</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>StandardError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>on publication failure or incomplete rollback</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1102
+1103
+1104
+1105
+1106
+1107
+1108
+1109
+1110
+1111
+1112
+1113
+1114
+1115
+1116
+1117</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 1102</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_write_yaml_with_master_password'>write_yaml_with_master_password</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='comma'>,</span> <span class='id identifier rubyid_password'>password</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_content'>content</span> <span class='op'>=</span> <span class='id identifier rubyid_generate_yaml_content'>generate_yaml_content</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_manager'>manager</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI.html" title="Lich::Common::GUI (module)">GUI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../GUI/MasterPasswordManager.html" title="Lich::Common::GUI::MasterPasswordManager (module)">MasterPasswordManager</a></span></span>
+  <span class='id identifier rubyid_previous_password'>previous_password</span> <span class='op'>=</span> <span class='id identifier rubyid_manager'>manager</span><span class='period'>.</span><span class='id identifier rubyid_retrieve_master_password'>retrieve_master_password</span><span class='lparen'>(</span><span class='label'>strict:</span> <span class='kw'>true</span><span class='rparen'>)</span>
+  <span class='kw'>begin</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_manager'>manager</span><span class='period'>.</span><span class='id identifier rubyid_store_master_password'>store_master_password</span><span class='lparen'>(</span><span class='id identifier rubyid_password'>password</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Failed to update keychain</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_write_file_atomically'>write_file_atomically</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='comma'>,</span> <span class='id identifier rubyid_content'>content</span><span class='rparen'>)</span>
+  <span class='kw'>rescue</span> <span class='const'>StandardError</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_restore_master_password'>restore_master_password</span><span class='lparen'>(</span><span class='id identifier rubyid_previous_password'>previous_password</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_raise'>raise</span> <span class='const'>StandardError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Credential update failed; manual keychain recovery is required</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_raise'>raise</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -5288,12 +5369,12 @@ Handles preparation and formatting of YAML data for all save operations</p>
       <pre class="lines">
 
 
-22
-23
-24</pre>
+35
+36
+37</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'documented/common/authentication/entry_store.rb', line 35</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'>yaml_file_path</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>entry.yaml</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -5308,7 +5389,7 @@ Handles preparation and formatting of YAML data for all save operations</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:26 2026 by
+  Generated on Wed Oct 28 05:27:19 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

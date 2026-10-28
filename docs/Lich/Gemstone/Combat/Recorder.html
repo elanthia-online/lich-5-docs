@@ -104,16 +104,13 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Persists the combat observer event stream to a SQLite database.</p>
-<p>Maintains a relational schema of sessions, creatures, attacks, resolutions,
-flares, hits, and statuses. Handles both live auto-sessioned recording and
-explicit session control for replay/headless analysis. Manages spawn-tree
-linkage (root/parent attack relationships), creature lifecycle tracking
-(kills, wounds), and attack attribution of status effects via a window
-heuristic.</p>
-<p>Thread-safe: serializes all public entry points on a non-reentrant mutex
-to coordinate between the AsyncProcessor worker thread (record) and the
-consuming script's event loop (check_idle!, close, start_session).</p>
+    <p>Persists the combat observer event stream to SQLite for forensic analysis.</p>
+<p>Maintains a seven-table relational schema that captures attacks, resolutions,
+flares, hits, and status changes within hunt sessions. Sessions are bounded by
+idle gaps (default 5 minutes without events) or explicit start/finish calls.</p>
+<p>Thread-safe for concurrent record() calls on the AsyncProcessor worker thread
+and check_idle!/close calls from the script's own loop via internal mutex
+serialization.</p>
 
   </div>
 </div>
@@ -123,22 +120,29 @@ consuming script's event loop (check_idle!, close, start_session).</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Record a live hunt</p></div></h5>
+        <h5 class="example_title"><div class='inline'><p>Auto-sessioned live recording</p></div></h5>
       
       <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Recorder</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/tmp/combat.db</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>character:</span> <span class='const'>Char</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>idle_timeout:</span> <span class='int'>300</span><span class='rparen'>)</span>
 <span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_subscribe!'>subscribe!</span>
-<span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_check_idle!'>check_idle!</span> <span class='rbrace'>}</span></code></pre>
+<span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_check_idle!'>check_idle!</span><span class='semicolon'>;</span> <span class='id identifier rubyid_sleep'>sleep</span> <span class='int'>1</span> <span class='rbrace'>}</span></code></pre>
     
       
-        <h5 class="example_title"><div class='inline'><p>Explicit session (replay)</p></div></h5>
+        <h5 class="example_title"><div class='inline'><p>Explicit sessions for replay</p></div></h5>
       
       <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'>Recorder</span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/tmp/combat.db</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>log.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_t0'>t0</span><span class='rparen'>)</span>
-<span class='id identifier rubyid_feed_events_to'>feed_events_to</span><span class='lparen'>(</span><span class='id identifier rubyid_rec'>rec</span><span class='rparen'>)</span>
-<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_finish_session'>finish_session</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_t1'>t1</span><span class='rparen'>)</span></code></pre>
+<span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/path/to/log.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_t0'>t0</span><span class='rparen'>)</span>
+<span class='comment'># ... feed events via record() ...
+</span><span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_finish_session'>finish_session</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_t1'>t1</span><span class='rparen'>)</span></code></pre>
     
   </div>
 
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="../../Common/Events.html#emit-class_method" title="Lich::Common::Events.emit (method)">Common::Events.emit</a></span></li>
+    
+  </ul>
 
 </div>
   
@@ -154,20 +158,40 @@ consuming script's event loop (check_idle!, close, start_session).</p>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>combat_recorder</span><span class='tstring_end'>&#39;</span></span></pre></dd>
       
+        <dt id="RECEIPT_PROTOCOL-constant" class="">RECEIPT_PROTOCOL =
+          <div class="docstring">
+  <div class="discussion">
+    <p>:recorded_attack is an optional post-commit observer receipt. Its
+recorder/session/attack IDs identify rows; :source retains validated
+ingestion context (nil for legacy/replay input). :database and
+:file_identity are trusted-local locators, not remote protocol data.
+Receipts neither enable recording nor prove an encounter is complete.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>1</span></pre></dd>
+      
         <dt id="SCHEMA-constant" class="">SCHEMA =
           <div class="docstring">
   <div class="discussion">
-    <p>SQLite schema: seven-table relational design for combat events.</p>
-<p>Tables: sessions (hunt unit), creatures (subject registry), attacks
-(swing/cast/inbound), resolutions (roll facts), flares (proc damage),
-hits (damage events with crit denormalization), statuses (effect stream).</p>
-<p>Sources of truth: attacks/resolutions/flares/hits unpack the :attack
-payload only (derived :damage/:wound/:fatal_crit/:amputation events are
-not subscribed). Statuses come from :status/:stun/:roundtime/:spell_loss
-/:ucs emits only.</p>
-<p>Spawn-tree closure: root_attack_id points every event at the initiating
-shot; parent_attack_id/parent_confidence record the immediate spawner
-only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
+    <p>SQLite schema: seven-table relational schema for combat analytics.</p>
+<p>Tables:</p>
+<pre class="code ruby"><code class="ruby">- sessions: one per hunt/replay, the recount unit
+- creatures: subject registry per (session_id, exist_id)
+- attacks: one row per :attack event; includes attribution flags (inbound/foreign_caster/unowned/orphan)
+and spawn-tree links (root_attack_id/parent_attack_id/parent_confidence)
+- resolutions: roll lines (AS/DS/CS/TD as printed values; d100 separate for deterministic margin)
+- flares: one row per flare on an attack; hits/resolutions reference their flare
+- hits: one row per damage fact with denormalized crit and creature info for join-free aggregation
+- statuses: status add/remove stream (creature/self/ambient), spell losses, UCS facts;
+attack-attributed when the emission falls inside that attack&#39;s window
+</code></pre>
+<p>Indexes optimize queries by session, creature, attack, and location.</p>
 
   </div>
 </div>
@@ -178,10 +202,6 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   <ul class="see">
     
       <li><span class='object_link'><a href="#initialize-instance_method" title="Lich::Gemstone::Combat::Recorder#initialize (method)">#initialize</a></span></li>
-    
-      <li><span class='object_link'><a href="#start_session-instance_method" title="Lich::Gemstone::Combat::Recorder#start_session (method)">#start_session</a></span></li>
-    
-      <li><span class='object_link'><a href="#record-instance_method" title="Lich::Gemstone::Combat::Recorder#record (method)">#record</a></span></li>
     
   </ul>
 
@@ -206,6 +226,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 </span><span class='tstring_content'>    last_seen   REAL,
 </span><span class='tstring_content'>    killed_at   REAL,
 </span><span class='tstring_content'>    killed_by_attack_id INTEGER,
+</span><span class='tstring_content'>    kill_credit TEXT,                             -- how killed_by_attack_id was chosen: &#39;crit&#39; (fatal crit, ground truth) | &#39;window&#39; (room-feed death inside an attack window) | &#39;last_own_hit&#39; (no window: the last damaging attack on it was ours) | &#39;last_hit&#39; (no window: the last damaging attack on it was someone else&#39;s) | NULL (unknown / pre-migration)
 </span><span class='tstring_content'>    UNIQUE (session_id, exist_id)
 </span><span class='tstring_content'>  );
 </span><span class='tstring_content'>
@@ -230,10 +251,13 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 </span><span class='tstring_content'>    outcomes_all TEXT,                        -- comma-joined when &gt;1
 </span><span class='tstring_content'>    aimed       INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    ambush      INTEGER NOT NULL DEFAULT 0,
+</span><span class='tstring_content'>    attack_kind TEXT,                         -- named maneuver: &#39;waylay&#39;/&#39;ambush&#39; (from hiding, also sets ambush=1) or &#39;reverse_strike&#39; (parry reaction, ambush=0); NULL when not an ambush, or recorded before this column existed
 </span><span class='tstring_content'>    inbound     INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    orphan      INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    foreign_caster INTEGER NOT NULL DEFAULT 0, -- a nearby player&#39;s attack (observed, not ours)
 </span><span class='tstring_content'>    unowned     INTEGER NOT NULL DEFAULT 0,    -- effect tick, no owning cast: applied to creature, not our deal
+</span><span class='tstring_content'>    ours        INTEGER NOT NULL DEFAULT 0,    -- decided at write time: our own OUTBOUND attack - not inbound, not a nearby player&#39;s, not on a foreign target, not an unowned tick, not an orphan sink
+</span><span class='tstring_content'>    chunk_seq   INTEGER,                       -- the recorder&#39;s own count of chunks seen (monotonic for its lifetime): orders chunks that share a whole-second occurred_at, where hits.line_seq restarts
 </span><span class='tstring_content'>    redirected_from TEXT                       -- guardian redirect: noun of the creature we struck AT; the row&#39;s creature is the guardian that took it
 </span><span class='tstring_content'>  );
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_attacks_session ON attacks(session_id, seq);
@@ -270,7 +294,8 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 </span><span class='tstring_content'>    damaging    INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id), -- AoE: may differ from swing
 </span><span class='tstring_content'>    weapon      TEXT,
-</span><span class='tstring_content'>    outcome     TEXT
+</span><span class='tstring_content'>    outcome     TEXT,
+</span><span class='tstring_content'>    ours        INTEGER NOT NULL DEFAULT 0     -- 2p flare (our item fired). On an INBOUND row ours=1 is our REACTIVE flare (shield spike, thorns); ours=0 there is the creature&#39;s own weapon proc striking us
 </span><span class='tstring_content'>  );
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_flares_attack ON flares(attack_id);
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_flares_name ON flares(name);
@@ -291,12 +316,15 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 </span><span class='tstring_content'>    fatal       INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    amputated   INTEGER NOT NULL DEFAULT 0,
 </span><span class='tstring_content'>    secondary_location TEXT,
-</span><span class='tstring_content'>    secondary_rank     INTEGER                    -- secondary wound severity (:wound_rank)
+</span><span class='tstring_content'>    secondary_rank     INTEGER,                   -- secondary wound severity (:wound_rank)
+</span><span class='tstring_content'>    line_seq    INTEGER                           -- feed position of the damage line within its chunk: COMBAT order. Row id is insertion order, which a released cast (emitted after its swing) breaks; attacks.occurred_at orders across chunks
 </span><span class='tstring_content'>  );
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_attack ON hits(attack_id);
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_creature ON hits(session_id, creature_id);
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_location ON hits(location);
 </span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_crit ON hits(crit_rank);
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_creature_only ON hits(creature_id);  -- per-creature damage subqueries (the composite needs session_id first)
+</span><span class='tstring_content'>  CREATE INDEX IF NOT EXISTS idx_hits_flare ON hits(flare_id);
 </span><span class='tstring_content'>
 </span><span class='tstring_content'>  -- kind: status (action add/remove), stun (value=rounds),
 </span><span class='tstring_content'>  --       roundtime (value=seconds), spell_loss (spell/spell_name/cause),
@@ -307,6 +335,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 </span><span class='tstring_content'>    creature_id INTEGER REFERENCES creatures(id), -- NULL = self or unresolved
 </span><span class='tstring_content'>    subject     TEXT,                             -- name as printed (&#39;self&#39; for us)
 </span><span class='tstring_content'>    attack_id   INTEGER REFERENCES attacks(id),   -- window attribution
+</span><span class='tstring_content'>    flare_id    INTEGER REFERENCES flares(id),    -- the flare it rode on (glowbark blind), else NULL
 </span><span class='tstring_content'>    occurred_at REAL NOT NULL,
 </span><span class='tstring_content'>    kind        TEXT NOT NULL,
 </span><span class='tstring_content'>    status      TEXT,
@@ -453,7 +482,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Internal variant of check_idle!; does not acquire the mutex.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Closes the current session if the idle timeout has elapsed, without acquiring the mutex.</p></div></span>
   
 </li>
 
@@ -476,6 +505,28 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 
   
     <span class="summary_desc"><div class='inline'><p>Finish any open session and release the database.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#drain_finished_sessions-instance_method" title="#drain_finished_sessions (instance method)">#<strong>drain_finished_sessions</strong>  &#x21d2; Array&lt;Integer&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Drainable alternative to the callback: every session id finished since the last drain, oldest first.</p></div></span>
   
 </li>
 
@@ -519,7 +570,29 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Internal variant of finish_session; does not acquire the mutex.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Closes the current session without acquiring the mutex; internal to record_locked and finish_session.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#foreign_event%3F-instance_method" title="#foreign_event? (instance method)">#<strong>foreign_event?</strong>(type, data)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>An event that is not ours: a nearby player's attack, a creature swinging at a third party, an orphan.</p></div></span>
   
 </li>
 
@@ -551,7 +624,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#record-instance_method" title="#record (instance method)">#<strong>record</strong>(type, data)  &#x21d2; void </a>
+      <a href="#known_creature%3F-instance_method" title="#known_creature? (instance method)">#<strong>known_creature?</strong>(data)  &#x21d2; Boolean </a>
     
 
     
@@ -565,7 +638,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Record a combat event from the observer feed.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>True when this event is keyed to a creature we have already recorded against - in the open session, or in the one the idle gap just closed (@closed_session, so a lagged death confirmation still finds its own hunt).</p></div></span>
   
 </li>
 
@@ -573,7 +646,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#record_locked-instance_method" title="#record_locked (instance method)">#<strong>record_locked</strong>(type, data)  &#x21d2; void </a>
+      <a href="#notify_finished_sessions!-instance_method" title="#notify_finished_sessions! (instance method)">#<strong>notify_finished_sessions!</strong>  &#x21d2; void </a>
     
 
     
@@ -587,7 +660,95 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Internal variant of record; does not acquire the mutex.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fires session-finished callbacks for all pending sessions outside the mutex.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#on_session_finished-instance_method" title="#on_session_finished (instance method)">#<strong>on_session_finished</strong> {|session_id| ... } &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Session-finished hook.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record-instance_method" title="#record (instance method)">#<strong>record</strong>(type, data)  &#x21d2; Hash, ... </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Persist one observer event.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record_locked-instance_method" title="#record_locked (instance method)">#<strong>record_locked</strong>(type, data)  &#x21d2; Hash, ... </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Persists one observer event without acquiring the mutex; internal to record().</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#reopen_closed_session_locked!-instance_method" title="#reopen_closed_session_locked! (instance method)">#<strong>reopen_closed_session_locked!</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Re-open the session the idle gap just closed so a trailing fact files against its rows.</p></div></span>
   
 </li>
 
@@ -609,7 +770,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Open a new session, finishing any open session first.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Starts a new session (hunt) with optional character and source metadata.</p></div></span>
   
 </li>
 
@@ -631,7 +792,7 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Internal variant of start_session; does not acquire the mutex.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Opens a session without acquiring the mutex; internal to record_locked and start_session.</p></div></span>
   
 </li>
 
@@ -654,6 +815,28 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
 
   
     <span class="summary_desc"><div class='inline'><p>Hook the live observer feed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#trailing_fact%3F-instance_method" title="#trailing_fact? (instance method)">#<strong>trailing_fact?</strong>(type, ours)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>A bare fact (not an :attack) about a creature we fought.</p></div></span>
   
 </li>
 
@@ -694,10 +877,10 @@ only when game-declared (blink bracket) - ambiguous echoes are unparented.</p>
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Unregister the named handler from the observer feed.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Unregisters the named combat event handler from the live observer feed.</p></div></span>
   
 </li>
 
@@ -735,21 +918,6 @@ one (see check_idle!). nil = explicit start_session/finish_session.</p>
       <pre class="lines">
 
 
-285
-286
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296
-297
-298
-299
 300
 301
 302
@@ -759,13 +927,50 @@ one (see check_idle!). nil = explicit start_session/finish_session.</p>
 306
 307
 308
-309</pre>
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 285</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 300</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='comma'>,</span> <span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>live</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>idle_timeout:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@db</span> <span class='op'>=</span> <span class='const'>SQLite3</span><span class='op'>::</span><span class='const'>Database</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='rparen'>)</span>
+  <span class='ivar'>@receipt_path</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_realpath'>realpath</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_file?'>file?</span><span class='lparen'>(</span><span class='id identifier rubyid_db_path'>db_path</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_stat'>stat</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_stat'>stat</span><span class='lparen'>(</span><span class='ivar'>@receipt_path</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@receipt_path</span>
+  <span class='ivar'>@receipt_file</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_stat'>stat</span><span class='period'>.</span><span class='id identifier rubyid_dev'>dev</span><span class='comma'>,</span> <span class='id identifier rubyid_stat'>stat</span><span class='period'>.</span><span class='id identifier rubyid_ino'>ino</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span> <span class='kw'>if</span> <span class='id identifier rubyid_stat'>stat</span>
+  <span class='ivar'>@recorder_id</span> <span class='op'>=</span> <span class='const'>SecureRandom</span><span class='period'>.</span><span class='id identifier rubyid_hex'>hex</span><span class='lparen'>(</span><span class='int'>16</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
   <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_busy_timeout'>busy_timeout</span> <span class='op'>=</span> <span class='int'>5_000</span>
   <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>PRAGMA journal_mode = WAL</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>PRAGMA synchronous = NORMAL</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -774,11 +979,25 @@ one (see check_idle!). nil = explicit start_session/finish_session.</p>
   <span class='ivar'>@seq</span> <span class='op'>=</span> <span class='int'>0</span>
   <span class='ivar'>@open_attack</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># { id:, creature_ids: Set, inbound: bool }
 </span>  <span class='ivar'>@chunk_rows</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>   <span class='comment'># per-chunk _uid -&gt; attack row id, for spawn-tree links
+</span>  <span class='ivar'>@chunk_flares</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='comment'># per-chunk _uid -&gt; [flare row ids], for status attack_uid/flare_seq
+</span>  <span class='ivar'>@chunk_batch</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># the processor&#39;s observation_batch id for the chunk above
 </span>  <span class='ivar'>@pending_cache</span> <span class='op'>=</span> <span class='kw'>nil</span>      <span class='comment'># creature-cache entries staged during a txn (see in_txn)
 </span>  <span class='ivar'>@pending_chunk_rows</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># chunk-row entries staged during a txn (see in_txn)
 </span>  <span class='ivar'>@character</span> <span class='op'>=</span> <span class='id identifier rubyid_character'>character</span>
   <span class='ivar'>@source</span> <span class='op'>=</span> <span class='id identifier rubyid_source'>source</span>
   <span class='ivar'>@idle_timeout</span> <span class='op'>=</span> <span class='id identifier rubyid_idle_timeout'>idle_timeout</span>
+  <span class='comment'># Session-finished hook (see on_session_finished / drain_finished_sessions).
+</span>  <span class='comment'># Every close path funnels through finish_session_locked, which
+</span>  <span class='comment'># queues the id; callbacks run OUTSIDE the mutex after the public
+</span>  <span class='comment'># call that caused the close returns.
+</span>  <span class='ivar'>@session_finished_callbacks</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='ivar'>@merged_stun_rows</span> <span class='op'>=</span> <span class='const'>Set</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='comment'># status ids that already absorbed their stun twin
+</span>  <span class='comment'># Chunks seen by this recorder, counted at each chunk boundary
+</span>  <span class='comment'># (a fresh per-chunk uid sequence). Persisted as attacks.chunk_seq
+</span>  <span class='comment'># so two chunks inside the same prompt second still order.
+</span>  <span class='ivar'>@chunk_seq</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='ivar'>@finished_sessions</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='ivar'>@finished_to_notify</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
   <span class='ivar'>@last_event_at</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='comment'># record fires on the AsyncProcessor worker thread; check_idle!/close
 </span>  <span class='comment'># are documented as driven from the consuming script&#39;s own periodic
@@ -825,12 +1044,12 @@ one (see check_idle!). nil = explicit start_session/finish_session.</p>
       <pre class="lines">
 
 
-280
-281
-282</pre>
+295
+296
+297</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 280</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 295</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_db'>db</span>
   <span class='ivar'>@db</span>
@@ -866,12 +1085,12 @@ one (see check_idle!). nil = explicit start_session/finish_session.</p>
       <pre class="lines">
 
 
-280
-281
-282</pre>
+295
+296
+297</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 280</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 295</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_session_id'>session_id</span>
   <span class='ivar'>@session_id</span>
@@ -915,15 +1134,19 @@ when no further event ever arrives.</p>
       <pre class="lines">
 
 
-412
-413
-414</pre>
+508
+509
+510
+511
+512</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 412</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 508</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check_idle!'>check_idle!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
-  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_notify_finished_sessions!'>notify_finished_sessions!</span>
+  <span class='id identifier rubyid_result'>result</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -945,11 +1168,9 @@ when no further event ever arrives.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Internal variant of check_idle!; does not acquire the mutex.</p>
-<p>Assumes the caller already holds the lock. Finishes the current session
-if idle_timeout was set, a session is open, an event has been recorded,
-and the gap since the last event exceeds idle_timeout. Uses the last
-event's timestamp as the session end (town time never pads a hunt).</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Closes the current session if the idle timeout has elapsed, without acquiring the mutex.</p>
+<p>Returns early if idle_timeout is nil (explicit sessions only), or if no session
+is open, or if insufficient time has passed since the last recorded event.</p>
 
   </div>
 </div>
@@ -969,7 +1190,7 @@ event's timestamp as the session end (town time never pads a hunt).</p>
       
       
         &mdash;
-        <div class='inline'><p>current time for comparison, defaults to Time.now</p></div>
+        <div class='inline'><p>the time to check against @last_event_at; defaults to Time.now</p></div>
       
     </li>
   
@@ -982,15 +1203,15 @@ event's timestamp as the session end (town time never pads a hunt).</p>
       <pre class="lines">
 
 
-426
-427
-428
-429
-430
-431</pre>
+522
+523
+524
+525
+526
+527</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 426</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 522</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@idle_timeout</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@session_id</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@last_event_at</span>
@@ -1027,22 +1248,85 @@ event's timestamp as the session end (town time never pads a hunt).</p>
       <pre class="lines">
 
 
-434
-435
-436
-437
-438
-439
-440</pre>
+530
+531
+532
+533
+534
+535
+536
+537</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 434</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 530</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_close'>close</span>
   <span class='id identifier rubyid_unsubscribe!'>unsubscribe!</span>
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
     <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='ivar'>@last_event_at</span> <span class='op'>||</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@session_id</span>
     <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_close'>close</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_notify_finished_sessions!'>notify_finished_sessions!</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="drain_finished_sessions-instance_method">
+  
+    #<strong>drain_finished_sessions</strong>  &#x21d2; <tt>Array&lt;Integer&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Drainable alternative to the callback: every session id finished
+since the last drain, oldest first.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Integer&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+426
+427
+428
+429
+430
+431
+432</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 426</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_drain_finished_sessions'>drain_finished_sessions</span>
+  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_ids'>ids</span> <span class='op'>=</span> <span class='ivar'>@finished_sessions</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+    <span class='ivar'>@finished_sessions</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+    <span class='id identifier rubyid_ids'>ids</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1090,15 +1374,19 @@ event's timestamp as the session end (town time never pads a hunt).</p>
       <pre class="lines">
 
 
-366
-367
-368</pre>
+405
+406
+407
+408
+409</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 366</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 405</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_finish_session'>finish_session</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
-  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_at'>at</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='id identifier rubyid_at'>at</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_notify_finished_sessions!'>notify_finished_sessions!</span>
+  <span class='id identifier rubyid_result'>result</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1120,10 +1408,10 @@ event's timestamp as the session end (town time never pads a hunt).</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Internal variant of finish_session; does not acquire the mutex.</p>
-<p>Assumes the caller already holds the lock. Updates the current session's
-ended_at timestamp and clears session and attack state. Returns the closed
-session's ID, or nil if no session was open.</p>
+<p>Closes the current session without acquiring the mutex; internal to record_locked and finish_session.</p>
+<p>Updates the session row's ended_at, queues the session id for callback
+notification, saves a snapshot of the creature cache for trailing-fact detection,
+and clears the attack window and chunk maps. Returns nil if no session was open.</p>
 
   </div>
 </div>
@@ -1143,7 +1431,7 @@ session's ID, or nil if no session was open.</p>
       
       
         &mdash;
-        <div class='inline'><p>timestamp for session end, defaults to Time.now</p></div>
+        <div class='inline'><p>session end timestamp (typically @last_event_at or Time.now)</p></div>
       
     </li>
   
@@ -1160,7 +1448,7 @@ session's ID, or nil if no session was open.</p>
       
       
         &mdash;
-        <div class='inline'><p>the closed session ID, or nil if no session was open</p></div>
+        <div class='inline'><p>the id of the session that was closed, or nil</p></div>
       
     </li>
   
@@ -1172,180 +1460,15 @@ session's ID, or nil if no session was open.</p>
       <pre class="lines">
 
 
-379
-380
-381
-382
-383
-384
-385
-386
-387</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 379</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
-
-  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UPDATE sessions SET ended_at = ? WHERE id = ?</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='id identifier rubyid_at'>at</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span><span class='comma'>,</span> <span class='ivar'>@session_id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_finished'>finished</span> <span class='op'>=</span> <span class='ivar'>@session_id</span>
-  <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='kw'>nil</span>
-  <span class='ivar'>@open_attack</span> <span class='op'>=</span> <span class='kw'>nil</span>
-  <span class='id identifier rubyid_finished'>finished</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="record-instance_method">
-  
-    #<strong>record</strong>(type, data)  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Errors are logged via Lich.log (if available) and never re-raised</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Record a combat event from the observer feed.</p>
-<p>Public entry point called by the named observer handler. Acquires the
-serialization mutex and dispatches to record_locked. Rescue catches and
-logs any error so a payload bug never crashes the processor.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>type</span>
-      
-      
-        <span class='type'>(<tt>Symbol</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>event type: :attack, :status, :stun, :roundtime,
-:spell_loss, or :ucs</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>data</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>event payload</p></div>
-      
-    </li>
-  
-</ul>
-
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-453
-454
-455</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 453</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
-  <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_record_locked'>record_locked</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="record_locked-instance_method">
-  
-    #<strong>record_locked</strong>(type, data)  &#x21d2; <tt>void</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Internal variant of record; does not acquire the mutex.</p>
-<p>Assumes the caller already holds the lock. If idle_timeout is set,
-checks for session expiry, auto-opens a new session if needed, and
-updates the last-event timestamp. Then dispatches by type to the
-appropriate handler (record_attack or record_status variants).
-Returns early if no session is open.</p>
-
-  </div>
-</div>
-<div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>type</span>
-      
-      
-        <span class='type'>(<tt>Symbol</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>event type: :attack, :status, :stun, :roundtime,
-:spell_loss, or :ucs</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>data</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>event payload</p></div>
-      
-    </li>
-  
-</ul>
-
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
+461
+462
+463
+464
+465
+466
+467
+468
+469
 470
 471
 472
@@ -1360,38 +1483,557 @@ Returns early if no session is open.</p>
 481
 482
 483
-484
-485
-486
-487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
-498</pre>
+484</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 470</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 461</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span><span class='lparen'>(</span><span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
+
+  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UPDATE sessions SET ended_at = ? WHERE id = ?</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='id identifier rubyid_at'>at</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span><span class='comma'>,</span> <span class='ivar'>@session_id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_finished'>finished</span> <span class='op'>=</span> <span class='ivar'>@session_id</span>
+  <span class='ivar'>@finished_sessions</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_finished'>finished</span>
+  <span class='ivar'>@finished_to_notify</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_finished'>finished</span>
+  <span class='comment'># Remember what the closed session fought. A death confirmed by the
+</span>  <span class='comment'># room feed can arrive after the idle gap has already closed the
+</span>  <span class='comment'># hunt, and that kill belongs to THIS session&#39;s creature rows - see
+</span>  <span class='comment'># trailing_fact? / reopen_closed_session_locked!.
+</span>  <span class='ivar'>@closed_session</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>id:</span> <span class='id identifier rubyid_finished'>finished</span><span class='comma'>,</span> <span class='label'>ended_at:</span> <span class='id identifier rubyid_at'>at</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span><span class='comma'>,</span> <span class='label'>cache:</span> <span class='lparen'>(</span><span class='ivar'>@creature_cache</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span> <span class='rbrace'>}</span>
+  <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@open_attack</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='comment'># A closed session&#39;s rows are not addressable by the next session&#39;s
+</span>  <span class='comment'># per-chunk uids. Leaving these populated let an event in the new
+</span>  <span class='comment'># session resolve a uid to the OLD session&#39;s attack row (real db:
+</span>  <span class='comment'># a status linked to the previous hunt&#39;s attack across an idle
+</span>  <span class='comment'># timeout).
+</span>  <span class='ivar'>@chunk_rows</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='ivar'>@chunk_flares</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='ivar'>@chunk_batch</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_finished'>finished</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="foreign_event?-instance_method">
+  
+    #<strong>foreign_event?</strong>(type, data)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>An event that is not ours: a nearby player's attack, a creature
+swinging at a third party, an orphan. Recorded for context inside
+a hunt, but it neither opens a session nor keeps one alive
+(2026-09-07: Tijay's cast in town opened &quot;session 2&quot; of a hunt
+that had ended).</p>
+<p>A non-attack event is a bare fact (:status/:stun/:roundtime/
+:spell_loss/:ucs) with no ownership flags of its own, so it cannot
+be judged on its own contents. It counts as ours when it is keyed
+to a creature THIS session already touched - see known_creature?.
+Blanket-treating every non-attack as foreign dropped the delayed
+room-feed death confirmation that sweep_death_watch exists to emit:
+a creature someone else finished minutes later reports <code>dead</code> as a
+bare :status long after our last swing, and with the session idled
+out that row (and the creature's killed_at) was lost outright.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+574
+575
+576
+577
+578</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 574</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_foreign_event?'>foreign_event?</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='op'>!</span><span class='id identifier rubyid_known_creature?'>known_creature?</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_type'>type</span> <span class='op'>==</span> <span class='symbol'>:attack</span>
+
+  <span class='op'>!</span><span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:foreign_caster</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:foreign_target</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:unowned</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:_orphan</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="known_creature?-instance_method">
+  
+    #<strong>known_creature?</strong>(data)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>True when this event is keyed to a creature we have already recorded
+against - in the open session, or in the one the idle gap just
+closed (@closed_session, so a lagged death confirmation still finds
+its own hunt). A bystander's fact about a creature we never fought
+matches neither and stays foreign, opening nothing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+585
+586
+587
+588
+589
+590
+591
+592
+593</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 585</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_known_creature?'>known_creature?</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_exist_id'>exist_id</span> <span class='op'>=</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_exist_id'>exist_id</span>
+
+  <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_exist_id'>exist_id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='ivar'>@creature_cache</span><span class='op'>&amp;.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='ivar'>@pending_cache</span><span class='op'>&amp;.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+
+  <span class='op'>!</span><span class='op'>!</span><span class='ivar'>@closed_session</span><span class='op'>&amp;.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='symbol'>:cache</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='rparen'>)</span><span class='op'>&amp;.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="notify_finished_sessions!-instance_method">
+  
+    #<strong>notify_finished_sessions!</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Fires session-finished callbacks for all pending sessions outside the mutex.</p>
+<p>Drains @finished_to_notify within the mutex, then invokes all registered
+callbacks (from #on_session_finished) with each session id. Runs after public
+methods (start_session, finish_session, check_idle!, close) return so callbacks
+never hold the recorder lock.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+443
+444
+445
+446
+447
+448
+449
+450</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 443</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_notify_finished_sessions!'>notify_finished_sessions!</span>
+  <span class='id identifier rubyid_ids'>ids</span> <span class='op'>=</span> <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_pending'>pending</span> <span class='op'>=</span> <span class='ivar'>@finished_to_notify</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+    <span class='ivar'>@finished_to_notify</span><span class='period'>.</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span>
+    <span class='id identifier rubyid_pending'>pending</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_ids'>ids</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='op'>|</span> <span class='ivar'>@session_finished_callbacks</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_cb'>cb</span><span class='op'>|</span> <span class='id identifier rubyid_cb'>cb</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="on_session_finished-instance_method">
+  
+    #<strong>on_session_finished</strong> {|session_id| ... } &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Session-finished hook. Fires for EVERY close path - the idle poll
+(check_idle!), the next event's own idle check inside record, and
+close - so a subscriber sees each hunt end without polling. A
+session the idle gap closed and a trailing death then re-opened
+closes again later and fires again with the same id; dedupe if
+that matters. Callbacks run outside the recorder's mutex.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Yield Parameters:</p>
+<ul class="yieldparam">
+  
+    <li>
+      
+        <span class='name'>session_id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+418
+419
+420
+421</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 418</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_on_session_finished'>on_session_finished</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid_blk'>blk</span><span class='rparen'>)</span>
+  <span class='ivar'>@session_finished_callbacks</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_blk'>blk</span>
+  <span class='kw'>self</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="record-instance_method">
+  
+    #<strong>record</strong>(type, data)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, ... 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Persist one observer event. Attack events return and publish a frozen
+post-commit receipt; other event types preserve their existing return.
+Receipt delivery is optional and cannot roll back committed data.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>observer event type</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>observer event payload</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Object</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>an attack receipt, or the existing result
+for non-attack events</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 547</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_record_locked'>record_locked</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_notify_finished_sessions!'>notify_finished_sessions!</span>
+  <span class='comment'># Receipts name committed rows, never pending writes. Emit outside the
+</span>  <span class='comment'># recorder lock so consumers may inspect the database without deadlock.
+</span>  <span class='comment'># This is evidence only, not command ownership or a combat-complete flag.
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_type'>type</span> <span class='op'>==</span> <span class='symbol'>:attack</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_result'>result</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:protocol</span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='const'><span class='object_link'><a href="#RECEIPT_PROTOCOL-constant" title="Lich::Gemstone::Combat::Recorder::RECEIPT_PROTOCOL (constant)">RECEIPT_PROTOCOL</a></span></span>
+    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/Events.html" title="Lich::Common::Events (module)">Events</a></span></span><span class='period'>.</span><span class='id identifier rubyid_emit'><span class='object_link'><a href="../../Common/Events.html#emit-class_method" title="Lich::Common::Events.emit (method)">emit</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>combat.recorded_attack</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_result'>result</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_result'>result</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="record_locked-instance_method">
+  
+    #<strong>record_locked</strong>(type, data)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, ... 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Persists one observer event without acquiring the mutex; internal to record().</p>
+<p>Dispatches to record_attack for :attack events, or to record_status for
+:status/:stun/:roundtime/:spell_loss/:ucs events. Manages auto-sessioning:
+judges ownership before idle close, reopens closed sessions for trailing facts,
+opens a new session on the first owned event, and updates @last_event_at only
+for owned non-trailing events.</p>
+<p>When idle_timeout is set, a nearby player's event, orphan, or bare fact about
+an unknown creature is foreign and neither opens nor keeps a session alive.
+A bare fact about a known creature is a trailing fact and does not extend the
+hunt's duration (ended_at stays at the last real attack).</p>
+<p>Wraps database operations in exception handling; errors log via Lich.log or warn.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>observer event type: :attack, :status, :stun, :roundtime, :spell_loss, or :ucs</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>data</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>observer event payload</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>Object</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the result of record_attack for attacks, or the existing result for other types</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 639</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_record_locked'>record_locked</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='ivar'>@idle_timeout</span>
     <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
-    <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='ivar'>@character</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='ivar'>@source</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
-    <span class='ivar'>@last_event_at</span> <span class='op'>=</span> <span class='id identifier rubyid_now'>now</span>
+    <span class='comment'># Judge ownership BEFORE the idle close: check_idle_locked! ends
+</span>    <span class='comment'># the session and start_session_locked wipes @creature_cache, so
+</span>    <span class='comment'># asking afterwards would call every delayed fact foreign.
+</span>    <span class='id identifier rubyid_ours'>ours</span> <span class='op'>=</span> <span class='op'>!</span><span class='id identifier rubyid_foreign_event?'>foreign_event?</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_trailing'>trailing</span> <span class='op'>=</span> <span class='id identifier rubyid_trailing_fact?'>trailing_fact?</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_ours'>ours</span><span class='rparen'>)</span>
+    <span class='comment'># A trailing fact holds the open session rather than letting the
+</span>    <span class='comment'># idle gap split it; if the gap already closed the hunt, re-open
+</span>    <span class='comment'># that same session instead of starting a new one.
+</span>    <span class='id identifier rubyid_check_idle_locked!'>check_idle_locked!</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_trailing'>trailing</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@session_id</span>
+    <span class='id identifier rubyid_reopen_closed_session_locked!'>reopen_closed_session_locked!</span> <span class='kw'>if</span> <span class='id identifier rubyid_trailing'>trailing</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@session_id</span>
+    <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='ivar'>@character</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='ivar'>@source</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_ours'>ours</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@session_id</span>
+    <span class='comment'># A trailing fact does not extend the hunt: ended_at stays at the
+</span>    <span class='comment'># last real attack, so town time never pads a session.
+</span>    <span class='ivar'>@last_event_at</span> <span class='op'>=</span> <span class='id identifier rubyid_now'>now</span> <span class='kw'>if</span> <span class='id identifier rubyid_ours'>ours</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_trailing'>trailing</span>
   <span class='kw'>end</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='ivar'>@session_id</span>
 
   <span class='kw'>case</span> <span class='id identifier rubyid_type'>type</span>
   <span class='kw'>when</span> <span class='symbol'>:attack</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_attack'>record_attack</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='kw'>when</span> <span class='symbol'>:status</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>status</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
-                                  <span class='label'>status:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:status</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='label'>action:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:action</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+                                  <span class='label'>status:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:status</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='label'>action:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:action</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span>
+                                  <span class='label'>flare_seq:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:flare_seq</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>attack_uid:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:attack_uid</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='kw'>when</span> <span class='symbol'>:stun</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stun</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
                                 <span class='label'>status:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stunned</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>action:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>add</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>value:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:rounds</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
   <span class='kw'>when</span> <span class='symbol'>:roundtime</span> <span class='kw'>then</span> <span class='id identifier rubyid_record_status'>record_status</span><span class='lparen'>(</span><span class='label'>kind:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>roundtime</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>id:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span>
@@ -1414,6 +2056,68 @@ Returns early if no session is open.</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="reopen_closed_session_locked!-instance_method">
+  
+    #<strong>reopen_closed_session_locked!</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Re-open the session the idle gap just closed so a trailing fact
+files against its rows. ended_at is left where finish_session_locked
+put it - the last real attack - and re-stamped on the next close, so
+a lagged death never pads the hunt's duration.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 606</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_reopen_closed_session_locked!'>reopen_closed_session_locked!</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@closed_session</span>
+
+  <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='ivar'>@closed_session</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>
+  <span class='comment'># Re-stamped by the next finish_session_locked, which closes at
+</span>  <span class='comment'># @last_event_at - untouched by a trailing fact, so ended_at comes
+</span>  <span class='comment'># back to the last real attack.
+</span>  <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_execute'>execute</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UPDATE sessions SET ended_at = NULL WHERE id = ?</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='ivar'>@session_id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='comment'># Restore the cache so the trailing fact resolves to the creature
+</span>  <span class='comment'># row the attack wrote, instead of inserting a duplicate.
+</span>  <span class='ivar'>@creature_cache</span> <span class='op'>=</span> <span class='ivar'>@closed_session</span><span class='lbracket'>[</span><span class='symbol'>:cache</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+  <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="start_session-instance_method">
   
     #<strong>start_session</strong>(character: nil, source: nil, at: Time.now)  &#x21d2; <tt>Integer</tt> 
@@ -1424,13 +2128,10 @@ Returns early if no session is open.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Open a new session, finishing any open session first.</p>
-<p>Acquires the serialization mutex; calls the internal _locked variant.
-Sessions record hunts bounded by a 5-minute gap without combat events
-(inbound or outbound). With idle_timeout set at initialization, the
-recorder opens lazily on the first event and closes once that gap elapses.
-For explicit control (e.g., replay), omit idle_timeout and call this and
-finish_session directly.</p>
+    <p>Starts a new session (hunt) with optional character and source metadata.</p>
+<p>Acquires the internal mutex before calling start_session_locked, ensuring
+thread-safe initialization when called concurrently with record().
+Closes any existing session first.</p>
 
   </div>
 </div>
@@ -1440,9 +2141,9 @@ finish_session directly.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Start a replay session</p></div></h5>
+        <h5 class="example_title"><div class='inline'><p>Start a session for explicit replay</p></div></h5>
       
-      <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/logs/hunt.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_at'>at</span><span class='lparen'>(</span><span class='int'>1000</span><span class='rparen'>)</span><span class='rparen'>)</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_rec'>rec</span><span class='period'>.</span><span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Nisugi</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>source:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/var/log/combat.txt</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_at'>at</span><span class='lparen'>(</span><span class='int'>1000</span><span class='rparen'>)</span><span class='rparen'>)</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -1460,7 +2161,7 @@ finish_session directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>character name, defaults to nil</p></div>
+        <div class='inline'><p>the player name; defaults to @character from initialize</p></div>
       
     </li>
   
@@ -1476,8 +2177,7 @@ finish_session directly.</p>
       
       
         &mdash;
-        <div class='inline'><p>origin description (&quot;live&quot;, log file path, etc.),
-defaults to nil</p></div>
+        <div class='inline'><p>replay log path or 'live'; defaults to @source from initialize</p></div>
       
     </li>
   
@@ -1493,7 +2193,7 @@ defaults to nil</p></div>
       
       
         &mdash;
-        <div class='inline'><p>timestamp for session start, defaults to Time.now</p></div>
+        <div class='inline'><p>session start time; defaults to Time.now</p></div>
       
     </li>
   
@@ -1510,7 +2210,7 @@ defaults to nil</p></div>
       
       
         &mdash;
-        <div class='inline'><p>the row ID of the newly created session</p></div>
+        <div class='inline'><p>the id of the newly created session</p></div>
       
     </li>
   
@@ -1522,12 +2222,12 @@ defaults to nil</p></div>
       <pre class="lines">
 
 
-327
-328
-329</pre>
+357
+358
+359</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 327</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 357</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start_session'>start_session</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
   <span class='ivar'>@mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='id identifier rubyid_character'>character</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='id identifier rubyid_source'>source</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='id identifier rubyid_at'>at</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -1552,10 +2252,9 @@ defaults to nil</p></div>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Internal variant of start_session; does not acquire the mutex.</p>
-<p>Assumes the caller already holds the lock. Closes any existing session,
-inserts a new session row, resets sequence counter and creature cache,
-and returns the new session ID.</p>
+<p>Opens a session without acquiring the mutex; internal to record_locked and start_session.</p>
+<p>Closes any currently open session, inserts a sessions row, and initializes
+the creature cache. Resets the attack sequence counter.</p>
 
   </div>
 </div>
@@ -1575,7 +2274,7 @@ and returns the new session ID.</p>
       
       
         &mdash;
-        <div class='inline'><p>character name</p></div>
+        <div class='inline'><p>the player name</p></div>
       
     </li>
   
@@ -1591,7 +2290,7 @@ and returns the new session ID.</p>
       
       
         &mdash;
-        <div class='inline'><p>origin description</p></div>
+        <div class='inline'><p>replay log path or event source identifier</p></div>
       
     </li>
   
@@ -1607,7 +2306,7 @@ and returns the new session ID.</p>
       
       
         &mdash;
-        <div class='inline'><p>timestamp for session start</p></div>
+        <div class='inline'><p>session start timestamp</p></div>
       
     </li>
   
@@ -1624,7 +2323,7 @@ and returns the new session ID.</p>
       
       
         &mdash;
-        <div class='inline'><p>the new session ID</p></div>
+        <div class='inline'><p>the id of the newly created session</p></div>
       
     </li>
   
@@ -1636,18 +2335,19 @@ and returns the new session ID.</p>
       <pre class="lines">
 
 
-355
-356
-357
-358
-359
-360
-361
-362
-363</pre>
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 355</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 393</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_start_session_locked'>start_session_locked</span><span class='lparen'>(</span><span class='label'>character:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>at:</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_finish_session_locked'>finish_session_locked</span> <span class='kw'>if</span> <span class='ivar'>@session_id</span>
@@ -1656,7 +2356,8 @@ and returns the new session ID.</p>
   <span class='ivar'>@session_id</span> <span class='op'>=</span> <span class='ivar'>@db</span><span class='period'>.</span><span class='id identifier rubyid_last_insert_row_id'>last_insert_row_id</span>
   <span class='ivar'>@seq</span> <span class='op'>=</span> <span class='int'>0</span>
   <span class='ivar'>@creature_cache</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
-  <span class='ivar'>@session_id</span>
+  <span class='ivar'>@closed_session</span> <span class='op'>=</span> <span class='kw'>nil</span> <span class='comment'># a new hunt: the previous one takes no more facts
+</span>  <span class='ivar'>@session_id</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1675,7 +2376,7 @@ and returns the new session ID.</p>
 </h3><div class="docstring">
   <div class="discussion">
     <p>Hook the live observer feed. Idempotent via the named-handler
-contract; per the Observers contract the callback stays cheap
+contract; per the Events subscriber contract the callback stays cheap
 (single WAL transaction) and never sends game commands.</p>
 
   </div>
@@ -1689,19 +2390,75 @@ contract; per the Observers contract the callback stays cheap
       <pre class="lines">
 
 
-392
-393
-394
-395
-396</pre>
+489
+490
+491
+492
+493
+494</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 392</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 489</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_subscribe!'>subscribe!</span>
-  <span class='id identifier rubyid_obs'>obs</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span>
-  <span class='id identifier rubyid_obs'>obs</span><span class='period'>.</span><span class='id identifier rubyid_on'>on</span><span class='lparen'>(</span><span class='symbol'>:attack</span><span class='comma'>,</span> <span class='symbol'>:status</span><span class='comma'>,</span> <span class='symbol'>:stun</span><span class='comma'>,</span> <span class='symbol'>:roundtime</span><span class='comma'>,</span> <span class='symbol'>:spell_loss</span><span class='comma'>,</span> <span class='symbol'>:ucs</span><span class='comma'>,</span>
-         <span class='label'>name:</span> <span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='op'>|</span> <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_topics'>topics</span> <span class='op'>=</span> <span class='qwords_beg'>%w[</span><span class='tstring_content'>attack</span><span class='words_sep'> </span><span class='tstring_content'>status</span><span class='words_sep'> </span><span class='tstring_content'>stun</span><span class='words_sep'> </span><span class='tstring_content'>roundtime</span><span class='words_sep'> </span><span class='tstring_content'>spell_loss</span><span class='words_sep'> </span><span class='tstring_content'>ucs</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_t'>t</span><span class='op'>|</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>combat.</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_t'>t</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/Events.html" title="Lich::Common::Events (module)">Events</a></span></span><span class='period'>.</span><span class='id identifier rubyid_on'><span class='object_link'><a href="../../Common/Events.html#on-class_method" title="Lich::Common::Events.on (method)">on</a></span></span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_topics'>topics</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_topic'>topic</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='op'>|</span>
+    <span class='id identifier rubyid_record'>record</span><span class='lparen'>(</span><span class='id identifier rubyid_topic'>topic</span><span class='period'>.</span><span class='id identifier rubyid_delete_prefix'>delete_prefix</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>combat.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="trailing_fact?-instance_method">
+  
+    #<strong>trailing_fact?</strong>(type, ours)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>A bare fact (not an :attack) about a creature we fought. It belongs
+to the hunt that fought it, so it must never open a fresh session:
+killed_at has to land on the creature row the attack already wrote.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+598
+599
+600</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 598</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_trailing_fact?'>trailing_fact?</span><span class='lparen'>(</span><span class='id identifier rubyid_type'>type</span><span class='comma'>,</span> <span class='id identifier rubyid_ours'>ours</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_ours'>ours</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_type'>type</span> <span class='op'>!=</span> <span class='symbol'>:attack</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1724,7 +2481,14 @@ the sqlite3 gem binds a binary string as a BLOB. Every noun, creature
 name, attacker and weapon was landing typed blob (real db 2026-09-07:
 creatures.noun blob=196, text=0), so <code>WHERE noun = 'berserker'</code> never
 matched and text functions saw bytes, not words. Re-tag as UTF-8 at
-the boundary; game text is ASCII/Latin-1 so scrub only guards junk.</p>
+the boundary; game text is ASCII/Latin-1 so scrub only guards junk.
+Whitespace is normalised here too. A creature revealed from hiding
+sometimes arrives with a space injected into BOTH attributes of its
+link - real line 2026-09-11: noun=&quot; rogue&quot; name=&quot;human  rogue&quot;, the
+same creature being plain &quot;rogue&quot;/&quot;human rogue&quot; on its other 34
+mentions. The game sends it; it is intermittent, and the reveal line
+is never trustworthy. Untouched, &quot; rogue&quot; is a noun distinct from
+&quot;rogue&quot; and the creature reports as its own kind forever.</p>
 
   </div>
 </div>
@@ -1737,21 +2501,25 @@ the boundary; game text is ASCII/Latin-1 so scrub only guards junk.</p>
       <pre class="lines">
 
 
-337
-338
-339
-340
-341
-342</pre>
+374
+375
+376
+377
+378
+379
+380
+381</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 337</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 374</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_txt'>txt</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
   <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
-  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_encoding'>encoding</span> <span class='op'>==</span> <span class='const'>Encoding</span><span class='op'>::</span><span class='const'>ASCII_8BIT</span> <span class='op'>?</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_force_encoding'>force_encoding</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UTF-8</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_scrub'>scrub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>?</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span>
+  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_force_encoding'>force_encoding</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>UTF-8</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_scrub'>scrub</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>?</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_encoding'>encoding</span> <span class='op'>==</span> <span class='const'>Encoding</span><span class='op'>::</span><span class='const'>ASCII_8BIT</span>
+  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_squeeze'>squeeze</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1769,9 +2537,11 @@ the boundary; game text is ASCII/Latin-1 so scrub only guards junk.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Unregister the named handler from the observer feed.</p>
-<p>Stops listening to :attack, :status, :stun, :roundtime, :spell_loss, :ucs
-events. Safe to call when not subscribed.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Unregisters the named combat event handler from the live observer feed.</p>
 
   </div>
 </div>
@@ -1784,15 +2554,15 @@ events. Safe to call when not subscribed.</p>
       <pre class="lines">
 
 
-404
-405
-406</pre>
+500
+501
+502</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 404</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/recorder.rb', line 500</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_unsubscribe!'>unsubscribe!</span>
-  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Combat.html" title="Lich::Gemstone::Combat (module)">Combat</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Observers.html" title="Lich::Gemstone::Combat::Observers (module)">Observers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_off'><span class='object_link'><a href="Observers.html#off-class_method" title="Lich::Gemstone::Combat::Observers.off (method)">off</a></span></span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common/Events.html" title="Lich::Common::Events (module)">Events</a></span></span><span class='period'>.</span><span class='id identifier rubyid_off'><span class='object_link'><a href="../../Common/Events.html#off-class_method" title="Lich::Common::Events.off (method)">off</a></span></span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#HANDLER_NAME-constant" title="Lich::Gemstone::Combat::Recorder::HANDLER_NAME (constant)">HANDLER_NAME</a></span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1804,7 +2574,7 @@ events. Safe to call when not subscribed.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:38 2026 by
+  Generated on Wed Oct 28 05:27:27 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

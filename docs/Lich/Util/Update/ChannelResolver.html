@@ -104,22 +104,16 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Resolves update channel names to git references.</p>
-<p>Determines the appropriate git ref (tag or branch) for stable and beta
-channels by querying GitHub releases and branches. Handles semantic
-versioning comparison to find the latest eligible beta.</p>
+    <p>Resolves update channel names to git references by querying GitHub releases and branches.</p>
+<p>Determines the appropriate git ref (tag or branch) for :stable and :beta channels.
+For stable, returns a constant ref. For beta, checks the environment variable
+LICH_BETA_REF first, then looks up the latest prerelease tag or prefixed branch
+that is greater than the current stable version.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../../Util.html" title="Lich::Util (module)">Lich::Util</a></span></li>
-    
-  </ul>
 
 </div>
 
@@ -139,7 +133,7 @@ versioning comparison to find the latest eligible beta.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(client)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(client)  &#x21d2; ChannelResolver </a>
     
 
     
@@ -155,7 +149,29 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new ChannelResolver instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>A new instance of ChannelResolver.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#last_error-instance_method" title="#last_error (instance method)">#<strong>last_error</strong>  &#x21d2; FetchError<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Why the most recent GitHub lookup failed, so a nil ref can be told apart from &quot;no beta exists&quot;.</p></div></span>
   
 </li>
 
@@ -177,7 +193,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Finds the latest branch with a specified prefix that is greater than the specified version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds latest branch matching prefix and greater than given version.</p></div></span>
   
 </li>
 
@@ -199,7 +215,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Finds the latest prerelease tag greater than the specified version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds latest prerelease tag greater than given version.</p></div></span>
   
 </li>
 
@@ -221,7 +237,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Fetches the latest stable tag from GitHub releases.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Fetches latest stable (non-prerelease) tag from GitHub.</p></div></span>
   
 </li>
 
@@ -229,7 +245,7 @@ versioning comparison to find the latest eligible beta.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#major_minor_from-instance_method" title="#major_minor_from (instance method)">#<strong>major_minor_from</strong>(str)  &#x21d2; Array&lt;Integer, Integer&gt; </a>
+      <a href="#major_minor_from-instance_method" title="#major_minor_from (instance method)">#<strong>major_minor_from</strong>(str)  &#x21d2; Array&lt;Integer, nil&gt; </a>
     
 
     
@@ -243,7 +259,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Extracts the major and minor version numbers from a version string.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Extracts major and minor version numbers from string.</p></div></span>
   
 </li>
 
@@ -251,7 +267,7 @@ versioning comparison to find the latest eligible beta.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#major_minor_patch_from-instance_method" title="#major_minor_patch_from (instance method)">#<strong>major_minor_patch_from</strong>(str)  &#x21d2; Array&lt;Integer, Integer, Integer&gt; </a>
+      <a href="#major_minor_patch_from-instance_method" title="#major_minor_patch_from (instance method)">#<strong>major_minor_patch_from</strong>(str)  &#x21d2; Array&lt;Integer, nil&gt; </a>
     
 
     
@@ -265,7 +281,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Extracts the major, minor, and patch version numbers from a version string.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Extracts major, minor, patch version numbers from string.</p></div></span>
   
 </li>
 
@@ -287,7 +303,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resolves the git reference for the specified channel.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Resolves channel symbol to git ref (tag or branch).</p></div></span>
   
 </li>
 
@@ -309,7 +325,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Generates a version key from a tag or branch name for comparison.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts version string to comparable Gem::Version.</p></div></span>
   
 </li>
 
@@ -324,7 +340,7 @@ versioning comparison to find the latest eligible beta.</p>
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(client)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(client)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::Util::Update::ChannelResolver (class)">ChannelResolver</a></span></tt> 
   
 
   
@@ -332,7 +348,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a new ChannelResolver instance.</p>
+    <p>Returns a new instance of ChannelResolver.</p>
 
   </div>
 </div>
@@ -345,12 +361,12 @@ versioning comparison to find the latest eligible beta.</p>
         <span class='name'>client</span>
       
       
-        <span class='type'>(<tt>Object</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="GitHubClient.html" title="Lich::Util::Update::GitHubClient (class)">GitHubClient</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the client used to fetch GitHub data</p></div>
+        <div class='inline'><p>GitHub API client instance</p></div>
       
     </li>
   
@@ -363,12 +379,12 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
+25
 26
-27
-28</pre>
+27</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 25</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_client'>client</span><span class='rparen'>)</span>
   <span class='ivar'>@client</span> <span class='op'>=</span> <span class='id identifier rubyid_client'>client</span>
@@ -386,7 +402,60 @@ versioning comparison to find the latest eligible beta.</p>
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="latest_prefixed_branch_greater_than-instance_method">
+  <h3 class="signature first" id="last_error-instance_method">
+  
+    #<strong>last_error</strong>  &#x21d2; <tt><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Why the most recent GitHub lookup failed, so a nil ref can be told
+apart from &quot;no beta exists&quot;.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="FetchError.html" title="Lich::Util::Update::FetchError (class)">FetchError</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+33
+34
+35</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 33</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_last_error'>last_error</span>
+  <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_last_error'>last_error</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="latest_prefixed_branch_greater_than-instance_method">
   
     #<strong>latest_prefixed_branch_greater_than</strong>(prefix, stable_major, stable_minor, stable_patch = 0)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
   
@@ -396,7 +465,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Finds the latest branch with a specified prefix that is greater than the specified version.</p>
+    <p>Finds latest branch matching prefix and greater than given version.</p>
 
   </div>
 </div>
@@ -414,7 +483,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the prefix to filter branches</p></div>
+        <div class='inline'><p>branch name prefix (e.g. 'pre/beta')</p></div>
       
     </li>
   
@@ -428,7 +497,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the major version of the stable release</p></div>
+        <div class='inline'><p>major version floor</p></div>
       
     </li>
   
@@ -442,7 +511,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the minor version of the stable release</p></div>
+        <div class='inline'><p>minor version floor</p></div>
       
     </li>
   
@@ -458,7 +527,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the patch version of the stable release</p></div>
+        <div class='inline'><p>patch version floor</p></div>
       
     </li>
   
@@ -475,7 +544,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the latest branch name or nil if not found</p></div>
+        <div class='inline'><p>branch name or nil</p></div>
       
     </li>
   
@@ -487,10 +556,6 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-106
-107
-108
-109
 110
 111
 112
@@ -509,10 +574,14 @@ versioning comparison to find the latest eligible beta.</p>
 125
 126
 127
-128</pre>
+128
+129
+130
+131
+132</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 106</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 110</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_latest_prefixed_branch_greater_than'>latest_prefixed_branch_greater_than</span><span class='lparen'>(</span><span class='id identifier rubyid_prefix'>prefix</span><span class='comma'>,</span> <span class='id identifier rubyid_stable_major'>stable_major</span><span class='comma'>,</span> <span class='id identifier rubyid_stable_minor'>stable_minor</span><span class='comma'>,</span> <span class='id identifier rubyid_stable_patch'>stable_patch</span> <span class='op'>=</span> <span class='int'>0</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_branches'>branches</span> <span class='op'>=</span> <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Update.html#GITHUB_REPO-constant" title="Lich::Util::Update::GITHUB_REPO (constant)">GITHUB_REPO</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>/branches?per_page=100</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -553,7 +622,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Finds the latest prerelease tag greater than the specified version.</p>
+    <p>Finds latest prerelease tag greater than given version.</p>
 
   </div>
 </div>
@@ -571,7 +640,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the major version of the stable release</p></div>
+        <div class='inline'><p>major version floor</p></div>
       
     </li>
   
@@ -585,7 +654,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the minor version of the stable release</p></div>
+        <div class='inline'><p>minor version floor</p></div>
       
     </li>
   
@@ -601,7 +670,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the patch version of the stable release</p></div>
+        <div class='inline'><p>patch version floor</p></div>
       
     </li>
   
@@ -618,7 +687,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the latest prerelease tag or nil if not found</p></div>
+        <div class='inline'><p>tag name (without 'v' prefix) or nil</p></div>
       
     </li>
   
@@ -630,10 +699,6 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-78
-79
-80
-81
 82
 83
 84
@@ -649,10 +714,14 @@ versioning comparison to find the latest eligible beta.</p>
 94
 95
 96
-97</pre>
+97
+98
+99
+100
+101</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 78</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 82</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_latest_prerelease_tag_greater_than'>latest_prerelease_tag_greater_than</span><span class='lparen'>(</span><span class='id identifier rubyid_stable_major'>stable_major</span><span class='comma'>,</span> <span class='id identifier rubyid_stable_minor'>stable_minor</span><span class='comma'>,</span> <span class='id identifier rubyid_stable_patch'>stable_patch</span> <span class='op'>=</span> <span class='int'>0</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_releases'>releases</span> <span class='op'>=</span> <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Update.html#GITHUB_REPO-constant" title="Lich::Util::Update::GITHUB_REPO (constant)">GITHUB_REPO</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>/releases</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -690,7 +759,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Fetches the latest stable tag from GitHub releases.</p>
+    <p>Fetches latest stable (non-prerelease) tag from GitHub.</p>
 
   </div>
 </div>
@@ -707,7 +776,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the latest stable tag or nil if not found</p></div>
+        <div class='inline'><p>tag name or nil</p></div>
       
     </li>
   
@@ -719,16 +788,16 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-64
-65
-66
-67
 68
 69
-70</pre>
+70
+71
+72
+73
+74</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 68</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_latest_stable_tag'>latest_stable_tag</span>
   <span class='id identifier rubyid_releases'>releases</span> <span class='op'>=</span> <span class='ivar'>@client</span><span class='period'>.</span><span class='id identifier rubyid_fetch_github_json'>fetch_github_json</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>https://api.github.com/repos/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Update.html#GITHUB_REPO-constant" title="Lich::Util::Update::GITHUB_REPO (constant)">GITHUB_REPO</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>/releases</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -745,7 +814,7 @@ versioning comparison to find the latest eligible beta.</p>
       <div class="method_details ">
   <h3 class="signature " id="major_minor_from-instance_method">
   
-    #<strong>major_minor_from</strong>(str)  &#x21d2; <tt>Array&lt;Integer, Integer&gt;</tt> 
+    #<strong>major_minor_from</strong>(str)  &#x21d2; <tt>Array&lt;Integer, nil&gt;</tt> 
   
 
   
@@ -753,7 +822,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Extracts the major and minor version numbers from a version string.</p>
+    <p>Extracts major and minor version numbers from string.</p>
 
   </div>
 </div>
@@ -766,12 +835,12 @@ versioning comparison to find the latest eligible beta.</p>
         <span class='name'>str</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the version string to parse</p></div>
+        <div class='inline'><p>version string</p></div>
       
     </li>
   
@@ -783,12 +852,12 @@ versioning comparison to find the latest eligible beta.</p>
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;Integer, Integer&gt;</tt>)</span>
+        <span class='type'>(<tt>Array&lt;Integer, nil&gt;</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array containing major and minor version numbers</p></div>
+        <div class='inline'><p>[major, minor]</p></div>
       
     </li>
   
@@ -800,13 +869,13 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-164
-165
-166
-167</pre>
+168
+169
+170
+171</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 164</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_major_minor_from'>major_minor_from</span><span class='lparen'>(</span><span class='id identifier rubyid_str'>str</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_maj'>maj</span><span class='comma'>,</span> <span class='id identifier rubyid_min'>min</span><span class='comma'>,</span> <span class='id identifier rubyid__patch'>_patch</span> <span class='op'>=</span> <span class='id identifier rubyid_major_minor_patch_from'>major_minor_patch_from</span><span class='lparen'>(</span><span class='id identifier rubyid_str'>str</span><span class='rparen'>)</span>
@@ -820,7 +889,7 @@ versioning comparison to find the latest eligible beta.</p>
       <div class="method_details ">
   <h3 class="signature " id="major_minor_patch_from-instance_method">
   
-    #<strong>major_minor_patch_from</strong>(str)  &#x21d2; <tt>Array&lt;Integer, Integer, Integer&gt;</tt> 
+    #<strong>major_minor_patch_from</strong>(str)  &#x21d2; <tt>Array&lt;Integer, nil&gt;</tt> 
   
 
   
@@ -828,7 +897,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Extracts the major, minor, and patch version numbers from a version string.</p>
+    <p>Extracts major, minor, patch version numbers from string.</p>
 
   </div>
 </div>
@@ -841,12 +910,12 @@ versioning comparison to find the latest eligible beta.</p>
         <span class='name'>str</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the version string to parse</p></div>
+        <div class='inline'><p>version string</p></div>
       
     </li>
   
@@ -858,12 +927,12 @@ versioning comparison to find the latest eligible beta.</p>
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;Integer, Integer, Integer&gt;</tt>)</span>
+        <span class='type'>(<tt>Array&lt;Integer, nil&gt;</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array containing major, minor, and patch version numbers</p></div>
+        <div class='inline'><p>[major, minor, patch] or [nil, nil, nil]</p></div>
       
     </li>
   
@@ -875,10 +944,6 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-147
-148
-149
-150
 151
 152
 153
@@ -886,10 +951,14 @@ versioning comparison to find the latest eligible beta.</p>
 155
 156
 157
-158</pre>
+158
+159
+160
+161
+162</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 147</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 151</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_major_minor_patch_from'>major_minor_patch_from</span><span class='lparen'>(</span><span class='id identifier rubyid_str'>str</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='lbracket'>[</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_str'>str</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -919,27 +988,12 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Resolves the git reference for the specified channel.</p>
+    <p>Resolves channel symbol to git ref (tag or branch).</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Resolve stable channel</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_resolver'>resolver</span><span class='period'>.</span><span class='id identifier rubyid_resolve_channel_ref'>resolve_channel_ref</span><span class='lparen'>(</span><span class='symbol'>:stable</span><span class='rparen'>)</span></code></pre>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Resolve beta channel</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_resolver'>resolver</span><span class='period'>.</span><span class='id identifier rubyid_resolve_channel_ref'>resolve_channel_ref</span><span class='lparen'>(</span><span class='symbol'>:beta</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -952,7 +1006,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the channel to resolve (e.g., :stable, :beta)</p></div>
+        <div class='inline'><p>:stable, :beta, or 'production'</p></div>
       
     </li>
   
@@ -969,7 +1023,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the resolved git reference or nil if not found</p></div>
+        <div class='inline'><p>git ref or nil</p></div>
       
     </li>
   
@@ -981,9 +1035,6 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-38
-39
-40
 41
 42
 43
@@ -1003,10 +1054,13 @@ versioning comparison to find the latest eligible beta.</p>
 57
 58
 59
-60</pre>
+60
+61
+62
+63</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 38</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 41</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_resolve_channel_ref'>resolve_channel_ref</span><span class='lparen'>(</span><span class='id identifier rubyid_channel'>channel</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_channel'>channel</span>
@@ -1047,7 +1101,7 @@ versioning comparison to find the latest eligible beta.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Generates a version key from a tag or branch name for comparison.</p>
+    <p>Converts version string to comparable Gem::Version.</p>
 
   </div>
 </div>
@@ -1065,7 +1119,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the tag or branch name to generate a version key from</p></div>
+        <div class='inline'><p>version string or tag name</p></div>
       
     </li>
   
@@ -1082,7 +1136,7 @@ versioning comparison to find the latest eligible beta.</p>
       
       
         &mdash;
-        <div class='inline'><p>the version key</p></div>
+        <div class='inline'><p>comparable version object</p></div>
       
     </li>
   
@@ -1094,17 +1148,17 @@ versioning comparison to find the latest eligible beta.</p>
       <pre class="lines">
 
 
-134
-135
-136
-137
 138
 139
 140
-141</pre>
+141
+142
+143
+144
+145</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 134</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/channel_resolver.rb', line 138</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_version_key'>version_key</span><span class='lparen'>(</span><span class='id identifier rubyid_tag_or_name'>tag_or_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_s'><span class='object_link'><a href="../../../top-level-namespace.html#s-instance_method" title="#s (method)">s</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_tag_or_name'>tag_or_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^v</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -1124,7 +1178,7 @@ versioning comparison to find the latest eligible beta.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:40 2026 by
+  Generated on Wed Oct 28 05:27:29 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Common::Move
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Common::Move";
+  relpath = '../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../_index.html">Index (M)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span>
+     &raquo; 
+    <span class="title">Move</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Common::Move
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/common/move.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>The movement primitive. Scripts call the top-level <code>move</code> shim in
+lib/global_defs.rb; the implementation is <span class='object_link'><a href="#move-class_method" title="Lich::Common::Move.move (method)">Move.move</a></span> here, along with
+the retry budgets that keep its &quot;fix the obstacle and re-send&quot; branches
+from looping forever, and a record of why the last move failed that
+callers can act on without re-parsing game text.</p>
+<p>move's return value is tri-state: true (moved),
+false (the exit is wrong - callers may drop it from the map), nil
+(blocked for now - keep the exit). What is new is <span class='object_link'><a href="#last_failure-class_method" title="Lich::Common::Move.last_failure (method)">Move.last_failure</a></span>: after
+a false or nil return it names the direction sent, the game line that
+ended the attempt, and a small <code>cause</code> symbol chosen from <span class='object_link'><a href="#CAUSES-constant" title="Lich::Common::Move::CAUSES (constant)">CAUSES</a></span> so a
+supervising script can switch on it instead of matching text:</p>
+<pre class="code ruby"><code class="ruby">:injured     too wounded to do it (agony, too injured to climb, a
+           stand that keeps failing with limb wounds)
+:encumbered  a stand that keeps failing while overburdened
+:engaged     in combat and cannot leave
+:position    not standing and could not get up
+:hidden      must be visible to go that way
+:hands       needs empty hands
+:closed      a door or gate that would not open
+:map         the game does not know this exit from here (bad wayto,
+           or the character is not where the map thinks)
+:denied      an NPC or rule refused entry (guards, tickets, guild)
+:climb       the climb kept failing (skill roll; not a wound)
+:swim        the swim kept failing
+:drag        the body being dragged would not come
+:roundtime   still waiting on roundtime when we gave up
+:unknown     none of the above - read +line+
+</code></pre>
+<p>The record is per thread: scripts run on their own threads and several
+may be moving one character at once (go2 and a follower, say), so a
+single shared slot could be overwritten between a script's move
+returning and its read of <span class='object_link'><a href="#last_failure-class_method" title="Lich::Common::Move.last_failure (method)">Move.last_failure</a></span>. Read it from the thread that
+called move.</p>
+<p>When Lich::Common::Events is present the same record is emitted as
+'move.failed', payload the frozen Failure, so a supervisor can hear it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span>
+    
+  
+</p>
+
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="MAX_REMEDIES-constant" class="">MAX_REMEDIES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>A remedy that should work first time (stand, unhide, empty hands,
+retreat, open, stow) is retried this many times before move gives
+up. Past this, the remedy is not working and no number of repeats
+will change that.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>3</span></pre></dd>
+      
+        <dt id="MAX_ROLLS-constant" class="">MAX_ROLLS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>A skill roll (climb, swim) legitimately fails several times before
+succeeding, so it gets a much longer leash. Past this it is either
+an unpassable exit for this character or the character is stuck.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>20</span></pre></dd>
+      
+        <dt id="CAUSES-constant" class="">CAUSES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Ordered: the first pattern to match a line wins, so the specific
+causes sit above the broad &quot;You can't&quot; ones. Every pattern is text
+move itself already matches, or a line captured in play; nothing is
+invented here.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='lbracket'>[</span><span class='symbol'>:injured</span><span class='comma'>,</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>far too much agony|too injured to be doing</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:encumbered</span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>overburdened</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:engaged</span><span class='comma'>,</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>engaged|retreat out of combat|while in combat|next to impossible while in combat</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:hidden</span><span class='comma'>,</span>     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>remain hidden or invisible|can&#39;t be seen|without being seen|no one can see you|can&#39;t see you</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:hands</span><span class='comma'>,</span>      <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>hands were empty|hands full|both hands (?:free|might help)|empty hands</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:position</span><span class='comma'>,</span>   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>stand(?:ing)? ?(?:up )?first|must be standing|while (?:sitting|lying down)|from that position|already sitting|should stand up|standing up might help|get up first</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:closed</span><span class='comma'>,</span>     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:appears|seems) to be closed|squeeze between the stone doors</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:swim</span><span class='comma'>,</span>       <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>attempt to swim|begin to sink|paddle back to safety|around in the water|swift current|failure to swim|current catches you</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:drag</span><span class='comma'>,</span>       <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>try to drag</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:denied</span><span class='comma'>,</span>     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>may not pass|unseen force prevents|aren&#39;t allowed to enter|only performers|see your ticket|registered groups|reputation precedes|&quot;Abandoned\.&quot;|leave promptly|open to invitees|unable to follow you|check in</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:map</span><span class='comma'>,</span>        <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>can&#39;t go there|can&#39;t (?:go|swim) in that direction|could not find what you were referring|what were you referring|where are you trying to go|plan to do that here|can&#39;t go to|become impassable|too far away|too far above</span><span class='regexp_end'>/i</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
+  <span class='lbracket'>[</span><span class='symbol'>:roundtime</span><span class='comma'>,</span>  <span class='const'><span class='object_link'><a href="../Common.html#WAIT_RESPONSE_PATTERN-constant" title="Lich::Common::WAIT_RESPONSE_PATTERN (constant)">WAIT_RESPONSE_PATTERN</a></span></span><span class='rbracket'>]</span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="LAST_FAILURE_KEY-constant" class="">LAST_FAILURE_KEY =
+          
+        </dt>
+        <dd><pre class="code"><span class='symbol'>:lich_move_last_failure</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#classify-class_method" title="classify (class method)">.<strong>classify</strong>(line)  &#x21d2; Symbol </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>One of the CAUSES keys, or :unknown.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clear_failure-class_method" title="clear_failure (class method)">.<strong>clear_failure</strong>  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Forget the last failure (move calls this on success).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#last_failure-class_method" title="last_failure (class method)">.<strong>last_failure</strong>  &#x21d2; Failure<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The most recent failed move on this thread, or nil after a successful one.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#move-class_method" title="move (class method)">.<strong>move</strong>(dir = &#39;none&#39;, giveup_seconds = 10, giveup_lines = 30)  &#x21d2; true, ... </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The movement primitive behind the top-level <code>move</code>.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record_failure-class_method" title="record_failure (class method)">.<strong>record_failure</strong>(dir, line, cause: nil, attempts: 1)  &#x21d2; Failure </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Record (and announce) a failed move.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#roll_cause-class_method" title="roll_cause (class method)">.<strong>roll_cause</strong>(line)  &#x21d2; Symbol </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The cause for a line from the shared skill-roll branch: swim, drag and guard lines are named for what they are; anything else there is a climb.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stand_failure_cause-class_method" title="stand_failure_cause (class method)">.<strong>stand_failure_cause</strong>  &#x21d2; Symbol </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Why did a stand keep failing? &quot;You struggle, but fail to stand&quot; is the same text for a heavy pack and for leg wounds, so look at the character rather than the line.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="classify-class_method">
+  
+    .<strong>classify</strong>(line)  &#x21d2; <tt>Symbol</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns one of the CAUSES keys, or :unknown.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one of the CAUSES keys, or :unknown</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+100
+101
+102
+103
+104
+105</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 100</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_classify'>classify</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='symbol'>:unknown</span> <span class='kw'>if</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='const'><span class='object_link'><a href="#CAUSES-constant" title="Lich::Common::Move::CAUSES (constant)">CAUSES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_cause'>cause</span><span class='comma'>,</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span> <span class='kw'>return</span> <span class='id identifier rubyid_cause'>cause</span> <span class='kw'>if</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='id identifier rubyid_pattern'>pattern</span> <span class='rbrace'>}</span>
+  <span class='symbol'>:unknown</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clear_failure-class_method">
+  
+    .<strong>clear_failure</strong>  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Forget the last failure (move calls this on success).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+156
+157
+158</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 156</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_clear_failure'>clear_failure</span>
+  <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="#LAST_FAILURE_KEY-constant" title="Lich::Common::Move::LAST_FAILURE_KEY (constant)">LAST_FAILURE_KEY</a></span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="last_failure-class_method">
+  
+    .<strong>last_failure</strong>  &#x21d2; <tt><span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The most recent failed move on this thread, or nil after a
+successful one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+94
+95
+96</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 94</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_last_failure'>last_failure</span>
+  <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="#LAST_FAILURE_KEY-constant" title="Lich::Common::Move::LAST_FAILURE_KEY (constant)">LAST_FAILURE_KEY</a></span></span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="move-class_method">
+  
+    .<strong>move</strong>(dir = &#39;none&#39;, giveup_seconds = 10, giveup_lines = 30)  &#x21d2; <tt>true</tt>, ... 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The movement primitive behind the top-level <code>move</code>. Sends <code>dir</code>
+and reads the stream until the room changes, a known failure line
+arrives, or nothing recognizable comes back for <code>giveup_seconds</code> /
+<code>giveup_lines</code>. Every &quot;fix the obstacle and re-send&quot; branch has a
+budget (<span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span> or <span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span>) so a remedy that is not
+working cannot keep this loop alive forever.</p>
+<p>Relies on the script-context primitives (get?, put, fput, waitrt?,
+wait_while, standing?, ...) that lib/global_defs.rb defines at top
+level, so it must run on a script thread like its callers always have.
+Needs the bounded fput (max_resends:, failures: :symbol); on an fput
+without those options the stand remedy would recurse without limit.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>dir</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>&#39;none&#39;</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the exit as the map spells it ('north', 'go door')</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>giveup_seconds</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>10</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>quiet time before giving up</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>giveup_lines</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>30</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>unrecognized lines before giving up</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>true</tt>, <tt>false</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true moved; false this exit is wrong
+(callers may drop it from the map); nil blocked for now (keep the
+exit). After false/nil, <span class='object_link'><a href="#last_failure-class_method" title="Lich::Common::Move.last_failure (method)">last_failure</a></span> says why.</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 179</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_move'><span class='object_link'><a href="../../top-level-namespace.html#move-instance_method" title="#move (method)">move</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>none</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_giveup_seconds'>giveup_seconds</span> <span class='op'>=</span> <span class='int'>10</span><span class='comma'>,</span> <span class='id identifier rubyid_giveup_lines'>giveup_lines</span> <span class='op'>=</span> <span class='int'>30</span><span class='rparen'>)</span>
+  <span class='comment'># [LNet]-[Private]-Casis: &quot;You begin to make your way up the steep headland pathway.  Before traveling very far, however, you lose your footing on the loose stones.  You struggle in vain to maintain your balance, then find yourself falling to the bay below!&quot;  (20:35:36)
+</span>  <span class='comment'># [LNet]-[Private]-Casis: &quot;You smack into the water with a splash and sink far below the surface.&quot;  (20:35:50)
+</span>  <span class='comment'># You approach the entrance and identify yourself to the guard.  The guard checks over a long scroll of names and says, &quot;I&#39;m sorry, the Guild is open to invitees only.  Please do return at a later date when we will be open to the public.&quot;
+</span>  <span class='comment'>#
+</span>  <span class='kw'>if</span> <span class='id identifier rubyid_dir'>dir</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>none</span><span class='tstring_end'>&#39;</span></span>
+    <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>move: no direction given</span><span class='tstring_end'>&#39;</span></span>
+    <span class='kw'>return</span> <span class='kw'>false</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># Own the string: several branches rewrite it (climb&lt;-&gt;go, door numbering),
+</span>  <span class='comment'># and the argument is often a wayto string straight from the map database.
+</span>  <span class='id identifier rubyid_dir'>dir</span> <span class='op'>=</span> <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+  <span class='id identifier rubyid_need_full_hands'>need_full_hands</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_tried_open'>tried_open</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_tried_fix_drag'>tried_fix_drag</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='id identifier rubyid_line_count'>line_count</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_room_count'>room_count</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span>
+  <span class='id identifier rubyid_giveup_time'>giveup_time</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>+</span> <span class='id identifier rubyid_giveup_seconds'>giveup_seconds</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+  <span class='id identifier rubyid_save_stream'>save_stream</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+  <span class='id identifier rubyid_sends'>sends</span> <span class='op'>=</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_remedies'>remedies</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>0</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_last_line'>last_line</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_remedy_replies'>remedy_replies</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='comment'># what the game said to each kind of remedy
+</span>  <span class='id identifier rubyid_current_kind'>current_kind</span> <span class='op'>=</span> <span class='kw'>nil</span>
+
+  <span class='comment'># Every exit goes through here: restore hands and the buffer, record the
+</span>  <span class='comment'># failure (with its cause) unless we moved, return the tri-state value.
+</span>  <span class='id identifier rubyid_finish'>finish</span> <span class='op'>=</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='id identifier rubyid_cause'>cause</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='op'>|</span>
+    <span class='id identifier rubyid_fill_hands'><span class='object_link'><a href="../../top-level-namespace.html#fill_hands-instance_method" title="#fill_hands (method)">fill_hands</a></span></span> <span class='kw'>if</span> <span class='id identifier rubyid_need_full_hands'>need_full_hands</span>
+    <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_current'><span class='object_link'><a href="Script.html#current-class_method" title="Lich::Common::Script.current (method)">current</a></span></span><span class='period'>.</span><span class='id identifier rubyid_downstream_buffer'><span class='object_link'><a href="Script.html#downstream_buffer-instance_method" title="Lich::Common::Script#downstream_buffer (method)">downstream_buffer</a></span></span><span class='period'>.</span><span class='id identifier rubyid_unshift'>unshift</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_save_stream'>save_stream</span><span class='period'>.</span><span class='id identifier rubyid_flatten'>flatten</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span>
+      <span class='id identifier rubyid_clear_failure'>clear_failure</span>
+    <span class='kw'>else</span>
+      <span class='id identifier rubyid_record_failure'>record_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_last_line'>last_line</span><span class='comma'>,</span> <span class='label'>cause:</span> <span class='id identifier rubyid_cause'>cause</span><span class='comma'>,</span> <span class='label'>attempts:</span> <span class='id identifier rubyid_sends'>sends</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_value'>value</span>
+  <span class='rbrace'>}</span>
+
+  <span class='id identifier rubyid_put_dir'>put_dir</span> <span class='op'>=</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span>
+    <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_room_count'>room_count</span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+    <span class='id identifier rubyid_wait_while'><span class='object_link'><a href="../../top-level-namespace.html#wait_while-instance_method" title="#wait_while (method)">wait_while</a></span></span> <span class='lbrace'>{</span> <span class='id identifier rubyid_stunned?'>stunned?</span> <span class='rbrace'>}</span>
+    <span class='id identifier rubyid_giveup_time'>giveup_time</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>+</span> <span class='id identifier rubyid_giveup_seconds'>giveup_seconds</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='id identifier rubyid_line_count'>line_count</span> <span class='op'>=</span> <span class='int'>0</span>
+    <span class='id identifier rubyid_save_stream'>save_stream</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_sends'>sends</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='id identifier rubyid_put'><span class='object_link'><a href="../../top-level-namespace.html#put-instance_method" title="#put (method)">put</a></span></span> <span class='id identifier rubyid_dir'>dir</span>
+  <span class='rbrace'>}</span>
+
+  <span class='comment'># Send one remedy command (stand, unhide, retreat, ...) through the
+</span>  <span class='comment'># bounded fput: one refusal-driven resend (a &quot;...wait N&quot;, or the
+</span>  <span class='comment'># in-frame stand fput does on &quot;You struggle, but fail to stand.&quot;),
+</span>  <span class='comment'># then a failure symbol instead of the unbounded ladder the old fput
+</span>  <span class='comment'># ran, which is what kept the stand loop alive. The reply string is
+</span>  <span class='comment'># kept per remedy kind so an exhausted remedy can report what the
+</span>  <span class='comment'># game actually said to it. Inside a remedy block the kind is the
+</span>  <span class='comment'># remedy&#39;s own; the one-shot fixes (drag, open, trap) name theirs so
+</span>  <span class='comment'># their reply cannot land on whichever remedy ran last.
+</span>  <span class='id identifier rubyid_command'>command</span> <span class='op'>=</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_cmd'>cmd</span><span class='comma'>,</span> <span class='id identifier rubyid_kind'>kind</span> <span class='op'>=</span> <span class='id identifier rubyid_current_kind'>current_kind</span><span class='op'>|</span>
+    <span class='id identifier rubyid_reply'>reply</span> <span class='op'>=</span> <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_cmd'>cmd</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='int'>3</span><span class='comma'>,</span> <span class='label'>max_resends:</span> <span class='int'>1</span><span class='comma'>,</span> <span class='label'>failures:</span> <span class='symbol'>:symbol</span><span class='rparen'>)</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_reply'>reply</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_remedy_replies'>remedy_replies</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_reply'>reply</span>
+      <span class='id identifier rubyid_last_line'>last_line</span> <span class='op'>=</span> <span class='id identifier rubyid_reply'>reply</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_reply'>reply</span>
+  <span class='rbrace'>}</span>
+
+  <span class='comment'># Apply a remedy and re-send, unless this remedy has already been tried
+</span>  <span class='comment'># +budget+ times without the move succeeding - then give up with +cause+.
+</span>  <span class='comment'># nil (keep the exit): the obstacle is about the character, not the map.
+</span>  <span class='id identifier rubyid_remedy'>remedy</span> <span class='op'>=</span> <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_kind'>kind</span><span class='comma'>,</span> <span class='id identifier rubyid_budget'>budget</span><span class='comma'>,</span> <span class='id identifier rubyid_cause'>cause</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_fix'>fix</span><span class='op'>|</span>
+    <span class='id identifier rubyid_remedies'>remedies</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span> <span class='op'>+=</span> <span class='int'>1</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_remedies'>remedies</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_budget'>budget</span>
+      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>move: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_kind'>kind</span><span class='embexpr_end'>}</span><span class='tstring_content'> did not help after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_budget'>budget</span><span class='embexpr_end'>}</span><span class='tstring_content'> tries.  giving up.</span><span class='tstring_end'>&quot;</span></span>
+      <span class='comment'># what the game said to THIS remedy (&quot;You are overburdened and
+</span>      <span class='comment'># cannot manage to stand.&quot;) explains more than the move&#39;s own
+</span>      <span class='comment'># refusal; a reply to some other remedy that later succeeded
+</span>      <span class='comment'># must not be mistaken for it
+</span>      <span class='id identifier rubyid_last_line'>last_line</span> <span class='op'>=</span> <span class='id identifier rubyid_remedy_replies'>remedy_replies</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_remedy_replies'>remedy_replies</span><span class='lbracket'>[</span><span class='id identifier rubyid_kind'>kind</span><span class='rbracket'>]</span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_cause'>cause</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_current_kind'>current_kind</span> <span class='op'>=</span> <span class='id identifier rubyid_kind'>kind</span>
+    <span class='id identifier rubyid_fix'>fix</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+    <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+  <span class='rbrace'>}</span>
+
+  <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+
+  <span class='id identifier rubyid_loop'>loop</span> <span class='lbrace'>{</span>
+    <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_get?'><span class='object_link'><a href="../../top-level-namespace.html#get%3F-instance_method" title="#get? (method)">get?</a></span></span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='id identifier rubyid_save_stream'>save_stream</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_line_count'>line_count</span> <span class='op'>+=</span> <span class='int'>1</span>
+      <span class='id identifier rubyid_last_line'>last_line</span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span>
+    <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+      <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='float'>0.1</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You realize that would be next to impossible while in combat.|^You can&#39;t do that while engaged!|^You are engaged to |^You need to retreat out of combat first!|^You try to move, but you&#39;re engaged|^While in combat\?  You&#39;ll have better luck if you first retreat</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># DragonRealms
+</span>      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:retreat</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:engaged</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>retreat</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>retreat</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You can&#39;t enter .+ and remain hidden or invisible\.|if he can&#39;t see you!$|^You can&#39;t enter .+ when you can&#39;t be seen\.$|^You can&#39;t do that without being seen\.$|^How do you intend to get .*? attention\?  After all, no one can see you right now\.$</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:unhide</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:hidden</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>unhide</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You (?:take a few steps toward|trudge up to|limp towards|march up to|sashay gracefully up to|skip happily towards|sneak up to|stumble toward) a rusty doorknob</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='kw'>and</span> <span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>door</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_which'>which</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>first</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>second</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>third</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>fourth</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>fifth</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sixth</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>seventh</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>eight</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>ninth</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>tenth</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>eleventh</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>twelfth</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:door</span><span class='comma'>,</span> <span class='id identifier rubyid_which'>which</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span><span class='comma'>,</span> <span class='symbol'>:map</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='kw'>if</span> <span class='id identifier rubyid_dir'>dir</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_which'>which</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>|</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>\b</span><span class='regexp_end'>/</span></span>
+          <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_sub!'>sub!</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\b(</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_which'>which</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>|</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>)\b</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_which'>which</span><span class='lbracket'>[</span><span class='id identifier rubyid_which'>which</span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='backref'>$1</span><span class='rparen'>)</span> <span class='op'>+</span> <span class='int'>1</span><span class='rbracket'>]</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
+        <span class='kw'>else</span>
+          <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_sub!'>sub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>door</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>second door</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+        <span class='kw'>end</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You can&#39;t go there|^You can&#39;t (?:go|swim) in that direction\.|^Where are you trying to go\?|^What were you referring to\?|^I could not find what you were referring to\.|^How do you plan to do that here\?|^You take a few steps towards|^You cannot do that\.|^You settle yourself on|^You shouldn&#39;t annoy|^You can&#39;t go to|^That&#39;s probably not a very good idea|^Maybe you should look|^You are already(?! as far away as you can get)|^You walk over to|^You step over to|The [\w\s]+ is too far away|You may not pass\.|become impassable\.|prevents you from entering\.|Please leave promptly\.|is too far above you to attempt that\.$|^Uh, yeah\.  Right\.$|^Definitely NOT a good idea\.$|^Your attempt fails|^There doesn&#39;t seem to be any way to do that at the moment\.$</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># this exit is wrong for the map, whatever the phrasing; say so
+</span>      <span class='comment'># rather than letting classify guess from the text (&quot;You may
+</span>      <span class='comment'># not pass.&quot; would read as :denied, the keep-the-exit cause)
+</span>      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>move: failed</span><span class='tstring_end'>&#39;</span></span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>false</span><span class='comma'>,</span> <span class='symbol'>:map</span><span class='rparen'>)</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^[A-z\s-] is unable to follow you\.$|^An unseen force prevents you\.$|^Sorry, you aren&#39;t allowed to enter here\.|^That looks like someplace only performers should go\.|^As you climb, your grip gives way and you fall down|^The clerk stops you from entering the partition and says, &quot;I&#39;ll need to see your ticket!&quot;$|^The guard stops you, saying, &quot;Only members of registered groups may enter the Meeting Hall\.  If you&#39;d like to visit, ask a group officer for a guest pass\.&quot;$|^An? .*? reaches over and grasps [A-Z][a-z]+ by the neck preventing (?:him|her) from being dragged anywhere\.$|^You&#39;ll have to wait, [A-Z][a-z]+ .* locker|^As you move toward the gate, you carelessly bump into the guard|^You attempt to enter the back of the shop, but a clerk stops you.  &quot;Your reputation precedes you!|you notice that thick beams are placed across the entry with a small sign that reads, &quot;Abandoned\.&quot;$|appears to be closed, perhaps you should try again later\?$</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>move: failed</span><span class='tstring_end'>&#39;</span></span>
+      <span class='comment'># return nil instead of false to show the direction shouldn&#39;t be removed from the map database
+</span>      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='rparen'>)</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You grab [A-Z][a-z]+ and try to drag h(?:im|er), but s?he (?:is too heavy|doesn&#39;t budge)\.$|^Tentatively, you attempt to swim through the nook\.  After only a few feet, you begin to sink!  Your lungs burn from lack of air, and you begin to panic!  You frantically paddle back to safety!$|^Guards(?:wo)?man [A-Z][a-z]+ stops you and says, &quot;(?:Stop\.|Halt!)  You need to make sure you check in|^You step into the root, but can see no way to climb the slippery tendrils inside\.  After a moment, you step back out\.$|^As you start .*? back to safe ground\.$|^You stumble a bit as you try to enter the pool but feel that your persistence will pay off\.$|^A shimmering field of magical crimson and gold energy flows through the area\.$|^You attempt to navigate your way through the fog, but (?:quickly become entangled|get turned around)|^Trying to judge the climb, you peer over the edge\.\s*A wave of dizziness hits you, and you back away from the .*\.$|^You approach the .*, but the steepness is intimidating\.$|^You make your way (?:up|down) the .*\.\s*Partway (?:up|down), you make the mistake of looking down\. Struck by vertigo, you cling to the .* for a few moments, then slowly climb back (?:up|down)\.$|^You pick your way up the .*, but reach a point where your footing is questionable.\s*Reluctantly, you climb back down.$</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># swim, drag and guard lines share this branch with climb lines;
+</span>      <span class='comment'># name the cause from the line rather than assuming a climb
+</span>      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:roll</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_roll_cause'>roll_cause</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Climbing.*(?:plunge|fall)|^Tentatively, you attempt to climb.*(?:fall|slip)|^You start up the .* but slip after a few feet and fall to the ground|^You start.*but quickly realize|^You.*drop back to the ground|^You leap .* fall unceremoniously to the ground in a heap\.$|^You search for a way to make the climb .*? but without success\.$|^You start to climb .* you fall to the ground|^You attempt to climb .* wrong approach|^You run towards .*? slowly retreat back, reassessing the situation\.|^You attempt to climb down the .*, but you can&#39;t seem to find purchase\.|^You start down the .*, but you find it hard going.\s*Rather than risking a fall, you make your way back up\.</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:roll</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:climb</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:You swim .*, (?:cutting through|navigating)|You swim .*, struggling against|Your lungs burn and your muscles ache)</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># swims in Sailor&#39;s Grief
+</span>      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You begin to climb up the silvery thread.* you tumble to the ground</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:roll</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:climb</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='float'>0.5</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+        <span class='kw'>if</span> <span class='id identifier rubyid_checkleft'><span class='object_link'><a href="../../top-level-namespace.html#checkleft-instance_method" title="#checkleft (method)">checkleft</a></span></span> <span class='kw'>or</span> <span class='id identifier rubyid_checkright'><span class='object_link'><a href="../../top-level-namespace.html#checkright-instance_method" title="#checkright (method)">checkright</a></span></span>
+          <span class='id identifier rubyid_need_full_hands'>need_full_hands</span> <span class='op'>=</span> <span class='kw'>true</span>
+          <span class='id identifier rubyid_empty_hands'><span class='object_link'><a href="../../top-level-namespace.html#empty_hands-instance_method" title="#empty_hands (method)">empty_hands</a></span></span>
+        <span class='kw'>end</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>You are too injured to be doing any climbing!</span><span class='tstring_end'>&#39;</span></span>
+      <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_resolve'>resolve</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Spell.html" title="Lich::Common::Spell (class)">Spell</a></span></span><span class='lbracket'>[</span><span class='int'>9704</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='kw'>and</span> <span class='id identifier rubyid_resolve'>resolve</span><span class='period'>.</span><span class='id identifier rubyid_known?'>known?</span>
+        <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:resolve</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:injured</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+          <span class='id identifier rubyid_wait_until'><span class='object_link'><a href="../../top-level-namespace.html#wait_until-instance_method" title="#wait_until (method)">wait_until</a></span></span> <span class='lbrace'>{</span> <span class='id identifier rubyid_resolve'>resolve</span><span class='period'>.</span><span class='id identifier rubyid_affordable?'>affordable?</span> <span class='rbrace'>}</span>
+          <span class='id identifier rubyid_resolve'>resolve</span><span class='period'>.</span><span class='id identifier rubyid_cast'>cast</span>
+        <span class='rbrace'>}</span>
+      <span class='kw'>else</span>
+        <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='symbol'>:injured</span><span class='rparen'>)</span>
+      <span class='kw'>end</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You(?:&#39;re going to| will) have to climb that\.</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:verb</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:map</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>go</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>climb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You can&#39;t climb that\.</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:verb</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:map</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_gsub!'>gsub!</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>climb</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>go</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You can&#39;t drag</span><span class='regexp_end'>/</span></span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_tried_fix_drag'>tried_fix_drag</span>
+        <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>false</span><span class='comma'>,</span> <span class='symbol'>:drag</span><span class='rparen'>)</span>
+      <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:go|climb) .+$</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='kw'>and</span> <span class='lparen'>(</span><span class='id identifier rubyid_drag_line'>drag_line</span> <span class='op'>=</span> <span class='id identifier rubyid_reget'><span class='object_link'><a href="../../top-level-namespace.html#reget-instance_method" title="#reget (method)">reget</a></span></span><span class='period'>.</span><span class='id identifier rubyid_reverse'>reverse</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_l'>l</span><span class='op'>|</span> <span class='id identifier rubyid_l'>l</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You grab .*?(?:&#39;s body)? and drag|^You are now automatically attempting to drag .*? when</span><span class='regexp_end'>/</span></span> <span class='rbrace'>}</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_tried_fix_drag'>tried_fix_drag</span> <span class='op'>=</span> <span class='kw'>true</span>
+        <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You grab (.*?)(&#39;s body)? and drag</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_drag_line'>drag_line</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_captures'>captures</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span> <span class='op'>||</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You are now automatically attempting to drag (.*?) when</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_drag_line'>drag_line</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_captures'>captures</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_target'>target</span> <span class='op'>=</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:go|climb) (.+)$</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_captures'>captures</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>drag </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='symbol'>:drag</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_dir'>dir</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>drag </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target'>target</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+      <span class='kw'>else</span>
+        <span class='id identifier rubyid_tried_fix_drag'>tried_fix_drag</span> <span class='op'>=</span> <span class='kw'>true</span>
+        <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_sub!'>sub!</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^climb </span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>go </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+      <span class='kw'>end</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Maybe if your hands were empty|^You figure freeing up both hands might help\.|^You can&#39;t .+ with your hands full\.$|^You&#39;ll need empty hands to climb that\.$|^It&#39;s a bit too difficult to swim holding|^You will need both hands free for such a difficult task\.</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:hands</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:hands</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='id identifier rubyid_need_full_hands'>need_full_hands</span> <span class='op'>=</span> <span class='kw'>true</span>
+        <span class='id identifier rubyid_empty_hands'><span class='object_link'><a href="../../top-level-namespace.html#empty_hands-instance_method" title="#empty_hands (method)">empty_hands</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:appears|seems) to be closed\.$|^You cannot quite manage to squeeze between the stone doors\.$</span><span class='regexp_end'>/</span></span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_tried_open'>tried_open</span>
+        <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>false</span><span class='comma'>,</span> <span class='symbol'>:closed</span><span class='rparen'>)</span>
+      <span class='kw'>else</span>
+        <span class='id identifier rubyid_tried_open'>tried_open</span> <span class='op'>=</span> <span class='kw'>true</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>go|climb</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>open</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='comma'>,</span> <span class='symbol'>:open</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+      <span class='kw'>end</span>
+    <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_wait_match'>wait_match</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Common.html#WAIT_RESPONSE_PATTERN-constant" title="Lich::Common::WAIT_RESPONSE_PATTERN (constant)">WAIT_RESPONSE_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+      <span class='comment'># Waiting is not a remedy that can fail; roundtime always ends.
+</span>      <span class='kw'>if</span> <span class='id identifier rubyid_wait_match'>wait_match</span><span class='lbracket'>[</span><span class='symbol'>:seconds</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='int'>1</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span><span class='lparen'>(</span><span class='id identifier rubyid_wait_match'>wait_match</span><span class='lbracket'>[</span><span class='symbol'>:seconds</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>-</span> <span class='float'>0.2</span><span class='rparen'>)</span>
+      <span class='kw'>else</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='float'>0.3</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>will have to stand up first|must be standing first|^You&#39;ll have to get up first|^But you&#39;re already sitting!|^Shouldn&#39;t you be standing first|^That would be quite a trick from that position\.  Try standing up\.|^Perhaps you should stand up|^Standing up might help|^You should really stand up first|You can&#39;t do that while sitting|You must be standing to do that|You can&#39;t do that while lying down|^You must be standing|^You can&#39;t do that from that position</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># A stand that keeps failing (wounds, encumbrance) used to loop here
+</span>      <span class='comment'># forever, 10s of roundtime per try. Bounded now; the cause comes
+</span>      <span class='comment'># from the character&#39;s state since the failure text is the same
+</span>      <span class='comment'># for a heavy pack and for leg wounds.
+</span>      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:stand</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='id identifier rubyid_stand_failure_cause'>stand_failure_cause</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You&#39;re still recovering from your recent</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:recover</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:roundtime</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>2</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^The ground approaches you at an alarming rate</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:fell</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:climb</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You go flying down several feet, landing with a</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:fell</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:climb</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Sorry, you may only type ahead</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># clears on its own once the queue drains, but bounded all the same
+</span>      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:typeahead</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:roundtime</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>You are still stunned.</span><span class='tstring_end'>&#39;</span></span>
+      <span class='id identifier rubyid_wait_while'><span class='object_link'><a href="../../top-level-namespace.html#wait_while-instance_method" title="#wait_while (method)">wait_while</a></span></span> <span class='lbrace'>{</span> <span class='id identifier rubyid_stunned?'>stunned?</span> <span class='rbrace'>}</span>
+      <span class='id identifier rubyid_put_dir'>put_dir</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>you slip (?:on a patch of ice )?and flail uselessly as you land on your rear(?:\.|!)$|You wobble and stumble only for a moment before landing flat on your face!$|^You slip in the mud and fall flat on your back\!$</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:fell</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:climb</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You flick your hand (?:up|down)wards and focus your aura on your disk, but your disk only wobbles briefly\.$</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:disk</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='kw'>nil</span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^You dive into the fast-moving river, but the current catches you and whips you back to shore, wet and battered\.$|^Running through the swampy terrain, you notice a wet patch in the bog|^You flounder around in the water.$|^You blunder around in the water, barely able|^You struggle against the swift current to swim|^You slap at the water in a sad failure to swim|^You work against the swift current to swim</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:roll</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_ROLLS-constant" title="Lich::Common::Move::MAX_ROLLS (constant)">MAX_ROLLS</a></span></span><span class='comma'>,</span> <span class='symbol'>:swim</span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span> <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(You notice .* at your feet, and do not wish to leave it behind|As you prepare to move away, you remember)</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:feet</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stow feet</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='int'>1</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The electricity courses through you in a raging torrent, its power singing in your veins!  Spent, the boltstone apparatus shatters into glinting fragments\.|The lightning strikes you in an agonizing eruption of liquid radiance!</span><span class='regexp_end'>/</span></span>
+      <span class='comment'># the boltstone shatters as it fires, so this should not recur;
+</span>      <span class='comment'># bounded anyway rather than trusting that
+</span>      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:trap</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span><span class='lparen'>(</span><span class='float'>0.5</span><span class='rparen'>)</span>
+        <span class='id identifier rubyid_wait_while'><span class='object_link'><a href="../../top-level-namespace.html#wait_while-instance_method" title="#wait_while (method)">wait_while</a></span></span> <span class='lbrace'>{</span> <span class='id identifier rubyid_stunned?'>stunned?</span> <span class='rbrace'>}</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+        <span class='id identifier rubyid_command'>command</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stand</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='symbol'>:trap</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_standing?'>standing?</span>
+        <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You don&#39;t seem to be able to move to do that.</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_remedy'>remedy</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='symbol'>:held</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#MAX_REMEDIES-constant" title="Lich::Common::Move::MAX_REMEDIES (constant)">MAX_REMEDIES</a></span></span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span> <span class='lbrace'>{</span>
+        <span class='int'>30</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='lbrace'>{</span>
+          <span class='kw'>break</span> <span class='kw'>if</span> <span class='id identifier rubyid_clear'><span class='object_link'><a href="../../top-level-namespace.html#clear-instance_method" title="#clear (method)">clear</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>You regain control of your senses!</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+
+          <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_execution_sleep'>execution_sleep</span> <span class='float'>0.1</span>
+        <span class='rbrace'>}</span>
+      <span class='rbrace'>}</span>
+    <span class='kw'>elsif</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^It&#39;s pitch dark and you can&#39;t see a thing!</span><span class='regexp_end'>/</span></span>
+      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You will need a light source to continue your journey</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_room_count'>room_count</span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>true</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_giveup_time'>giveup_time</span>
+      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>move: no recognized response in </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_giveup_seconds'>giveup_seconds</span><span class='embexpr_end'>}</span><span class='tstring_content'> seconds.  giving up.</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_line_count'>line_count</span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_giveup_lines'>giveup_lines</span>
+      <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>move: no recognized response after </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_line_count'>line_count</span><span class='embexpr_end'>}</span><span class='tstring_content'> lines.  giving up.</span><span class='tstring_end'>&quot;</span></span>
+      <span class='id identifier rubyid_finish'>finish</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='kw'>nil</span><span class='comma'>,</span> <span class='symbol'>:unknown</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="record_failure-class_method">
+  
+    .<strong>record_failure</strong>(dir, line, cause: nil, attempts: 1)  &#x21d2; <tt><span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Record (and announce) a failed move. Called by move on every false
+or nil return; <code>cause</code> defaults to classifying the line.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>dir</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the direction as last sent</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the game line that ended the attempt</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>cause</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>attempts</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>1</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>how many times the direction was sent</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the frozen record</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 141</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_record_failure'>record_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='label'>cause:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attempts:</span> <span class='int'>1</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_failure'>failure</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Move/Failure.html" title="Lich::Common::Move::Failure (class)">Failure</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='label'>dir:</span> <span class='id identifier rubyid_dir'>dir</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='comma'>,</span> <span class='label'>line:</span> <span class='id identifier rubyid_line'>line</span><span class='op'>&amp;.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='op'>&amp;.</span><span class='id identifier rubyid_dup'>dup</span><span class='comma'>,</span> <span class='label'>cause:</span> <span class='lparen'>(</span><span class='id identifier rubyid_cause'>cause</span> <span class='op'>||</span> <span class='id identifier rubyid_classify'>classify</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='label'>attempts:</span> <span class='id identifier rubyid_attempts'>attempts</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+  <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="#LAST_FAILURE_KEY-constant" title="Lich::Common::Move::LAST_FAILURE_KEY (constant)">LAST_FAILURE_KEY</a></span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_failure'>failure</span>
+  <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Events.html" title="Lich::Common::Events (module)">Events</a></span></span><span class='rparen'>)</span>
+    <span class='kw'>begin</span>
+      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Events.html" title="Lich::Common::Events (module)">Events</a></span></span><span class='period'>.</span><span class='id identifier rubyid_emit'><span class='object_link'><a href="Events.html#emit-class_method" title="Lich::Common::Events.emit (method)">emit</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>move.failed</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_failure'>failure</span><span class='rparen'>)</span>
+    <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>move: Events.emit failed: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:log</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_failure'>failure</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="roll_cause-class_method">
+  
+    .<strong>roll_cause</strong>(line)  &#x21d2; <tt>Symbol</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The cause for a line from the shared skill-roll branch: swim, drag
+and guard lines are named for what they are; anything else there is
+a climb.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+112
+113
+114
+115</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 112</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_roll_cause'>roll_cause</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_c'>c</span> <span class='op'>=</span> <span class='id identifier rubyid_classify'>classify</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='qsymbols_beg'>%i[</span><span class='tstring_content'>swim</span><span class='words_sep'> </span><span class='tstring_content'>drag</span><span class='words_sep'> </span><span class='tstring_content'>denied</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_c'>c</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_c'>c</span> <span class='op'>:</span> <span class='symbol'>:climb</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stand_failure_cause-class_method">
+  
+    .<strong>stand_failure_cause</strong>  &#x21d2; <tt>Symbol</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Why did a stand keep failing? &quot;You struggle, but fail to stand&quot; is
+the same text for a heavy pack and for leg wounds, so look at the
+character rather than the line. Falls back to :position.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/move.rb', line 121</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stand_failure_cause'>stand_failure_cause</span>
+  <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:encumbrance_text</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_encumbrance_text'>encumbrance_text</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>overburdened</span><span class='regexp_end'>/i</span></span>
+    <span class='symbol'>:encumbered</span>
+  <span class='kw'>elsif</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone/Wounds.html" title="Lich::Gemstone::Wounds (class)">Wounds</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone/Wounds.html" title="Lich::Gemstone::Wounds (class)">Wounds</a></span></span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:limbs</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_limb_wounds?'>limb_wounds?</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Gemstone/Wounds.html" title="Lich::Gemstone::Wounds (class)">Wounds</a></span></span><span class='period'>.</span><span class='id identifier rubyid_limbs'><span class='object_link'><a href="../Gemstone/Wounds.html#limbs-class_method" title="Lich::Gemstone::Wounds.limbs (method)">limbs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+    <span class='symbol'>:injured</span>
+  <span class='kw'>else</span>
+    <span class='symbol'>:position</span>
+  <span class='kw'>end</span>
+<span class='kw'>rescue</span> <span class='const'>StandardError</span>
+  <span class='symbol'>:position</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Wed Oct 28 05:27:10 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

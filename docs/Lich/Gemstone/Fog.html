@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Module: Lich::Gemstone::Fog
+  
+    &mdash; Lich 5 Documentation
+  
+</title>
+
+  <link rel="stylesheet" href="../../css/style.css" type="text/css">
+
+  <link rel="stylesheet" href="../../css/common.css" type="text/css">
+
+<script type="text/javascript">
+  pathId = "Lich::Gemstone::Fog";
+  relpath = '../../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="main_progress" aria-hidden="true"></div>
+
+    <div class="nav_wrap">
+      <iframe id="nav" src="../../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../../_index.html">Index (F)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Gemstone</a></span></span>
+     &raquo; 
+    <span class="title">Fog</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Module: Lich::Gemstone::Fog
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>documented/gemstone/fog.rb
+</dd>
+  </dl>
+  
+</div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Fog return spells and society abilities that take a character home.</p>
+<p>Wraps Spirit Guide (130), Symbol of Return (Voln), Traveler's Song (1020),
+Sigil of Escape (Sunfist), and Familiar Gate (930), with fallback chains and
+Rift detection that match bigshot's fog_return logic. Policy stays with the
+caller: which method a profile picks, whether to fog at all, and any custom
+command list are the script's responsibility.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#available-class_method" title="Lich::Gemstone::Fog.available (method)">Fog.available</a></span></li>
+    
+      <li><span class='object_link'><a href="#return-class_method" title="Lich::Gemstone::Fog.return (method)">Fog.return</a></span></li>
+    
+  </ul>
+
+</div>
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="RIFT_ROOM-constant" class="">RIFT_ROOM =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The Rift's exit: a fog that lands here needs a second cast to go on
+(bigshot fog_return_spirit, fog_return_voln).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>2635</span></pre></dd>
+      
+        <dt id="CONFIRM_TIMEOUT-constant" class="">CONFIRM_TIMEOUT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Seconds to wait for the room to change after a send. A fog resolves in
+one server pulse, so 8 is generous for the four that fog; a Traveler's
+Song is a walk to the destination and gets its own, longer budget.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>8</span></pre></dd>
+      
+        <dt id="TRAVELERS_SONG_TIMEOUT-constant" class="">TRAVELERS_SONG_TIMEOUT =
+          
+        </dt>
+        <dd><pre class="code"><span class='int'>60</span></pre></dd>
+      
+        <dt id="MAX_ROOM_UID-constant" class="">MAX_ROOM_UID =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Real room UIDs are small integers. Above this the id is xmlparser's
+MD5 stand-in for a room that arrived with no UID (xmlparser.rb, the
+<compass> branch), which is not unique across same-text rooms.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>1_000_000_000</span></pre></dd>
+      
+        <dt id="METHODS-constant" class="">METHODS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The five fog return methods, in order.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>[:spirit_guide, :symbol_of_return, :travelers_song, :sigil_of_escape, :familiar_gate]</p></div>
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>spirit_guide</span><span class='words_sep'> </span><span class='tstring_content'>symbol_of_return</span><span class='words_sep'> </span><span class='tstring_content'>travelers_song</span><span class='words_sep'> </span><span class='tstring_content'>sigil_of_escape</span><span class='words_sep'> </span><span class='tstring_content'>familiar_gate</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="NUMBERS-constant" class="">NUMBERS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>bigshot's fog_return setting (1-5; 6 is the profile's own commands)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span> <span class='int'>1</span> <span class='op'>=&gt;</span> <span class='symbol'>:spirit_guide</span><span class='comma'>,</span> <span class='int'>2</span> <span class='op'>=&gt;</span> <span class='symbol'>:symbol_of_return</span><span class='comma'>,</span> <span class='int'>3</span> <span class='op'>=&gt;</span> <span class='symbol'>:travelers_song</span><span class='comma'>,</span> <span class='int'>4</span> <span class='op'>=&gt;</span> <span class='symbol'>:sigil_of_escape</span><span class='comma'>,</span> <span class='int'>5</span> <span class='op'>=&gt;</span> <span class='symbol'>:familiar_gate</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SPELLS-constant" class="">SPELLS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Spell numbers for the three fog return spells.</p>
+<p>Symbol of Return and Sigil of Escape are society abilities, not spells, so they
+are not listed here.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; Integer}</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>maps :spirit_guide, :travelers_song, :familiar_gate to their spell numbers</p></div>
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span> <span class='label'>spirit_guide:</span> <span class='int'>130</span><span class='comma'>,</span> <span class='label'>travelers_song:</span> <span class='int'>1020</span><span class='comma'>,</span> <span class='label'>familiar_gate:</span> <span class='int'>930</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#available-class_method" title="available (class method)">.<strong>available</strong>  &#x21d2; Array&lt;Symbol&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Every method the character can use right now.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#available%3F-class_method" title="available? (class method)">.<strong>available?</strong>(method)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Known and affordable right now.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#cast_and_settle-class_method" title="cast_and_settle (class method)">.<strong>cast_and_settle</strong>(num, timeout: CONFIRM_TIMEOUT)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#familiar_gate-class_method" title="familiar_gate (class method)">.<strong>familiar_gate</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#here-class_method" title="here (class method)">.<strong>here</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Where we are, as the server reports it.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#known%3F-class_method" title="known? (class method)">.<strong>known?</strong>(method)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Does this character have the method at all.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#moved_from%3F-class_method" title="moved_from? (class method)">.<strong>moved_from?</strong>(start)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>A move is a different server room id.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#normalize-class_method" title="normalize (class method)">.<strong>normalize</strong>(method)  &#x21d2; Symbol<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pulse_mana-class_method" title="pulse_mana (class method)">.<strong>pulse_mana</strong>(num)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>MANA PULSE before a known spell we cannot afford (bigshot mana_pulse).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#return-class_method" title="return (class method)">.<strong>return</strong>(method, rift: false, resting_room: nil)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Go home by <code>method</code>.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#room_id-class_method" title="room_id (class method)">.<strong>room_id</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>The map id, for the Rift check only.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#second_cast_from_rift-class_method" title="second_cast_from_rift (class method)">.<strong>second_cast_from_rift</strong>(rift, resting_room, start)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>A fog into the Rift with the destination elsewhere is cast again from 2635 (bigshot: @FOG_RIFT &amp;&amp; @RESTING_ROOM_ID != 2635).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sigil_of_escape-class_method" title="sigil_of_escape (class method)">.<strong>sigil_of_escape</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#spell_known%3F-class_method" title="spell_known? (class method)">.<strong>spell_known?</strong>(num)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#spirit_guide-class_method" title="spirit_guide (class method)">.<strong>spirit_guide</strong>(rift: false, resting_room: nil, from_voln: false)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sunfist-class_method" title="sunfist (class method)">.<strong>sunfist</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#symbol_of_return-class_method" title="symbol_of_return (class method)">.<strong>symbol_of_return</strong>(rift: false, resting_room: nil, from_spirit: false)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#travelers_song-class_method" title="travelers_song (class method)">.<strong>travelers_song</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#uidless%3F-class_method" title="uidless? (class method)">.<strong>uidless?</strong>(id)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>A server room id that is not a real room UID: xmlparser substitutes an MD5 of the room text, far above any UID, when <nav> carries none.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#voln-class_method" title="voln (class method)">.<strong>voln</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#wait_for_move-class_method" title="wait_for_move (class method)">.<strong>wait_for_move</strong>(start, timeout: CONFIRM_TIMEOUT)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="available-class_method">
+  
+    .<strong>available</strong>  &#x21d2; <tt>Array&lt;Symbol&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Returns every method the character can use right now.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>every method the character can use right now</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+97
+98
+99</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 97</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_available'>available</span>
+  <span class='const'><span class='object_link'><a href="#METHODS-constant" title="Lich::Gemstone::Fog::METHODS (constant)">METHODS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_m'>m</span><span class='op'>|</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='id identifier rubyid_m'>m</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="available?-class_method">
+  
+    .<strong>available?</strong>(method)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Known and affordable right now.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 84</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='id identifier rubyid_normalize'>normalize</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='kw'>case</span> <span class='id identifier rubyid_name'>name</span>
+  <span class='kw'>when</span> <span class='symbol'>:spirit_guide</span><span class='comma'>,</span> <span class='symbol'>:travelers_song</span><span class='comma'>,</span> <span class='symbol'>:familiar_gate</span>
+    <span class='id identifier rubyid_num'>num</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#SPELLS-constant" title="Lich::Gemstone::Fog::SPELLS (constant)">SPELLS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span>
+    <span class='id identifier rubyid_spell_known?'>spell_known?</span><span class='lparen'>(</span><span class='id identifier rubyid_num'>num</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='const'>Spell</span><span class='lbracket'>[</span><span class='id identifier rubyid_num'>num</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_affordable?'>affordable?</span>
+  <span class='kw'>when</span> <span class='symbol'>:symbol_of_return</span> <span class='kw'>then</span> <span class='id identifier rubyid_voln'>voln</span><span class='op'>&amp;.</span><span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>return</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>false</span>
+  <span class='kw'>when</span> <span class='symbol'>:sigil_of_escape</span> <span class='kw'>then</span> <span class='id identifier rubyid_sunfist'>sunfist</span><span class='op'>&amp;.</span><span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>escape</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>false</span>
+  <span class='kw'>else</span> <span class='kw'>false</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="cast_and_settle-class_method">
+  
+    .<strong>cast_and_settle</strong>(num, timeout: CONFIRM_TIMEOUT)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+202
+203
+204
+205
+206
+207
+208</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 202</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cast_and_settle'>cast_and_settle</span><span class='lparen'>(</span><span class='id identifier rubyid_num'>num</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='const'><span class='object_link'><a href="#CONFIRM_TIMEOUT-constant" title="Lich::Gemstone::Fog::CONFIRM_TIMEOUT (constant)">CONFIRM_TIMEOUT</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_start'>start</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+  <span class='const'>Spell</span><span class='lbracket'>[</span><span class='id identifier rubyid_num'>num</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_cast'><span class='object_link'><a href="../../top-level-namespace.html#cast-instance_method" title="#cast (method)">cast</a></span></span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.5</span>
+  <span class='id identifier rubyid_waitcastrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitcastrt%3F-instance_method" title="#waitcastrt? (method)">waitcastrt?</a></span></span>
+  <span class='id identifier rubyid_wait_for_move'>wait_for_move</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='id identifier rubyid_timeout'>timeout</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="familiar_gate-class_method">
+  
+    .<strong>familiar_gate</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 188</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_familiar_gate'>familiar_gate</span>
+  <span class='id identifier rubyid_pulse_mana'>pulse_mana</span><span class='lparen'>(</span><span class='int'>930</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='symbol'>:familiar_gate</span><span class='rparen'>)</span>
+
+  <span class='const'>Spell</span><span class='lbracket'>[</span><span class='int'>930</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_cast'><span class='object_link'><a href="../../top-level-namespace.html#cast-instance_method" title="#cast (method)">cast</a></span></span>
+  <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>go portal</span><span class='tstring_end'>&#39;</span></span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.5</span>
+  <span class='id identifier rubyid_waitcastrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitcastrt%3F-instance_method" title="#waitcastrt? (method)">waitcastrt?</a></span></span>
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="here-class_method">
+  
+    .<strong>here</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Where we are, as the server reports it. XMLData.room_id is set for an
+unmapped room too - Room.current is nil there, and a map id would
+compare nil to nil and call a real move a failure - so it is the
+primary mark. It is never absent (xmlparser defaults it to 0 and every
+write goes through to_i), but it is not always unique: a room with no
+UID gets an MD5 of its title, description and exits, so two unmapped
+rooms whose text reads the same share an id. The room counter, which
+steps once per room stream, breaks that tie.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+245</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 245</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_here'>here</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>id:</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='label'>count:</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_count'>room_count</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='rbrace'>}</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="known?-class_method">
+  
+    .<strong>known?</strong>(method)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Does this character have the method at all.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+73
+74
+75
+76
+77
+78
+79
+80
+81</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 73</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='id identifier rubyid_normalize'>normalize</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='kw'>case</span> <span class='id identifier rubyid_name'>name</span>
+  <span class='kw'>when</span> <span class='symbol'>:spirit_guide</span><span class='comma'>,</span> <span class='symbol'>:travelers_song</span><span class='comma'>,</span> <span class='symbol'>:familiar_gate</span> <span class='kw'>then</span> <span class='id identifier rubyid_spell_known?'>spell_known?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#SPELLS-constant" title="Lich::Gemstone::Fog::SPELLS (constant)">SPELLS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:symbol_of_return</span> <span class='kw'>then</span> <span class='id identifier rubyid_voln'>voln</span><span class='op'>&amp;.</span><span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>return</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>false</span>
+  <span class='kw'>when</span> <span class='symbol'>:sigil_of_escape</span> <span class='kw'>then</span> <span class='id identifier rubyid_sunfist'>sunfist</span><span class='op'>&amp;.</span><span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>escape</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>false</span>
+  <span class='kw'>else</span> <span class='kw'>false</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="moved_from?-class_method">
+  
+    .<strong>moved_from?</strong>(start)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>A move is a different server room id. When the id is unchanged it may
+still be a move between two same-text unmapped rooms, so the counter
+decides: an MD5 id means the room has no UID, and a counter that has
+stepped there is a new room stream rather than a refresh of this one.
+A real UID is unique, so an unchanged one is never a move.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+253
+254
+255
+256
+257
+258
+259</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 253</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_now'>now</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_now'>now</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span> <span class='op'>!=</span> <span class='id identifier rubyid_start'>start</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_uidless?'>uidless?</span><span class='lparen'>(</span><span class='id identifier rubyid_now'>now</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_now'>now</span><span class='lbracket'>[</span><span class='symbol'>:count</span><span class='rbracket'>]</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_start'>start</span><span class='lbracket'>[</span><span class='symbol'>:count</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="normalize-class_method">
+  
+    .<strong>normalize</strong>(method)  &#x21d2; <tt>Symbol</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>method</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>, <tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a METHODS name or bigshot's number</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+64
+65
+66
+67
+68
+69
+70</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 64</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_normalize'>normalize</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='const'><span class='object_link'><a href="#NUMBERS-constant" title="Lich::Gemstone::Fog::NUMBERS (constant)">NUMBERS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_method'>method</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_method'>method</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Integer</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='const'><span class='object_link'><a href="#NUMBERS-constant" title="Lich::Gemstone::Fog::NUMBERS (constant)">NUMBERS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_method'>method</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_method'>method</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A\d+\z</span><span class='regexp_end'>/</span></span>
+
+  <span class='id identifier rubyid_sym'>sym</span> <span class='op'>=</span> <span class='id identifier rubyid_method'>method</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span>
+  <span class='const'><span class='object_link'><a href="#METHODS-constant" title="Lich::Gemstone::Fog::METHODS (constant)">METHODS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_sym'>sym</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_sym'>sym</span> <span class='op'>:</span> <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pulse_mana-class_method">
+  
+    .<strong>pulse_mana</strong>(num)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>MANA PULSE before a known spell we cannot afford (bigshot mana_pulse).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+222
+223
+224
+225
+226
+227</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 222</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pulse_mana'>pulse_mana</span><span class='lparen'>(</span><span class='id identifier rubyid_num'>num</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_spell_known?'>spell_known?</span><span class='lparen'>(</span><span class='id identifier rubyid_num'>num</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='const'>Spell</span><span class='lbracket'>[</span><span class='id identifier rubyid_num'>num</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_affordable?'>affordable?</span>
+
+  <span class='id identifier rubyid_dothistimeout'><span class='object_link'><a href="../../top-level-namespace.html#dothistimeout-instance_method" title="#dothistimeout (method)">dothistimeout</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>mana pulse</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='int'>2</span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An invigorating rush of mana pulses through you|You are too mentally fatigued|You&#39;re already at full mana|Your mana control skills are not yet advanced</span><span class='regexp_end'>/i</span></span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.2</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="return-class_method">
+  
+    .<strong>return</strong>(method, rift: false, resting_room: nil)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Go home by <code>method</code>. Waits out roundtime first, pulses mana when the
+spell is known but unaffordable, and answers whether the room changed.</p>
+<p>Spirit Guide and Symbol of Return fall back to each other when the
+first does not move us, and cast a second time when the first cast
+lands in the Rift and the destination is elsewhere - bigshot's rules,
+kept.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>method</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>, <tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>rift</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the destination is reached through the Rift</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>resting_room</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>with <code>rift</code>, the room the fog is for</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>whether the room changed</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 113</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='kw'>return</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='comma'>,</span> <span class='label'>rift:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_method'>method</span> <span class='op'>=</span> <span class='id identifier rubyid_normalize'>normalize</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_method'>method</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_start'>start</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.5</span>
+  <span class='id identifier rubyid_waitcastrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitcastrt%3F-instance_method" title="#waitcastrt? (method)">waitcastrt?</a></span></span>
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+  <span class='kw'>case</span> <span class='id identifier rubyid_method'>method</span>
+  <span class='kw'>when</span> <span class='symbol'>:spirit_guide</span> <span class='kw'>then</span> <span class='id identifier rubyid_spirit_guide'>spirit_guide</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:symbol_of_return</span> <span class='kw'>then</span> <span class='id identifier rubyid_symbol_of_return'>symbol_of_return</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='symbol'>:travelers_song</span> <span class='kw'>then</span> <span class='id identifier rubyid_travelers_song'>travelers_song</span>
+  <span class='kw'>when</span> <span class='symbol'>:sigil_of_escape</span> <span class='kw'>then</span> <span class='id identifier rubyid_sigil_of_escape'>sigil_of_escape</span>
+  <span class='kw'>when</span> <span class='symbol'>:familiar_gate</span> <span class='kw'>then</span> <span class='id identifier rubyid_familiar_gate'>familiar_gate</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="room_id-class_method">
+  
+    .<strong>room_id</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>The map id, for the Rift check only.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+270</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 270</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_room_id'>room_id</span> <span class='op'>=</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='op'>&amp;.</span><span class='id identifier rubyid_id'>id</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="second_cast_from_rift-class_method">
+  
+    .<strong>second_cast_from_rift</strong>(rift, resting_room, start)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>A fog into the Rift with the destination elsewhere is cast again
+from 2635 (bigshot: @FOG_RIFT &amp;&amp; @RESTING_ROOM_ID != 2635).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+213
+214
+215
+216
+217
+218</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 213</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_second_cast_from_rift'>second_cast_from_rift</span><span class='lparen'>(</span><span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='comma'>,</span> <span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_rift'>rift</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>!=</span> <span class='const'><span class='object_link'><a href="#RIFT_ROOM-constant" title="Lich::Gemstone::Fog::RIFT_ROOM (constant)">RIFT_ROOM</a></span></span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_room_id'>room_id</span> <span class='op'>==</span> <span class='const'><span class='object_link'><a href="#RIFT_ROOM-constant" title="Lich::Gemstone::Fog::RIFT_ROOM (constant)">RIFT_ROOM</a></span></span>
+
+  <span class='kw'>yield</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sigil_of_escape-class_method">
+  
+    .<strong>sigil_of_escape</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+178
+179
+180
+181
+182
+183
+184
+185</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 178</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sigil_of_escape'>sigil_of_escape</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='symbol'>:sigil_of_escape</span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sigil of escape</span><span class='tstring_end'>&#39;</span></span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.5</span>
+  <span class='id identifier rubyid_waitcastrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitcastrt%3F-instance_method" title="#waitcastrt? (method)">waitcastrt?</a></span></span>
+  <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="spell_known?-class_method">
+  
+    .<strong>spell_known?</strong>(num)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+273
+274
+275
+276</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 273</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_spell_known?'>spell_known?</span><span class='lparen'>(</span><span class='id identifier rubyid_num'>num</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_spell'>spell</span> <span class='op'>=</span> <span class='const'>Spell</span><span class='lbracket'>[</span><span class='id identifier rubyid_num'>num</span><span class='rbracket'>]</span>
+  <span class='op'>!</span><span class='id identifier rubyid_spell'>spell</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_spell'>spell</span><span class='period'>.</span><span class='id identifier rubyid_known?'>known?</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="spirit_guide-class_method">
+  
+    .<strong>spirit_guide</strong>(rift: false, resting_room: nil, from_voln: false)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 134</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_spirit_guide'>spirit_guide</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>from_voln:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_start'>start</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+  <span class='id identifier rubyid_pulse_mana'>pulse_mana</span><span class='lparen'>(</span><span class='int'>130</span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='symbol'>:spirit_guide</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_cast_and_settle'>cast_and_settle</span><span class='lparen'>(</span><span class='int'>130</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_second_cast_from_rift'>second_cast_from_rift</span><span class='lparen'>(</span><span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='comma'>,</span> <span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='comment'># the first cast may have spent the mana the second needs (bigshot pulses again here)
+</span>      <span class='id identifier rubyid_pulse_mana'>pulse_mana</span><span class='lparen'>(</span><span class='int'>130</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_cast_and_settle'>cast_and_settle</span><span class='lparen'>(</span><span class='int'>130</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='symbol'>:spirit_guide</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+
+  <span class='comment'># 130 did not move us: Symbol of Return, once (fog_return_spirit)
+</span>  <span class='id identifier rubyid_symbol_of_return'>symbol_of_return</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='comma'>,</span> <span class='label'>from_spirit:</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_from_voln'>from_voln</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='symbol'>:symbol_of_return</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sunfist-class_method">
+  
+    .<strong>sunfist</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+284
+285
+286</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 284</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sunfist'>sunfist</span>
+  <span class='const'><span class='object_link'><a href="Societies.html" title="Lich::Gemstone::Societies (module)">Societies</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Societies/GuardiansOfSunfist.html" title="Lich::Gemstone::Societies::GuardiansOfSunfist (class)">GuardiansOfSunfist</a></span></span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Societies.html" title="Lich::Gemstone::Societies (module)">Societies</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Societies/GuardiansOfSunfist.html" title="Lich::Gemstone::Societies::GuardiansOfSunfist (class)">GuardiansOfSunfist</a></span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="symbol_of_return-class_method">
+  
+    .<strong>symbol_of_return</strong>(rift: false, resting_room: nil, from_spirit: false)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 153</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_symbol_of_return'>symbol_of_return</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>from_spirit:</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_start'>start</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='symbol'>:symbol_of_return</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>symbol of return</span><span class='tstring_end'>&#39;</span></span>
+    <span class='id identifier rubyid_wait_for_move'>wait_for_move</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_second_cast_from_rift'>second_cast_from_rift</span><span class='lparen'>(</span><span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='comma'>,</span> <span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='id identifier rubyid_rift_mark'>rift_mark</span> <span class='op'>=</span> <span class='id identifier rubyid_here'>here</span>
+      <span class='id identifier rubyid_fput'><span class='object_link'><a href="../../top-level-namespace.html#fput-instance_method" title="#fput (method)">fput</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>symbol of return</span><span class='tstring_end'>&#39;</span></span>
+      <span class='id identifier rubyid_wait_for_move'>wait_for_move</span><span class='lparen'>(</span><span class='id identifier rubyid_rift_mark'>rift_mark</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+
+  <span class='comment'># the symbol did not move us: Spirit Guide, once (fog_return_voln)
+</span>  <span class='id identifier rubyid_spirit_guide'>spirit_guide</span><span class='lparen'>(</span><span class='label'>rift:</span> <span class='id identifier rubyid_rift'>rift</span><span class='comma'>,</span> <span class='label'>resting_room:</span> <span class='id identifier rubyid_resting_room'>resting_room</span><span class='comma'>,</span> <span class='label'>from_voln:</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_from_spirit'>from_spirit</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_known?'>known?</span><span class='lparen'>(</span><span class='symbol'>:spirit_guide</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="travelers_song-class_method">
+  
+    .<strong>travelers_song</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+172
+173
+174
+175</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 172</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_travelers_song'>travelers_song</span>
+  <span class='id identifier rubyid_pulse_mana'>pulse_mana</span><span class='lparen'>(</span><span class='int'>1020</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_cast_and_settle'>cast_and_settle</span><span class='lparen'>(</span><span class='int'>1020</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='const'><span class='object_link'><a href="#TRAVELERS_SONG_TIMEOUT-constant" title="Lich::Gemstone::Fog::TRAVELERS_SONG_TIMEOUT (constant)">TRAVELERS_SONG_TIMEOUT</a></span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_available?'>available?</span><span class='lparen'>(</span><span class='symbol'>:travelers_song</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="uidless?-class_method">
+  
+    .<strong>uidless?</strong>(id)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>A server room id that is not a real room UID: xmlparser substitutes an
+MD5 of the room text, far above any UID, when <nav> carries none.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+264
+265
+266</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 264</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_uidless?'>uidless?</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='const'><span class='object_link'><a href="#MAX_ROOM_UID-constant" title="Lich::Gemstone::Fog::MAX_ROOM_UID (constant)">MAX_ROOM_UID</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="voln-class_method">
+  
+    .<strong>voln</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+279
+280
+281</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 279</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_voln'>voln</span>
+  <span class='const'><span class='object_link'><a href="Societies.html" title="Lich::Gemstone::Societies (module)">Societies</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Societies/OrderOfVoln.html" title="Lich::Gemstone::Societies::OrderOfVoln (class)">OrderOfVoln</a></span></span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Societies.html" title="Lich::Gemstone::Societies (module)">Societies</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Societies/OrderOfVoln.html" title="Lich::Gemstone::Societies::OrderOfVoln (class)">OrderOfVoln</a></span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="wait_for_move-class_method">
+  
+    .<strong>wait_for_move</strong>(start, timeout: CONFIRM_TIMEOUT)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+230
+231
+232
+233
+234</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/fog.rb', line 230</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_wait_for_move'>wait_for_move</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='comma'>,</span> <span class='label'>timeout:</span> <span class='const'><span class='object_link'><a href="#CONFIRM_TIMEOUT-constant" title="Lich::Gemstone::Fog::CONFIRM_TIMEOUT (constant)">CONFIRM_TIMEOUT</a></span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_deadline'>deadline</span> <span class='op'>=</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>+</span> <span class='id identifier rubyid_timeout'>timeout</span>
+  <span class='id identifier rubyid_sleep'>sleep</span> <span class='float'>0.25</span> <span class='kw'>until</span> <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span> <span class='op'>&gt;</span> <span class='id identifier rubyid_deadline'>deadline</span>
+  <span class='id identifier rubyid_moved_from?'>moved_from?</span><span class='lparen'>(</span><span class='id identifier rubyid_start'>start</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Wed Oct 28 05:27:10 2026 by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.45 (ruby-3.2.11).
+</div>
+
+    </div>
+  <script type="text/javascript">
+// Navigation helper for YARD docs
+// Adds persistent navigation links, fixes sidebar navigation, and theme toggle
+
+(function() {
+  'use strict';
+
+  // Calculate the site root prefix for asset URLs. Derived from the
+  // stylesheet links YARD wrote into the page at build time - those always
+  // carry the correct relative prefix no matter what domain or subdirectory
+  // the site is served from (github.io/<repo>/ vs a custom domain at root).
+  // Never guess from the URL: the old lich-5-docs path-segment heuristic
+  // broke every asset load on the lich-5-docs.elanthia.online domain.
+  function getRootPath() {
+    var links = document.querySelectorAll('link[rel="stylesheet"][href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      var m = href && href.match(/^(.*?)css\/[^\/]+\.css/);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // Inject theme CSS
+  function injectThemeCSS() {
+    if (document.getElementById('theme-css')) return;
+
+    var rootPath = getRootPath();
+
+    // Try multiple paths to find the CSS
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css',
+      '/css/theme.css'
+    ];
+
+    var link = document.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    // Add error handler to try alternative paths
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    document.head.appendChild(link);
+
+    // Also inject critical inline styles as fallback
+    injectInlineStyles();
+  }
+
+  // Inject critical inline styles for immediate dark mode.
+  // Single source of truth is injectInlineStylesToDocument - having two
+  // divergent rule lists is how the signature bars went unstyled.
+  function injectInlineStyles() {
+    injectInlineStylesToDocument(document);
+  }
+
+  // Get saved theme or detect system preference
+  function getPreferredTheme() {
+    var saved = localStorage.getItem('yard-theme');
+    if (saved) return saved;
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  // Apply theme to a document
+  function applyThemeToDocument(doc, theme) {
+    if (!doc || !doc.documentElement) return;
+    doc.documentElement.setAttribute('data-theme', theme);
+
+    // Also set on body for broader compatibility
+    if (doc.body) {
+      doc.body.setAttribute('data-theme', theme);
+    }
+  }
+
+  // Inject inline styles into a document
+  function injectInlineStylesToDocument(doc) {
+    if (!doc || !doc.head) return;
+    if (doc.getElementById('theme-inline-css')) return;
+
+    var style = doc.createElement('style');
+    style.id = 'theme-inline-css';
+    style.textContent = [
+      // Root elements - critical for frame backgrounds
+      '[data-theme="dark"] { --bg-dark: #1a1a2e; --text-dark: #e8e8e8; }',
+      'html[data-theme="dark"], html[data-theme="dark"] body { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      'body[data-theme="dark"] { background-color: #1a1a2e !important; color: #e8e8e8 !important; }',
+      // Sidebar frames
+      '[data-theme="dark"] #menu, [data-theme="dark"] .menu, [data-theme="dark"] nav { background-color: #16213e !important; }',
+      '[data-theme="dark"] #full_list, [data-theme="dark"] .objects, [data-theme="dark"] .list { background-color: #16213e !important; }',
+      '[data-theme="dark"] li { background-color: transparent !important; }',
+      // Table of Contents
+      '[data-theme="dark"] #toc, [data-theme="dark"] .toc, [data-theme="dark"] #table_of_contents { background-color: #1a1a2e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] #toc a, [data-theme="dark"] .toc a { color: #5dade2 !important; }',
+      '[data-theme="dark"] #toc li, [data-theme="dark"] .toc li { background-color: transparent !important; }',
+      // File listing badges on index page
+      '[data-theme="dark"] .alpha_listing a, [data-theme="dark"] .file_listing a, [data-theme="dark"] p.children a { background-color: #16213e !important; border-color: #333 !important; }',
+      '[data-theme="dark"] .r1 a, [data-theme="dark"] .r2 a, [data-theme="dark"] .index_list a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Defined in box
+      '[data-theme="dark"] .defined_in, [data-theme="dark"] .defines, [data-theme="dark"] dl.box, [data-theme="dark"] .box_info { background-color: #16213e !important; border-color: #333 !important; }',
+      // Expand/collapse buttons and show/hide links
+      '[data-theme="dark"] .summary_toggle, [data-theme="dark"] a.toggle, [data-theme="dark"] .expand, [data-theme="dark"] .collapse { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .show_all, [data-theme="dark"] .hide_all, [data-theme="dark"] a.show, [data-theme="dark"] a.hide { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .more, [data-theme="dark"] a.more, [data-theme="dark"] .less, [data-theme="dark"] a.less { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] dl.box a, [data-theme="dark"] .box_info a, [data-theme="dark"] .showAll, [data-theme="dark"] .hideAll { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] h2 a, [data-theme="dark"] h3 a, [data-theme="dark"] a[href="#"] { background-color: #0f3460 !important; border-color: #333 !important; color: #5dade2 !important; }',
+      // Method summary badges
+      '[data-theme="dark"] .summary_signature a, [data-theme="dark"] ul.summary a, [data-theme="dark"] .summary a { background-color: #16213e !important; border-color: #333 !important; }',
+      // Links
+      '[data-theme="dark"] a { color: #5dade2 !important; }',
+      // Tables
+      '[data-theme="dark"] table th, [data-theme="dark"] thead { background-color: #1e3a5f !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] table td, [data-theme="dark"] table tr { background-color: #1a1a2e !important; color: #b8b8b8 !important; }',
+      '[data-theme="dark"] table tr:nth-child(even), [data-theme="dark"] table tr:nth-child(even) td { background-color: #16213e !important; }',
+      // Forms
+      '[data-theme="dark"] input { background-color: #1a1a2e !important; color: #e8e8e8 !important; border-color: #333 !important; }',
+      // Text
+      '[data-theme="dark"] small { color: #888 !important; }',
+      '[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] p, [data-theme="dark"] span { color: #b8b8b8 !important; }',
+      // Definition lists
+      '[data-theme="dark"] dt, [data-theme="dark"] dd { background-color: transparent !important; }',
+      // Content area
+      '[data-theme="dark"] #content { background-color: #1a1a2e !important; }',
+      '[data-theme="dark"] pre, [data-theme="dark"] code { background-color: #0d1117 !important; color: #c9d1d9 !important; }',
+      // Method signature bars in the details section - without these the
+      // h3 text goes near-white on YARD default light-blue (unreadable)
+      '[data-theme="dark"] h3.signature, [data-theme="dark"] p.signature { background: #1f2937 !important; border-color: #333 !important; color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature tt, [data-theme="dark"] .signature code { background: transparent !important; border: none !important; color: #5dade2 !important; }',
+      '[data-theme="dark"] .signature strong { color: #e8e8e8 !important; }',
+      '[data-theme="dark"] .signature .extras { color: #888 !important; }',
+      // Summary signature pills - tame the near-white default border and
+      // flatten the code-box-within-a-box look
+      '[data-theme="dark"] .summary_signature { background: #16213e !important; border: 1px solid #333 !important; }',
+      '[data-theme="dark"] .summary_signature:hover { background: #0f3460 !important; border-color: #5dade2 !important; }',
+      '[data-theme="dark"] .summary_signature tt, [data-theme="dark"] .summary_signature code { background: transparent !important; border: none !important; }',
+      // Catch-all
+      '[data-theme="dark"] div, [data-theme="dark"] section { background-color: inherit !important; }'
+    ].join('\n');
+    doc.head.appendChild(style);
+  }
+
+  // Inject theme CSS into a document
+  function injectThemeCSSIntoDocument(doc, rootPath) {
+    if (!doc || !doc.head) return;
+
+    // Always inject inline styles first as fallback
+    injectInlineStylesToDocument(doc);
+
+    if (doc.getElementById('theme-css')) return;
+
+    // Try multiple paths
+    var paths = [
+      rootPath + 'css/theme.css',
+      'css/theme.css',
+      '../css/theme.css',
+      '../../css/theme.css'
+    ];
+
+    var link = doc.createElement('link');
+    link.id = 'theme-css';
+    link.rel = 'stylesheet';
+    link.href = paths[0];
+
+    var pathIndex = 0;
+    link.onerror = function() {
+      pathIndex++;
+      if (pathIndex < paths.length) {
+        link.href = paths[pathIndex];
+      }
+    };
+
+    doc.head.appendChild(link);
+  }
+
+  // Apply theme to all frames
+  function applyThemeToAllFrames(theme) {
+    var rootPath = getRootPath();
+
+    // Apply to main document
+    applyThemeToDocument(document, theme);
+    injectThemeCSSIntoDocument(document, rootPath);
+
+    // Apply to all frames and iframes
+    try {
+      var frames = document.querySelectorAll('frame, iframe');
+      frames.forEach(function(frame) {
+        try {
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          if (frameDoc) {
+            applyThemeToDocument(frameDoc, theme);
+            // Calculate root path relative to frame
+            var frameRootPath = rootPath || '';
+            injectThemeCSSIntoDocument(frameDoc, frameRootPath);
+          }
+        } catch (e) {
+          // Cross-origin frame, skip
+        }
+      });
+
+      // Also check parent frames (if we're in a frame)
+      if (window.parent && window.parent !== window) {
+        try {
+          applyThemeToDocument(window.parent.document, theme);
+          injectThemeCSSIntoDocument(window.parent.document, rootPath);
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+
+      // Check top-level window
+      if (window.top && window.top !== window) {
+        try {
+          applyThemeToDocument(window.top.document, theme);
+          injectThemeCSSIntoDocument(window.top.document, rootPath);
+
+          // Apply to all frames from top
+          var topFrames = window.top.document.querySelectorAll('frame, iframe');
+          topFrames.forEach(function(frame) {
+            try {
+              var frameDoc = frame.contentDocument || frame.contentWindow.document;
+              if (frameDoc) {
+                applyThemeToDocument(frameDoc, theme);
+                injectThemeCSSIntoDocument(frameDoc, '');
+              }
+            } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin, skip
+        }
+      }
+    } catch (e) {
+      // Frames not accessible
+    }
+  }
+
+  // Apply theme
+  function applyTheme(theme) {
+    localStorage.setItem('yard-theme', theme);
+
+    // Apply to all documents
+    applyThemeToAllFrames(theme);
+
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      btn.title = 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode';
+    }
+  }
+
+  // Toggle theme
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  }
+
+  // Check if we're in a sidebar/list frame (should not add nav)
+  function isListFrame() {
+    var path = window.location.pathname.toLowerCase();
+    // Skip list frames
+    if (path.includes('class_list') ||
+        path.includes('file_list') ||
+        path.includes('method_list') ||
+        path.includes('_list.html') ||
+        path.includes('frames.html')) {
+      return true;
+    }
+    // Skip if this is a frame with full_list (sidebar)
+    if (document.getElementById('full_list') && !document.getElementById('content')) {
+      return true;
+    }
+    // Skip if we're clearly in a sub-frame
+    if (window.frameElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function addNavLinks() {
+    // Don't add nav to list/sidebar frames
+    if (isListFrame()) return;
+
+    var content = document.getElementById('content');
+    if (!content) return;
+
+    if (document.getElementById('quick-nav')) return;
+
+    var rootPath = getRootPath();
+
+    var nav = document.createElement('div');
+    nav.id = 'quick-nav';
+    nav.style.cssText = 'padding: 8px 15px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;';
+
+    var links = document.createElement('div');
+    links.innerHTML = '<a href="' + rootPath + 'index.html" style="margin-right: 15px; text-decoration: none;">Home</a> | ' +
+                      '<a href="' + rootPath + '_index.html" style="margin-left: 15px; margin-right: 15px; text-decoration: none;">All Classes</a> | ' +
+                      '<a href="' + rootPath + 'file.psm-reference.html" style="margin-left: 15px; text-decoration: none;">PSM Guide</a>';
+
+    var themeBtn = document.createElement('button');
+    themeBtn.id = 'theme-toggle';
+    themeBtn.type = 'button';
+    themeBtn.onclick = toggleTheme;
+
+    nav.appendChild(links);
+    nav.appendChild(themeBtn);
+
+    content.insertBefore(nav, content.firstChild);
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.title = 'Switch to ' + (currentTheme === 'dark' ? 'light' : 'dark') + ' mode';
+  }
+
+  // Fix sidebar links - only run in actual sidebar/list frames
+  function fixAllSidebarLinks() {
+    // Only fix links if we're in a list frame
+    if (!isListFrame()) return;
+
+    // Get all possible sidebar/menu containers
+    var selectors = [
+      '#full_list',
+      '#menu',
+      '.menu',
+      '#full_list_content',
+      '.class_list',
+      '.objects',
+      '.sidebar',
+      '#list',
+      '.y_list'
+    ];
+
+    selectors.forEach(function(selector) {
+      var containers = document.querySelectorAll(selector);
+      containers.forEach(function(container) {
+        // Add click handler to container that forces navigation
+        if (!container.dataset.navFixed) {
+          container.dataset.navFixed = 'true';
+
+          container.addEventListener('click', function(e) {
+            // Find the clicked link
+            var target = e.target;
+            while (target && target !== container) {
+              if (target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Navigate the parent/top frame, not this frame
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = target.href;
+                  } else if (window.top && window.top !== window) {
+                    window.top.location.href = target.href;
+                  } else {
+                    window.location.href = target.href;
+                  }
+                  return false;
+                }
+              }
+              target = target.parentNode;
+            }
+          }, true); // Capture phase
+        }
+
+        // Also fix individual links
+        var links = container.querySelectorAll('a');
+        links.forEach(function(link) {
+          if (!link.dataset.navFixed) {
+            link.dataset.navFixed = 'true';
+            var href = link.getAttribute('href');
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // Store the original href
+              var fullHref = link.href;
+
+              // Override onclick - navigate parent frame
+              link.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.parent && window.parent !== window) {
+                  window.parent.location.href = fullHref;
+                } else if (window.top && window.top !== window) {
+                  window.top.location.href = fullHref;
+                } else {
+                  window.location.href = fullHref;
+                }
+                return false;
+              };
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // Watch for dynamically loaded content - only in list frames
+  function observeForNewLinks() {
+    // Only observe in list frames
+    if (!isListFrame()) return;
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNewNodes = mutations.some(function(m) {
+        return m.addedNodes.length > 0;
+      });
+      if (hasNewNodes) {
+        // Delay slightly to let YARD's JS run first
+        setTimeout(fixAllSidebarLinks, 10);
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize
+  function init() {
+    injectThemeCSS();
+    applyTheme(getPreferredTheme());
+    addNavLinks();
+    fixAllSidebarLinks();
+    observeForNewLinks();
+  }
+
+  // Run when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Run periodically to catch all dynamic content and frames
+  var intervals = [50, 100, 250, 500, 1000, 2000, 3000];
+  intervals.forEach(function(ms) {
+    setTimeout(function() {
+      fixAllSidebarLinks();
+      // Reapply theme to catch any newly loaded frames
+      var theme = localStorage.getItem('yard-theme') || getPreferredTheme();
+      applyThemeToAllFrames(theme);
+    }, ms);
+  });
+
+  // Also run on any click anywhere (last resort) - only in list frames
+  document.addEventListener('click', function(e) {
+    // Only handle in list frames
+    if (!isListFrame()) return;
+
+    if (e.target.tagName === 'A') {
+      var href = e.target.getAttribute('href');
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // Check if it's a sidebar link
+        var inSidebar = e.target.closest('#full_list, #menu, .menu, .sidebar');
+        if (inSidebar) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Navigate parent frame
+          if (window.parent && window.parent !== window) {
+            window.parent.location.href = e.target.href;
+          } else {
+            window.location.href = e.target.href;
+          }
+        }
+      }
+    }
+  }, true);
+
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('yard-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

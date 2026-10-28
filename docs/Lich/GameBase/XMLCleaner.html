@@ -127,7 +127,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Escapes nested single and double quotes inside XML attribute values.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Repairs nested quotes inside XML attribute values.</p></div></span>
   
 </li>
 
@@ -149,7 +149,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Removes invalid control characters (e.g., bell character \a) from the stream.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Strips invalid characters that break XML parsing.</p></div></span>
   
 </li>
 
@@ -171,7 +171,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Repairs malformed XML tags: open-ended component/dynaStream tags, dangling closing tags, and unclosed wound (nerves) tags from empath appraisals.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Repairs common XML tag malformations from the game stream.</p></div></span>
   
 </li>
 
@@ -201,9 +201,12 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Escapes nested single and double quotes inside XML attribute values.</p>
-<p>Processes both patterns: single quotes inside single-quoted attributes and double
-quotes inside double-quoted attributes. Logs detected malformations and repairs.</p>
+<p>Repairs nested quotes inside XML attribute values.</p>
+<p>The server occasionally sends attributes with nested quotes (e.g.,
+title='Tsetem's Items', or the settingsInfo space-not-found bug)
+that break XML parsers. This method escapes the inner quotes as ' or &quot;
+and logs the repair.</p>
+<p>Modifies server_string in place.</p>
 
   </div>
 </div>
@@ -221,7 +224,7 @@ quotes inside double-quoted attributes. Logs detected malformations and repairs.
       
       
         &mdash;
-        <div class='inline'><p>the XML string to repair, modified in place</p></div>
+        <div class='inline'><p>the malformed server line</p></div>
       
     </li>
   
@@ -238,7 +241,7 @@ quotes inside double-quoted attributes. Logs detected malformations and repairs.
       
       
         &mdash;
-        <div class='inline'><p>the repaired server string</p></div>
+        <div class='inline'><p>the repaired line</p></div>
       
     </li>
   
@@ -250,30 +253,30 @@ quotes inside double-quoted attributes. Logs detected malformations and repairs.
       <pre class="lines">
 
 
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321
-322
-323
-324</pre>
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 304</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 386</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clean_nested_quotes'>clean_nested_quotes</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># Fix nested single quotes
@@ -316,9 +319,10 @@ quotes inside double-quoted attributes. Logs detected malformations and repairs.
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Removes invalid control characters (e.g., bell character \a) from the stream.</p>
-<p>The Ox parser tolerates bare ampersands and does not need character entity
-escaping, but still rejects the bell character. Logs any removals.</p>
+<p>Strips invalid characters that break XML parsing.</p>
+<p>Removes bell characters (\a) and other encodings that Ox cannot tolerate.
+Logs each detected and repaired instance.</p>
+<p>Modifies server_string in place.</p>
 
   </div>
 </div>
@@ -336,7 +340,7 @@ escaping, but still rejects the bell character. Logs any removals.</p>
       
       
         &mdash;
-        <div class='inline'><p>the server string to clean, modified in place</p></div>
+        <div class='inline'><p>the server line</p></div>
       
     </li>
   
@@ -353,7 +357,7 @@ escaping, but still rejects the bell character. Logs any removals.</p>
       
       
         &mdash;
-        <div class='inline'><p>the cleaned server string</p></div>
+        <div class='inline'><p>the cleaned line</p></div>
       
     </li>
   
@@ -365,23 +369,23 @@ escaping, but still rejects the bell character. Logs any removals.</p>
       <pre class="lines">
 
 
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
-347</pre>
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 334</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 418</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fix_invalid_characters'>fix_invalid_characters</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># Note: a bare &#39;&amp;&#39; is intentionally not escaped here. REXML raised on it
@@ -417,9 +421,10 @@ escaping, but still rejects the bell character. Logs any removals.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Repairs malformed XML tags: open-ended component/dynaStream tags, dangling
-closing tags, and unclosed wound (nerves) tags from empath appraisals.</p>
-<p>Logs detected and repaired malformations.</p>
+<p>Repairs common XML tag malformations from the game stream.</p>
+<p>Fixes open-ended dynaStream and component tags, removes dangling closing tags,
+and strips unclosed tags in long empath-appraisal strings. Logs each repair.</p>
+<p>Modifies server_string in place.</p>
 
   </div>
 </div>
@@ -437,7 +442,7 @@ closing tags, and unclosed wound (nerves) tags from empath appraisals.</p>
       
       
         &mdash;
-        <div class='inline'><p>the XML string to repair, modified in place</p></div>
+        <div class='inline'><p>the server line</p></div>
       
     </li>
   
@@ -454,7 +459,7 @@ closing tags, and unclosed wound (nerves) tags from empath appraisals.</p>
       
       
         &mdash;
-        <div class='inline'><p>the repaired server string</p></div>
+        <div class='inline'><p>the repaired line</p></div>
       
     </li>
   
@@ -466,31 +471,31 @@ closing tags, and unclosed wound (nerves) tags from empath appraisals.</p>
       <pre class="lines">
 
 
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
-367
-368
-369
-370
-371
-372
-373
-374
-375
-376
-377
-378</pre>
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/games.rb', line 357</span>
+      <pre class="code"><span class="info file"># File 'documented/games.rb', line 443</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fix_xml_tags'>fix_xml_tags</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># Fix open-ended XML tags
@@ -524,7 +529,7 @@ closing tags, and unclosed wound (nerves) tags from empath appraisals.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:13 2026 by
+  Generated on Wed Oct 28 05:27:09 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -476,6 +476,9 @@ Failure: { success: false, message: &quot;Specific reason for failure&quot; }</p
       <pre class="lines">
 
 
+195
+196
+197
 198
 199
 200
@@ -536,10 +539,11 @@ Failure: { success: false, message: &quot;Specific reason for failure&quot; }</p
 255
 256
 257
-258</pre>
+258
+259</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 198</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 195</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add_character'>add_character</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_character_data'>character_data</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -554,7 +558,11 @@ Failure: { success: false, message: &quot;Specific reason for failure&quot; }</p
 
     <span class='comment'># Normalize username to UPCASE for consistent lookup
 </span>    <span class='id identifier rubyid_normalized_username'>normalized_username</span> <span class='op'>=</span> <span class='id identifier rubyid_username'>username</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span>
-    <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>=</span> <span class='id identifier rubyid_character_data'>character_data</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
+    <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_character_data'>character_data</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+
+    <span class='kw'>if</span> <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+      <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>success:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>message:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Character name cannot be empty.</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
 
     <span class='comment'># Check if account exists
 </span>    <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_normalized_username'>normalized_username</span><span class='rbracket'>]</span>
@@ -564,10 +572,10 @@ Failure: { success: false, message: &quot;Specific reason for failure&quot; }</p
     <span class='comment'># Initialize characters array if not present
 </span>    <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_normalized_username'>normalized_username</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
 
-    <span class='comment'># Check for duplicate character using normalized comparison
+    <span class='comment'># Check for duplicate character using normalized comparison (both sides: older writes used a different form)
 </span>    <span class='comment'># Including custom_launch allows multiple entries for same character with different launch configurations
 </span>    <span class='id identifier rubyid_existing_character'>existing_character</span> <span class='op'>=</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_normalized_username'>normalized_username</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>characters</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_char'>char</span><span class='op'>|</span>
-      <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>&amp;&amp;</span>
+      <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>&amp;&amp;</span>
         <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_character_data'>character_data</span><span class='lbracket'>[</span><span class='symbol'>:game_code</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
         <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_character_data'>character_data</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
         <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_character_data'>character_data</span><span class='lbracket'>[</span><span class='symbol'>:custom_launch</span><span class='rbracket'>]</span>
@@ -733,6 +741,12 @@ Character hash format: { char_name:, game_code:, game_name:, frontend:, custom_l
       <pre class="lines">
 
 
+34
+35
+36
+37
+38
+39
 40
 41
 42
@@ -830,13 +844,10 @@ Character hash format: { char_name:, game_code:, game_name:, frontend:, custom_l
 134
 135
 136
-137
-138
-139
-140</pre>
+137</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 40</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 34</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add_or_update_account'>add_or_update_account</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_password'>password</span><span class='comma'>,</span> <span class='id identifier rubyid_characters'>characters</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -850,7 +861,7 @@ Character hash format: { char_name:, game_code:, game_name:, frontend:, custom_l
                   <span class='const'>YAML</span><span class='period'>.</span><span class='id identifier rubyid_load_file'>load_file</span><span class='lparen'>(</span><span class='id identifier rubyid_yaml_file'>yaml_file</span><span class='rparen'>)</span>
                 <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
                   <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Error loading YAML entry file: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-                  <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rbrace'>}</span>
+                  <span class='kw'>return</span> <span class='kw'>false</span>
                 <span class='kw'>end</span>
               <span class='kw'>else</span>
                 <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rbrace'>}</span>
@@ -878,10 +889,12 @@ Character hash format: { char_name:, game_code:, game_name:, frontend:, custom_l
     <span class='label'>master_password:</span> <span class='id identifier rubyid_master_password'>master_password</span>
   <span class='rparen'>)</span>
 
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_encrypted_password'>encrypted_password</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
   <span class='comment'># Normalize character data if provided
 </span>  <span class='id identifier rubyid_normalized_characters'>normalized_characters</span> <span class='op'>=</span> <span class='id identifier rubyid_characters'>characters</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_char'>char</span><span class='op'>|</span>
     <span class='lbrace'>{</span>
-      <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span>         <span class='op'>=&gt;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:capitalize</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='comma'>,</span>
+      <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span>         <span class='op'>=&gt;</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='comma'>,</span>
       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span>         <span class='op'>=&gt;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='symbol'>:game_code</span><span class='rbracket'>]</span><span class='comma'>,</span>
       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_name</span><span class='tstring_end'>&#39;</span></span>         <span class='op'>=&gt;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='symbol'>:game_name</span><span class='rbracket'>]</span><span class='comma'>,</span>
       <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span>          <span class='op'>=&gt;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span><span class='comma'>,</span>
@@ -902,12 +915,13 @@ Character hash format: { char_name:, game_code:, game_name:, frontend:, custom_l
 
       <span class='comment'># Add new characters that don&#39;t already exist
 </span>      <span class='id identifier rubyid_characters'>characters</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_new_char'>new_char</span><span class='op'>|</span>
-        <span class='id identifier rubyid_normalized_new_char_name'>normalized_new_char_name</span> <span class='op'>=</span> <span class='id identifier rubyid_new_char'>new_char</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
+        <span class='id identifier rubyid_normalized_new_char_name'>normalized_new_char_name</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_new_char'>new_char</span><span class='lbracket'>[</span><span class='symbol'>:char_name</span><span class='rbracket'>]</span><span class='rparen'>)</span>
 
         <span class='comment'># Check if character already exists (by char_name, game_code, frontend, custom_launch)
 </span>        <span class='comment'># Including custom_launch allows multiple entries for same character with different launch configurations
+</span>        <span class='comment'># Stored names are normalized too: older writes used a different form
 </span>        <span class='id identifier rubyid_existing_char'>existing_char</span> <span class='op'>=</span> <span class='id identifier rubyid_existing_characters'>existing_characters</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_existing'>existing</span><span class='op'>|</span>
-          <span class='id identifier rubyid_existing'>existing</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_new_char_name'>normalized_new_char_name</span> <span class='op'>&amp;&amp;</span>
+          <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_existing'>existing</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_new_char_name'>normalized_new_char_name</span> <span class='op'>&amp;&amp;</span>
             <span class='id identifier rubyid_existing'>existing</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_new_char'>new_char</span><span class='lbracket'>[</span><span class='symbol'>:game_code</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
             <span class='id identifier rubyid_existing'>existing</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>frontend</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_new_char'>new_char</span><span class='lbracket'>[</span><span class='symbol'>:frontend</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
             <span class='id identifier rubyid_existing'>existing</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_new_char'>new_char</span><span class='lbracket'>[</span><span class='symbol'>:custom_launch</span><span class='rbracket'>]</span>
@@ -1031,14 +1045,14 @@ Updates the password for the specified account using normalized account name</p>
       <pre class="lines">
 
 
+178
+179
+180
 181
-182
-183
-184
-185</pre>
+182</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 181</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 178</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_change_password'>change_password</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_new_password'>new_password</span><span class='rparen'>)</span>
   <span class='comment'># Normalize username to UPCASE for consistent storage
@@ -1126,8 +1140,6 @@ format (symbol keys) to storage format (symbol keys with validation)</p>
       <pre class="lines">
 
 
-403
-404
 405
 406
 407
@@ -1146,10 +1158,12 @@ format (symbol keys) to storage format (symbol keys with validation)</p>
 420
 421
 422
-423</pre>
+423
+424
+425</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 403</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 405</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_convert_auth_data_to_characters'>convert_auth_data_to_characters</span><span class='lparen'>(</span><span class='id identifier rubyid_auth_data'>auth_data</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>stormfront</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_characters'>characters</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
@@ -1235,8 +1249,6 @@ format (symbol keys) to storage format (symbol keys with validation)</p>
       <pre class="lines">
 
 
-429
-430
 431
 432
 433
@@ -1248,10 +1260,12 @@ format (symbol keys) to storage format (symbol keys with validation)</p>
 439
 440
 441
-442</pre>
+442
+443
+444</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 429</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 431</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_accounts'>get_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1331,8 +1345,6 @@ This method is used by AccountManagerUI.populate_accounts_view</p>
       <pre class="lines">
 
 
-449
-450
 451
 452
 453
@@ -1361,10 +1373,12 @@ This method is used by AccountManagerUI.populate_accounts_view</p>
 476
 477
 478
-479</pre>
+479
+480
+481</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 449</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 451</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_all_accounts'>get_all_accounts</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1474,8 +1488,6 @@ This method is used by AccountManagerUI.populate_accounts_view</p>
       <pre class="lines">
 
 
-486
-487
 488
 489
 490
@@ -1499,10 +1511,12 @@ This method is used by AccountManagerUI.populate_accounts_view</p>
 508
 509
 510
-511</pre>
+511
+512
+513</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 486</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 488</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_characters'>get_characters</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1608,6 +1622,9 @@ Uses normalized account name for consistent lookup</p>
       <pre class="lines">
 
 
+145
+146
+147
 148
 149
 150
@@ -1629,13 +1646,10 @@ Uses normalized account name for consistent lookup</p>
 166
 167
 168
-169
-170
-171
-172</pre>
+169</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 148</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 145</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_account'>remove_account</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1800,7 +1814,6 @@ Uses normalized account and character names for consistent lookup</p>
       <pre class="lines">
 
 
-270
 271
 272
 273
@@ -1845,10 +1858,12 @@ Uses normalized account and character names for consistent lookup</p>
 312
 313
 314
-315</pre>
+315
+316
+317</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 270</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 271</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_remove_character'>remove_character</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>=</span> <span class='symbol'>:__unset</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -1861,7 +1876,7 @@ Uses normalized account and character names for consistent lookup</p>
 
     <span class='comment'># Normalize username and character name for consistent lookup
 </span>    <span class='id identifier rubyid_normalized_username'>normalized_username</span> <span class='op'>=</span> <span class='id identifier rubyid_username'>username</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_upcase'>upcase</span>
-    <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>=</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
+    <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_char_name'>char_name</span><span class='rparen'>)</span>
 
     <span class='comment'># Check if account exists
 </span>    <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_yaml_data'>yaml_data</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>accounts</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span>
@@ -1873,7 +1888,8 @@ Uses normalized account and character names for consistent lookup</p>
     <span class='id identifier rubyid_initial_count'>initial_count</span> <span class='op'>=</span> <span class='id identifier rubyid_characters'>characters</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span>
 
     <span class='id identifier rubyid_characters'>characters</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_char'>char</span><span class='op'>|</span>
-      <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>=</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span>
+      <span class='comment'># Normalize the stored side too, so records written in an older form stay removable
+</span>      <span class='id identifier rubyid_matches_basic'>matches_basic</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_normalize_character_name'><span class='object_link'><a href="../Authentication/EntryStore.html#normalize_character_name-class_method" title="Lich::Common::Authentication::EntryStore.normalize_character_name (method)">normalize_character_name</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>char_name</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_normalized_char_name'>normalized_char_name</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>game_code</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span> <span class='op'>==</span> <span class='id identifier rubyid_game_code'>game_code</span>
       <span class='id identifier rubyid_matches_custom_launch'>matches_custom_launch</span> <span class='op'>=</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span> <span class='op'>==</span> <span class='symbol'>:__unset</span> <span class='op'>||</span>
                               <span class='id identifier rubyid_char'>char</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>custom_launch</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='op'>==</span> <span class='id identifier rubyid_custom_launch'>custom_launch</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span>
 
@@ -1959,8 +1975,6 @@ Uses normalized account and character names for consistent lookup</p>
       <pre class="lines">
 
 
-517
-518
 519
 520
 521
@@ -1972,10 +1986,12 @@ Uses normalized account and character names for consistent lookup</p>
 527
 528
 529
-530</pre>
+530
+531
+532</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 517</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 519</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_to_legacy_format'>to_legacy_format</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -2110,8 +2126,6 @@ Uses normalized account and character names for consistent lookup</p>
       <pre class="lines">
 
 
-325
-326
 327
 328
 329
@@ -2141,10 +2155,12 @@ Uses normalized account and character names for consistent lookup</p>
 353
 354
 355
-356</pre>
+356
+357
+358</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 325</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 327</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_update_character'>update_character</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='id identifier rubyid_updates'>updates</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_yaml_file'>yaml_file</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication.html" title="Lich::Common::Authentication (module)">Authentication</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Authentication/EntryStore.html" title="Lich::Common::Authentication::EntryStore (module)">EntryStore</a></span></span><span class='period'>.</span><span class='id identifier rubyid_yaml_file_path'><span class='object_link'><a href="../Authentication/EntryStore.html#yaml_file_path-class_method" title="Lich::Common::Authentication::EntryStore.yaml_file_path (method)">yaml_file_path</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='rparen'>)</span>
@@ -2329,8 +2345,6 @@ and duplicate destinations rather than editing a different entry.</p>
       <pre class="lines">
 
 
-370
-371
 372
 373
 374
@@ -2353,10 +2367,12 @@ and duplicate destinations rather than editing a different entry.</p>
 391
 392
 393
-394</pre>
+394
+395
+396</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 370</span>
+      <pre class="code"><span class="info file"># File 'documented/common/gui/account_manager.rb', line 372</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_update_launch_settings'>update_launch_settings</span><span class='lparen'>(</span><span class='id identifier rubyid_data_dir'>data_dir</span><span class='comma'>,</span> <span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_char_name'>char_name</span><span class='comma'>,</span> <span class='id identifier rubyid_game_code'>game_code</span><span class='comma'>,</span> <span class='label'>old_frontend:</span><span class='comma'>,</span> <span class='label'>custom_launch:</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_old_frontend'>old_frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_definition'>definition</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Frontend.html" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_definition_for'><span class='object_link'><a href="../Frontend.html#definition_for-class_method" title="Lich::Common::Frontend.definition_for (method)">definition_for</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
@@ -2393,7 +2409,7 @@ and duplicate destinations rather than editing a different entry.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:21 2026 by
+  Generated on Wed Oct 28 05:27:15 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

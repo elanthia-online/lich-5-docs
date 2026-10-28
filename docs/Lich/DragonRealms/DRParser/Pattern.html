@@ -88,10 +88,10 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Regex patterns for parsing server output.</p>
-<p>Constants in this module match game output formats (experience display,
-inventory listings, spell rosters, room state, etc.). Patterns are frozen
-for reuse and performance.</p>
+    <p>Regexp patterns for parsing DragonRealms server output.</p>
+<p>Patterns are anchored to line starts where noted to prevent player chat, ESP, or book text from
+triggering mutations to game state. Several patterns capture named groups used to extract skills,
+stats, items, and other values.</p>
 
   </div>
 </div>
@@ -106,6 +106,29 @@ for reuse and performance.</p>
     </h2>
 
     <dl class="constants">
+      
+        <dt id="ExpColumnsLine-constant" class="">ExpColumnsLine =
+          <div class="docstring">
+  <div class="discussion">
+    <p>StatLine, ExpColumnsLine, TDPValue and PlayedSubscription write
+DRStats/DRSkill/UserVars, so they are anchored to the start of the line
+(cf. GameShutdown): another player's speech or ESP, e.g.
+[General][Name] &quot;Evasion: 1 0% mind lock&quot;, must not rewrite the
+listener's state. Logs show the real lines start with only whitespace
+and/or tags (buffed INFO stats arrive wrapped in <preset id="speech">),
+so all four allow that same (?:&lt;[^&gt;]<em>&gt;|\s)</em> prefix and nothing else.
+StatLine/ExpColumnsLine gate the line; StatValue/ExpColumns then scan
+every column on it. A gated line the ExpColumns scan reads nothing
+from falls through to the later branches.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:&lt;[^&gt;]*&gt;|\s)*[a-zA-Z][a-zA-Z\s]*\b:\s*\d+\s+\d+%</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ExpColumns-constant" class="">ExpColumns =
           
@@ -132,6 +155,11 @@ for reuse and performance.</p>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Gender:\s+\b(?&lt;gender&gt;.+)\b\s+Age:\s+\b(?&lt;age&gt;.+)\b\s+Circle:\s+\b(?&lt;circle&gt;.+)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
+        <dt id="StatLine-constant" class="">StatLine =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:&lt;[^&gt;]*&gt;|\s)*(?:Strength|Agility|Discipline|Intelligence|Reflex|Charisma|Wisdom|Stamina|Favors|TDPs)\s+:\s+\d+</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
         <dt id="StatValue-constant" class="">StatValue =
           
         </dt>
@@ -140,7 +168,7 @@ for reuse and performance.</p>
         <dt id="TDPValue-constant" class="">TDPValue =
           
         </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You have (?&lt;tdp&gt;\d+) TDPs\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:&lt;[^&gt;]*&gt;|\s)*You have (?&lt;tdp&gt;\d+) TDPs\.</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="EncumbranceValue-constant" class="">EncumbranceValue =
           
@@ -235,7 +263,7 @@ for reuse and performance.</p>
         <dt id="PlayedSubscription-constant" class="">PlayedSubscription =
           
         </dt>
-        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Current Account Status: (?&lt;subscription&gt;F2P|Basic|Premium|Platinum)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:&lt;[^&gt;]*&gt;|\s)*Current Account Status: (?&lt;subscription&gt;F2P|Basic|Premium|Platinum)</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="LastLogoff-constant" class="">LastLogoff =
           
@@ -452,7 +480,7 @@ stem and capture the count.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:25 2026 by
+  Generated on Wed Oct 28 05:27:18 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

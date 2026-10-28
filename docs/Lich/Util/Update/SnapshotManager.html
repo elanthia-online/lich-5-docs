@@ -104,9 +104,13 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Manages snapshot and rollback functionality for Lich core files.</p>
-<p>This class creates timestamped backups of lib/, lich.rbw, and core scripts before
-updates and supports rollback to the most recent snapshot.</p>
+    <p>Creates and manages timestamped backups of Lich core files and supports rollback to previous versions.</p>
+<p>Snapshots capture lib/, lich.rbw, and core scripts before updates. The manager creates timestamped
+staging directories and publishes them only after all copies succeed. Failed or interrupted snapshots
+are cleaned up, preventing incomplete installations. Reverts hold an exclusive lock to prevent concurrent
+operations and swap files atomically using renames; if the swap fails mid-way, it undoes all changes.
+A revert whose thread is killed during the swap cannot undo it, potentially leaving the installation
+partially reverted, but the snapshot itself remains intact for manual recovery.</p>
 
   </div>
 </div>
@@ -116,11 +120,23 @@ updates and supports rollback to the most recent snapshot.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="../Update.html" title="Lich::Util::Update (module)">Lich::Util::Update</a></span></li>
+      <li><span class='object_link'><a href="#snapshot-instance_method" title="Lich::Util::Update::SnapshotManager#snapshot (method)">#snapshot</a></span></li>
+    
+      <li><span class='object_link'><a href="#revert-instance_method" title="Lich::Util::Update::SnapshotManager#revert (method)">#revert</a></span></li>
     
   </ul>
 
-</div>
+</div><h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="SnapshotManager/RevertRunningError.html" title="Lich::Util::Update::SnapshotManager::RevertRunningError (class)">RevertRunningError</a></span>
+    
+  
+</p>
+
   
     <h2>
       Constant Summary
@@ -130,13 +146,169 @@ updates and supports rollback to the most recent snapshot.</p>
     <dl class="constants">
       
         <dt id="CORE_SCRIPTS-constant" class="">CORE_SCRIPTS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Array of core script file names that are included in snapshots and managed during reverts.</p>
+<p>These are the scripts that ship with Lich and are always backed up and restored:
+alias.lic, autostart.lic, dependency.lic, ewaggle.lic, foreach.lic, go2.lic,
+infomon.lic, jinx.lic, lnet.lic, log.lic, logxml.lic, map.lic, repository.lic,
+vars.lic, and version.lic.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>sorted list of core script file names</p></div>
+      
+    </li>
+  
+</ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='words_sep'>
   </span><span class='tstring_content'>alias.lic</span><span class='words_sep'> </span><span class='tstring_content'>autostart.lic</span><span class='words_sep'> </span><span class='tstring_content'>dependency.lic</span><span class='words_sep'> </span><span class='tstring_content'>ewaggle.lic</span><span class='words_sep'> </span><span class='tstring_content'>foreach.lic</span><span class='words_sep'>
   </span><span class='tstring_content'>go2.lic</span><span class='words_sep'> </span><span class='tstring_content'>infomon.lic</span><span class='words_sep'> </span><span class='tstring_content'>jinx.lic</span><span class='words_sep'> </span><span class='tstring_content'>lnet.lic</span><span class='words_sep'> </span><span class='tstring_content'>log.lic</span><span class='words_sep'> </span><span class='tstring_content'>logxml.lic</span><span class='words_sep'>
   </span><span class='tstring_content'>map.lic</span><span class='words_sep'> </span><span class='tstring_content'>repository.lic</span><span class='words_sep'> </span><span class='tstring_content'>vars.lic</span><span class='words_sep'> </span><span class='tstring_content'>version.lic</span><span class='words_sep'>
 </span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="SNAPSHOT_PREFIX-constant" class="">SNAPSHOT_PREFIX =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Prefix of a published, restorable snapshot. #revert only ever
+considers directories matching &quot;#<span class='object_link'><a href="#SNAPSHOT_PREFIX-constant" title="Lich::Util::Update::SnapshotManager::SNAPSHOT_PREFIX (constant)">SNAPSHOT_PREFIX</a></span>*&quot;.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>L5-snapshot-</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="STAGING_PREFIX-constant" class="">STAGING_PREFIX =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Prefix of a snapshot still being copied. Deliberately does not
+start with SNAPSHOT_PREFIX, so a snapshot that is interrupted part
+way through is never picked by #revert.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>L5-staging-</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="REVERT_TEMP_PREFIX-constant" class="">REVERT_TEMP_PREFIX =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Prefix of the hidden working directories #revert creates beside the
+live lib/, scripts/ and lich.rbw while it restores them.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>.lich5-revert-</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="REVERT_LOCK_NAME-constant" class="">REVERT_LOCK_NAME =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Lock file in BACKUP_DIR. #revert holds it exclusively for its whole
+run and #snapshot holds it exclusively while it copies (and, for an
+update, while it downloads and installs), so two reverts never swap
+files at the same time, a snapshot never copies a lib/ that a revert
+has half swapped, and two updates never install at the same time.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>.lich5-revert.lock</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="STAGED_MARKER_NAME-constant" class="">STAGED_MARKER_NAME =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Empty file #snapshot writes into the staging directory once every
+copy has succeeded, just before publishing it. A snapshot without
+it was taken by an older Lich, which copied straight into
+L5-snapshot-<DATE-TIME> and could leave it cut short (see
+#legacy_cut_off).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>.lich5-staged</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="MAX_PUBLISH_ATTEMPTS-constant" class="">MAX_PUBLISH_ATTEMPTS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>How many same-second name collisions #snapshot tolerates before
+giving up on publishing.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>100</span></pre></dd>
+      
+        <dt id="RENAME_RETRY_DELAYS-constant" class="">RENAME_RETRY_DELAYS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Seconds to wait before each retry of a rename Windows refused with
+a transient error (see #rename_with_retry); about 3s in all.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span><span class='float'>0.1</span><span class='comma'>,</span> <span class='float'>0.2</span><span class='comma'>,</span> <span class='float'>0.4</span><span class='comma'>,</span> <span class='float'>0.8</span><span class='comma'>,</span> <span class='float'>1.6</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="TRANSIENT_RENAME_ERRORS-constant" class="">TRANSIENT_RENAME_ERRORS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Errors Windows reports when a rename is refused because another
+process has the entry, or a file inside it, open.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span><span class='const'>Errno</span><span class='op'>::</span><span class='const'>EACCES</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>EPERM</span><span class='comma'>,</span> <span class='const'>Errno</span><span class='op'>::</span><span class='const'>EBUSY</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -158,6 +330,28 @@ updates and supports rollback to the most recent snapshot.</p>
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#new_data_backup_dir-instance_method" title="#new_data_backup_dir (instance method)">#<strong>new_data_backup_dir</strong>  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Creates a fresh timestamped directory under BACKUP_DIR for a data-only backup (e.g. effect-list.xml with no preceding full update).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#revert-instance_method" title="#revert (instance method)">#<strong>revert</strong>  &#x21d2; void </a>
     
 
@@ -169,10 +363,10 @@ updates and supports rollback to the most recent snapshot.</p>
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Reverts Lich5 to the previously installed version.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Restores most recent snapshot from BACKUP_DIR.</p></div></span>
   
 </li>
 
@@ -180,7 +374,7 @@ updates and supports rollback to the most recent snapshot.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#snapshot-instance_method" title="#snapshot (instance method)">#<strong>snapshot</strong>  &#x21d2; void </a>
+      <a href="#snapshot-instance_method" title="#snapshot (instance method)">#<strong>snapshot</strong> {|snapshot_dir| ... } &#x21d2; String, Object </a>
     
 
     
@@ -194,7 +388,7 @@ updates and supports rollback to the most recent snapshot.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Creates a snapshot of the current Lich core files.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Creates timestamped snapshot of lib/, lich.rbw, and core scripts.</p></div></span>
   
 </li>
 
@@ -210,7 +404,74 @@ updates and supports rollback to the most recent snapshot.</p>
 
     
       <div class="method_details first">
-  <h3 class="signature first" id="revert-instance_method">
+  <h3 class="signature first" id="new_data_backup_dir-instance_method">
+  
+    #<strong>new_data_backup_dir</strong>  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Creates a fresh timestamped directory under BACKUP_DIR for a
+data-only backup (e.g. effect-list.xml with no preceding full
+update). Deliberately uses a different prefix than SNAPSHOT_PREFIX
+so #revert's &quot;L5-snapshot-*&quot; glob can never mistake a directory
+containing only backed-up data files -- no lib/, lich.rbw, or
+scripts/ -- for a real, restorable ecosystem snapshot.</p>
+<p>Update.update_core_data_and_scripts is a public entry point with no
+guard of its own against concurrent callers (e.g. multiboxed Lich
+processes autostarting within the same second after an update), so
+this uses Dir.mktmpdir rather than a bare mkdir_p on a
+second-resolution timestamp -- two calls in the same second must
+not resolve to the same directory and silently clobber each other's
+backup.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>path to the newly created directory</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+116
+117
+118</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/update/snapshot_manager.rb', line 116</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_new_data_backup_dir'>new_data_backup_dir</span>
+  <span class='const'>Dir</span><span class='period'>.</span><span class='id identifier rubyid_mktmpdir'>mktmpdir</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>L5-databackup-</span><span class='embexpr_beg'>#{</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_strftime'>strftime</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%Y-%m-%d-%H-%M-%S</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>-</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='const'>BACKUP_DIR</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="revert-instance_method">
   
     #<strong>revert</strong>  &#x21d2; <tt>void</tt> 
   
@@ -220,14 +481,17 @@ updates and supports rollback to the most recent snapshot.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Reverts Lich5 to the previously installed version.</p>
-<p>This method restores the Lich5 environment from the most recent snapshot,
-including core files and scripts. If no snapshot is found, an error message
-is displayed.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Restores most recent snapshot from BACKUP_DIR.</p>
+<p>Refuses, without changing anything, when the newest L5-snapshot-*
+directory is incomplete (no lib/version.rb declaring LICH_VERSION,
+no lich.rbw, no scripts/, or, in one an older Lich took, core
+scripts that may have been cut off part way). It names every
+incomplete directory newer than the next complete snapshot, and
+that snapshot if there is one, but never falls back to it on its
+own: an older snapshot may be several versions back.</p>
+<p>Holds the revert lock exclusively for the whole run. If another
+revert, a snapshot, or an update past its snapshot (see #snapshot)
+on the same installation holds it, says so and changes nothing.</p>
 
   </div>
 </div>
@@ -240,83 +504,35 @@ is displayed.</p>
       <pre class="lines">
 
 
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103</pre>
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/snapshot_manager.rb', line 67</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/snapshot_manager.rb', line 219</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_revert'>revert</span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Reverting Lich5 to previously installed version.</span><span class='tstring_end'>&#39;</span></span>
 
-  <span class='id identifier rubyid_revert_array'>revert_array</span> <span class='op'>=</span> <span class='const'>Dir</span><span class='period'>.</span><span class='id identifier rubyid_glob'>glob</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>BACKUP_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>L5-snapshot-*</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_sort'>sort</span><span class='period'>.</span><span class='id identifier rubyid_reverse'>reverse</span>
-  <span class='id identifier rubyid_restore_snapshot'>restore_snapshot</span> <span class='op'>=</span> <span class='id identifier rubyid_revert_array'>revert_array</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_restore_snapshot'>restore_snapshot</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>No prior Lich5 version found. Seek assistance.</span><span class='tstring_end'>&quot;</span></span>
-  <span class='kw'>else</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm_rf'>rm_rf</span><span class='lparen'>(</span><span class='const'>Dir</span><span class='period'>.</span><span class='id identifier rubyid_glob'>glob</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>*</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp_r'>cp_r</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_restore_snapshot'>restore_snapshot</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='comma'>,</span> <span class='const'>LIB_DIR</span><span class='rparen'>)</span>
-
-    <span class='const'><span class='object_link'><a href="#CORE_SCRIPTS-constant" title="Lich::Util::Update::SnapshotManager::CORE_SCRIPTS (constant)">CORE_SCRIPTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_file'>file</span><span class='op'>|</span>
-      <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>SCRIPT_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_file'>file</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>SCRIPT_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_file'>file</span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='kw'>end</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp_r'>cp_r</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_restore_snapshot'>restore_snapshot</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>scripts</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='comma'>,</span> <span class='const'>SCRIPT_DIR</span><span class='rparen'>)</span>
-
-    <span class='id identifier rubyid_lich_to_update'>lich_to_update</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LICH_DIR</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_basename'>basename</span><span class='lparen'>(</span><span class='gvar'>$PROGRAM_NAME</span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_update_to_lich'>update_to_lich</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_restore_snapshot'>restore_snapshot</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_basename'>basename</span><span class='lparen'>(</span><span class='gvar'>$PROGRAM_NAME</span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='id identifier rubyid_update_to_lich'>update_to_lich</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='id identifier rubyid_lich_to_update'>lich_to_update</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wb</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_w'><span class='object_link'><a href="../../../top-level-namespace.html#w-instance_method" title="#w (method)">w</a></span></span><span class='op'>|</span> <span class='id identifier rubyid_w'><span class='object_link'><a href="../../../top-level-namespace.html#w-instance_method" title="#w (method)">w</a></span></span><span class='period'>.</span><span class='id identifier rubyid_write'>write</span><span class='lparen'>(</span><span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_read'>read</span><span class='rparen'>)</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
-
-    <span class='id identifier rubyid_targetversion'>targetversion</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span>
-    <span class='id identifier rubyid_targetfile'>targetfile</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_read'>read</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>version.rb</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_targetfile'>targetfile</span><span class='period'>.</span><span class='id identifier rubyid_each_line'>each_line</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_line'>line</span><span class='op'>|</span>
-      <span class='kw'>if</span> <span class='id identifier rubyid_line'>line</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>LICH_VERSION\s*=\s*[&#39;&quot;]([^&#39;&quot;]+)[&#39;&quot;]</span><span class='regexp_end'>/</span></span>
-        <span class='id identifier rubyid_targetversion'>targetversion</span> <span class='op'>=</span> <span class='backref'>$1</span>
-      <span class='kw'>end</span>
-    <span class='kw'>end</span>
-
-    <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Update.html" title="Lich::Util::Update (module)">Update</a></span></span><span class='period'>.</span><span class='id identifier rubyid_clear_branch_tracking'><span class='object_link'><a href="../Update.html#clear_branch_tracking-class_method" title="Lich::Util::Update.clear_branch_tracking (method)">clear_branch_tracking</a></span></span>
-
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Lich5 has been reverted to Lich5 version </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_targetversion'>targetversion</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You should exit the game, then log back in.  This will start the game</span><span class='tstring_end'>&quot;</span></span>
-    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>with your previous version of Lich.  Enjoy!</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_ran'>ran</span> <span class='op'>=</span> <span class='id identifier rubyid_with_revert_lock'>with_revert_lock</span><span class='lparen'>(</span><span class='const'>File</span><span class='op'>::</span><span class='const'>LOCK_EX</span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_revert_newest_snapshot'>revert_newest_snapshot</span>
+    <span class='kw'>true</span>
   <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_ran'>ran</span>
+
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Another revert, a snapshot or an update is running on this installation. Nothing was changed.</span><span class='tstring_end'>&#39;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -326,7 +542,7 @@ is displayed.</p>
       <div class="method_details ">
   <h3 class="signature " id="snapshot-instance_method">
   
-    #<strong>snapshot</strong>  &#x21d2; <tt>void</tt> 
+    #<strong>snapshot</strong> {|snapshot_dir| ... } &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Object</tt> 
   
 
   
@@ -334,15 +550,96 @@ is displayed.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Creates a snapshot of the current Lich core files.</p>
-<p>This method creates a backup of the current Lich core files in a timestamped
-directory. It is recommended to also copy the entire Lich5 folder for additional
-safety after updates.</p>
+    <p>Creates timestamped snapshot of lib/, lich.rbw, and core scripts.</p>
+<p>The copies go into a staging directory under BACKUP_DIR whose name
+#revert ignores. Only once every copy has succeeded is
+STAGED_MARKER_NAME written into it and it renamed to
+L5-snapshot-<DATE-TIME>. If a copy fails, the staging directory
+is removed and the error is re-raised, so the caller's update
+aborts before changing anything. The staging directory is also
+removed when the thread is killed (Lich kills the client thread
+running ;lich5-update when it shuts down), since that clean-up is
+in an ensure. A process killed mid-copy leaves only an
+L5-staging-* directory, which #revert never restores from.</p>
+<p>Holds the revert lock exclusively while copying and publishing. If
+a revert, another snapshot or another update on the same
+installation holds it, says so and raises without copying
+anything: copying a lib/ in the middle of a revert's swap could
+publish a mix of two versions that looks complete, and two updates
+installing at once could leave a mix of both releases.</p>
+<p>Given a block, yields the published snapshot's path to it and keeps
+holding the lock until the block returns, so an update that
+downloads and installs in the block cannot have a revert swap lib/
+under it.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Yield Parameters:</p>
+<ul class="yieldparam">
+  
+    <li>
+      
+        <span class='name'>snapshot_dir</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>path to the published snapshot</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>, <tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>path to the published snapshot directory,
+or the block's value when given a block</p></div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>SystemCallError</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if any copy fails; no snapshot is published</p></div>
+      
+    </li>
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="SnapshotManager/RevertRunningError.html" title="Lich::Util::Update::SnapshotManager::RevertRunningError (class)">RevertRunningError</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>if a revert, snapshot or update is
+running; nothing is copied</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -350,36 +647,61 @@ safety after updates.</p>
       <pre class="lines">
 
 
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58</pre>
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/snapshot_manager.rb', line 32</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/snapshot_manager.rb', line 151</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_snapshot'>snapshot</span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
@@ -389,24 +711,49 @@ safety after updates.</p>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>another location for additional safety, after any</span><span class='tstring_end'>&#39;</span></span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>additional requested updates are completed.</span><span class='tstring_end'>&#39;</span></span>
 
-  <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>BACKUP_DIR</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>L5-snapshot-</span><span class='embexpr_beg'>#{</span><span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span><span class='period'>.</span><span class='id identifier rubyid_strftime'>strftime</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>%Y-%m-%d-%H-%M-%S</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_mkdir_p'>mkdir_p</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='rparen'>)</span>
+  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_mkdir_p'>mkdir_p</span><span class='lparen'>(</span><span class='const'>BACKUP_DIR</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='id identifier rubyid_locked'>locked</span> <span class='op'>=</span> <span class='id identifier rubyid_with_revert_lock'>with_revert_lock</span><span class='lparen'>(</span><span class='const'>File</span><span class='op'>::</span><span class='const'>LOCK_EX</span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='comment'># Interrupts are deferred except while copying and publishing, so
+</span>    <span class='comment'># a kill can never land between creating the staging directory
+</span>    <span class='comment'># and the ensure that removes it.
+</span>    <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_handle_interrupt'>handle_interrupt</span><span class='lparen'>(</span><span class='const'>Object</span> <span class='op'>=&gt;</span> <span class='symbol'>:never</span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='id identifier rubyid_staging_dir'>staging_dir</span> <span class='op'>=</span> <span class='const'>Dir</span><span class='period'>.</span><span class='id identifier rubyid_mktmpdir'>mktmpdir</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#STAGING_PREFIX-constant" title="Lich::Util::Update::SnapshotManager::STAGING_PREFIX (constant)">STAGING_PREFIX</a></span></span><span class='comma'>,</span> <span class='const'>BACKUP_DIR</span><span class='rparen'>)</span>
+      <span class='kw'>begin</span>
+        <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_handle_interrupt'>handle_interrupt</span><span class='lparen'>(</span><span class='const'>Object</span> <span class='op'>=&gt;</span> <span class='symbol'>:immediate</span><span class='rparen'>)</span> <span class='kw'>do</span>
+          <span class='comment'># Dir.mktmpdir creates 0700; a published snapshot keeps the
+</span>          <span class='comment'># permissions a plain mkdir would have given it.
+</span>          <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_chmod'>chmod</span><span class='lparen'>(</span><span class='int'>0o777</span> <span class='op'>&amp;</span> <span class='op'>~</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_umask'>umask</span><span class='comma'>,</span> <span class='id identifier rubyid_staging_dir'>staging_dir</span><span class='rparen'>)</span>
+          <span class='id identifier rubyid_copy_core_files'>copy_core_files</span><span class='lparen'>(</span><span class='id identifier rubyid_staging_dir'>staging_dir</span><span class='rparen'>)</span>
+          <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_write'>write</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_staging_dir'>staging_dir</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="#STAGED_MARKER_NAME-constant" title="Lich::Util::Update::SnapshotManager::STAGED_MARKER_NAME (constant)">STAGED_MARKER_NAME</a></span></span><span class='rparen'>)</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+          <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span> <span class='op'>=</span> <span class='id identifier rubyid_publish_snapshot'>publish_snapshot</span><span class='lparen'>(</span><span class='id identifier rubyid_staging_dir'>staging_dir</span><span class='rparen'>)</span>
+        <span class='kw'>end</span>
+      <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
+        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Snapshot failed (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>).</span><span class='tstring_end'>&quot;</span></span>
+        <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>No snapshot was saved and nothing was changed.</span><span class='tstring_end'>&#39;</span></span>
+        <span class='id identifier rubyid_raise'>raise</span>
+      <span class='kw'>ensure</span>
+        <span class='comment'># Once published, staging_dir no longer exists, so this only
+</span>        <span class='comment'># ever removes this call&#39;s own unpublished copy.
+</span>        <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_rm_rf'>rm_rf</span><span class='lparen'>(</span><span class='id identifier rubyid_staging_dir'>staging_dir</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span>
+      <span class='kw'>end</span>
+    <span class='kw'>end</span>
 
-  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>LICH_DIR</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_basename'>basename</span><span class='lparen'>(</span><span class='gvar'>$PROGRAM_NAME</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='comma'>,</span>
-               <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_basename'>basename</span><span class='lparen'>(</span><span class='gvar'>$PROGRAM_NAME</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Current Lich ecosystem files (only) backed up to:</span><span class='tstring_end'>&#39;</span></span>
+    <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>    </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
 
-  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_mkdir_p'>mkdir_p</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>lib</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
-  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp_r'>cp_r</span><span class='lparen'>(</span><span class='const'>LIB_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='rparen'>)</span>
-
-  <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_mkdir_p'>mkdir_p</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>scripts</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="#CORE_SCRIPTS-constant" title="Lich::Util::Update::SnapshotManager::CORE_SCRIPTS (constant)">CORE_SCRIPTS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_file'>file</span><span class='op'>|</span>
-    <span class='id identifier rubyid_source'>source</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>SCRIPT_DIR</span><span class='comma'>,</span> <span class='id identifier rubyid_file'>file</span><span class='rparen'>)</span>
-    <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_cp'>cp</span><span class='lparen'>(</span><span class='id identifier rubyid_source'>source</span><span class='comma'>,</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>scripts</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_file'>file</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_source'>source</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='id identifier rubyid_block_given?'>block_given?</span> <span class='op'>?</span> <span class='kw'>yield</span><span class='lparen'>(</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span>
+    <span class='kw'>true</span>
   <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_result'>result</span> <span class='kw'>if</span> <span class='id identifier rubyid_locked'>locked</span>
 
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Current Lich ecosystem files (only) backed up to:</span><span class='tstring_end'>&#39;</span></span>
-  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>    </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_snapshot_subdir'>snapshot_subdir</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Another update, snapshot or revert is running on this installation, so no snapshot was saved and nothing was changed.</span><span class='tstring_end'>&#39;</span></span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Run the command again once it has finished.</span><span class='tstring_end'>&#39;</span></span>
+  <span class='id identifier rubyid_raise'>raise</span> <span class='const'><span class='object_link'><a href="SnapshotManager/RevertRunningError.html" title="Lich::Util::Update::SnapshotManager::RevertRunningError (class)">RevertRunningError</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>another update, snapshot or revert is running on this installation</span><span class='tstring_end'>&#39;</span></span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -418,7 +765,7 @@ safety after updates.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:40 2026 by
+  Generated on Wed Oct 28 05:27:29 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

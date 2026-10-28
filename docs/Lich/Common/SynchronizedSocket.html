@@ -177,10 +177,11 @@ or prompt has entered the queue.</p>
         <dt id="WRITER_INIT_MUTEX-constant" class="">WRITER_INIT_MUTEX =
           <div class="docstring">
   <div class="discussion">
-    <p>Mutex guarding lazy initialization of the writer thread and associated state.</p>
-<p>Synchronizes access to <code>@write_queue</code>, <code>@stream_mutex</code>, <code>@stream_stack</code>,
-<code>@deferred_main_stream</code>, and <code>@writer_thread</code> to prevent race conditions when
-the first write arrives and those structures are created.</p>
+    <p>Global mutex protecting lazy initialization of the writer thread
+and its associated queue and stream state.</p>
+<p>Serializes access to @writer_thread, @write_queue, @stream_stack,
+@stream_mutex, and @deferred_main_stream across concurrent calls to
+#ensure_writer! from different enqueue paths.</p>
 
   </div>
 </div>
@@ -232,9 +233,10 @@ resync prompt and the client-visible notice. Kept in sync with
         <dt id="PROMPT_TAG-constant" class="">PROMPT_TAG =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern matching the opening tag of a prompt element in game server XML output.</p>
-<p>A prompt clears the stream stack, making it a safe boundary point for
-discarding older display data during write-queue compaction.</p>
+    <p>Regexp matching the start of a <code>&lt;prompt&gt;</code> tag (case-insensitive).</p>
+<p>Used to detect prompt boundaries that demarcate output groups safe to drop
+during write queue compaction. A prompt clears the frontend's stream stack,
+so cutting at a prompt boundary preserves stream nesting invariants.</p>
 
   </div>
 </div>
@@ -244,20 +246,12 @@ discarding older display data during write-queue compaction.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Matching a prompt tag</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_text'>text</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;prompt time=&#39;1234567890&#39;&gt;Some&amp;gt; &lt;/prompt&gt;</span><span class='tstring_end'>&quot;</span></span>
-<span class='const'><span class='object_link'><a href="" title="Lich::Common::SynchronizedSocket (class)">SynchronizedSocket</a></span></span><span class='op'>::</span><span class='const'>PROMPT_TAG</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_text'>text</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;prompt type=\&quot;room state\&quot;&gt;</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PROMPT_TAG</span> <span class='comment'>#=&gt; 0
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;Prompt&gt;</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PROMPT_TAG</span> <span class='comment'>#=&gt; 0
+</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;other&gt;</span><span class='tstring_end'>&quot;</span></span> <span class='op'>=~</span> <span class='const'>PROMPT_TAG</span> <span class='comment'>#=&gt; nil</span></code></pre>
     
   </div>
 
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'>#note_stream_xml!</span></li>
-    
-  </ul>
 
 </div>
         </dt>
@@ -297,16 +291,10 @@ the full queue capacity.</p>
         <dt id="ROLES-constant" class="">ROLES =
           <div class="docstring">
   <div class="discussion">
-    <p>Valid roles for a SynchronizedSocket.</p>
-<dl>
-<dt><code>primary</code></dt>
-<dd><p>A fatal write error ends the session immediately. Used for the
-main frontend connection.</p></dd>
-<dt><code>detachable</code></dt>
-<dd><p>A fatal write error closes the connection but does not end the
-session. Used for secondary connections that can be reconnected
-without restarting the game.</p></dd>
-</dl>
+    <p>Valid socket roles controlling failure behavior.</p>
+<p><code>:primary</code> — socket failure ends the game session via ShutdownCoordinator.
+<code>:detachable</code> — socket failure only closes this connection; the session
+continues and the frontend can reconnect.</p>
 
   </div>
 </div>
@@ -327,11 +315,12 @@ without restarting the game.</p></dd>
         <dt id="ATTACHMENT_STREAM_SENTINEL-constant" class="">ATTACHMENT_STREAM_SENTINEL =
           <div class="docstring">
   <div class="discussion">
-    <p>Sentinel marking the boundary between a detachable socket's pre-attachment
-and post-attachment stream stack entries.</p>
-<p>When a detachable connection is attached, this sentinel is pushed onto the
-stream stack so that any popStream before the first pushStream after attachment
-cannot accidentally pop the initial sentinel, leaving the stack corrupted.</p>
+    <p>Sentinel object marking the initial state of a <code>:detachable</code> socket's
+stream stack.</p>
+<p>A detachable frontend can reconnect after disconnection, potentially leaving
+the parser with an orphaned open stream. This sentinel in the stack indicates
+pre-connection state; if found during stream tracking, it is cleared rather
+than triggering an unbalanced popStream error.</p>
 
   </div>
 </div>
@@ -399,6 +388,50 @@ cannot accidentally pop the initial sentinel, leaving the stack corrupted.</p>
 
   
     <span class="summary_desc"><div class='inline'><p>Marks the socket dead, closes the delegate, and stops the writer.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#declared_capabilities-instance_method" title="#declared_capabilities (instance method)">#<strong>declared_capabilities</strong>  &#x21d2; Array&lt;Symbol&gt;<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The rich-stream capabilities this client declared with a SET_FRONTEND_CAPS line (see Lich::Common::ClientCapabilities), or nil when it has not declared any.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#declared_capabilities=-instance_method" title="#declared_capabilities= (instance method)">#<strong>declared_capabilities=</strong>(capabilities)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -654,6 +687,9 @@ detachable connection</p></div>
       <pre class="lines">
 
 
+108
+109
+110
 111
 112
 113
@@ -664,12 +700,10 @@ detachable connection</p></div>
 118
 119
 120
-121
-122
-123</pre>
+121</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 111</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 108</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_delegate'>delegate</span><span class='comma'>,</span> <span class='label'>role:</span> <span class='symbol'>:primary</span><span class='comma'>,</span> <span class='label'>write_queue_capacity:</span> <span class='const'><span class='object_link'><a href="#DEFAULT_WRITE_QUEUE_CAPACITY-constant" title="Lich::Common::SynchronizedSocket::DEFAULT_WRITE_QUEUE_CAPACITY (constant)">DEFAULT_WRITE_QUEUE_CAPACITY</a></span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unknown socket role: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_role'>role</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="#ROLES-constant" title="Lich::Common::SynchronizedSocket::ROLES (constant)">ROLES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_role'>role</span><span class='rparen'>)</span>
@@ -683,6 +717,7 @@ detachable connection</p></div>
   <span class='ivar'>@alive</span> <span class='op'>=</span> <span class='kw'>true</span>
   <span class='ivar'>@role</span> <span class='op'>=</span> <span class='id identifier rubyid_role'>role</span>
   <span class='ivar'>@write_queue_capacity</span> <span class='op'>=</span> <span class='id identifier rubyid_write_queue_capacity'>write_queue_capacity</span>
+  <span class='ivar'>@declared_capabilities</span> <span class='op'>=</span> <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -723,12 +758,12 @@ lifecycle threads can detect disconnects.</p>
       <pre class="lines">
 
 
-194
-195
-196</pre>
+208
+209
+210</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 194</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 208</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_method_missing'>method_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='ivar'>@delegate</span><span class='period'>.</span><span class='id identifier rubyid___send__'>__send__</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
@@ -785,12 +820,12 @@ one-way -- a dead socket cannot be revived.</p>
       <pre class="lines">
 
 
-132
-133
-134</pre>
+130
+131
+132</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 132</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 130</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_alive?'>alive?</span>
   <span class='ivar'>@alive</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@delegate</span><span class='period'>.</span><span class='id identifier rubyid_closed?'>closed?</span>
@@ -824,16 +859,16 @@ one-way -- a dead socket cannot be revived.</p>
       <pre class="lines">
 
 
+180
+181
 182
 183
 184
 185
-186
-187
-188</pre>
+186</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 182</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 180</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_close'>close</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='ivar'>@alive</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -841,6 +876,116 @@ one-way -- a dead socket cannot be revived.</p>
   <span class='ivar'>@write_queue</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='symbol'>:stop</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@write_queue</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Queue</span><span class='rparen'>)</span>
 <span class='kw'>rescue</span> <span class='const'>ThreadError</span>
   <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="declared_capabilities-instance_method">
+  
+    #<strong>declared_capabilities</strong>  &#x21d2; <tt>Array&lt;Symbol&gt;</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The rich-stream capabilities this client declared with a
+SET_FRONTEND_CAPS line (see Lich::Common::ClientCapabilities), or nil
+when it has not declared any. Set by the client's reader thread and read
+by the game thread; the value is a frozen Array replaced whole, so a
+reader sees either the old set or the new one.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+195
+196
+197</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 195</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_declared_capabilities'>declared_capabilities</span>
+  <span class='ivar'>@declared_capabilities</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="declared_capabilities=-instance_method">
+  
+    #<strong>declared_capabilities=</strong>(capabilities)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>capabilities</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;Symbol&gt;</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+200
+201
+202</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 200</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_declared_capabilities='>declared_capabilities=</span><span class='lparen'>(</span><span class='id identifier rubyid_capabilities'>capabilities</span><span class='rparen'>)</span>
+  <span class='ivar'>@declared_capabilities</span> <span class='op'>=</span> <span class='id identifier rubyid_capabilities'>capabilities</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_capabilities'>capabilities</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -887,12 +1032,12 @@ one-way -- a dead socket cannot be revived.</p>
       <pre class="lines">
 
 
-139
-140
-141</pre>
+137
+138
+139</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 139</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 137</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_puts'>puts</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_enqueue_write'>enqueue_write</span><span class='lparen'>(</span><span class='symbol'>:puts</span><span class='comma'>,</span> <span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
@@ -927,12 +1072,12 @@ never part of the asynchronous contract and are intentionally ignored.</p>
       <pre class="lines">
 
 
-170
-171
-172</pre>
+168
+169
+170</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 170</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_puts_if'>puts_if</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_puts_main_stream'>puts_main_stream</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
@@ -982,6 +1127,8 @@ never part of the asynchronous contract and are intentionally ignored.</p>
       <pre class="lines">
 
 
+144
+145
 146
 147
 148
@@ -1000,12 +1147,10 @@ never part of the asynchronous contract and are intentionally ignored.</p>
 161
 162
 163
-164
-165
-166</pre>
+164</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 146</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 144</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_puts_main_stream'>puts_main_stream</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='ivar'>@alive</span>
@@ -1073,12 +1218,12 @@ never part of the asynchronous contract and are intentionally ignored.</p>
       <pre class="lines">
 
 
-199
-200
-201</pre>
+213
+214
+215</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 199</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 213</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_respond_to_missing?'>respond_to_missing?</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='comma'>,</span> <span class='id identifier rubyid_include_private'>include_private</span> <span class='op'>=</span> <span class='kw'>false</span><span class='rparen'>)</span>
   <span class='ivar'>@delegate</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='id identifier rubyid_method'>method</span><span class='comma'>,</span> <span class='id identifier rubyid_include_private'>include_private</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>super</span>
@@ -1128,12 +1273,12 @@ never part of the asynchronous contract and are intentionally ignored.</p>
       <pre class="lines">
 
 
-177
-178
-179</pre>
+175
+176
+177</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 177</span>
+      <pre class="code"><span class="info file"># File 'documented/common/class_exts/synchronizedsocket.rb', line 175</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_write'>write</span><span class='lparen'>(</span><span class='op'>*</span><span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='op'>&amp;</span><span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_enqueue_write'>enqueue_write</span><span class='lparen'>(</span><span class='symbol'>:write</span><span class='comma'>,</span> <span class='id identifier rubyid_args'>args</span><span class='comma'>,</span> <span class='id identifier rubyid_block'>block</span><span class='rparen'>)</span>
@@ -1148,7 +1293,7 @@ never part of the asynchronous contract and are intentionally ignored.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:42 2026 by
+  Generated on Wed Oct 28 05:27:30 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

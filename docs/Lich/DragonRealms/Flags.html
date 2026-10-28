@@ -104,24 +104,30 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Manages a set of flags and their associated matchers.</p>
-<p>This class provides methods to add, reset, delete, and access flags.</p>
+    <p>Manages named event flags and matchers for game line pattern matching.</p>
+<p>The Flags class provides thread-safe storage for event flags that track whether
+game output has matched regex patterns added by scripts. Matchers are stored in
+a frozen hash that is atomically swapped during add/delete operations, allowing
+the game thread to safely iterate over patterns while scripts modify the set.</p>
 
   </div>
 </div>
 <div class="tags">
   
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+        <h5 class="example_title"><div class='inline'><p>Add a flag matching damage lines</p></div></h5>
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../DragonRealms.html" title="Lich::DragonRealms (module)">DragonRealms</a></span></span><span class='op'>::</span><span class='const'>Flags</span><span class='period'>.</span><span class='id identifier rubyid_add'><span class='object_link'><a href="#add-class_method" title="Lich::DragonRealms::Flags.add (method)">add</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>hit</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You strike the</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>deals? \d+ damage</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+<span class='comment'># ...
+</span><span class='kw'>if</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../DragonRealms.html" title="Lich::DragonRealms (module)">DragonRealms</a></span></span><span class='op'>::</span><span class='const'>Flags</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>hit</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Damage matched!</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></code></pre>
+    
+  </div>
 
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li>#add</li>
-    
-      <li>#reset</li>
-    
-      <li>#delete</li>
-    
-  </ul>
 
 </div>
   
@@ -138,9 +144,30 @@
         <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span></pre></dd>
       
         <dt id="matchers-classvariable" class="">@@matchers =
+          <div class="docstring">
+  <div class="discussion">
+    <p>DRParser.check_events iterates @@matchers on the game thread while
+scripts add and delete flags from their own threads. Inserting a key
+into a hash another thread is iterating raises &quot;can't add a new key
+into hash during iteration&quot;, so writers never mutate @@matchers in
+place: they build a new hash and swap the reference, and an iteration
+in progress keeps walking the hash it started with. The mutex stops
+two writers from both copying the same hash and losing an update, and
+makes record_match's check-and-write atomic against add and delete.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="matchers_lock-classvariable" class="">@@matchers_lock =
           
         </dt>
-        <dd><pre class="code"><span class='lbrace'>{</span><span class='rbrace'>}</span></pre></dd>
+        <dd><pre class="code"><span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span></pre></dd>
       
     </dl>
   
@@ -162,7 +189,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#[]-class_method" title="[] (class method)">.<strong>[]</strong>(key)  &#x21d2; Boolean<sup>?</sup> </a>
+      <a href="#[]-class_method" title="[] (class method)">.<strong>[]</strong>(key)  &#x21d2; MatchData, ... </a>
     
 
     
@@ -176,7 +203,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the value of a flag by its key.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Retrieves the current value of a flag.</p></div></span>
   
 </li>
 
@@ -184,7 +211,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#[]=-class_method" title="[]= (class method)">.<strong>[]=</strong>(key, value)  &#x21d2; void </a>
+      <a href="#[]=-class_method" title="[]= (class method)">.<strong>[]=</strong>(key, value)  &#x21d2; Object </a>
     
 
     
@@ -195,10 +222,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sets the value of a flag by its key.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets a flag to an arbitrary value.</p></div></span>
   
 </li>
 
@@ -206,7 +233,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#add-class_method" title="add (class method)">.<strong>add</strong>(key, *matchers)  &#x21d2; void </a>
+      <a href="#add-class_method" title="add (class method)">.<strong>add</strong>(key, *matchers)  &#x21d2; Array&lt;Regexp&gt; </a>
     
 
     
@@ -220,7 +247,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Adds a new flag with the specified key and matchers.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Registers a new flag with regex matchers for game output.</p></div></span>
   
 </li>
 
@@ -242,7 +269,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Deletes the specified flag and its associated matchers.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Unregisters a flag and removes it from storage.</p></div></span>
   
 </li>
 
@@ -250,7 +277,51 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#flags-class_method" title="flags (class method)">.<strong>flags</strong>  &#x21d2; Hash&lt;String, Boolean&gt; </a>
+      <a href="#flags-class_method" title="flags (class method)">.<strong>flags</strong>  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the internal flags hash.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#matchers-class_method" title="matchers (class method)">.<strong>matchers</strong>  &#x21d2; Hash </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the internal matchers hash.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#record_match-class_method" title="record_match (class method)">.<strong>record_match</strong>(key, regexes, matches)  &#x21d2; void </a>
     
 
     
@@ -264,7 +335,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns a hash of all flags.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets a flag to a match DRParser.check_events found, unless the flag was deleted or added again since check_events took its snapshot of the matchers.</p></div></span>
   
 </li>
 
@@ -272,7 +343,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#matchers-class_method" title="matchers (class method)">.<strong>matchers</strong>  &#x21d2; Hash&lt;String, Array&lt;Regexp&gt;&gt; </a>
+      <a href="#reset-class_method" title="reset (class method)">.<strong>reset</strong>(key)  &#x21d2; Boolean </a>
     
 
     
@@ -286,29 +357,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns a hash of all matchers associated with flags.</p></div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#reset-class_method" title="reset (class method)">.<strong>reset</strong>(key)  &#x21d2; void </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'><p>Resets the specified flag to false.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sets a flag back to false.</p></div></span>
   
 </li>
 
@@ -326,7 +375,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="[]-class_method">
   
-    .<strong>[]</strong>(key)  &#x21d2; <tt>Boolean</tt><sup>?</sup> 
+    .<strong>[]</strong>(key)  &#x21d2; <tt><span class='object_link'><a href="../../MatchData.html" title="MatchData (class)">MatchData</a></span></tt>, ... 
   
 
   
@@ -334,12 +383,20 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the value of a flag by its key.</p>
+    <p>Retrieves the current value of a flag.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../DragonRealms.html" title="Lich::DragonRealms (module)">DragonRealms</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>hit</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span> <span class='comment'>#=&gt; #&lt;MatchData &quot;You strike the...&quot;&gt;</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -352,7 +409,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the key of the flag to retrieve</p></div>
+        <div class='inline'><p>the flag name</p></div>
       
     </li>
   
@@ -364,12 +421,12 @@
     <li>
       
       
-        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../MatchData.html" title="MatchData (class)">MatchData</a></span></tt>, <tt>Boolean</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the value of the flag or nil if not set</p></div>
+        <div class='inline'><p>the last MatchData if the flag matched game output, false if reset, or nil if the flag was not added</p></div>
       
     </li>
   
@@ -381,12 +438,12 @@
       <pre class="lines">
 
 
-18
-19
-20</pre>
+39
+40
+41</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 18</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 39</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span>
@@ -399,7 +456,7 @@
       <div class="method_details ">
   <h3 class="signature " id="[]=-class_method">
   
-    .<strong>[]=</strong>(key, value)  &#x21d2; <tt>void</tt> 
+    .<strong>[]=</strong>(key, value)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -407,7 +464,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sets the value of a flag by its key.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Sets a flag to an arbitrary value.</p>
 
   </div>
 </div>
@@ -425,7 +486,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the key of the flag to set</p></div>
+        <div class='inline'><p>the flag name</p></div>
       
     </li>
   
@@ -434,17 +495,33 @@
         <span class='name'>value</span>
       
       
-        <span class='type'>(<tt>Boolean</tt>)</span>
+        <span class='type'>(<tt>Object</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the value to assign to the flag</p></div>
+        <div class='inline'><p>the value to store</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the value</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -452,12 +529,12 @@
       <pre class="lines">
 
 
-26
-27
-28</pre>
+49
+50
+51</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 49</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='op'>[]=</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
@@ -470,7 +547,7 @@
       <div class="method_details ">
   <h3 class="signature " id="add-class_method">
   
-    .<strong>add</strong>(key, *matchers)  &#x21d2; <tt>void</tt> 
+    .<strong>add</strong>(key, *matchers)  &#x21d2; <tt>Array&lt;Regexp&gt;</tt> 
   
 
   
@@ -478,12 +555,23 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Adds a new flag with the specified key and matchers.</p>
+    <p>Registers a new flag with regex matchers for game output.</p>
+<p>Patterns can be Regexp objects or strings; strings are converted to case-insensitive regexes.
+The flag is initialized to false and will be set to the MatchData of the first matching pattern
+when the game outputs a matching line.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../DragonRealms.html" title="Lich::DragonRealms (module)">DragonRealms</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='period'>.</span><span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>spell_cast</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You feel</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>spell.*ready</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The magic feels ready</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -496,7 +584,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the key for the new flag</p></div>
+        <div class='inline'><p>the flag name</p></div>
       
     </li>
   
@@ -505,17 +593,40 @@
         <span class='name'>matchers</span>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, Regexp&gt;</tt>)</span>
+        <span class='type'>(<tt>Regexp</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>one or more matchers associated with the flag</p></div>
+        <div class='inline'><p>one or more patterns to match against game output</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;Regexp&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the frozen array of compiled regex matchers</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#record_match-class_method" title="Lich::DragonRealms::Flags.record_match (method)">record_match</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -523,17 +634,25 @@
       <pre class="lines">
 
 
-34
-35
-36
-37</pre>
+65
+66
+67
+68
+69
+70
+71
+72</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 34</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 65</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_matchers'>matchers</span><span class='rparen'>)</span>
-  <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>false</span>
-  <span class='cvar'>@@matchers</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_matchers'>matchers</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Regexp</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_item'>item</span> <span class='op'>:</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='regexp_end'>/i</span></span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_regexes'>regexes</span> <span class='op'>=</span> <span class='id identifier rubyid_matchers'>matchers</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Regexp</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_item'>item</span> <span class='op'>:</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='regexp_end'>/i</span></span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+  <span class='cvar'>@@matchers_lock</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>false</span>
+    <span class='cvar'>@@matchers</span> <span class='op'>=</span> <span class='cvar'>@@matchers</span><span class='period'>.</span><span class='id identifier rubyid_merge'>merge</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_regexes'>regexes</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_regexes'>regexes</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -551,7 +670,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Deletes the specified flag and its associated matchers.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Unregisters a flag and removes it from storage.</p>
+<p>The matchers for the key are removed atomically with the flag deletion to prevent
+stale pattern matches from re-adding the flag.</p>
 
   </div>
 </div>
@@ -569,12 +690,19 @@
       
       
         &mdash;
-        <div class='inline'><p>the key of the flag to delete</p></div>
+        <div class='inline'><p>the flag name</p></div>
       
     </li>
   
 </ul>
 
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#add-class_method" title="Lich::DragonRealms::Flags.add (method)">add</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -582,17 +710,21 @@
       <pre class="lines">
 
 
-49
-50
-51
-52</pre>
+91
+92
+93
+94
+95
+96</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 49</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 91</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
-  <span class='cvar'>@@matchers</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span> <span class='id identifier rubyid_key'>key</span>
-  <span class='cvar'>@@flags</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span> <span class='id identifier rubyid_key'>key</span>
+  <span class='cvar'>@@matchers_lock</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@matchers</span> <span class='op'>=</span> <span class='cvar'>@@matchers</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='comma'>,</span> <span class='id identifier rubyid__'>_</span><span class='op'>|</span> <span class='id identifier rubyid_k'>k</span> <span class='op'>==</span> <span class='id identifier rubyid_key'>key</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+    <span class='cvar'>@@flags</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span> <span class='id identifier rubyid_key'>key</span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -602,7 +734,7 @@
       <div class="method_details ">
   <h3 class="signature " id="flags-class_method">
   
-    .<strong>flags</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, Boolean&gt;</tt> 
+    .<strong>flags</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
   
 
   
@@ -610,7 +742,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a hash of all flags.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns the internal flags hash.</p>
 
   </div>
 </div>
@@ -622,12 +758,12 @@
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, Boolean&gt;</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a hash containing all flags and their values</p></div>
+        <div class='inline'><p>a hash mapping flag names to MatchData, false, or nil</p></div>
       
     </li>
   
@@ -639,12 +775,12 @@
       <pre class="lines">
 
 
-56
-57
-58</pre>
+117
+118
+119</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 56</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 117</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_flags'>flags</span>
   <span class='cvar'>@@flags</span>
@@ -657,7 +793,7 @@
       <div class="method_details ">
   <h3 class="signature " id="matchers-class_method">
   
-    .<strong>matchers</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, Array&lt;Regexp&gt;&gt;</tt> 
+    .<strong>matchers</strong>  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
   
 
   
@@ -665,7 +801,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a hash of all matchers associated with flags.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns the internal matchers hash.</p>
 
   </div>
 </div>
@@ -677,12 +817,12 @@
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, Array&lt;Regexp&gt;&gt;</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a hash containing all matchers for each flag</p></div>
+        <div class='inline'><p>a frozen hash mapping flag names to frozen arrays of Regexp matchers</p></div>
       
     </li>
   
@@ -694,12 +834,12 @@
       <pre class="lines">
 
 
-62
-63
-64</pre>
+125
+126
+127</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 62</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 125</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_matchers'>matchers</span>
   <span class='cvar'>@@matchers</span>
@@ -710,9 +850,9 @@
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="reset-class_method">
+  <h3 class="signature " id="record_match-class_method">
   
-    .<strong>reset</strong>(key)  &#x21d2; <tt>void</tt> 
+    .<strong>record_match</strong>(key, regexes, matches)  &#x21d2; <tt>void</tt> 
   
 
   
@@ -720,7 +860,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Resets the specified flag to false.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Sets a flag to a match DRParser.check_events found, unless the flag was
+deleted or added again since check_events took its snapshot of the
+matchers. Without the check, a line matching a stale snapshot puts a
+deleted flag back into flags, or sets a re-added flag from its old
+patterns.</p>
 
   </div>
 </div>
@@ -738,7 +882,35 @@
       
       
         &mdash;
-        <div class='inline'><p>the key of the flag to reset</p></div>
+        <div class='inline'><p>the flag</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>regexes</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;Regexp&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the matchers check_events matched against</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>matches</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../MatchData.html" title="MatchData (class)">MatchData</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the match</p></div>
       
     </li>
   
@@ -751,12 +923,96 @@
       <pre class="lines">
 
 
-42
-43
-44</pre>
+107
+108
+109
+110
+111</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 42</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 107</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_record_match'>record_match</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_regexes'>regexes</span><span class='comma'>,</span> <span class='id identifier rubyid_matches'>matches</span><span class='rparen'>)</span>
+  <span class='cvar'>@@matchers_lock</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_matches'>matches</span> <span class='kw'>if</span> <span class='cvar'>@@matchers</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_equal?'>equal?</span><span class='lparen'>(</span><span class='id identifier rubyid_regexes'>regexes</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="reset-class_method">
+  
+    .<strong>reset</strong>(key)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Sets a flag back to false.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>key</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the flag name</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>false</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#add-class_method" title="Lich::DragonRealms::Flags.add (method)">add</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+79
+80
+81</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/events.rb', line 79</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reset'>reset</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='cvar'>@@flags</span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>false</span>
@@ -771,7 +1027,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:40 2026 by
+  Generated on Wed Oct 28 05:27:28 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

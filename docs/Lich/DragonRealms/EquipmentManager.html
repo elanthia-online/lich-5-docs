@@ -175,6 +175,28 @@ so callers only need to pass success/failure patterns.</p>
         </dt>
         <dd><pre class="code"><span class='int'>10</span></pre></dd>
       
+        <dt id="LOWERED_ITEM_PICKUP_ATTEMPTS-constant" class="">LOWERED_ITEM_PICKUP_ATTEMPTS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>GET attempts, about 1 s apart, for picking up an item this class
+lowered to the ground when a hold starts after the lowering.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#pick_up_lowered_item%3F-instance_method" title="Lich::DragonRealms::EquipmentManager#pick_up_lowered_item? (method)">#pick_up_lowered_item?</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>15</span></pre></dd>
+      
         <dt id="UNTIE_EXHAUSTED_PATTERNS-constant" class="">UNTIE_EXHAUSTED_PATTERNS =
           <div class="docstring">
   <div class="discussion">
@@ -474,7 +496,7 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#notify_missing-instance_method" title="#notify_missing (instance method)">#<strong>notify_missing</strong>(lost_items)  &#x21d2; void </a>
+      <a href="#newly_in_hand%3F-instance_method" title="#newly_in_hand? (instance method)">#<strong>newly_in_hand?</strong>(item, hands_before)  &#x21d2; Boolean </a>
     
 
     
@@ -488,7 +510,95 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Alerts the user about equipment items that could not be found.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Whether a hand whose contents changed since hands_before now holds the item.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#notify_missing-instance_method" title="#notify_missing (instance method)">#<strong>notify_missing</strong>(lost_items, in_hand_items = [])  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Alerts the user about equipment items that could not be worn.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pick_up_lowered_item%3F-instance_method" title="#pick_up_lowered_item? (instance method)">#<strong>pick_up_lowered_item?</strong>(item, from_hand: nil, attempts: LOWERED_ITEM_PICKUP_ATTEMPTS)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Picks up an item this class lowered to the ground.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pick_up_lowered_items-instance_method" title="#pick_up_lowered_items (instance method)">#<strong>pick_up_lowered_items</strong>(lowered, removed_name)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Picks up the items <span class='object_link'><a href="#remove_item-instance_method" title="Lich::DragonRealms::EquipmentManager#remove_item (method)">#remove_item</a></span> lowered, in reverse order so they end up in the same hands again.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#put_away_forms-instance_method" title="#put_away_forms (instance method)">#<strong>put_away_forms</strong>(item, transform_depth: 3)  &#x21d2; Array&lt;DRC::Item, String&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Lists the forms <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> goes through to put a held item away: the item itself (the same object <span class='object_link'><a href="#wear_missing_items-instance_method" title="Lich::DragonRealms::EquipmentManager#wear_missing_items (method)">#wear_missing_items</a></span> put away), then, for a non-worn transform item, each form it is transformed into, following <code>transforms_to</code> at most <code>transform_depth</code> times as <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> does.</p></div></span>
   
 </li>
 
@@ -598,7 +708,7 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Executes a stow action with automatic recovery on common failure conditions.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Stows an item based on its configured storage type (tie, sheath, container, or default stow).</p></div></span>
   
 </li>
 
@@ -606,7 +716,7 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#stow_helper-instance_method" title="#stow_helper (instance method)">#<strong>stow_helper</strong>(action, weapon_name, *accept_strings, failure_patterns: [], retries: STOW_HELPER_MAX_RETRIES)  &#x21d2; Object </a>
+      <a href="#stow_gear_item-instance_method" title="#stow_gear_item (instance method)">#<strong>stow_gear_item</strong>(weapon, transform_depth: 3)  &#x21d2; Boolean<sup>?</sup> </a>
     
 
     
@@ -620,7 +730,7 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Puts a gear item away by its own configuration (WEAR for a worn item, the transform for a transform item, otherwise <span class='object_link'><a href="#stow_by_type-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_by_type (method)">#stow_by_type</a></span>).</p></div></span>
   
 </li>
 
@@ -628,7 +738,29 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#stow_weapon-instance_method" title="#stow_weapon (instance method)">#<strong>stow_weapon</strong>(description = nil, transform_depth: 3)  &#x21d2; void </a>
+      <a href="#stow_helper-instance_method" title="#stow_helper (instance method)">#<strong>stow_helper</strong>(action, weapon_name, *accept_strings, failure_patterns: [], retries: STOW_HELPER_MAX_RETRIES)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Executes a stow action with automatic recovery on common failure conditions.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stow_weapon-instance_method" title="#stow_weapon (instance method)">#<strong>stow_weapon</strong>(description = nil, transform_depth: 3)  &#x21d2; Boolean<sup>?</sup> </a>
     
 
     
@@ -804,7 +936,7 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#wear_missing_items-instance_method" title="#wear_missing_items (instance method)">#<strong>wear_missing_items</strong>(target_items, combat_items)  &#x21d2; Array&lt;DRC::Item&gt; </a>
+      <a href="#wear_missing_items-instance_method" title="#wear_missing_items (instance method)">#<strong>wear_missing_items</strong>(target_items, combat_items)  &#x21d2; Array(Array&lt;DRC::Item&gt;, Array&lt;DRC::Item&gt;) </a>
     
 
     
@@ -922,12 +1054,12 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
       <pre class="lines">
 
 
-42
-43
-44</pre>
+49
+50
+51</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 42</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 49</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_settings'>settings</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_items'>items</span><span class='lparen'>(</span><span class='id identifier rubyid_settings'>settings</span><span class='rparen'>)</span>
@@ -1002,12 +1134,12 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
       <pre class="lines">
 
 
-129
-130
-131</pre>
+141
+142
+143</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 129</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 141</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_desc_to_items'>desc_to_items</span><span class='lparen'>(</span><span class='id identifier rubyid_descs'>descs</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_descs'>descs</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_description'>description</span><span class='op'>|</span> <span class='id identifier rubyid_item_by_desc'>item_by_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span>
@@ -1041,12 +1173,12 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
       <pre class="lines">
 
 
-468
-469
-470</pre>
+595
+596
+597</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 468</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 595</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_empty_hands'><span class='object_link'><a href="../../top-level-namespace.html#empty_hands-instance_method" title="#empty_hands (method)">empty_hands</a></span></span>
   <span class='id identifier rubyid_return_held_gear'>return_held_gear</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_stow_hands'><span class='object_link'><a href="DRCI.html#stow_hands-class_method" title="Lich::DragonRealms::DRCI.stow_hands (method)">stow_hands</a></span></span>
@@ -1100,15 +1232,15 @@ enforces that no DRCI failure falls through to the timeout branch.</p>
       <pre class="lines">
 
 
-207
-208
-209
-210
-211
-212</pre>
+327
+328
+329
+330
+331
+332</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 207</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 327</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_combat_items'>get_combat_items</span>
   <span class='id identifier rubyid_snapshot'>snapshot</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='period'>.</span><span class='id identifier rubyid_issue_command'><span class='object_link'><a href="../Util.html#issue_command-class_method" title="Lich::Util.issue_command (method)">issue_command</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>inv combat</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>All of your worn combat|You aren&#39;t wearing anything like that</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Use INVENTORY HELP for more options</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='label'>usexml:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>include_end:</span> <span class='kw'>false</span><span class='rparen'>)</span>
@@ -1181,38 +1313,38 @@ container, and general stow locations in order.</p>
       <pre class="lines">
 
 
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
-408
-409
-410
-411
-412
-413
-414
-415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425</pre>
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 397</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 524</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item?'>get_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
@@ -1326,66 +1458,66 @@ and handles failures with recovery procs.</p>
       <pre class="lines">
 
 
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618
-619
-620
-621
-622
-623
-624
-625
-626
-627
-628
-629
-630
-631
-632
-633
-634
-635
-636
-637
-638
-639
-640
-641
-642
-643
-644
-645
-646
-647
-648
-649
-650
-651
-652
-653
-654
-655
-656
-657
-658
-659
-660
-661
-662
-663
-664
-665</pre>
+736
+737
+738
+739
+740
+741
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 609</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 736</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_item_helper'>get_item_helper</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_type'>type</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -1507,12 +1639,12 @@ and handles failures with recovery procs.</p>
       <pre class="lines">
 
 
-137
-138
-139</pre>
+149
+150
+151</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 137</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 149</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_item_by_desc'>item_by_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_items'>items</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span> <span class='op'>=~</span> <span class='id identifier rubyid_description'>description</span> <span class='rbrace'>}</span>
@@ -1589,12 +1721,12 @@ names (e.g., &quot;steel foil with a sandalwood hilt&quot; becomes
       <pre class="lines">
 
 
-678
-679
-680</pre>
+805
+806
+807</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 678</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 805</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_item_noun_in_hands?'>item_noun_in_hands?</span><span class='lparen'>(</span><span class='id identifier rubyid_noun'>noun</span><span class='rparen'>)</span>
   <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand_noun'><span class='object_link'><a href="DRC.html#left_hand_noun-class_method" title="Lich::DragonRealms::DRC.left_hand_noun (method)">left_hand_noun</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand_noun'><span class='object_link'><a href="DRC.html#right_hand_noun-class_method" title="Lich::DragonRealms::DRC.right_hand_noun (method)">right_hand_noun</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_noun'>noun</span><span class='rparen'>)</span>
@@ -1666,18 +1798,18 @@ caches the result. Also initializes gear sets from settings.</p>
       <pre class="lines">
 
 
-53
-54
-55
-56
-57
-58
-59
 60
-61</pre>
+61
+62
+63
+64
+65
+66
+67
+68</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 53</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 60</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_items'>items</span><span class='lparen'>(</span><span class='id identifier rubyid_settings'>settings</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='ivar'>@items</span> <span class='kw'>if</span> <span class='ivar'>@items</span>
@@ -1755,12 +1887,12 @@ caches the result. Also initializes gear sets from settings.</p>
       <pre class="lines">
 
 
-431
-432
-433</pre>
+558
+559
+560</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 431</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 558</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_listed_item?'>listed_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_desc'>desc</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_items'>items</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span> <span class='op'>=~</span> <span class='id identifier rubyid_desc'>desc</span> <span class='rbrace'>}</span>
@@ -1832,14 +1964,14 @@ caches the result. Also initializes gear sets from settings.</p>
       <pre class="lines">
 
 
-218
-219
-220
-221
-222</pre>
+338
+339
+340
+341
+342</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 218</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 338</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_matching_combat_items'>matching_combat_items</span><span class='lparen'>(</span><span class='id identifier rubyid_list'>list</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_filter_gear'>filter_gear</span> <span class='op'>=</span> <span class='id identifier rubyid_desc_to_items'>desc_to_items</span><span class='lparen'>(</span><span class='id identifier rubyid_list'>list</span><span class='rparen'>)</span>
@@ -1852,9 +1984,9 @@ caches the result. Also initializes gear sets from settings.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="notify_missing-instance_method">
+  <h3 class="signature " id="newly_in_hand?-instance_method">
   
-    #<strong>notify_missing</strong>(lost_items)  &#x21d2; <tt>void</tt> 
+    #<strong>newly_in_hand?</strong>(item, hands_before)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -1866,7 +1998,110 @@ caches the result. Also initializes gear sets from settings.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Alerts the user about equipment items that could not be found.</p>
+<p>Whether a hand whose contents changed since hands_before now holds
+the item. A hand that still holds the same thing doesn't count, even
+when its item's name contains the noun (a crossbow and &quot;crossbow
+bolts&quot;).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>item</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the item's name, noun or &quot;#<id>&quot;</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>hands_before</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, nil}</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>hand contents
+before the GET, keyed &quot;left&quot; and &quot;right&quot;</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1134
+1135
+1136
+1137
+1138</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 1134</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_newly_in_hand?'>newly_in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_hands_before'>hands_before</span><span class='rparen'>)</span>
+  <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_hand'>hand</span><span class='comma'>,</span> <span class='id identifier rubyid_now'>now</span><span class='op'>|</span>
+    <span class='id identifier rubyid_now'>now</span> <span class='op'>!=</span> <span class='id identifier rubyid_hands_before'>hands_before</span><span class='lbracket'>[</span><span class='id identifier rubyid_hand'>hand</span><span class='rbracket'>]</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hand?'><span class='object_link'><a href="DRCI.html#in_hand%3F-class_method" title="Lich::DragonRealms::DRCI.in_hand? (method)">in_hand?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_hand'>hand</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="notify_missing-instance_method">
+  
+    #<strong>notify_missing</strong>(lost_items, in_hand_items = [])  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Alerts the user about equipment items that could not be worn.</p>
+<p>Items left in hand are named in a check-your-hands line, followed by
+what the hands actually hold (a transformed item, or one matched by a
+shorter gear description, can look different from its gear name);
+every other item that could not be found or worn gets the MISSING
+EQUIPMENT listing, which asks the user to check their containers. One
+item never gets both instructions. Either way the alert is bracketed
+by a beep and a pause.</p>
 
   </div>
 </div>
@@ -1884,7 +2119,24 @@ caches the result. Also initializes gear sets from settings.</p>
       
       
         &mdash;
-        <div class='inline'><p>items that were not located</p></div>
+        <div class='inline'><p>every item that could not be worn or put away</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>in_hand_items</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>[]</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the subset of lost_items left in hand;
+when omitted, every item gets the MISSING EQUIPMENT listing</p></div>
       
     </li>
   
@@ -1897,27 +2149,440 @@ caches the result. Also initializes gear sets from settings.</p>
       <pre class="lines">
 
 
-146
-147
-148
-149
-150
-151
-152
-153
-154</pre>
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 146</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 168</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_notify_missing'>notify_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_notify_missing'>notify_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='comma'>,</span> <span class='id identifier rubyid_in_hand_items'>in_hand_items</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_lost_items'>lost_items</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
 
+  <span class='id identifier rubyid_in_hand'>in_hand</span><span class='comma'>,</span> <span class='id identifier rubyid_not_found'>not_found</span> <span class='op'>=</span> <span class='id identifier rubyid_lost_items'>lost_items</span><span class='period'>.</span><span class='id identifier rubyid_partition'>partition</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_in_hand_items'>in_hand_items</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_beep'><span class='object_link'><a href="DRC.html#beep-class_method" title="Lich::DragonRealms::DRC.beep (method)">beep</a></span></span>
-  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: MISSING EQUIPMENT - Please verify these items are in a closed container and not lost:</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:short_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_not_found'>not_found</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: MISSING EQUIPMENT - Please verify these items are in a closed container and not lost:</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_not_found'>not_found</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:short_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_in_hand'>in_hand</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='id identifier rubyid_holding'>holding</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span>
+    <span class='id identifier rubyid_holding_text'>holding_text</span> <span class='op'>=</span> <span class='id identifier rubyid_holding'>holding</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>nothing</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='id identifier rubyid_holding'>holding</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: could not wear or put away, check your hands: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_in_hand'>in_hand</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:short_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>, </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'> (holding: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_holding_text'>holding_text</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
   <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span>
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_beep'><span class='object_link'><a href="DRC.html#beep-class_method" title="Lich::DragonRealms::DRC.beep (method)">beep</a></span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pick_up_lowered_item?-instance_method">
+  
+    #<strong>pick_up_lowered_item?</strong>(item, from_hand: nil, attempts: LOWERED_ITEM_PICKUP_ATTEMPTS)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Picks up an item this class lowered to the ground.</p>
+<p>A hold that starts after the lowering draws the immobile reply to GET,
+and the item would stay on the ground. On that reply this pauses 1 s
+and tries again, up to <span class='object_link'><a href="#LOWERED_ITEM_PICKUP_ATTEMPTS-constant" title="Lich::DragonRealms::EquipmentManager::LOWERED_ITEM_PICKUP_ATTEMPTS (constant)">LOWERED_ITEM_PICKUP_ATTEMPTS</a></span> GETs. Any other
+reply ends the attempts at once.</p>
+<p>It always sends the first GET, without checking the hands first: a
+check by name also matches an item in the other hand whose name
+contains this one's noun (a crossbow and &quot;crossbow bolts&quot;), and the
+lowered item would stay on the ground. For the same reason it counts
+the item as picked up only when a hand whose contents changed now
+holds it (<span class='object_link'><a href="#newly_in_hand%3F-instance_method" title="Lich::DragonRealms::EquipmentManager#newly_in_hand? (method)">#newly_in_hand?</a></span>), whatever the GET's reply: like
+<span class='object_link'><a href="DRCI.html#get_item_unsafe-class_method" title="Lich::DragonRealms::DRCI.get_item_unsafe (method)">DRCI.get_item_unsafe</a></span>, it doesn't trust the success text, which a
+stray line can match (&quot;You get down on one knee.&quot;). Callers pass only
+items they lowered.</p>
+<p>The hand update for the lowering can lag its reply. Until it arrives,
+from_hand still shows the item, and picking it up into that hand would
+look like no change. So before taking the snapshot of the hands it
+waits, up to 1 s, for from_hand to stop showing the item. If the update
+lags longer than that, a successful pick-up into that hand is reported
+as a failure (a warning and, from <span class='object_link'><a href="#pick_up_lowered_items-instance_method" title="Lich::DragonRealms::EquipmentManager#pick_up_lowered_items (method)">#pick_up_lowered_items</a></span>, one more
+GET); the item is never counted as picked up while it is on the ground.</p>
+<p>It does not use <span class='object_link'><a href="DRCI.html#get_item_unsafe-class_method" title="Lich::DragonRealms::DRCI.get_item_unsafe (method)">DRCI.get_item_unsafe</a></span>, which drops the GET reply
+this needs to decide on a retry.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>item</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the lowered item's name or noun</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>from_hand</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>&quot;left&quot; or &quot;right&quot;, the hand the item
+was lowered from; nil to take the snapshot at once</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>attempts</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>LOWERED_ITEM_PICKUP_ATTEMPTS</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>most GETs to send while the reply is the
+immobile one</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the item was picked up</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1076
+1077
+1078
+1079
+1080
+1081
+1082
+1083
+1084
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092
+1093
+1094
+1095
+1096
+1097
+1098</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 1076</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_pick_up_lowered_item?'>pick_up_lowered_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='label'>from_hand:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>attempts:</span> <span class='const'><span class='object_link'><a href="#LOWERED_ITEM_PICKUP_ATTEMPTS-constant" title="Lich::DragonRealms::EquipmentManager::LOWERED_ITEM_PICKUP_ATTEMPTS (constant)">LOWERED_ITEM_PICKUP_ATTEMPTS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_from_hand'>from_hand</span>
+    <span class='int'>10</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span>
+      <span class='kw'>break</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hand?'><span class='object_link'><a href="DRCI.html#in_hand%3F-class_method" title="Lich::DragonRealms::DRCI.in_hand? (method)">in_hand?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_from_hand'>from_hand</span><span class='rparen'>)</span>
+
+      <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span> <span class='float'>0.1</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_hands_before'>hands_before</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_attempts'>attempts</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_attempt'>attempt</span><span class='op'>|</span>
+    <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span> <span class='int'>1</span> <span class='kw'>if</span> <span class='id identifier rubyid_attempt'>attempt</span><span class='period'>.</span><span class='id identifier rubyid_positive?'>positive?</span>
+    <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>get </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_item_ref'><span class='object_link'><a href="DRCI.html#item_ref-class_method" title="Lich::DragonRealms::DRCI.item_ref (method)">item_ref</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#GET_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_FAILURE_PATTERNS (constant)">GET_ITEM_FAILURE_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#GET_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::GET_ITEM_SUCCESS_PATTERNS (constant)">GET_ITEM_SUCCESS_PATTERNS</a></span></span><span class='rparen'>)</span>
+    <span class='kw'>break</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRC.html#IMMOBILE_PATTERN-constant" title="Lich::DragonRealms::DRC::IMMOBILE_PATTERN (constant)">IMMOBILE_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+
+  <span class='comment'># As in DRCI.get_item_unsafe: allow for the hand update to lag the reply.
+</span>  <span class='int'>10</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span>
+    <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_newly_in_hand?'>newly_in_hand?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_hands_before'>hands_before</span><span class='rparen'>)</span>
+
+    <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span> <span class='float'>0.1</span>
+  <span class='kw'>end</span>
+  <span class='kw'>false</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pick_up_lowered_items-instance_method">
+  
+    #<strong>pick_up_lowered_items</strong>(lowered, removed_name)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Picks up the items <span class='object_link'><a href="#remove_item-instance_method" title="Lich::DragonRealms::EquipmentManager#remove_item (method)">#remove_item</a></span> lowered, in reverse order so they
+end up in the same hands again. A long hold can use up one item's
+attempts and end during the next one's, so when an item is picked up,
+each earlier item given up on gets one more GET.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>lowered</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;Array(<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>)&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the lowered items, each
+as [name, hand lowered from], in the order lowered</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>removed_name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the removed item's name, for the warning</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1110
+1111
+1112
+1113
+1114
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 1110</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_pick_up_lowered_items'>pick_up_lowered_items</span><span class='lparen'>(</span><span class='id identifier rubyid_lowered'>lowered</span><span class='comma'>,</span> <span class='id identifier rubyid_removed_name'>removed_name</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_left_down'>left_down</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_lowered'>lowered</span><span class='period'>.</span><span class='id identifier rubyid_reverse_each'>reverse_each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_hand'>hand</span><span class='op'>|</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_pick_up_lowered_item?'>pick_up_lowered_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>from_hand:</span> <span class='id identifier rubyid_hand'>hand</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_left_down'>left_down</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_earlier'>earlier</span><span class='comma'>,</span> <span class='id identifier rubyid_earlier_hand'>earlier_hand</span><span class='op'>|</span> <span class='id identifier rubyid_pick_up_lowered_item?'>pick_up_lowered_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_earlier'>earlier</span><span class='comma'>,</span> <span class='label'>from_hand:</span> <span class='id identifier rubyid_earlier_hand'>earlier_hand</span><span class='comma'>,</span> <span class='label'>attempts:</span> <span class='int'>1</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+    <span class='kw'>else</span>
+      <span class='id identifier rubyid_left_down'>left_down</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_hand'>hand</span><span class='rbracket'>]</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_left_down'>left_down</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid__hand'>_hand</span><span class='op'>|</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: Unable to pick up </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> after removing </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_removed_name'>removed_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="put_away_forms-instance_method">
+  
+    #<strong>put_away_forms</strong>(item, transform_depth: 3)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>, <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Lists the forms <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> goes through to put a held item away:
+the item itself (the same object <span class='object_link'><a href="#wear_missing_items-instance_method" title="Lich::DragonRealms::EquipmentManager#wear_missing_items (method)">#wear_missing_items</a></span> put away), then,
+for a non-worn transform item, each form it is transformed into,
+following <code>transforms_to</code> at most <code>transform_depth</code> times as
+<span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> does. The last form is the one whose put-away (a WEAR
+when it is worn) <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> sent. A transformed form that
+is not in the gear list ends the list as its description String.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>item</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>held gear item</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>transform_depth</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>3</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>transforms <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> follows</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>, <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>forms in the order they are handled</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 288</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_put_away_forms'>put_away_forms</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='int'>3</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_forms'>forms</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_item'>item</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_form'>form</span> <span class='op'>=</span> <span class='id identifier rubyid_item'>item</span>
+  <span class='kw'>while</span> <span class='op'>!</span><span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_worn'>worn</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+    <span class='id identifier rubyid_next_form'>next_form</span> <span class='op'>=</span> <span class='id identifier rubyid_item_by_desc'>item_by_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span><span class='rparen'>)</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_next_form'>next_form</span>
+      <span class='id identifier rubyid_forms'>forms</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span>
+      <span class='kw'>break</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_forms'>forms</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_next_form'>next_form</span>
+    <span class='id identifier rubyid_form'>form</span> <span class='op'>=</span> <span class='id identifier rubyid_next_form'>next_form</span>
+    <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>-=</span> <span class='int'>1</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_forms'>forms</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2008,15 +2673,15 @@ the block returns true.</p>
       <pre class="lines">
 
 
-74
-75
-76
-77
-78
-79</pre>
+81
+82
+83
+84
+85
+86</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 74</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 81</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_gear_by'>remove_gear_by</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id identifier rubyid__block'>_block</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_combat_items'>combat_items</span> <span class='op'>=</span> <span class='id identifier rubyid_get_combat_items'>get_combat_items</span>
@@ -2106,65 +2771,72 @@ general stow. Empties hands if needed for two-handed removal.</p>
       <pre class="lines">
 
 
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247
-248
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290
-291</pre>
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 236</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 356</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_item'>remove_item</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='int'>2</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -2180,6 +2852,11 @@ general stow. Empties hands if needed for two-handed removal.</p>
 </span>    <span class='comment'># may have a timer on them that prevents you removing them.
 </span>    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: The </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> is not ready to be removed yet. Try again later.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='kw'>false</span>
+  <span class='kw'>when</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRC.html#IMMOBILE_PATTERN-constant" title="Lich::DragonRealms::DRC::IMMOBILE_PATTERN (constant)">IMMOBILE_PATTERN</a></span></span>
+    <span class='comment'># Held or rooted: emptying the hands won&#39;t help, and what is lowered
+</span>    <span class='comment'># might not be picked up again while held.
+</span>    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: Unable to move to remove </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'>. Try again later.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>return</span> <span class='kw'>false</span>
   <span class='kw'>when</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#REMOVE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::REMOVE_ITEM_FAILURE_PATTERNS (constant)">REMOVE_ITEM_FAILURE_PATTERNS</a></span></span>
     <span class='comment'># We may need to empty our hands to remove the item.
 </span>    <span class='comment'># For example, exoskeletal armor requires two hands.
@@ -2187,16 +2864,18 @@ general stow. Empties hands if needed for two-handed removal.</p>
     <span class='id identifier rubyid_temp_right_item'>temp_right_item</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span>
     <span class='comment'># Lower the items because that preserves loaded bows.
 </span>    <span class='comment'># Stowing them in a container would require unloading.
-</span>    <span class='id identifier rubyid_did_lower'>did_lower</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='id identifier rubyid_temp_left_item'>temp_left_item</span><span class='comma'>,</span> <span class='id identifier rubyid_temp_right_item'>temp_right_item</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_all?'>all?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item_in_hand'>item_in_hand</span><span class='op'>|</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lower_item?'><span class='object_link'><a href="DRCI.html#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item_in_hand'>item_in_hand</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+</span>    <span class='comment'># Only what was lowered is picked up again: the lowering stops at
+</span>    <span class='comment'># the first failure.
+</span>    <span class='id identifier rubyid_lowered'>lowered</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+    <span class='id identifier rubyid_did_lower'>did_lower</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_temp_left_item'>temp_left_item</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_temp_right_item'>temp_right_item</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_all?'>all?</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_hand'>hand</span><span class='comma'>,</span> <span class='id identifier rubyid_item_in_hand'>item_in_hand</span><span class='op'>|</span>
+      <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lower_item?'><span class='object_link'><a href="DRCI.html#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item_in_hand'>item_in_hand</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_tap'>tap</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_ok'>ok</span><span class='op'>|</span> <span class='id identifier rubyid_lowered'>lowered</span> <span class='op'>&lt;&lt;</span> <span class='lbracket'>[</span><span class='id identifier rubyid_item_in_hand'>item_in_hand</span><span class='comma'>,</span> <span class='id identifier rubyid_hand'>hand</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_ok'>ok</span> <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
     <span class='kw'>if</span> <span class='id identifier rubyid_did_lower'>did_lower</span>
       <span class='id identifier rubyid_remove_item'>remove_item</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>-</span> <span class='int'>1</span><span class='rparen'>)</span>
     <span class='kw'>else</span>
       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: Unable to empty your hands to remove </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>end</span>
-    <span class='comment'># Pick up the items in reverse order you lowered them
-</span>    <span class='comment'># so that they end up in the correct hands again.
-</span>    <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_item_if_not_held?'><span class='object_link'><a href="DRCI.html#get_item_if_not_held%3F-class_method" title="Lich::DragonRealms::DRCI.get_item_if_not_held? (method)">get_item_if_not_held?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_temp_right_item'>temp_right_item</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_temp_right_item'>temp_right_item</span>
-    <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_item_if_not_held?'><span class='object_link'><a href="DRCI.html#get_item_if_not_held%3F-class_method" title="Lich::DragonRealms::DRCI.get_item_if_not_held? (method)">get_item_if_not_held?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_temp_left_item'>temp_left_item</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_temp_left_item'>temp_left_item</span>
+    <span class='id identifier rubyid_pick_up_lowered_items'>pick_up_lowered_items</span><span class='lparen'>(</span><span class='id identifier rubyid_lowered'>lowered</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='rparen'>)</span>
     <span class='comment'># In case they end up in different hands, swap.
 </span>    <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span> <span class='op'>!=</span> <span class='id identifier rubyid_temp_left_item'>temp_left_item</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span> <span class='op'>!=</span> <span class='id identifier rubyid_temp_right_item'>temp_right_item</span>
       <span class='id identifier rubyid_swap_result'>swap_result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>swap</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SWAP_HANDS_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SWAP_HANDS_SUCCESS_PATTERNS (constant)">SWAP_HANDS_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SWAP_HANDS_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SWAP_HANDS_FAILURE_PATTERNS (constant)">SWAP_HANDS_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
@@ -2287,21 +2966,21 @@ general stow. Empties hands if needed for two-handed removal.</p>
       <pre class="lines">
 
 
-190
-191
-192
-193
-194
-195
-196
-197
-198
-199
-200
-201</pre>
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 190</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 310</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove_unmatched_items'>remove_unmatched_items</span><span class='lparen'>(</span><span class='id identifier rubyid_combat_items'>combat_items</span><span class='comma'>,</span> <span class='id identifier rubyid_target_items'>target_items</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_equipmanager_debug'>equipmanager_debug</span>
@@ -2382,28 +3061,28 @@ ties, sheathes, or stows them based on their configuration.</p>
       <pre class="lines">
 
 
-445
-446
-447
-448
-449
-450
-451
-452
-453
-454
-455
-456
-457
-458
-459
-460
-461
-462
-463</pre>
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 445</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 572</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_return_held_gear'>return_held_gear</span><span class='lparen'>(</span><span class='id identifier rubyid_gear_set'>gear_set</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>standard</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span>
@@ -2444,13 +3123,241 @@ ties, sheathes, or stows them based on their configuration.</p>
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
+<p>Stows an item based on its configured storage type (tie, sheath, container, or default stow).</p>
+<p>Handles the common tie/wield/container/stow decision shared by
+<span class='object_link'><a href="#remove_item-instance_method" title="Lich::DragonRealms::EquipmentManager#remove_item (method)">#remove_item</a></span>, <span class='object_link'><a href="#return_held_gear-instance_method" title="Lich::DragonRealms::EquipmentManager#return_held_gear (method)">#return_held_gear</a></span>, and <span class='object_link'><a href="#stow_weapon-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_weapon (method)">#stow_weapon</a></span>.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>item</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>item to stow</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if stow succeeded, false otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#stow_helper-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_helper (method)">#stow_helper</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1029
+1030
+1031
+1032
+1033
+1034
+1035
+1036
+1037
+1038
+1039</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 1029</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stow_by_type'>stow_by_type</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_tie_to'>tie_to</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tie my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> to my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_tie_to'>tie_to</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#TIE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_SUCCESS_PATTERNS (constant)">TIE_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#TIE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_FAILURE_PATTERNS (constant)">TIE_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>elsif</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_wield'>wield</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sheath my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SHEATH_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SHEATH_ITEM_SUCCESS_PATTERNS (constant)">SHEATH_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SHEATH_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SHEATH_ITEM_FAILURE_PATTERNS (constant)">SHEATH_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>elsif</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_container'>container</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>put my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> in my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_container'>container</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_SUCCESS_PATTERNS (constant)">PUT_AWAY_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_FAILURE_PATTERNS (constant)">PUT_AWAY_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>stow my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_SUCCESS_PATTERNS (constant)">PUT_AWAY_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_FAILURE_PATTERNS (constant)">PUT_AWAY_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stow_gear_item-instance_method">
+  
+    #<strong>stow_gear_item</strong>(weapon, transform_depth: 3)  &#x21d2; <tt>Boolean</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Puts a gear item away by its own configuration (WEAR for a worn item,
+the transform for a transform item, otherwise <span class='object_link'><a href="#stow_by_type-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_by_type (method)">#stow_by_type</a></span>).
+<span class='object_link'><a href="#stow_weapon-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_weapon (method)">#stow_weapon</a></span> resolves a description to the item first; callers that
+already hold the gear item pass it here so the item put away is the
+one they hold, not whichever gear item first matches its short name.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>weapon</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>gear item to put away</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>transform_depth</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>3</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>remaining transform recursion depth</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>as <span class='object_link'><a href="#stow_weapon-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_weapon (method)">#stow_weapon</a></span></p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+999
+1000
+1001
+1002
+1003
+1004
+1005
+1006
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 999</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stow_gear_item'>stow_gear_item</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='int'>3</span><span class='rparen'>)</span>
+  <span class='comment'># Is this a weapon that needs to be unloaded before it is put away?
+</span>  <span class='comment'># This is an optimization attempt so that the script
+</span>  <span class='comment'># isn&#39;t trying to unload every weapon that gets put away.
+</span>  <span class='comment'># Would be silly to try &quot;unload my scimitar&quot; wouldn&#39;t it? :grins:
+</span>  <span class='id identifier rubyid_unload_weapon'>unload_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_needs_unloading'>needs_unloading</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_worn'>worn</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wear my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#WEAR_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_SUCCESS_PATTERNS (constant)">WEAR_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#WEAR_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_FAILURE_PATTERNS (constant)">WEAR_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>elsif</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span>
+    <span class='kw'>if</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
+      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: stow_weapon exceeded max transform depth for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+      <span class='kw'>return</span>
+    <span class='kw'>end</span>
+    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transform_verb'>transform_verb</span><span class='embexpr_end'>}</span><span class='tstring_content'> my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transform_text'>transform_text</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_stow_weapon'>stow_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>-</span> <span class='int'>1</span><span class='rparen'>)</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_stow_by_type'>stow_by_type</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stow_helper-instance_method">
+  
+    #<strong>stow_helper</strong>(action, weapon_name, *accept_strings, failure_patterns: [], retries: STOW_HELPER_MAX_RETRIES)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
 <p>Executes a stow action with automatic recovery on common failure conditions.</p>
 <p>Handles unload prompts, fan close, combat busy, movement lock,
 container size, and wound/sheath failures by retrying with
 corrective actions.</p>
-<p>Stows an item based on its configured storage type (tie, sheath, container, or default stow).</p>
-<p>Handles the common tie/wield/container/stow decision shared by
-<span class='object_link'><a href="#remove_item-instance_method" title="Lich::DragonRealms::EquipmentManager#remove_item (method)">#remove_item</a></span>, <span class='object_link'><a href="#return_held_gear-instance_method" title="Lich::DragonRealms::EquipmentManager#return_held_gear (method)">#return_held_gear</a></span>, and <span class='object_link'><a href="#stow_weapon-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_weapon (method)">#stow_weapon</a></span>.</p>
 
   </div>
 </div>
@@ -2508,6 +3415,8 @@ corrective actions.</p>
         <span class='type'>(<tt>Array&lt;Regexp&gt;</tt>)</span>
       
       
+        <em class="default">(defaults to: <tt>[]</tt>)</em>
+      
       
         &mdash;
         <div class='inline'><p>failure patterns that indicate unrecoverable stow failure</p></div>
@@ -2522,23 +3431,11 @@ corrective actions.</p>
         <span class='type'>(<tt>Integer</tt>)</span>
       
       
+        <em class="default">(defaults to: <tt>STOW_HELPER_MAX_RETRIES</tt>)</em>
+      
       
         &mdash;
         <div class='inline'><p>remaining retry attempts</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>item</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>item to stow</p></div>
       
     </li>
   
@@ -2559,85 +3456,7 @@ corrective actions.</p>
       
     </li>
   
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if stow succeeded, false otherwise</p></div>
-      
-    </li>
-  
 </ul>
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="#stow_helper-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_helper (method)">#stow_helper</a></span></li>
-    
-  </ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-896
-897
-898
-899
-900
-901
-902
-903
-904
-905
-906</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 896</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_stow_by_type'>stow_by_type</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_tie_to'>tie_to</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tie my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> to my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_tie_to'>tie_to</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#TIE_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_SUCCESS_PATTERNS (constant)">TIE_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#TIE_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::TIE_ITEM_FAILURE_PATTERNS (constant)">TIE_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>elsif</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_wield'>wield</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sheath my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SHEATH_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SHEATH_ITEM_SUCCESS_PATTERNS (constant)">SHEATH_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#SHEATH_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::SHEATH_ITEM_FAILURE_PATTERNS (constant)">SHEATH_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>elsif</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_container'>container</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>put my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_content'> in my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_container'>container</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_SUCCESS_PATTERNS (constant)">PUT_AWAY_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_FAILURE_PATTERNS (constant)">PUT_AWAY_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>else</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>stow my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_SUCCESS_PATTERNS (constant)">PUT_AWAY_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#PUT_AWAY_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::PUT_AWAY_ITEM_FAILURE_PATTERNS (constant)">PUT_AWAY_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>end</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="stow_helper-instance_method">
-  
-    #<strong>stow_helper</strong>(action, weapon_name, *accept_strings, failure_patterns: [], retries: STOW_HELPER_MAX_RETRIES)  &#x21d2; <tt>Object</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-
-
-  </div>
-</div>
-<div class="tags">
-  
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
@@ -2654,51 +3473,51 @@ corrective actions.</p>
       <pre class="lines">
 
 
-911
-912
-913
-914
-915
-916
-917
-918
-919
-920
-921
-922
-923
-924
-925
-926
-927
-928
-929
-930
-931
-932
-933
-934
-935
-936
-937
-938
-939
-940
-941
-942
-943
-944
-945
-946
-947
-948
-949
-950
-951
-952</pre>
+1156
+1157
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172
+1173
+1174
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+1188
+1189
+1190
+1191
+1192
+1193
+1194
+1195
+1196
+1197</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 911</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 1156</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='id identifier rubyid_action'>action</span><span class='comma'>,</span> <span class='id identifier rubyid_weapon_name'>weapon_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_accept_strings'>accept_strings</span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>retries:</span> <span class='const'><span class='object_link'><a href="#STOW_HELPER_MAX_RETRIES-constant" title="Lich::DragonRealms::EquipmentManager::STOW_HELPER_MAX_RETRIES (constant)">STOW_HELPER_MAX_RETRIES</a></span></span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_retries'>retries</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
@@ -2750,7 +3569,7 @@ corrective actions.</p>
       <div class="method_details ">
   <h3 class="signature " id="stow_weapon-instance_method">
   
-    #<strong>stow_weapon</strong>(description = nil, transform_depth: 3)  &#x21d2; <tt>void</tt> 
+    #<strong>stow_weapon</strong>(description = nil, transform_depth: 3)  &#x21d2; <tt>Boolean</tt><sup>?</sup> 
   
 
   
@@ -2758,7 +3577,7 @@ corrective actions.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Stows a weapon in its configured location (sheath, wear, tie, container, or general stow).</p>
+    <p>Stows a weapon in its configured location (sheath, wear, tie, container, or general stow).</p>
 <p>When called without a description, stows whatever is in both hands.
 Unloads ranged weapons before stowing if configured.</p>
 
@@ -2802,6 +3621,24 @@ Unloads ranged weapons before stowing if configured.</p>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the item was put away, false if the put-away
+command failed, nil if the description is not in the gear list or the
+transform depth ran out; always nil when called without a description</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2809,38 +3646,22 @@ Unloads ranged weapons before stowing if configured.</p>
       <pre class="lines">
 
 
-843
-844
-845
-846
-847
-848
-849
-850
-851
-852
-853
-854
-855
-856
-857
-858
-859
-860
-861
-862
-863
-864
-865
-866
-867
-868
-869
-870
-871</pre>
+975
+976
+977
+978
+979
+980
+981
+982
+983
+984
+985
+986
+987</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 843</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 975</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stow_weapon'>stow_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='int'>3</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_description'>description</span>
@@ -2853,23 +3674,7 @@ Unloads ranged weapons before stowing if configured.</p>
   <span class='id identifier rubyid_weapon'>weapon</span> <span class='op'>=</span> <span class='id identifier rubyid_item_by_desc'>item_by_desc</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_weapon'>weapon</span>
 
-  <span class='comment'># Is this a weapon that needs to be unloaded before it is put away?
-</span>  <span class='comment'># This is an optimization attempt so that the script
-</span>  <span class='comment'># isn&#39;t trying to unload every weapon that gets put away.
-</span>  <span class='comment'># Would be silly to try &quot;unload my scimitar&quot; wouldn&#39;t it? :grins:
-</span>  <span class='id identifier rubyid_unload_weapon'>unload_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_needs_unloading'>needs_unloading</span>
-  <span class='kw'>if</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_worn'>worn</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wear my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#WEAR_ITEM_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_SUCCESS_PATTERNS (constant)">WEAR_ITEM_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='label'>failure_patterns:</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#WEAR_ITEM_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::WEAR_ITEM_FAILURE_PATTERNS (constant)">WEAR_ITEM_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
-  <span class='kw'>elsif</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>&lt;=</span> <span class='int'>0</span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: stow_weapon exceeded max transform depth for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-      <span class='kw'>return</span>
-    <span class='kw'>end</span>
-    <span class='id identifier rubyid_stow_helper'>stow_helper</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transform_verb'>transform_verb</span><span class='embexpr_end'>}</span><span class='tstring_content'> my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='comma'>,</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transform_text'>transform_text</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_stow_weapon'>stow_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='period'>.</span><span class='id identifier rubyid_transforms_to'>transforms_to</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span> <span class='op'>-</span> <span class='int'>1</span><span class='rparen'>)</span>
-  <span class='kw'>else</span>
-    <span class='id identifier rubyid_stow_by_type'>stow_by_type</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='rparen'>)</span>
-  <span class='kw'>end</span>
+  <span class='id identifier rubyid_stow_gear_item'>stow_gear_item</span><span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span><span class='comma'>,</span> <span class='label'>transform_depth:</span> <span class='id identifier rubyid_transform_depth'>transform_depth</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2950,92 +3755,92 @@ For fans, opens or closes them based on skill type.</p>
       <pre class="lines">
 
 
-708
-709
-710
-711
-712
-713
-714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727
-728
-729
-730
-731
-732
-733
-734
-735
-736
-737
-738
-739
-740
-741
-742
-743
-744
-745
-746
-747
-748
-749
-750
-751
-752
-753
-754
-755
-756
-757
-758
-759
-760
-761
-762
-763
-764
-765
-766
-767
-768
-769
-770
-771
-772
-773
-774
-775
-776
-777
-778
-779
-780
-781
-782
-783
-784
-785
-786
-787
-788
-789
-790</pre>
+835
+836
+837
+838
+839
+840
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855
+856
+857
+858
+859
+860
+861
+862
+863
+864
+865
+866
+867
+868
+869
+870
+871
+872
+873
+874
+875
+876
+877
+878
+879
+880
+881
+882
+883
+884
+885
+886
+887
+888
+889
+890
+891
+892
+893
+894
+895
+896
+897
+898
+899
+900
+901
+902
+903
+904
+905
+906
+907
+908
+909
+910
+911
+912
+913
+914
+915
+916
+917</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 708</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 835</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_swap_to_skill?'>swap_to_skill?</span><span class='lparen'>(</span><span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_noun'>noun</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\bfan\b</span><span class='regexp_end'>/i</span></span>
@@ -3197,21 +4002,21 @@ For fans, opens or closes them based on skill type.</p>
       <pre class="lines">
 
 
-687
-688
-689
-690
-691
-692
-693
-694
-695
-696
-697
-698</pre>
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 687</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 814</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_turn_to_weapon?'>turn_to_weapon?</span><span class='lparen'>(</span><span class='id identifier rubyid_old_noun'>old_noun</span><span class='comma'>,</span> <span class='id identifier rubyid_new_noun'>new_noun</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_old_noun'>old_noun</span> <span class='op'>==</span> <span class='id identifier rubyid_new_noun'>new_noun</span>
@@ -3281,49 +4086,53 @@ For fans, opens or closes them based on skill type.</p>
       <pre class="lines">
 
 
-799
-800
-801
-802
-803
-804
-805
-806
-807
-808
-809
-810
-811
-812
-813
-814
-815
-816
-817
-818
-819
-820
-821
-822
-823
-824
-825
-826
-827
-828
-829
-830
-831
-832
-833</pre>
+926
+927
+928
+929
+930
+931
+932
+933
+934
+935
+936
+937
+938
+939
+940
+941
+942
+943
+944
+945
+946
+947
+948
+949
+950
+951
+952
+953
+954
+955
+956
+957
+958
+959
+960
+961
+962
+963</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 799</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 926</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_unload_weapon'>unload_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>unload my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#UNLOAD_WEAPON_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::UNLOAD_WEAPON_SUCCESS_PATTERNS (constant)">UNLOAD_WEAPON_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#UNLOAD_WEAPON_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCI::UNLOAD_WEAPON_FAILURE_PATTERNS (constant)">UNLOAD_WEAPON_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_waitrt?'><span class='object_link'><a href="../../top-level-namespace.html#waitrt%3F-instance_method" title="#waitrt? (method)">waitrt?</a></span></span> <span class='comment'># wait out the unload roundtime so the ammo/hand state has settled before we act on it
-</span>
+</span>  <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_result'>result</span><span class='op'>&amp;.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As you release the string.* fades and disappears</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
+
   <span class='id identifier rubyid_ammo_match'>ammo_match</span> <span class='op'>=</span> <span class='id identifier rubyid_result'>result</span><span class='op'>&amp;.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:Your .*?\b(?&lt;ammo&gt;[\w]+)\b fall.* from your .* to your feet\.)$</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_ground_match'>ground_match</span> <span class='op'>=</span> <span class='id identifier rubyid_result'>result</span><span class='op'>&amp;.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As you release the string</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_result'>result</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>the (?&lt;ammo&gt;\w+) tumbles</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='op'>:</span> <span class='kw'>nil</span>
 
@@ -3331,12 +4140,14 @@ For fans, opens or closes them based on skill type.</p>
     <span class='comment'># Ammo ended up on the GROUND (hands were full, or it tumbled). Lower the
 </span>    <span class='comment'># weapon, stow the ammo from your feet, then pick the weapon back up.
 </span>    <span class='id identifier rubyid_ammo'>ammo</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='id identifier rubyid_ammo_match'>ammo_match</span> <span class='op'>||</span> <span class='id identifier rubyid_ground_match'>ground_match</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='symbol'>:ammo</span><span class='rbracket'>]</span>
+    <span class='comment'># The hand DRCI.lower_item? lowers from.
+</span>    <span class='id identifier rubyid_weapon_hand'>weapon_hand</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_left_hand?'><span class='object_link'><a href="DRCI.html#in_left_hand%3F-class_method" title="Lich::DragonRealms::DRCI.in_left_hand? (method)">in_left_hand?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>left</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>right</span><span class='tstring_end'>&#39;</span></span>
     <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_lower_item?'><span class='object_link'><a href="DRCI.html#lower_item%3F-class_method" title="Lich::DragonRealms::DRCI.lower_item? (method)">lower_item?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: Unable to lower </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> to pick up ammo</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
       <span class='kw'>return</span>
     <span class='kw'>end</span>
     <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_put_away_item?'><span class='object_link'><a href="DRCI.html#put_away_item%3F-class_method" title="Lich::DragonRealms::DRCI.put_away_item? (method)">put_away_item?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_ammo'>ammo</span><span class='rparen'>)</span>
-    <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_item?'><span class='object_link'><a href="DRCI.html#get_item%3F-class_method" title="Lich::DragonRealms::DRCI.get_item? (method)">get_item?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_pick_up_lowered_item?'>pick_up_lowered_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>from_hand:</span> <span class='id identifier rubyid_weapon_hand'>weapon_hand</span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: Unable to pick </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> back up after unloading</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>end</span>
   <span class='kw'>elsif</span> <span class='id identifier rubyid_result'>result</span> <span class='op'>&amp;&amp;</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRCI.html#UNLOAD_WEAPON_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCI::UNLOAD_WEAPON_SUCCESS_PATTERNS (constant)">UNLOAD_WEAPON_SUCCESS_PATTERNS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_result'>result</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -3447,91 +4258,91 @@ failure, and exhausted patterns so <code>bput</code> returns promptly.
       <pre class="lines">
 
 
-517
-518
-519
-520
-521
-522
-523
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533
-534
-535
-536
-537
-538
-539
-540
-541
-542
-543
-544
-545
-546
-547
-548
-549
-550
-551
-552
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565
-566
-567
-568
-569
-570
-571
-572
-573
-574
-575
-576
-577
-578
-579
-580
-581
-582
-583
-584
-585
-586
-587
-588
-589
-590
-591
-592
-593
-594
-595
-596
-597
-598</pre>
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 517</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 644</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_verb_data'>verb_data</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='lbrace'>{</span>
@@ -3634,7 +4445,7 @@ failure, and exhausted patterns so <code>bput</code> returns promptly.
     <p>Switches to a named gear set, removing unneeded items and wearing missing ones.</p>
 <p>Compares currently worn combat items against the target gear set,
 removes items not in the set, and wears any missing items.
-Notifies the user about items that could not be found.</p>
+Alerts the user about items that could not be found, worn, or put away.</p>
 
   </div>
 </div>
@@ -3677,7 +4488,12 @@ Notifies the user about items that could not be found.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if all items in the set are now worn</p></div>
+        <div class='inline'><p>false if the set is unknown or any set item could not be
+found, worn, or put away; true otherwise. A set item that was in hand
+counts once its put-away is confirmed: by a recognised reply, or, for
+one put away with WEAR, by INV COMBAT showing it worn. A non-worn one
+whose put-away reply was not recognised and that has left the hand is
+reported missing, since nothing confirms where it went.</p></div>
       
     </li>
   
@@ -3689,18 +4505,6 @@ Notifies the user about items that could not be found.</p>
       <pre class="lines">
 
 
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
 114
 115
 116
@@ -3710,10 +4514,22 @@ Notifies the user about items that could not be found.</p>
 120
 121
 122
-123</pre>
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 102</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 114</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_equipment_set?'>wear_equipment_set?</span><span class='lparen'>(</span><span class='id identifier rubyid_set_name'>set_name</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_set_name'>set_name</span>
@@ -3730,8 +4546,8 @@ Notifies the user about items that could not be found.</p>
 
   <span class='id identifier rubyid_remove_unmatched_items'>remove_unmatched_items</span><span class='lparen'>(</span><span class='id identifier rubyid_combat_items'>combat_items</span><span class='comma'>,</span> <span class='id identifier rubyid_gear_set_items'>gear_set_items</span><span class='rparen'>)</span>
 
-  <span class='id identifier rubyid_lost_items'>lost_items</span> <span class='op'>=</span> <span class='id identifier rubyid_wear_missing_items'>wear_missing_items</span><span class='lparen'>(</span><span class='id identifier rubyid_gear_set_items'>gear_set_items</span><span class='comma'>,</span> <span class='id identifier rubyid_combat_items'>combat_items</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_notify_missing'>notify_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_lost_items'>lost_items</span><span class='comma'>,</span> <span class='id identifier rubyid_in_hand_items'>in_hand_items</span> <span class='op'>=</span> <span class='id identifier rubyid_wear_missing_items'>wear_missing_items</span><span class='lparen'>(</span><span class='id identifier rubyid_gear_set_items'>gear_set_items</span><span class='comma'>,</span> <span class='id identifier rubyid_combat_items'>combat_items</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_notify_missing'>notify_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_lost_items'>lost_items</span><span class='comma'>,</span> <span class='id identifier rubyid_in_hand_items'>in_hand_items</span><span class='rparen'>)</span>
 
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sort auto head</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^Your inventory is now arranged</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='ivar'>@sort_head</span>
 
@@ -3800,19 +4616,19 @@ Notifies the user about items that could not be found.</p>
       <pre class="lines">
 
 
-297
-298
-299
-300
-301
-302
-303
-304
-305
-306</pre>
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 297</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 424</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_item?'>wear_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -3871,14 +4687,14 @@ Notifies the user about items that could not be found.</p>
       <pre class="lines">
 
 
-85
-86
-87
-88
-89</pre>
+92
+93
+94
+95
+96</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 85</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 92</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_items'>wear_items</span><span class='lparen'>(</span><span class='id identifier rubyid_items_list'>items_list</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_items_list'>items_list</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_wear_item?'>wear_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -3893,7 +4709,7 @@ Notifies the user about items that could not be found.</p>
       <div class="method_details ">
   <h3 class="signature " id="wear_missing_items-instance_method">
   
-    #<strong>wear_missing_items</strong>(target_items, combat_items)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;</tt> 
+    #<strong>wear_missing_items</strong>(target_items, combat_items)  &#x21d2; <tt>Array(Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;, Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;)</tt> 
   
 
   
@@ -3906,8 +4722,25 @@ Notifies the user about items that could not be found.</p>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
 <p>Wears items from the target set that are not currently in the combat inventory.</p>
-<p>Stows any target items found in hands before wearing. Returns items
-that could not be worn (missing from containers).</p>
+<p>Target items already in a hand are put away first via <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span>,
+which sends the WEAR itself for worn items. The set item itself is put
+away, not a fresh lookup by its short name, so the put-away and the
+check after the wears (see <span class='object_link'><a href="#put_away_forms-instance_method" title="Lich::DragonRealms::EquipmentManager#put_away_forms (method)">#put_away_forms</a></span>) follow the same item
+and use that item's own storage settings. A held item whose put-away
+fails is reported rather than retried. The hands are checked again just
+before each put-away; a held item that has left the hand by then joins
+the unheld items, which are then fetched and worn in gear-set order.
+When two set descriptions resolve to the same gear item, a held item
+that failed is not tried again. After the wears, a held failure counts
+as in hand if a hand matches the item or any form <span class='object_link'><a href="#stow_gear_item-instance_method" title="Lich::DragonRealms::EquipmentManager#stow_gear_item (method)">#stow_gear_item</a></span> turned
+it into (see <span class='object_link'><a href="#put_away_forms-instance_method" title="Lich::DragonRealms::EquipmentManager#put_away_forms (method)">#put_away_forms</a></span>). One that has left the hand is looked
+for in one INV COMBAT if its put-away was a WEAR: if it is worn it is
+not a failure. Any other held failure that has left the hand, worn or
+not, is reported missing but not in hand, since nothing confirms where
+it went. Returns, in gear-set order and without repeats, every item
+that could not be worn or put away, and the subset of those left in
+hand: every held failure in hand as above, plus every fetched item
+whose WEAR failed and that still matches a hand afterwards.</p>
 
   </div>
 </div>
@@ -3951,12 +4784,13 @@ that could not be worn (missing from containers).</p>
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;</tt>)</span>
+        <span class='type'>(<tt>Array(Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;, Array&lt;<span class='object_link'><a href="DRC/Item.html" title="Lich::DragonRealms::DRC::Item (class)">DRC::Item</a></span>&gt;)</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>items that could not be worn</p></div>
+        <div class='inline'><p>items that could not
+be worn or put away, and the ones among them left in hand</p></div>
       
     </li>
   
@@ -3968,27 +4802,70 @@ that could not be worn (missing from containers).</p>
       <pre class="lines">
 
 
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180
-181
-182</pre>
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 165</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 214</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wear_missing_items'>wear_missing_items</span><span class='lparen'>(</span><span class='id identifier rubyid_target_items'>target_items</span><span class='comma'>,</span> <span class='id identifier rubyid_combat_items'>combat_items</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_equipmanager_debug'>equipmanager_debug</span>
@@ -3997,16 +4874,59 @@ that could not be worn (missing from containers).</p>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: target: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target_items'>target_items</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:short_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>,</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
   <span class='kw'>end</span>
 
-  <span class='id identifier rubyid_missing_items'>missing_items</span> <span class='op'>=</span> <span class='id identifier rubyid_target_items'>target_items</span>
-                  <span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_combat_items'>combat_items</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c_item'>c_item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span> <span class='op'>=~</span> <span class='id identifier rubyid_c_item'>c_item</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
-                  <span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_right_hand'><span class='object_link'><a href="DRC.html#right_hand-class_method" title="Lich::DragonRealms::DRC.right_hand (method)">right_hand</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_left_hand'><span class='object_link'><a href="DRC.html#left_hand-class_method" title="Lich::DragonRealms::DRC.left_hand (method)">left_hand</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_grep'>grep</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='op'>?</span> <span class='lparen'>(</span><span class='id identifier rubyid_stow_weapon'>stow_weapon</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_name'>short_name</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='kw'>true</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='kw'>false</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_not_worn'>not_worn</span> <span class='op'>=</span> <span class='id identifier rubyid_target_items'>target_items</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_combat_items'>combat_items</span><span class='period'>.</span><span class='id identifier rubyid_find'>find</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c_item'>c_item</span><span class='op'>|</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span> <span class='op'>=~</span> <span class='id identifier rubyid_c_item'>c_item</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+  <span class='comment'># Tracked by position: two set descriptions can resolve to the same gear item.
+</span>  <span class='id identifier rubyid_held'>held</span> <span class='op'>=</span> <span class='id identifier rubyid_not_worn'>not_worn</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_to_wear'>to_wear</span> <span class='op'>=</span> <span class='id identifier rubyid_held'>held</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:!</span><span class='rparen'>)</span>
+
+  <span class='comment'># Put held items away first so the hands are free for the wears below.
+</span>  <span class='comment'># stow_gear_item already sent the WEAR for a worn item, so a failure here
+</span>  <span class='comment'># is final: the item is reported for the user to check rather than
+</span>  <span class='comment'># sent the same command again, so a second entry for an item that
+</span>  <span class='comment'># already failed is skipped. An item that is no longer in hand by its
+</span>  <span class='comment'># turn (an earlier put-away took the hand it matched) is fetched and
+</span>  <span class='comment'># worn instead, in its gear-set position.
+</span>  <span class='id identifier rubyid_held_failures'>held_failures</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_not_worn'>not_worn</span><span class='period'>.</span><span class='id identifier rubyid_each_with_index'>each_with_index</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='op'>|</span>
+    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_held'>held</span><span class='lbracket'>[</span><span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span>
+    <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_held_failures'>held_failures</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
+
+    <span class='kw'>if</span> <span class='op'>!</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_to_wear'>to_wear</span><span class='lbracket'>[</span><span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span>
+    <span class='kw'>elsif</span> <span class='op'>!</span><span class='id identifier rubyid_stow_gear_item'>stow_gear_item</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_held_failures'>held_failures</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_item'>item</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_missing_items'>missing_items</span> <span class='op'>=</span> <span class='id identifier rubyid_not_worn'>not_worn</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span><span class='period'>.</span><span class='id identifier rubyid_with_index'>with_index</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__item'>_item</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='op'>|</span> <span class='id identifier rubyid_to_wear'>to_wear</span><span class='lbracket'>[</span><span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
 
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>EquipmentManager: wear missing items </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_missing_items'>missing_items</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_missing_items'>missing_items</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_equipmanager_debug'>equipmanager_debug</span>
-  <span class='id identifier rubyid_missing_items'>missing_items</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span>
+  <span class='id identifier rubyid_wear_failures'>wear_failures</span> <span class='op'>=</span> <span class='id identifier rubyid_missing_items'>missing_items</span><span class='period'>.</span><span class='id identifier rubyid_reject'>reject</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span>
     <span class='id identifier rubyid_item_copy'>item_copy</span> <span class='op'>=</span> <span class='id identifier rubyid_item'>item</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
     <span class='id identifier rubyid_item_copy'>item_copy</span><span class='period'>.</span><span class='id identifier rubyid_instance_variable_set'>instance_variable_set</span><span class='lparen'>(</span><span class='symbol'>:@worn</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_wear_item?'>wear_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_item_copy'>item_copy</span><span class='rparen'>)</span>
   <span class='kw'>end</span>
+
+  <span class='comment'># Held put-away failures are checked again now that every wear has
+</span>  <span class='comment'># been tried. One whose hand still shows the item, or a form it was
+</span>  <span class='comment'># transformed into on the way, is left in hand. One that has left the
+</span>  <span class='comment'># hand after a put-away that ended in a WEAR may have been worn after
+</span>  <span class='comment'># all (a WEAR whose reply never arrived), so a single INV COMBAT
+</span>  <span class='comment'># settles those: an item now worn is not a failure. INV COMBAT cannot
+</span>  <span class='comment'># confirm any other put-away, so every other item that has left the
+</span>  <span class='comment'># hand is reported missing rather than in hand. A refused fetch is in
+</span>  <span class='comment'># hand only if it still matches a hand.
+</span>  <span class='id identifier rubyid_held_in_hand'>held_in_hand</span><span class='comma'>,</span> <span class='id identifier rubyid_held_gone'>held_gone</span> <span class='op'>=</span> <span class='id identifier rubyid_held_failures'>held_failures</span><span class='period'>.</span><span class='id identifier rubyid_partition'>partition</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span>
+    <span class='id identifier rubyid_put_away_forms'>put_away_forms</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_form'>form</span><span class='op'>|</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_form'>form</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_worn_forms'>worn_forms</span> <span class='op'>=</span> <span class='id identifier rubyid_held_gone'>held_gone</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_put_away_forms'>put_away_forms</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_last'>last</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+                        <span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__item'>_item</span><span class='comma'>,</span> <span class='id identifier rubyid_form'>form</span><span class='op'>|</span> <span class='op'>!</span><span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_form'>form</span><span class='period'>.</span><span class='id identifier rubyid_worn'>worn</span> <span class='rbrace'>}</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_worn_forms'>worn_forms</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='id identifier rubyid_worn_now'>worn_now</span> <span class='op'>=</span> <span class='id identifier rubyid_get_combat_items'>get_combat_items</span>
+    <span class='id identifier rubyid_held_gone'>held_gone</span><span class='period'>.</span><span class='id identifier rubyid_reject!'>reject!</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_worn_forms'>worn_forms</span><span class='period'>.</span><span class='id identifier rubyid_key?'>key?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_worn_now'>worn_now</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_c_item'>c_item</span><span class='op'>|</span> <span class='id identifier rubyid_worn_forms'>worn_forms</span><span class='lbracket'>[</span><span class='id identifier rubyid_item'>item</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_short_regex'>short_regex</span> <span class='op'>=~</span> <span class='id identifier rubyid_c_item'>c_item</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_failures'>failures</span> <span class='op'>=</span> <span class='id identifier rubyid_held_in_hand'>held_in_hand</span> <span class='op'>+</span> <span class='id identifier rubyid_held_gone'>held_gone</span> <span class='op'>+</span> <span class='id identifier rubyid_wear_failures'>wear_failures</span>
+  <span class='id identifier rubyid_in_hand'>in_hand</span> <span class='op'>=</span> <span class='id identifier rubyid_held_in_hand'>held_in_hand</span> <span class='op'>+</span> <span class='id identifier rubyid_wear_failures'>wear_failures</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='lbracket'>[</span><span class='id identifier rubyid_not_worn'>not_worn</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_failures'>failures</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_uniq'>uniq</span><span class='comma'>,</span> <span class='id identifier rubyid_not_worn'>not_worn</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_item'>item</span><span class='op'>|</span> <span class='id identifier rubyid_in_hand'>in_hand</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_uniq'>uniq</span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4093,40 +5013,40 @@ and optionally swaps it to the desired skill.</p>
       <pre class="lines">
 
 
-355
-356
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
-367
-368
-369
-370
-371
-372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-382
-383
-384
-385</pre>
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 355</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 482</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wield_weapon?'>wield_weapon?</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_description'>description</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -4244,36 +5164,36 @@ then swaps it from the right hand to the left hand.</p>
       <pre class="lines">
 
 
-316
-317
-318
-319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342</pre>
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 316</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/equipmanager.rb', line 443</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wield_weapon_offhand?'>wield_weapon_offhand?</span><span class='lparen'>(</span><span class='id identifier rubyid_description'>description</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_description'>description</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -4312,7 +5232,7 @@ then swaps it from the right hand to the left hand.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:42 2026 by
+  Generated on Wed Oct 28 05:27:30 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

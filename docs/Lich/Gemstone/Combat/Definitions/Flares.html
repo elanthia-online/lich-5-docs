@@ -86,22 +86,7 @@
   
 </div>
 
-<h2>Overview</h2><div class="docstring">
-  <div class="discussion">
-    <p>Namespace for flare pattern definitions and parsing.</p>
-<p>A flare is a proc that rides on an attack: weapon scripts, enchants, gloves,
-GEFs, flourishes. Each flare definition carries metadata about whether a damage
-line is expected, whether it targets a single creature or multiple, and whether
-it spawns an embedded spell as a separate attack.</p>
-<p>Timing (pre-flare vs. post-flare) is determined positionally by the parser
-based on the order flare announces appear in the log relative to attack events.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div><h2>Defined Under Namespace</h2>
+<h2>Defined Under Namespace</h2>
 <p class="children">
   
     
@@ -123,44 +108,31 @@ based on the order flare announces appear in the log relative to attack events.<
         <dt id="FLARE_DEFS-constant" class="">FLARE_DEFS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>List of flare pattern definitions.</p>
-<p>Each entry is a FlareDef struct containing a flare name, array of regex patterns
-to match its announce line(s), and three boolean flags:</p>
-<pre class="code ruby"><code class="ruby">- damaging: whether a damage line is expected to follow (false for utility
-flares like acuity or tailwind)
-- aoe: whether the flare can hit multiple targets; false for single-target
-flares even when their parent attack is AoE
-- spawns: whether the flare casts an embedded spell as a separate attack
-(e.g., Blink, sigil_cast), causing subsequent attack events in the same
-chunk to be children rather than independent casts</code></pre>
+    <p>Array of flare pattern definitions indexed by flare name.</p>
+<p>Each entry is a <span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span> struct carrying the flare's name, regex patterns
+that match its announce lines in the combat log, and three boolean flags:</p>
+<ul>
+<li><strong>damaging</strong>: true if a damage line is expected to follow (buff/utility
+flares like acuity or tailwind return false)</li>
+<li><strong>aoe</strong>: false when the flare is explicitly single-target even if its
+parent attack is not; most flares return true</li>
+<li><strong>spawns</strong>: true if the flare casts an embedded spell as a separate attack
+(e.g. Blink or Sigil Cast), causing subsequent attack events in the same
+chunk to become its children rather than independent casts</li>
+</ul>
+<p>Timing (pre-flare vs post-flare resolution) is NOT declared here; the parser
+determines it positionally by whether a flare is seen with an open attack event.
+Position in the log is the ground truth.</p>
 
   </div>
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span>&gt;</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>frozen array of flare definitions</p></div>
-      
-    </li>
-  
-</ul>
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
+    
+      <li>#FLARE_LOOKUP</li>
     
       <li><span class='object_link'><a href="#parse-class_method" title="Lich::Gemstone::Combat::Definitions::Flares.parse (method)">parse</a></span></li>
     
@@ -292,8 +264,8 @@ chunk to be children rather than independent casts</code></pre>
   <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:parasite</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A slender .+? and black tendril lashes out from .+? and slashes (?&lt;target&gt;.+?) .+?!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:physical_prowess</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The vitality of nature bestows you with a burst of strength!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:plasma</span><span class='comma'>,</span> <span class='lbracket'>[</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? pulses with a burst of plasma energy! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? pulses with a burst of plasma energy! \*\*</span><span class='regexp_end'>/</span></span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Your .+? pulses with a burst of plasma energy(?: at (?&lt;target&gt;[^!]+))?! \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? pulses with a burst of plasma energy(?: at (?&lt;target&gt;[^!]+))?! \*\*</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># Glowbark / plasma weapon flare. Three lines, three roles (owner
 </span>  <span class='comment'># breakdown 2026-09-06):
@@ -341,6 +313,22 @@ chunk to be children rather than independent casts</code></pre>
 </span>    <span class='comment'># the sigils, then the tendrils lash out in the same line
 </span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* A bolt of energy leaps from (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and sets the sigils along .+? ablaze\.  Tendrils of .+? lash out at (?&lt;target&gt;.+?) and cage .+? within bands of concentric geometry</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Holy Weapon (1625) infusion release: a paladin BESEECHes a
+</span>  <span class='comment'># bonded weapon to invoke its infused spell at the START of the
+</span>  <span class='comment'># next attack, so this line precedes the swing&#39;s roll (and, for a
+</span>  <span class='comment'># bare swing, the swing line itself - a pre-flare claimed by
+</span>  <span class='comment'># weapon). The spell it releases prints its own cast line and is
+</span>  <span class='comment'># its own attack; see SPELL_RELEASING_FLARES in the processor.
+</span>  <span class='comment'># Was an AttackDef: it then opened an event that swallowed BOTH
+</span>  <span class='comment'># the spell&#39;s CS/TD and the swing&#39;s AS/DS (Dreadt log 2026-09-11:
+</span>  <span class='comment'># 13 rows carrying cs_td, 10 of them also as_ds). Not damaging -
+</span>  <span class='comment'># the damage belongs to the spell. The wiki prints this in flare
+</span>  <span class='comment'># syntax (** ... **); the live feed omits the asterisks.
+</span>  <span class='comment'># Second pattern: the FAILED release - nothing follows it.
+</span>  <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:weapon_cast</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:\*\* )?As (?:you attempt to strike with your|your) (?&lt;weapon&gt;.+?)(?: hits)?, it sends a surge of power through you that quickly leaps out at (?:the )?(?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?:\*\* )?As you attempt to strike with your (?&lt;weapon&gt;.+?), you briefly feel a surge of power, but it dissipates before reaching (?:the )?(?&lt;target&gt;[^!.]+)</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Flares/FlareDef.html" title="Lich::Gemstone::Combat::Definitions::Flares::FlareDef (class)">FlareDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sigil_cast</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Numerous sigils along your .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of your last spell\.\.\. \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\*\* Numerous sigils along (?&lt;attacker&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of .+? last spell\.\.\. \*\*</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -516,7 +504,9 @@ chunk to be children rather than independent casts</code></pre>
         <dt id="FLARE_LOOKUP-constant" class="">FLARE_LOOKUP =
           <div class="docstring">
   <div class="discussion">
-    <p>[pattern, name, damaging, aoe, spawns] rows, one per pattern</p>
+    <p>[pattern, name, damaging, aoe, spawns] rows, one per pattern
+Shipped defs first, then player supplements (defs/supplements.rb);
+a supplement reusing a shipped name carries the shipped flags.</p>
 
   </div>
 </div>
@@ -525,9 +515,24 @@ chunk to be children rather than independent casts</code></pre>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='const'><span class='object_link'><a href="#FLARE_DEFS-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_DEFS (constant)">FLARE_DEFS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='op'>|</span>
+        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#FLARE_DEFS-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_DEFS (constant)">FLARE_DEFS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="Supplements.html" title="Lich::Gemstone::Combat::Definitions::Supplements (module)">Supplements</a></span></span><span class='period'>.</span><span class='id identifier rubyid_flares'><span class='object_link'><a href="Supplements.html#flares-class_method" title="Lich::Gemstone::Combat::Definitions::Supplements.flares (method)">flares</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='op'>|</span>
   <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_patterns'>patterns</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_rx'>rx</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_rx'>rx</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='id identifier rubyid_d'><span class='object_link'><a href="../../../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='period'>.</span><span class='id identifier rubyid_spawns'>spawns</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
 <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="TABLE-constant" class="">TABLE =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Lookup and gate as one frozen table, bound last in a single
+assignment; parse reads it once per call (see Definitions::Table).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="Table.html" title="Lich::Gemstone::Combat::Definitions::Table (class)">Table</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#FLARE_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_LOOKUP (constant)">FLARE_LOOKUP</a></span></span><span class='comma'>,</span> <span class='const'>GATE</span><span class='comma'>,</span> <span class='const'>ALWAYS_SCAN</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="WEAPON_LINK-constant" class="">WEAPON_LINK =
           <div class="docstring">
@@ -637,33 +642,49 @@ weapon is { id:, name: } when the line links the flaring weapon.</p></div>
       <pre class="lines">
 
 
-423
-424
-425
-426
-427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437</pre>
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/flares.rb', line 423</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/flares.rb', line 441</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'>GATE</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'>ALWAYS_SCAN</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_rx'>rx</span><span class='op'>|</span> <span class='id identifier rubyid_rx'>rx</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='id identifier rubyid_table'>table</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#TABLE-constant" title="Lich::Gemstone::Combat::Definitions::Flares::TABLE (constant)">TABLE</a></span></span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_table'>table</span><span class='period'>.</span><span class='id identifier rubyid_rejects?'>rejects?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 
-  <span class='const'><span class='object_link'><a href="#FLARE_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Flares::FLARE_LOOKUP (constant)">FLARE_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='id identifier rubyid_spawns'>spawns</span><span class='op'>|</span>
-    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_table'>table</span><span class='period'>.</span><span class='id identifier rubyid_lookup'>lookup</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='id identifier rubyid_spawns'>spawns</span><span class='op'>|</span>
+    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_safe_match'><span class='object_link'><a href="PatternGate.html#safe_match-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.safe_match (method)">safe_match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
 
     <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>damaging:</span> <span class='id identifier rubyid_damaging'>damaging</span><span class='comma'>,</span> <span class='label'>aoe:</span> <span class='id identifier rubyid_aoe'>aoe</span><span class='comma'>,</span> <span class='label'>spawns:</span> <span class='id identifier rubyid_spawns'>spawns</span> <span class='rbrace'>}</span>
     <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:target</span><span class='rbracket'>]</span>
+    <span class='comment'># 3p forms name whose item flared; a 2p flare (&quot;Your ...&quot;) has
+</span>    <span class='comment'># no attacker and is ours - the recorder writes flares.ours off it
+</span>    <span class='kw'>if</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacker</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_who'>who</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='comment'># a lazy capture can land on the FIRST-PERSON form (&quot;from your
+</span>      <span class='comment'># hands&quot; - boil_blood): that is ours, not an attacker
+</span>      <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_who'>who</span> <span class='kw'>unless</span> <span class='id identifier rubyid_who'>who</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>&lt;[^&gt;]*&gt;</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A(?:your?|yourself)\z</span><span class='regexp_end'>/i</span></span>
+    <span class='kw'>end</span>
     <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_weapon'>weapon</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#WEAPON_LINK-constant" title="Lich::Gemstone::Combat::Definitions::Flares::WEAPON_LINK (constant)">WEAPON_LINK</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
       <span class='id identifier rubyid_result'>result</span><span class='lbracket'>[</span><span class='symbol'>:weapon</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>id:</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='lbracket'>[</span><span class='symbol'>:id</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id identifier rubyid_weapon'>weapon</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
     <span class='kw'>end</span>
@@ -681,7 +702,7 @@ weapon is { id:, name: } when the line links the flaring weapon.</p></div>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:23 2026 by
+  Generated on Wed Oct 28 05:27:16 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

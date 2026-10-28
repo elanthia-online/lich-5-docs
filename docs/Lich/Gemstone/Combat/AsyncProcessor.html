@@ -104,14 +104,15 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Single-threaded async combat processor that handles combat chunks in arrival order.</p>
-<p>Chunks are enqueued via #process_async from the game stream thread (O(1), non-blocking)
-and consumed sequentially by a dedicated worker thread. This guarantees that status
-updates, UCS changes, and damage events are processed in order, and ensures creature
-instances are only mutated from one thread.</p>
-<p>The worker thread is automatically respawned if it dies (e.g., when the parent script
-exits), since it can be spawned from a script thread but must survive the script's
-lifetime to process events from the downstream hook.</p>
+    <p>Single-threaded async processor for combat chunks.</p>
+<p>Queues game-stream lines from a downstream hook and processes them on a dedicated
+worker thread, preserving arrival order. This ordering is required for status
+add/remove, UCS updates, and damage calculations to work correctly. The single
+worker thread also guarantees that Creature/CreatureInstance objects are mutated
+from only one thread, eliminating the need for synchronization in creature logic.</p>
+<p>The worker thread survives script exit because it is spawned from the game-stream
+thread, not the script context—allowing long-running processors to remain active
+across script reloads.</p>
 
   </div>
 </div>
@@ -121,9 +122,7 @@ lifetime to process events from the downstream hook.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="#process_async-instance_method" title="Lich::Gemstone::Combat::AsyncProcessor#process_async (method)">#process_async</a></span></li>
-    
-      <li><span class='object_link'><a href="#shutdown-instance_method" title="Lich::Gemstone::Combat::AsyncProcessor#shutdown (method)">#shutdown</a></span></li>
+      <li><span class='object_link'><a href="Processor.html" title="Lich::Gemstone::Combat::Processor (module)">Processor</a></span></li>
     
   </ul>
 
@@ -169,7 +168,7 @@ lifetime to process events from the downstream hook.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#process_async-instance_method" title="#process_async (instance method)">#<strong>process_async</strong>(chunk)  &#x21d2; Object </a>
+      <a href="#process_async-instance_method" title="#process_async (instance method)">#<strong>process_async</strong>(chunk, source: nil)  &#x21d2; nil </a>
     
 
     
@@ -227,7 +226,7 @@ lifetime to process events from the downstream hook.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the current state of the async processor.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns statistics about the async processor queue and worker.</p></div></span>
   
 </li>
 
@@ -297,7 +296,7 @@ intentionally single-threaded to preserve event ordering.</p>
       <div class="method_details first">
   <h3 class="signature first" id="process_async-instance_method">
   
-    #<strong>process_async</strong>(chunk)  &#x21d2; <tt>Object</tt> 
+    #<strong>process_async</strong>(chunk, source: nil)  &#x21d2; <tt>nil</tt> 
   
 
   
@@ -315,7 +314,58 @@ survives script death.</p>
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>chunk</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>game lines to process in arrival order</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>source</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>optional ingestion context; permitted scalar
+fields are copied before queueing and validated by Processor</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>after enqueueing, or when the chunk is empty</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -323,19 +373,31 @@ survives script death.</p>
       <pre class="lines">
 
 
-52
-53
-54
-55
 56
-57</pre>
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 52</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 56</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_process_async'>process_async</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_process_async'>process_async</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='comma'>,</span> <span class='label'>source:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_chunk'>chunk</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
-  <span class='ivar'>@queue</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_chunk'>chunk</span><span class='rparen'>)</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_source'>source</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_source'>source</span> <span class='op'>=</span> <span class='id identifier rubyid_source'>source</span><span class='period'>.</span><span class='id identifier rubyid_slice'>slice</span><span class='lparen'>(</span><span class='symbol'>:connection_id</span><span class='comma'>,</span> <span class='symbol'>:game</span><span class='comma'>,</span> <span class='symbol'>:character</span><span class='comma'>,</span> <span class='symbol'>:room_epoch</span><span class='comma'>,</span> <span class='symbol'>:sequence</span><span class='comma'>,</span> <span class='symbol'>:received_at</span><span class='rparen'>)</span>
+                   <span class='period'>.</span><span class='id identifier rubyid_transform_values'>transform_values</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_value'>value</span><span class='op'>|</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span> <span class='op'>:</span> <span class='id identifier rubyid_value'>value</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span>
+  <span class='kw'>else</span>
+    <span class='id identifier rubyid_source'>source</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@queue</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='id identifier rubyid_chunk'>chunk</span><span class='comma'>,</span> <span class='id identifier rubyid_source'>source</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_ensure_worker'>ensure_worker</span>
   <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
@@ -368,20 +430,20 @@ survives script death.</p>
       <pre class="lines">
 
 
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70</pre>
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 60</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 70</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_shutdown'>shutdown</span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[Combat] Waiting for </span><span class='embexpr_beg'>#{</span><span class='ivar'>@queue</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span><span class='embexpr_end'>}</span><span class='tstring_content'> queued chunks...</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="Tracker.html" title="Lich::Gemstone::Combat::Tracker (module)">Tracker</a></span></span><span class='period'>.</span><span class='id identifier rubyid_debug?'><span class='object_link'><a href="Tracker.html#debug%3F-class_method" title="Lich::Gemstone::Combat::Tracker.debug? (method)">debug?</a></span></span><span class='lparen'>(</span><span class='symbol'>:verbose</span><span class='rparen'>)</span>
@@ -410,7 +472,7 @@ survives script death.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the current state of the async processor.</p>
+    <p>Returns statistics about the async processor queue and worker.</p>
 
   </div>
 </div>
@@ -420,7 +482,7 @@ survives script death.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='id identifier rubyid_processor'>processor</span><span class='period'>.</span><span class='id identifier rubyid_stats'>stats</span> <span class='comment'>#=&gt; { active: 1, queued: 0, total: 42, worker_alive: true }</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_processor'>processor</span><span class='period'>.</span><span class='id identifier rubyid_stats'>stats</span> <span class='comment'>#=&gt; {active: 0, queued: 2, total: 150, worker_alive: true}</span></code></pre>
     
   </div>
 
@@ -435,13 +497,8 @@ survives script death.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash with keys:</p>
-<ul>
-<li>:active [Integer] 1 if currently processing a chunk, 0 otherwise</li>
-<li>:queued [Integer] number of chunks waiting in the queue</li>
-<li>:total [Integer] total chunks processed since initialization</li>
-<li>:worker_alive [Boolean] true if the worker thread is running</li>
-</ul></div>
+        <div class='inline'><p>with keys :active (0 or 1), :queued (number of pending chunks),
+:total (count of processed chunks since startup), and :worker_alive (boolean)</p></div>
       
     </li>
   
@@ -453,17 +510,17 @@ survives script death.</p>
       <pre class="lines">
 
 
-81
-82
-83
-84
-85
-86
-87
-88</pre>
+88
+89
+90
+91
+92
+93
+94
+95</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 81</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/async_processor.rb', line 88</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_stats'>stats</span>
   <span class='lbrace'>{</span>
@@ -483,7 +540,7 @@ survives script death.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:41 2026 by
+  Generated on Wed Oct 28 05:27:29 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

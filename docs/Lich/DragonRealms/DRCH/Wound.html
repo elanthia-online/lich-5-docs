@@ -237,7 +237,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(body_part: nil, severity: nil, bleeding_rate: nil, is_internal: false, is_scar: false, is_parasite: false, is_lodged_item: false)  &#x21d2; void </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(body_part: nil, severity: nil, bleeding_rate: nil, is_internal: false, is_scar: false, is_parasite: false, is_lodged_item: false)  &#x21d2; Wound </a>
     
 
     
@@ -253,7 +253,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a Wound representing a single injury, bleeder, parasite, or lodged item.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes a Wound representing a wound, bleeder, parasite, or lodged item.</p></div></span>
   
 </li>
 
@@ -297,7 +297,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the wound location as &quot;internal&quot; or &quot;external&quot;.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the wound location category.</p></div></span>
   
 </li>
 
@@ -341,7 +341,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether this wound represents a parasite infestation.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether this wound represents a parasite.</p></div></span>
   
 </li>
 
@@ -385,7 +385,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether this wound can be safely tended.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether the healer has sufficient First Aid skill to safely tend this wound.</p></div></span>
   
 </li>
 
@@ -451,7 +451,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the wound type as &quot;scar&quot; or &quot;wound&quot;.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the wound type.</p></div></span>
   
 </li>
 
@@ -466,7 +466,7 @@
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(body_part: nil, severity: nil, bleeding_rate: nil, is_internal: false, is_scar: false, is_parasite: false, is_lodged_item: false)  &#x21d2; <tt>void</tt> 
+    #<strong>initialize</strong>(body_part: nil, severity: nil, bleeding_rate: nil, is_internal: false, is_scar: false, is_parasite: false, is_lodged_item: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Lich::DragonRealms::DRCH::Wound (class)">Wound</a></span></tt> 
   
 
   
@@ -474,8 +474,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes a Wound representing a single injury, bleeder, parasite, or lodged item.</p>
-<p>All boolean flags default to false. Body part and bleeding rate are downcased.</p>
+    <p>Initializes a Wound representing a wound, bleeder, parasite, or lodged item.</p>
 
   </div>
 </div>
@@ -495,7 +494,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the affected body part (e.g., &quot;right arm&quot;)</p></div>
+        <div class='inline'><p>the wounded location, normalized to lowercase</p></div>
       
     </li>
   
@@ -511,7 +510,7 @@
       
       
         &mdash;
-        <div class='inline'><p>wound severity (1-9 or higher)</p></div>
+        <div class='inline'><p>wound severity level (higher = worse)</p></div>
       
     </li>
   
@@ -527,7 +526,7 @@
       
       
         &mdash;
-        <div class='inline'><p>bleeding rate description (e.g., &quot;heavily&quot;, &quot;tended&quot;)</p></div>
+        <div class='inline'><p>rate of bleeding, e.g. &quot;slowed&quot;, &quot;heavy&quot;, &quot;clotted&quot;, normalized to lowercase</p></div>
       
     </li>
   
@@ -543,7 +542,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether the wound is internal</p></div>
+        <div class='inline'><p>true if the wound is internal (default: false)</p></div>
       
     </li>
   
@@ -559,7 +558,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether this is a scar rather than a fresh wound</p></div>
+        <div class='inline'><p>true if this is a scar, not a fresh wound (default: false)</p></div>
       
     </li>
   
@@ -575,7 +574,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether this is a parasite infestation</p></div>
+        <div class='inline'><p>true if this wound represents a parasite (default: false)</p></div>
       
     </li>
   
@@ -591,7 +590,7 @@
       
       
         &mdash;
-        <div class='inline'><p>whether this is a lodged item</p></div>
+        <div class='inline'><p>true if this wound represents a lodged item (default: false)</p></div>
       
     </li>
   
@@ -604,20 +603,20 @@
       <pre class="lines">
 
 
-523
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533</pre>
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 523</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 537</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>body_part:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>severity:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>bleeding_rate:</span> <span class='kw'>nil</span><span class='comma'>,</span>
                <span class='label'>is_internal:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>is_scar:</span> <span class='kw'>false</span><span class='comma'>,</span>
@@ -666,12 +665,12 @@
       <pre class="lines">
 
 
-509
-510
-511</pre>
+526
+527
+528</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 509</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 526</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bleeding_rate'>bleeding_rate</span>
   <span class='ivar'>@bleeding_rate</span>
@@ -707,12 +706,12 @@
       <pre class="lines">
 
 
-509
-510
-511</pre>
+526
+527
+528</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 509</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 526</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_body_part'>body_part</span>
   <span class='ivar'>@body_part</span>
@@ -748,12 +747,12 @@
       <pre class="lines">
 
 
-509
-510
-511</pre>
+526
+527
+528</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 509</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 526</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_severity'>severity</span>
   <span class='ivar'>@severity</span>
@@ -782,8 +781,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     <p>Checks whether this wound is actively bleeding.</p>
-<p>A wound is bleeding if it has a non-empty bleeding rate that is not the
-sentinel value &quot;(tended)&quot;.</p>
+<p>A wound bleeds if it has a bleeding_rate and the rate is not &quot;(tended)&quot;.</p>
 
   </div>
 </div>
@@ -800,7 +798,7 @@ sentinel value &quot;(tended)&quot;.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the wound is actively bleeding</p></div>
+        <div class='inline'><p>true if bleeding rate is set, non-empty, and not tended</p></div>
       
     </li>
   
@@ -812,12 +810,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-541
-542
-543</pre>
+554
+555
+556</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 541</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 554</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bleeding?'>bleeding?</span>
   <span class='op'>!</span><span class='ivar'>@bleeding_rate</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ivar'>@bleeding_rate</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='ivar'>@bleeding_rate</span> <span class='op'>!=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>(tended)</span><span class='tstring_end'>&#39;</span></span>
@@ -854,9 +852,6 @@ sentinel value &quot;(tended)&quot;.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if the wound is internal rather than external</p></div>
-      
     </li>
   
 </ul>
@@ -867,12 +862,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-548
-549
-550</pre>
+561
+562
+563</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 548</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 561</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_internal?'>internal?</span>
   <span class='ivar'>@internal</span>
@@ -893,7 +888,7 @@ sentinel value &quot;(tended)&quot;.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the wound location as &quot;internal&quot; or &quot;external&quot;.</p>
+    <p>Returns the wound location category.</p>
 
   </div>
 </div>
@@ -922,12 +917,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-593
-594
-595</pre>
+606
+607
+608</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 593</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 606</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_location'>location</span>
   <span class='id identifier rubyid_internal?'>internal?</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>internal</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>external</span><span class='tstring_end'>&#39;</span></span>
@@ -964,9 +959,6 @@ sentinel value &quot;(tended)&quot;.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if this is a lodged item</p></div>
-      
     </li>
   
 </ul>
@@ -977,12 +969,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-569
-570
-571</pre>
+582
+583
+584</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 569</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 582</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lodged?'>lodged?</span>
   <span class='ivar'>@lodged_item</span>
@@ -1003,7 +995,7 @@ sentinel value &quot;(tended)&quot;.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether this wound represents a parasite infestation.</p>
+    <p>Checks whether this wound represents a parasite.</p>
 
   </div>
 </div>
@@ -1019,9 +1011,6 @@ sentinel value &quot;(tended)&quot;.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if this is a parasite</p></div>
-      
     </li>
   
 </ul>
@@ -1032,12 +1021,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-562
-563
-564</pre>
+575
+576
+577</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 562</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 575</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parasite?'>parasite?</span>
   <span class='ivar'>@parasite</span>
@@ -1074,9 +1063,6 @@ sentinel value &quot;(tended)&quot;.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>true if this is a scar rather than a fresh wound</p></div>
-      
     </li>
   
 </ul>
@@ -1087,12 +1073,12 @@ sentinel value &quot;(tended)&quot;.</p>
       <pre class="lines">
 
 
-555
-556
-557</pre>
+568
+569
+570</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 555</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 568</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_scar?'>scar?</span>
   <span class='ivar'>@scar</span>
@@ -1113,10 +1099,10 @@ sentinel value &quot;(tended)&quot;.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks whether this wound can be safely tended.</p>
-<p>Parasites and lodged items are always tendable. Wounds on the skin are never
-tendable. Bleeder wounds must be actively bleeding and not yet tended or clotted,
-and the character must have sufficient First Aid skill for the bleeding rate.</p>
+    <p>Checks whether the healer has sufficient First Aid skill to safely tend this wound.</p>
+<p>Parasites and lodged items are always tendable. Skin bleeds are never tendable.
+Other bleeds are tendable only if the bleeding rate is active (not tended/clotted)
+and the healer's First Aid rank meets the minimum for that rate and location.</p>
 
   </div>
 </div>
@@ -1133,7 +1119,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       
       
         &mdash;
-        <div class='inline'><p>true if the wound is safe to tend</p></div>
+        <div class='inline'><p>true if the wound can be safely tended by the current character</p></div>
       
     </li>
   
@@ -1145,18 +1131,18 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       <pre class="lines">
 
 
-580
-581
-582
-583
-584
-585
-586
-587
-588</pre>
+593
+594
+595
+596
+597
+598
+599
+600
+601</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 580</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 593</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tendable?'>tendable?</span>
   <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_parasite?'>parasite?</span>
@@ -1200,7 +1186,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       
       
         &mdash;
-        <div class='inline'><p>hash with keys :body_part, :severity, :bleeding_rate, :internal, :scar, :parasite, :lodged_item</p></div>
+        <div class='inline'><p>hash with keys: body_part, severity, bleeding_rate, internal, scar, parasite, lodged_item</p></div>
       
     </li>
   
@@ -1212,20 +1198,20 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       <pre class="lines">
 
 
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617</pre>
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 607</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 620</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_h'>to_h</span>
   <span class='lbrace'>{</span>
@@ -1271,7 +1257,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       
       
         &mdash;
-        <div class='inline'><p>formatted string like &quot;Wound(right arm, severity:5, bleeding:heavily, external, wound)&quot;</p></div>
+        <div class='inline'><p>formatted string, e.g. &quot;Wound(head, severity:3, bleeding:heavy, external, wound)&quot;</p></div>
       
     </li>
   
@@ -1283,19 +1269,19 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       <pre class="lines">
 
 
-622
-623
-624
-625
-626
-627
-628
-629
-630
-631</pre>
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 622</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 635</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_s'>to_s</span>
   <span class='id identifier rubyid_parts'>parts</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='ivar'>@body_part</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>unknown</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -1323,7 +1309,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the wound type as &quot;scar&quot; or &quot;wound&quot;.</p>
+    <p>Returns the wound type.</p>
 
   </div>
 </div>
@@ -1340,7 +1326,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       
       
         &mdash;
-        <div class='inline'><p>&quot;scar&quot; or &quot;wound&quot;</p></div>
+        <div class='inline'><p>&quot;scar&quot; if is_scar, otherwise &quot;wound&quot;</p></div>
       
     </li>
   
@@ -1352,12 +1338,12 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
       <pre class="lines">
 
 
-600
-601
-602</pre>
+613
+614
+615</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 600</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-healing.rb', line 613</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_type'>type</span>
   <span class='id identifier rubyid_scar?'>scar?</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>scar</span><span class='tstring_end'>&#39;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>wound</span><span class='tstring_end'>&#39;</span></span>
@@ -1372,7 +1358,7 @@ and the character must have sufficient First Aid skill for the bleeding rate.</p
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:42 2026 by
+  Generated on Wed Oct 28 05:27:30 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

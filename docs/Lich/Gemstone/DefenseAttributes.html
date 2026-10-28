@@ -104,10 +104,12 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Creature defensive statistics and special defenses.</p>
-<p>Armor and spell TD values, immunities, defensive spell/ability lists.
-Ranges (e.g., TD spread) are parsed from strings into Range objects;
-numeric values are stored as-is.</p>
+    <p>Combat defense properties for a creature template.</p>
+<p>Wraps all defensive metrics: armor skill group (ASG), armor graduate
+defense (AGD) against melee/ranged/bolt, per-circle threat defense (TD)
+values, undodgeable defense factor (UDF), immunities, defensive spells,
+and special defenses. Defense values can be parsed ranges (e.g., &quot;10..15&quot;
+becomes 10..15) or direct integers.</p>
 
   </div>
 </div>
@@ -678,7 +680,7 @@ numeric values are stored as-is.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes defense attributes from creature template data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Initializes DefenseAttributes from template data.</p></div></span>
   
 </li>
 
@@ -701,9 +703,11 @@ numeric values are stored as-is.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Initializes defense attributes from creature template data.</p>
-<p>Parses range values (&quot;10..15&quot; strings into Range objects). All numeric
-TD values are converted using parse_td; lists are stored as-is or empty arrays.</p>
+    <p>Initializes DefenseAttributes from template data.</p>
+<p>Sets ASG directly, parses defense values (melee/ranged/bolt/udf and all
+threat defense fields) via #parse_td to handle ranges and strings, and
+defaults array fields (immunities, spells, abilities, special defenses)
+to [].</p>
 
   </div>
 </div>
@@ -721,10 +725,7 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       
       
         &mdash;
-        <div class='inline'><p>defense attributes including :asg, :melee, :ranged, :bolt,
-:udf, :bar_td, :cle_td, :emp_td, :pal_td, :ran_td, :sor_td, :wiz_td,
-:mje_td, :mne_td, :mjs_td, :mns_td, :mnm_td, :immunities,
-:defensive_spells, :defensive_abilities, :special_defenses</p></div>
+        <div class='inline'><p>defense data with keys like :asg, :melee, :bar_td, etc.</p></div>
       
     </li>
   
@@ -737,25 +738,25 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1025
-1026
-1027
-1028
-1029
-1030
-1031
-1032
-1033
-1034
-1035
-1036
-1037
-1038
-1039
-1040</pre>
+985
+986
+987
+988
+989
+990
+991
+992
+993
+994
+995
+996
+997
+998
+999
+1000</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1025</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 985</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='ivar'>@asg</span> <span class='op'>=</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:asg</span><span class='rbracket'>]</span>
@@ -809,12 +810,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_asg'>asg</span>
   <span class='ivar'>@asg</span>
@@ -850,12 +851,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bar_td'>bar_td</span>
   <span class='ivar'>@bar_td</span>
@@ -891,12 +892,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bolt'>bolt</span>
   <span class='ivar'>@bolt</span>
@@ -932,12 +933,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cle_td'>cle_td</span>
   <span class='ivar'>@cle_td</span>
@@ -973,12 +974,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_defensive_abilities'>defensive_abilities</span>
   <span class='ivar'>@defensive_abilities</span>
@@ -1014,12 +1015,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_defensive_spells'>defensive_spells</span>
   <span class='ivar'>@defensive_spells</span>
@@ -1055,12 +1056,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_emp_td'>emp_td</span>
   <span class='ivar'>@emp_td</span>
@@ -1096,12 +1097,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_immunities'>immunities</span>
   <span class='ivar'>@immunities</span>
@@ -1137,12 +1138,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_melee'>melee</span>
   <span class='ivar'>@melee</span>
@@ -1178,12 +1179,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mje_td'>mje_td</span>
   <span class='ivar'>@mje_td</span>
@@ -1219,12 +1220,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mjs_td'>mjs_td</span>
   <span class='ivar'>@mjs_td</span>
@@ -1260,12 +1261,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mne_td'>mne_td</span>
   <span class='ivar'>@mne_td</span>
@@ -1301,12 +1302,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mnm_td'>mnm_td</span>
   <span class='ivar'>@mnm_td</span>
@@ -1342,12 +1343,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_mns_td'>mns_td</span>
   <span class='ivar'>@mns_td</span>
@@ -1383,12 +1384,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_pal_td'>pal_td</span>
   <span class='ivar'>@pal_td</span>
@@ -1424,12 +1425,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ran_td'>ran_td</span>
   <span class='ivar'>@ran_td</span>
@@ -1465,12 +1466,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ranged'>ranged</span>
   <span class='ivar'>@ranged</span>
@@ -1506,12 +1507,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sor_td'>sor_td</span>
   <span class='ivar'>@sor_td</span>
@@ -1547,12 +1548,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_special_defenses'>special_defenses</span>
   <span class='ivar'>@special_defenses</span>
@@ -1588,12 +1589,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_udf'>udf</span>
   <span class='ivar'>@udf</span>
@@ -1629,12 +1630,12 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
       <pre class="lines">
 
 
-1009
-1010
-1011</pre>
+970
+971
+972</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_wiz_td'>wiz_td</span>
   <span class='ivar'>@wiz_td</span>
@@ -1650,7 +1651,7 @@ TD values are converted using parse_td; lists are stored as-is or empty arrays.<
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:36 2026 by
+  Generated on Wed Oct 28 05:27:26 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

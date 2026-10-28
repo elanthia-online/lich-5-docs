@@ -64,7 +64,7 @@
       <div id="content"><h1>Module: Lich::Common::Frontend
   
   
-  <span class="private note title">Private</span>
+  
 </h1>
 <div class="box_info">
   
@@ -90,13 +90,14 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This module is part of a private API.</strong>
-  You should avoid using this module if possible, as it may be removed or be changed in the future.
-</p>
-<p>The main Frontend module (continued from earlier namespace definition).</p>
-<p>This reopening contains the runtime registry implementation, user configuration
-management, capability queries, and platform-specific window focus logic.</p>
+    <p>Catalog and capabilities interface for game frontends.</p>
+<p>Manages frontend definitions and capabilities (xml, gsl, streams, mono, etc.),
+maintaining both built-in defaults (wrayth, stormfront, genie, etc.) and
+user-defined custom frontends from settings. The registry is thread-safe and
+snapshot-backed for atomic reloads.</p>
+<p>Script authors query capabilities via <span class='object_link'><a href="#supports_xml%3F-class_method" title="Lich::Common::Frontend.supports_xml? (method)">Frontend.supports_xml?</a></span>, <span class='object_link'><a href="#supports_streams%3F-class_method" title="Lich::Common::Frontend.supports_streams? (method)">Frontend.supports_streams?</a></span>,
+<span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">Frontend.has_capability?</a></span>, and retrieval via <span class='object_link'><a href="#definition_for-class_method" title="Lich::Common::Frontend.definition_for (method)">Frontend.definition_for</a></span>. Frontend detection and
+launch fall to the bootstrapping layer.</p>
 
   </div>
 </div>
@@ -115,7 +116,7 @@ management, capability queries, and platform-specific window focus logic.</p>
         <dt id="PLATFORM_KEYS-constant" class="">PLATFORM_KEYS =
           <div class="docstring">
   <div class="discussion">
-    <p>Canonical platform keys used by frontend discovery and launch-plan metadata.</p>
+    <p>Canonical platform identifiers recognized by frontend discovery and launch plans.</p>
 
   </div>
 </div>
@@ -131,12 +132,16 @@ management, capability queries, and platform-specific window focus logic.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p><code>:darwin</code> (macOS), <code>:linux</code>, <code>:windows</code>, or <code>:unsupported</code></p></div>
-      
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#platform_key-class_method" title="Lich::Common::Frontend.platform_key (method)">platform_key</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -145,15 +150,9 @@ management, capability queries, and platform-specific window focus logic.</p>
         <dt id="CAPABILITY_VOCABULARY-constant" class="">CAPABILITY_VOCABULARY =
           <div class="docstring">
   <div class="discussion">
-    <p>Valid capability symbols that frontends may declare.</p>
-<ul>
-<li><code>:xml</code> – frontend supports the XML stream protocol</li>
-<li><code>:gsl</code> – frontend supports GSL (Gemstone Scripting Language)</li>
-<li><code>:streams</code> – frontend supports streaming data (Avalon, Stormfront)</li>
-<li><code>:mono</code> – frontend supports monospace text rendering</li>
-<li><code>:room_window</code> – frontend can display the room window independently</li>
-<li><code>:sentinel</code> – frontend is the Sentinel client</li>
-</ul>
+    <p>Capabilities that may be declared by custom frontends.</p>
+<p>Runtime-only implementation details (e.g., negotiated during login) are
+deliberately excluded from this public vocabulary.</p>
 
   </div>
 </div>
@@ -173,17 +172,25 @@ management, capability queries, and platform-specific window focus logic.</p>
   
 </ul>
 
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#capability_vocabulary-class_method" title="Lich::Common::Frontend.capability_vocabulary (method)">capability_vocabulary</a></span></li>
+    
+  </ul>
+
 </div>
         </dt>
-        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>xml</span><span class='words_sep'> </span><span class='tstring_content'>gsl</span><span class='words_sep'> </span><span class='tstring_content'>streams</span><span class='words_sep'> </span><span class='tstring_content'>mono</span><span class='words_sep'> </span><span class='tstring_content'>room_window</span><span class='words_sep'> </span><span class='tstring_content'>sentinel</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>xml</span><span class='words_sep'> </span><span class='tstring_content'>gsl</span><span class='words_sep'> </span><span class='tstring_content'>streams</span><span class='words_sep'> </span><span class='tstring_content'>mono</span><span class='words_sep'> </span><span class='tstring_content'>room_window</span><span class='words_sep'> </span><span class='tstring_content'>sentinel</span><span class='words_sep'> </span><span class='tstring_content'>room_element</span><span class='words_sep'> </span><span class='tstring_content'>game_links</span><span class='words_sep'> </span><span class='tstring_content'>double_bold</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="BUILT_IN_DEFINITION_FILES-constant" class="">BUILT_IN_DEFINITION_FILES =
           <div class="docstring">
   <div class="discussion">
-    <p>Manifest of built-in frontend definitions.</p>
-<p>Each tuple is [frontend_id, filename] where frontend_id is the stable catalog
-identifier and filename is the relative path (without .rb) in the frontend/ directory.
-Order is preserved for the GTK launcher UI and legacy capability constants.</p>
+    <p>Manifest of shipped frontend definitions paired with their file paths.</p>
+<p>Each entry is [canonical_id, file_name]: the id is lowercased and used for
+canonical lookup and to validate each definition file's :id field; the file_name
+is loaded from the frontend/ subdirectory. Order is preserved in GTK selectors
+and legacy capability constants.</p>
 
   </div>
 </div>
@@ -203,6 +210,13 @@ Order is preserved for the GTK launcher UI and legacy capability constants.</p>
   
 </ul>
 
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#BUILT_IN_FRONTEND_IDS-constant" title="Lich::Common::Frontend::BUILT_IN_FRONTEND_IDS (constant)">BUILT_IN_FRONTEND_IDS</a></span></li>
+    
+  </ul>
+
 </div>
         </dt>
         <dd><pre class="code"><span class='lbracket'>[</span>
@@ -219,10 +233,7 @@ Order is preserved for the GTK launcher UI and legacy capability constants.</p>
         <dt id="BUILT_IN_FRONTEND_IDS-constant" class="">BUILT_IN_FRONTEND_IDS =
           <div class="docstring">
   <div class="discussion">
-    <p>Canonical identifiers for Lich's built-in frontend catalog.</p>
-<p>These identifiers are reserved and cannot be overridden by user-defined frontends.
-User configuration may only supply launch-field overrides for built-ins, not replace
-identity or protocol capabilities.</p>
+    <p>Stable canonical identifiers for built-in frontends, in registration order.</p>
 
   </div>
 </div>
@@ -242,38 +253,27 @@ identity or protocol capabilities.</p>
   
 </ul>
 
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#built_in_frontends-class_method" title="Lich::Common::Frontend.built_in_frontends (method)">built_in_frontends</a></span></li>
+    
+  </ul>
+
 </div>
         </dt>
         <dd><pre class="code"><span class='const'><span class='object_link'><a href="#BUILT_IN_DEFINITION_FILES-constant" title="Lich::Common::Frontend::BUILT_IN_DEFINITION_FILES (constant)">BUILT_IN_DEFINITION_FILES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:first</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ORIGIN_SENTINEL-constant" class="">ORIGIN_SENTINEL =
-          <div class="docstring">
-  <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-
-
-  </div>
-</div>
-<div class="tags">
-  
-
-</div>
+          
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\x1f</span><span class='tstring_end'>&quot;</span></span></pre></dd>
       
         <dt id="SAGA_LICH_LAUNCH_ENVIRONMENT-constant" class="">SAGA_LICH_LAUNCH_ENVIRONMENT =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Environment variables for the Saga launcher on Linux.</p>
-<p>Extracted from the built-in Saga definition at module load time. Set when
-launching Saga to ensure proper library paths and runtime configuration.</p>
+    <p>Launch environment variables for the Saga frontend on Linux.</p>
+<p>Cached from the sealed built-in Saga definition; initialized at module load time.</p>
 
   </div>
 </div>
@@ -289,13 +289,16 @@ launching Saga to ensure proper library paths and runtime configuration.</p>
       
       
       
-        &mdash;
-        <div class='inline'><p>the <code>launch_plans.linux.environment</code> hash from the Saga definition,
-or nil if Saga is not in the catalog</p></div>
-      
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#definition_for-class_method" title="Lich::Common::Frontend.definition_for (method)">definition_for</a></span></li>
+    
+  </ul>
 
 </div>
         </dt>
@@ -305,12 +308,8 @@ or nil if Saga is not in the catalog</p></div>
         <dt id="CLIENT_STRING-constant" class="">CLIENT_STRING =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>--- Client String -----------------------------------------
-Default client string (Wrayth identity) sent during handshake</p>
+    <p>--- Client String -----------------------------------------
+Default client string (Saga identity) sent during handshake</p>
 
   </div>
 </div>
@@ -319,16 +318,12 @@ Default client string (Wrayth identity) sent during handshake</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/FE:WRAYTH /VERSION:1.0.1.28 /P:SAGA /XML</span><span class='tstring_end'>&quot;</span></span></pre></dd>
       
         <dt id="XML_FRONTENDS-constant" class="">XML_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>--- Backward-Compatible Constants -------------------------
+    <p>--- Backward-Compatible Constants -------------------------
 These frozen arrays preserve the built-in capability membership exposed
 by older Lich versions. They intentionally remain stable when user-defined
 frontends are loaded. Runtime callers that need current custom frontend
@@ -346,14 +341,10 @@ membership must use frontends_with_capability or supports_*? instead.</p>
         <dt id="GSL_FRONTENDS-constant" class="">GSL_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Cached list of frontends that support GSL (Gemstone Scripting Language).</p>
-<p>This list is frozen at module load and does not update when user-defined frontends
-are loaded. Scripts requiring current custom frontend membership must use
-.frontends_with_capability(:gsl) instead.</p>
+    <p>Frozen list of frontends claiming GSL capability, in registry order.</p>
+<p>Preserves the membership exposed by older Lich versions; not updated when
+user-defined frontends are loaded. For current capability membership, use
+<span class='object_link'><a href="#frontends_with_capability-class_method" title="Lich::Common::Frontend.frontends_with_capability (method)">frontends_with_capability</a></span> or <span class='object_link'><a href="#supports_gsl%3F-class_method" title="Lich::Common::Frontend.supports_gsl? (method)">supports_gsl?</a></span> instead.</p>
 
   </div>
 </div>
@@ -368,9 +359,6 @@ are loaded. Scripts requiring current custom frontend membership must use
         <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>frontend identifiers and aliases with GSL capability</p></div>
       
     </li>
   
@@ -383,14 +371,10 @@ are loaded. Scripts requiring current custom frontend membership must use
         <dt id="STREAM_FRONTENDS-constant" class="">STREAM_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Cached list of frontends that support streaming data.</p>
-<p>This list is frozen at module load and does not update when user-defined frontends
-are loaded. Scripts requiring current custom frontend membership must use
-.frontends_with_capability(:streams) instead.</p>
+    <p>Frozen list of frontends claiming streams capability, in registry order.</p>
+<p>Preserves the membership exposed by older Lich versions; not updated when
+user-defined frontends are loaded. For current capability membership, use
+<span class='object_link'><a href="#frontends_with_capability-class_method" title="Lich::Common::Frontend.frontends_with_capability (method)">frontends_with_capability</a></span> or <span class='object_link'><a href="#supports_streams%3F-class_method" title="Lich::Common::Frontend.supports_streams? (method)">supports_streams?</a></span> instead.</p>
 
   </div>
 </div>
@@ -405,9 +389,6 @@ are loaded. Scripts requiring current custom frontend membership must use
         <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>frontend identifiers and aliases with streams capability</p></div>
       
     </li>
   
@@ -420,14 +401,10 @@ are loaded. Scripts requiring current custom frontend membership must use
         <dt id="MONO_FRONTENDS-constant" class="">MONO_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Cached list of frontends that support monospace text rendering.</p>
-<p>This list is frozen at module load and does not update when user-defined frontends
-are loaded. Scripts requiring current custom frontend membership must use
-.frontends_with_capability(:mono) instead.</p>
+    <p>Frozen list of frontends claiming mono capability, in registry order.</p>
+<p>Preserves the membership exposed by older Lich versions; not updated when
+user-defined frontends are loaded. For current capability membership, use
+<span class='object_link'><a href="#frontends_with_capability-class_method" title="Lich::Common::Frontend.frontends_with_capability (method)">frontends_with_capability</a></span> or <span class='object_link'><a href="#supports_mono%3F-class_method" title="Lich::Common::Frontend.supports_mono? (method)">supports_mono?</a></span> instead.</p>
 
   </div>
 </div>
@@ -442,9 +419,6 @@ are loaded. Scripts requiring current custom frontend membership must use
         <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>frontend identifiers and aliases with mono capability</p></div>
       
     </li>
   
@@ -457,14 +431,10 @@ are loaded. Scripts requiring current custom frontend membership must use
         <dt id="SENTINEL_FRONTENDS-constant" class="">SENTINEL_FRONTENDS =
           <div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This constant is part of a private API.</strong>
-  You should avoid using this constant if possible, as it may be removed or be changed in the future.
-</p>
-<p>Cached list of frontends that are the Sentinel client.</p>
-<p>This list is frozen at module load and does not update when user-defined frontends
-are loaded. Scripts requiring current custom frontend membership must use
-.frontends_with_capability(:sentinel) instead.</p>
+    <p>Frozen list of frontends claiming sentinel capability, in registry order.</p>
+<p>Preserves the membership exposed by older Lich versions; not updated when
+user-defined frontends are loaded. For current capability membership, use
+<span class='object_link'><a href="#frontends_with_capability-class_method" title="Lich::Common::Frontend.frontends_with_capability (method)">frontends_with_capability</a></span> or <span class='object_link'><a href="#supports_sentinel%3F-class_method" title="Lich::Common::Frontend.supports_sentinel? (method)">supports_sentinel?</a></span> instead.</p>
 
   </div>
 </div>
@@ -480,9 +450,6 @@ are loaded. Scripts requiring current custom frontend membership must use
       
       
       
-        &mdash;
-        <div class='inline'><p>frontend identifiers and aliases with sentinel capability</p></div>
-      
     </li>
   
 </ul>
@@ -490,6 +457,101 @@ are loaded. Scripts requiring current custom frontend membership must use
 </div>
         </dt>
         <dd><pre class="code"><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='symbol'>:sentinel</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="PROXY_HANDSHAKE_LINE-constant" class="">PROXY_HANDSHAKE_LINE =
+          <div class="docstring">
+  <div class="discussion">
+    <p>A front end's own handshake line, as it reaches Lich's proxy: an
+optional <c> prefix (Frostbite), an optional leading slash (Genie sends
+&quot;FE:WRAYTH ...&quot;), FE:<name>, and a /XML token. The line ending is kept.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\A(?&lt;prefix&gt;(?:&lt;c&gt;)?)/?FE:\S+[^\r\n]*?[ \t]/XML(?=[ \t\r\n]|\z)[^\r\n]*(?&lt;eol&gt;\r?\n)?\z</span><span class='regexp_end'>}i</span></span></pre></dd>
+      
+        <dt id="CLIENT_STRING_LOG_LIMIT-constant" class="">CLIENT_STRING_LOG_LIMIT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>--- Client String Logging ---------------------------------
+Longest client string log_client_string echoes; the rest is elided.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>160</span></pre></dd>
+      
+        <dt id="LOGGABLE_CLIENT_STRING-constant" class="">LOGGABLE_CLIENT_STRING =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The shape of a front end's handshake line (optional <c>, optional
+slash, FE:), the only kind of line log_client_string echoes.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>\A(?:&lt;c&gt;)?/?FE:</span><span class='regexp_end'>}i</span></span></pre></dd>
+      
+        <dt id="CLIENT_STRING_LOG_LABELS-constant" class="">CLIENT_STRING_LOG_LABELS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Labels for client string logging, keyed by source symbol.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{Symbol =&gt; <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>}</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#log_client_string-class_method" title="Lich::Common::Frontend.log_client_string (method)">log_client_string</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbrace'>{</span> <span class='label'>frontend:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>from front end</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>game:</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>sent to game</span><span class='tstring_end'>&#39;</span></span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="CLIENT_STRING_REPLACED_NOTE-constant" class="">CLIENT_STRING_REPLACED_NOTE =
+          <div class="docstring">
+  <div class="discussion">
+    <p>log_client_string's note when Lich sent its client string in place of
+the front end's (proxy_handshake, send_handshake).</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Lich&#39;s, in place of the front end&#39;s</span><span class='tstring_end'>&quot;</span></span></pre></dd>
       
     </dl>
   
@@ -522,7 +584,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the stable identifiers owned by Lich's built-in catalog.</p></div></span>
@@ -544,7 +606,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the stable catalog identifier for a frontend or alias.</p></div></span>
@@ -566,7 +628,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the capabilities users may declare for custom frontends.</p></div></span>
@@ -588,10 +650,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Deletes the session descriptor file created by .create_session_file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Deletes the temporary session descriptor file, if it exists.</p></div></span>
   
 </li>
 
@@ -610,7 +672,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Accessor for the current frontend identity ($frontend global).</p></div></span>
@@ -632,10 +694,32 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Setter for the current frontend identity.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#client_string-class_method" title="client_string (class method)">.<strong>client_string</strong>(version = nil, frontend: client)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Handshake client string for a frontend: its registry :client_string, else CLIENT_STRING, with the /VERSION: value replaced by version (--fe-version) when one is given.</p></div></span>
   
 </li>
 
@@ -654,10 +738,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Writes a session descriptor file for detachable clients (e.g., Saga).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Writes a temporary session descriptor for the frontend to detect.</p></div></span>
   
 </li>
 
@@ -676,7 +760,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns an immutable catalog definition for a registered frontend.</p></div></span>
@@ -698,7 +782,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns immutable catalog definitions, optionally restricted to those intended for the graphical launcher.</p></div></span>
@@ -720,7 +804,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Detect and store the frontend process ID Uses various methods depending on how Lich was launched.</p></div></span>
@@ -742,7 +826,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Detect the current platform.</p></div></span>
@@ -764,7 +848,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the catalog display name, with a stable fallback for legacy saved entries that predate the catalog.</p></div></span>
@@ -786,7 +870,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Ensure Windows modules are loaded (they're defined at top level).</p></div></span>
@@ -808,7 +892,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns all frontends that have a specific capability.</p></div></span>
@@ -830,7 +914,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Checks if a frontend has a specific capability.</p></div></span>
@@ -852,10 +936,32 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Initialize PID from parent process (for Warlock).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#log_client_string-class_method" title="log_client_string (class method)">.<strong>log_client_string</strong>(source, line, note: nil)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Log one side of the login handshake: the client string the front end sent Lich (:frontend) or the one Lich sent the game (:game).</p></div></span>
   
 </li>
 
@@ -874,7 +980,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Retrieves a metadata value for a given frontend.</p></div></span>
@@ -918,7 +1024,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Get the current frontend PID.</p></div></span>
@@ -940,7 +1046,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Set the frontend PID.</p></div></span>
@@ -962,7 +1068,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns the canonical platform key used by frontend discovery and launch-plan metadata.</p></div></span>
@@ -984,10 +1090,32 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Build the <playerID> re-emit tag for a detachable client (e.g. Saga).</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#proxy_handshake-class_method" title="proxy_handshake (class method)">.<strong>proxy_handshake</strong>(line, version: nil, keep: false, frontend: client)  &#x21d2; String<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>The handshake to forward for the line a proxied front end sent (the line after the login key).</p></div></span>
   
 </li>
 
@@ -1006,7 +1134,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Refocus the frontend window.</p></div></span>
@@ -1028,7 +1156,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Create a callback for GTK windows to refocus on click.</p></div></span>
@@ -1050,7 +1178,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Linux refocus implementation.</p></div></span>
@@ -1072,7 +1200,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>macOS refocus implementation.</p></div></span>
@@ -1094,7 +1222,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Windows refocus implementation.</p></div></span>
@@ -1116,7 +1244,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Registers a frontend with its capabilities and metadata.</p></div></span>
@@ -1138,7 +1266,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns every recognized frontend name: canonical catalog identifiers followed by their accepted aliases.</p></div></span>
@@ -1160,7 +1288,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Replaces the complete process-local user configuration in one operation.</p></div></span>
@@ -1182,7 +1310,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Linux-specific PID resolution.</p></div></span>
@@ -1204,7 +1332,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Resolve PID by walking up process tree to find window owner.</p></div></span>
@@ -1226,7 +1354,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Windows-specific PID resolution.</p></div></span>
@@ -1248,7 +1376,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Captures immutable built-in defaults after all built-ins are registered.</p></div></span>
@@ -1270,10 +1398,54 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Send version string, ready signals, and setup commands to the game server.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sentinel_requested=-class_method" title="sentinel_requested= (class method)">.<strong>sentinel_requested=</strong>(value)  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sentinel_requested%3F-class_method" title="sentinel_requested? (class method)">.<strong>sentinel_requested?</strong>  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether --sentinel was passed for this session.</p></div></span>
   
 </li>
 
@@ -1292,10 +1464,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the path to the most recently created session descriptor file.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the path to the current session descriptor file, if created.</p></div></span>
   
 </li>
 
@@ -1314,10 +1486,54 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Set PID from a detachable frontend such as Profanity or Saga.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#supports_double_bold%3F-class_method" title="supports_double_bold? (class method)">.<strong>supports_double_bold?</strong>(fe = $frontend)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether the front end handles DragonRealms' creature bold: the doubled <pushBold/><pushBold/> around linked creatures in room-object listings and the single pair around them in action and assess lines.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#supports_game_links%3F-class_method" title="supports_game_links? (class method)">.<strong>supports_game_links?</strong>(fe = $frontend)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether the front end handles DragonRealms' <a exist> object links.</p></div></span>
   
 </li>
 
@@ -1336,10 +1552,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports GSL (Gemstone Scripting Language).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a frontend supports GSL (GemStone Scripting Language) output.</p></div></span>
   
 </li>
 
@@ -1358,10 +1574,32 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports monospace text rendering.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a frontend supports monospace output.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#supports_room_element%3F-class_method" title="supports_room_element? (class method)">.<strong>supports_room_element?</strong>(fe = $frontend)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Whether the front end renders the Saga-identity stream's inline <room> block itself.</p></div></span>
   
 </li>
 
@@ -1380,10 +1618,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend can display the room window independently.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a frontend supports a dedicated room window pane.</p></div></span>
   
 </li>
 
@@ -1402,10 +1640,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend is the Sentinel client.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>The running session also gets the sentinel when --sentinel asked for it, so a client can identify as another frontend (stormfront, for the scripts that test for it) and still receive the origin marker.</p></div></span>
   
 </li>
 
@@ -1424,10 +1662,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports streaming data.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a frontend supports game streams (segmented XML).</p></div></span>
   
 </li>
 
@@ -1446,10 +1684,10 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks whether a frontend supports the XML stream protocol.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks if a frontend supports XML output.</p></div></span>
   
 </li>
 
@@ -1468,7 +1706,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns whether an identifier is available for a settings-owned custom frontend.</p></div></span>
@@ -1490,7 +1728,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Validates a canonical platform key used by discovery and launch plans.</p></div></span>
@@ -1512,7 +1750,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Get parent process ID on Windows.</p></div></span>
@@ -1534,7 +1772,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
   
   
-  <span class="private note title">private</span>
+  
 
   
     <span class="summary_desc"><div class='inline'><p>Returns whether the current host is classified as Windows.</p></div></span>
@@ -1563,11 +1801,7 @@ are loaded. Scripts requiring current custom frontend membership must use
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the stable identifiers owned by Lich's built-in catalog.
+    <p>Returns the stable identifiers owned by Lich's built-in catalog.
 User configuration may override only explicitly supported launch fields;
 it cannot replace built-in identity, protocol capabilities, or defaults.</p>
 
@@ -1595,12 +1829,12 @@ it cannot replace built-in identity, protocol capabilities, or defaults.</p>
       <pre class="lines">
 
 
+192
 193
-194
-195</pre>
+194</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 193</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 192</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_built_in_frontends'>built_in_frontends</span>
   <span class='const'><span class='object_link'><a href="#BUILT_IN_FRONTEND_IDS-constant" title="Lich::Common::Frontend::BUILT_IN_FRONTEND_IDS (constant)">BUILT_IN_FRONTEND_IDS</a></span></span>
@@ -1621,11 +1855,7 @@ it cannot replace built-in identity, protocol capabilities, or defaults.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the stable catalog identifier for a frontend or alias.
+    <p>Returns the stable catalog identifier for a frontend or alias.
 Unknown values are normalized but are not registered.</p>
 
   </div>
@@ -1667,15 +1897,15 @@ Unknown values are normalized but are not registered.</p>
       <pre class="lines">
 
 
+328
 329
 330
 331
 332
-333
-334</pre>
+333</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 329</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 328</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -1699,11 +1929,7 @@ Unknown values are normalized but are not registered.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the capabilities users may declare for custom frontends.
+    <p>Returns the capabilities users may declare for custom frontends.
 Runtime-only implementation details are deliberately excluded.</p>
 
   </div>
@@ -1730,12 +1956,12 @@ Runtime-only implementation details are deliberately excluded.</p>
       <pre class="lines">
 
 
+184
 185
-186
-187</pre>
+186</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 185</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 184</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_capability_vocabulary'>capability_vocabulary</span>
   <span class='const'><span class='object_link'><a href="#CAPABILITY_VOCABULARY-constant" title="Lich::Common::Frontend::CAPABILITY_VOCABULARY (constant)">CAPABILITY_VOCABULARY</a></span></span>
@@ -1756,17 +1982,21 @@ Runtime-only implementation details are deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Deletes the session descriptor file created by .create_session_file.</p>
-<p>Safe to call multiple times or when no session file exists.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Deletes the temporary session descriptor file, if it exists.</p>
+<p>Called during shutdown to clean up the file created by <span class='object_link'><a href="#create_session_file-class_method" title="Lich::Common::Frontend.create_session_file (method)">create_session_file</a></span>.
+Silently succeeds if no file was created or it has already been deleted.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#create_session_file-class_method" title="Lich::Common::Frontend.create_session_file (method)">create_session_file</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -1774,13 +2004,13 @@ Runtime-only implementation details are deliberately excluded.</p>
       <pre class="lines">
 
 
-741
-742
-743
-744</pre>
+907
+908
+909
+910</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 741</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 907</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_cleanup_session_file'>cleanup_session_file</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@session_file</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -1802,11 +2032,7 @@ Runtime-only implementation details are deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Accessor for the current frontend identity ($frontend global)</p>
+    <p>Accessor for the current frontend identity ($frontend global)</p>
 
   </div>
 </div>
@@ -1819,12 +2045,12 @@ Runtime-only implementation details are deliberately excluded.</p>
       <pre class="lines">
 
 
-678
-679
-680</pre>
+723
+724
+725</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 678</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 723</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_client'>client</span>
   <span class='gvar'>$frontend</span>
@@ -1845,11 +2071,7 @@ Runtime-only implementation details are deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Setter for the current frontend identity</p>
+    <p>Setter for the current frontend identity</p>
 
   </div>
 </div>
@@ -1862,15 +2084,62 @@ Runtime-only implementation details are deliberately excluded.</p>
       <pre class="lines">
 
 
-683
-684
-685</pre>
+728
+729
+730</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 683</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 728</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_client='>client=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='gvar'>$frontend</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="client_string-class_method">
+  
+    .<strong>client_string</strong>(version = nil, frontend: client)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Handshake client string for a frontend: its registry :client_string,
+else CLIENT_STRING, with the /VERSION: value replaced by version
+(--fe-version) when one is given.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+735
+736
+737
+738
+739
+740</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 735</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_client_string'>client_string</span><span class='lparen'>(</span><span class='id identifier rubyid_version'>version</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_client'>client</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_base'>base</span> <span class='op'>=</span> <span class='id identifier rubyid_metadata_for'>metadata_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend'>frontend</span><span class='comma'>,</span> <span class='symbol'>:client_string</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="#CLIENT_STRING-constant" title="Lich::Common::Frontend::CLIENT_STRING (constant)">CLIENT_STRING</a></span></span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_base'>base</span> <span class='kw'>if</span> <span class='id identifier rubyid_version'>version</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
+  <span class='id identifier rubyid_base'>base</span><span class='period'>.</span><span class='id identifier rubyid_sub'>sub</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>/VERSION:\S+</span><span class='regexp_end'>}</span></span><span class='rparen'>)</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/VERSION:</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_version'>version</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1888,27 +2157,15 @@ Runtime-only implementation details are deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Writes a session descriptor file for detachable clients (e.g., Saga).</p>
-<p>Creates the file at %TEMP%/simutronics/sessions/Name.session on Windows or
-/tmp/simutronics/sessions/Name.session on Unix, containing a JSON object with
-<code>name</code>, <code>host</code>, and <code>port</code>. Stores the path internally for later cleanup.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Writes a temporary session descriptor for the frontend to detect.</p>
+<p>Creates the descriptor as JSON in the system temp directory
+(Simutronics/sessions), containing name, host, and port. The file path is
+stored for later cleanup. Nil name skips creation silently.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_create_session_file'>create_session_file</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Dragonrealms</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>dr.simutronics.net</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>4901</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1921,7 +2178,7 @@ Runtime-only implementation details are deliberately excluded.</p>
       
       
         &mdash;
-        <div class='inline'><p>the session name (e.g., &quot;Dragonrealms&quot;); nil skips file creation</p></div>
+        <div class='inline'><p>the session/account name</p></div>
       
     </li>
   
@@ -1935,7 +2192,7 @@ Runtime-only implementation details are deliberately excluded.</p>
       
       
         &mdash;
-        <div class='inline'><p>the game server hostname</p></div>
+        <div class='inline'><p>the game server hostname or IP</p></div>
       
     </li>
   
@@ -1965,12 +2222,21 @@ Runtime-only implementation details are deliberately excluded.</p>
       
       
         &mdash;
-        <div class='inline'><p>if true, prints the file path and contents to stdout</p></div>
+        <div class='inline'><p>whether to log the descriptor (default true)</p></div>
       
     </li>
   
 </ul>
 
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#session_file_location-class_method" title="Lich::Common::Frontend.session_file_location (method)">session_file_location</a></span></li>
+    
+      <li><span class='object_link'><a href="#cleanup_session_file-class_method" title="Lich::Common::Frontend.cleanup_session_file (method)">cleanup_session_file</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -1978,26 +2244,26 @@ Runtime-only implementation details are deliberately excluded.</p>
       <pre class="lines">
 
 
-718
-719
-720
-721
-722
-723
-724
-725
-726
-727</pre>
+881
+882
+883
+884
+885
+886
+887
+888
+889
+890</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 718</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 881</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_create_session_file'>create_session_file</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_port'>port</span><span class='comma'>,</span> <span class='label'>display_session:</span> <span class='kw'>true</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
   <span class='const'>FileUtils</span><span class='period'>.</span><span class='id identifier rubyid_mkdir_p'>mkdir_p</span> <span class='ivar'>@tmp_session_dir</span>
   <span class='ivar'>@session_file</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='ivar'>@tmp_session_dir</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>%s.session</span><span class='tstring_end'>&quot;</span></span> <span class='op'>%</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_session_descriptor'>session_descriptor</span> <span class='op'>=</span> <span class='lbrace'>{</span> <span class='label'>name:</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>host:</span> <span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='label'>port:</span> <span class='id identifier rubyid_port'>port</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_to_json'>to_json</span>
-  <span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>writing session descriptor to %s\n%s</span><span class='tstring_end'>&quot;</span></span> <span class='op'>%</span> <span class='lbracket'>[</span><span class='ivar'>@session_file</span><span class='comma'>,</span> <span class='id identifier rubyid_session_descriptor'>session_descriptor</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_display_session'>display_session</span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>writing session descriptor to %s\n%s</span><span class='tstring_end'>&quot;</span></span> <span class='op'>%</span> <span class='lbracket'>[</span><span class='ivar'>@session_file</span><span class='comma'>,</span> <span class='id identifier rubyid_session_descriptor'>session_descriptor</span><span class='rbracket'>]</span> <span class='kw'>if</span> <span class='id identifier rubyid_display_session'>display_session</span>
   <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_open'>open</span><span class='lparen'>(</span><span class='ivar'>@session_file</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>w</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_fd'>fd</span><span class='op'>|</span>
     <span class='id identifier rubyid_fd'>fd</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_session_descriptor'>session_descriptor</span>
   <span class='kw'>end</span>
@@ -2018,11 +2284,7 @@ Runtime-only implementation details are deliberately excluded.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns an immutable catalog definition for a registered frontend.</p>
+    <p>Returns an immutable catalog definition for a registered frontend.</p>
 <p>Accepted inputs are a non-empty String or Symbol naming an existing
 registry entry. Invalid or unknown identifiers raise ArgumentError.
 This method performs no discovery and persists nothing.</p>
@@ -2082,6 +2344,7 @@ This method performs no discovery and persists nothing.</p>
       <pre class="lines">
 
 
+369
 370
 371
 372
@@ -2095,11 +2358,10 @@ This method performs no discovery and persists nothing.</p>
 380
 381
 382
-383
-384</pre>
+383</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 370</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 369</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_definition_for'>definition_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -2132,11 +2394,7 @@ This method performs no discovery and persists nothing.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns immutable catalog definitions, optionally restricted to those
+    <p>Returns immutable catalog definitions, optionally restricted to those
 intended for the graphical launcher.</p>
 
   </div>
@@ -2180,6 +2438,7 @@ intended for the graphical launcher.</p>
       <pre class="lines">
 
 
+390
 391
 392
 393
@@ -2188,11 +2447,10 @@ intended for the graphical launcher.</p>
 396
 397
 398
-399
-400</pre>
+399</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 391</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 390</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_definitions'>definitions</span><span class='lparen'>(</span><span class='label'>gui_selectable:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -2220,11 +2478,7 @@ intended for the graphical launcher.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Detect and store the frontend process ID
+    <p>Detect and store the frontend process ID
 Uses various methods depending on how Lich was launched</p>
 
   </div>
@@ -2254,28 +2508,28 @@ Uses various methods depending on how Lich was launched</p>
       <pre class="lines">
 
 
-804
-805
-806
-807
-808
-809
-810
-811
-812
-813
-814
-815
-816
-817
-818
-819
-820
-821
-822</pre>
+970
+971
+972
+973
+974
+975
+976
+977
+978
+979
+980
+981
+982
+983
+984
+985
+986
+987
+988</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 804</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 970</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detect_pid'>detect_pid</span>
   <span class='comment'># Return existing PID if already set
@@ -2312,11 +2566,7 @@ Uses various methods depending on how Lich was launched</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Detect the current platform</p>
+    <p>Detect the current platform</p>
 
   </div>
 </div>
@@ -2345,13 +2595,13 @@ Uses various methods depending on how Lich was launched</p>
       <pre class="lines">
 
 
-856
-857
-858
-859</pre>
+1022
+1023
+1024
+1025</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 856</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1022</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detect_platform'>detect_platform</span>
   <span class='id identifier rubyid_key'>key</span> <span class='op'>=</span> <span class='id identifier rubyid_platform_key'>platform_key</span>
@@ -2373,11 +2623,7 @@ Uses various methods depending on how Lich was launched</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the catalog display name, with a stable fallback for legacy
+    <p>Returns the catalog display name, with a stable fallback for legacy
 saved entries that predate the catalog.</p>
 
   </div>
@@ -2419,14 +2665,14 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
+436
 437
 438
 439
-440
-441</pre>
+440</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 437</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 436</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_display_name'>display_name</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_definition_for'>definition_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_dig'>dig</span><span class='lparen'>(</span><span class='symbol'>:metadata</span><span class='comma'>,</span> <span class='symbol'>:display_name</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_capitalize'>capitalize</span>
@@ -2449,11 +2695,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Ensure Windows modules are loaded (they're defined at top level)</p>
+    <p>Ensure Windows modules are loaded (they're defined at top level)</p>
 
   </div>
 </div>
@@ -2466,14 +2708,14 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
-1044
-1045
-1046
-1047
-1048</pre>
+1210
+1211
+1212
+1213
+1214</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1044</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1210</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ensure_windows_modules'>ensure_windows_modules</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_native_windows_runtime?'>native_windows_runtime?</span>
@@ -2496,11 +2738,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns all frontends that have a specific capability.</p>
+    <p>Returns all frontends that have a specific capability.</p>
 
   </div>
 </div>
@@ -2544,6 +2782,7 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
+452
 453
 454
 455
@@ -2551,11 +2790,10 @@ saved entries that predate the catalog.</p>
 457
 458
 459
-460
-461</pre>
+460</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 453</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 452</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_frontends_with_capability'>frontends_with_capability</span><span class='lparen'>(</span><span class='id identifier rubyid_capability'>capability</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -2582,11 +2820,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks if a frontend has a specific capability.</p>
+    <p>Checks if a frontend has a specific capability.</p>
 
   </div>
 </div>
@@ -2644,17 +2878,17 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
+339
 340
 341
 342
 343
 344
 345
-346
-347</pre>
+346</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 340</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 339</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='comma'>,</span> <span class='id identifier rubyid_capability'>capability</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2680,11 +2914,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Initialize PID from parent process (for Warlock)</p>
+    <p>Initialize PID from parent process (for Warlock)</p>
 
   </div>
 </div>
@@ -2713,36 +2943,36 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
-764
-765
-766
-767
-768
-769
-770
-771
-772
-773
-774
-775
-776
-777
-778
-779
-780
-781
-782
-783
-784
-785
-786
-787
-788
-789
-790</pre>
+930
+931
+932
+933
+934
+935
+936
+937
+938
+939
+940
+941
+942
+943
+944
+945
+946
+947
+948
+949
+950
+951
+952
+953
+954
+955
+956</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 764</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 930</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_init_from_parent'>init_from_parent</span><span class='lparen'>(</span><span class='id identifier rubyid_parent_pid'>parent_pid</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=== Frontend.init_from_parent called ===</span><span class='tstring_end'>&quot;</span></span>
@@ -2777,6 +3007,103 @@ saved entries that predate the catalog.</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="log_client_string-class_method">
+  
+    .<strong>log_client_string</strong>(source, line, note: nil)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Log one side of the login handshake: the client string the front end
+sent Lich (:frontend) or the one Lich sent the game (:game).</p>
+<p>Every login path logs through here, and only the version/handshake line
+is ever passed in, never the login key that precedes it. A line that is
+not shaped like a handshake is still withheld (only its length is
+logged): proxy_handshake forwards whatever a front end sent in that
+slot, and that could be a key.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>source</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>:frontend or :game</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the line as read or sent</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>note</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>why this string, appended in parentheses</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+817
+818
+819
+820
+821</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 817</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_log_client_string'>log_client_string</span><span class='lparen'>(</span><span class='id identifier rubyid_source'>source</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_message'>message</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>info: client string </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#CLIENT_STRING_LOG_LABELS-constant" title="Lich::Common::Frontend::CLIENT_STRING_LOG_LABELS (constant)">CLIENT_STRING_LOG_LABELS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_source'>source</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_loggable_client_string'>loggable_client_string</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_message'>message</span> <span class='op'>+=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'> (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_note'>note</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_note'>note</span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='id identifier rubyid_message'>message</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="metadata_for-class_method">
   
     .<strong>metadata_for</strong>(frontend_name, key)  &#x21d2; <tt>Object</tt><sup>?</sup> 
@@ -2787,11 +3114,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Retrieves a metadata value for a given frontend.</p>
+    <p>Retrieves a metadata value for a given frontend.</p>
 
   </div>
 </div>
@@ -2849,16 +3172,16 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
+352
 353
 354
 355
 356
 357
-358
-359</pre>
+358</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 353</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 352</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_metadata_for'>metadata_for</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='comma'>,</span> <span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2909,12 +3232,12 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
-62
-63
-64</pre>
+69
+70
+71</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 62</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 69</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_native_windows_runtime?'>native_windows_runtime?</span>
   <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_host_os'>host_os</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>mingw|mswin</span><span class='regexp_end'>/i</span></span><span class='rparen'>)</span>
@@ -2935,11 +3258,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Get the current frontend PID</p>
+    <p>Get the current frontend PID</p>
 
   </div>
 </div>
@@ -2968,12 +3287,12 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
-750
-751
-752</pre>
+916
+917
+918</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 750</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 916</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span>
   <span class='ivar'>@pid_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@frontend_pid</span> <span class='rbrace'>}</span>
@@ -2994,11 +3313,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Set the frontend PID</p>
+    <p>Set the frontend PID</p>
 
   </div>
 </div>
@@ -3045,13 +3360,13 @@ saved entries that predate the catalog.</p>
       <pre class="lines">
 
 
-757
-758
-759
-760</pre>
+923
+924
+925
+926</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 757</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 923</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid='>pid=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_value'>value</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -3073,11 +3388,7 @@ saved entries that predate the catalog.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the canonical platform key used by frontend discovery and
+    <p>Returns the canonical platform key used by frontend discovery and
 launch-plan metadata.</p>
 
   </div>
@@ -3107,16 +3418,16 @@ launch-plan metadata.</p>
       <pre class="lines">
 
 
+405
 406
 407
 408
 409
 410
-411
-412</pre>
+411</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 406</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 405</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_platform_key'>platform_key</span>
   <span class='kw'>return</span> <span class='symbol'>:darwin</span> <span class='kw'>if</span> <span class='const'>OS</span><span class='period'>.</span><span class='id identifier rubyid_mac?'>mac?</span>
@@ -3141,11 +3452,7 @@ launch-plan metadata.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Build the <playerID> re-emit tag for a detachable client (e.g. Saga).</p>
+    <p>Build the <playerID> re-emit tag for a detachable client (e.g. Saga).</p>
 <p>Lich consumes the game's one-time <playerID> during its own login
 handshake, before a detachable client attaches, so the client never
 sees it. XMLData.player_id stores the id verbatim, so re-emitting
@@ -3165,21 +3472,162 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-670
-671
-672
-673
-674
-675</pre>
+715
+716
+717
+718
+719
+720</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 670</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 715</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_player_id_tag'>player_id_tag</span><span class='lparen'>(</span><span class='id identifier rubyid_player_id'>player_id</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_id'>id</span> <span class='op'>=</span> <span class='id identifier rubyid_player_id'>player_id</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_id'>id</span> <span class='op'>=~</span> <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A\d+\z</span><span class='regexp_end'>/</span></span>
 
   <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;playerID id=&#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_id'>id</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;/&gt;</span><span class='tstring_end'>&quot;</span></span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="proxy_handshake-class_method">
+  
+    .<strong>proxy_handshake</strong>(line, version: nil, keep: false, frontend: client)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>The handshake to forward for the line a proxied front end sent (the line
+after the login key). A front end's own handshake is replaced with
+client_string(version, frontend:), Saga's own /P:SAGA line included
+(DragonRealms needs Lich's /VERSION:), so every proxied session asks the game
+for the stream Lich sends Wizard, Frostbite and --without-frontend, and
+Lich's adapters (RoomBlock, Markup) reshape it for the front end. $frontend
+is not touched: it comes from the launch arguments, so capability
+lookups still answer for the real front end.</p>
+<p>Forwarded unchanged:</p>
+<ul>
+<li>a line that is not an /XML handshake (a key, a command, a plain-text client);</li>
+<li>any handshake when keep is true (--keep-fe-string or Lich.keep_fe_string).</li>
+</ul>
+<p>Logs the line received and the line forwarded, with the reason
+(log_client_string).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the line as read from the front end</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>version</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the --fe-version value</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keep</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>forward the front end's own handshake</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>frontend</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>client</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>the front end, for its registry :client_string</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the line to forward</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+768
+769
+770
+771
+772
+773</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 768</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_proxy_handshake'>proxy_handshake</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='label'>version:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>keep:</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='label'>frontend:</span> <span class='id identifier rubyid_client'>client</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_log_client_string'>log_client_string</span><span class='lparen'>(</span><span class='symbol'>:frontend</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_forwarded'>forwarded</span><span class='comma'>,</span> <span class='id identifier rubyid_note'>note</span> <span class='op'>=</span> <span class='id identifier rubyid_proxy_handshake_decision'>proxy_handshake_decision</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='id identifier rubyid_version'>version</span><span class='comma'>,</span> <span class='id identifier rubyid_keep'>keep</span><span class='comma'>,</span> <span class='id identifier rubyid_frontend'>frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_log_client_string'>log_client_string</span><span class='lparen'>(</span><span class='symbol'>:game</span><span class='comma'>,</span> <span class='id identifier rubyid_forwarded'>forwarded</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='id identifier rubyid_note'>note</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_forwarded'>forwarded</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -3197,11 +3645,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Refocus the frontend window</p>
+    <p>Refocus the frontend window</p>
 
   </div>
 </div>
@@ -3230,24 +3674,24 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-826
-827
-828
-829
-830
-831
-832
-833
-834
-835
-836
-837
-838
-839
-840</pre>
+992
+993
+994
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004
+1005
+1006</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 826</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 992</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus'>refocus</span>
   <span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span>
@@ -3280,11 +3724,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Create a callback for GTK windows to refocus on click</p>
+    <p>Create a callback for GTK windows to refocus on click</p>
 
   </div>
 </div>
@@ -3313,18 +3753,18 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-844
-845
-846
-847
-848
-849
-850
-851
-852</pre>
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017
+1018</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 844</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1010</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_callback'>refocus_callback</span>
   <span class='id identifier rubyid_proc'>proc</span> <span class='lbrace'>{</span>
@@ -3351,11 +3791,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Linux refocus implementation</p>
+    <p>Linux refocus implementation</p>
 
   </div>
 </div>
@@ -3368,24 +3804,24 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-1027
-1028
-1029
-1030
-1031
-1032
-1033
-1034
-1035
-1036
-1037
-1038
-1039
-1040
-1041</pre>
+1193
+1194
+1195
+1196
+1197
+1198
+1199
+1200
+1201
+1202
+1203
+1204
+1205
+1206
+1207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1027</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1193</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_linux'>refocus_linux</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which xdotool &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -3418,11 +3854,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>macOS refocus implementation</p>
+    <p>macOS refocus implementation</p>
 
   </div>
 </div>
@@ -3435,25 +3867,25 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-1009
-1010
-1011
-1012
-1013
-1014
-1015
-1016
-1017
-1018
-1019
-1020
-1021
-1022
-1023
-1024</pre>
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+1188
+1189
+1190</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1009</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1175</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_macos'>refocus_macos</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which osascript &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -3487,11 +3919,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Windows refocus implementation</p>
+    <p>Windows refocus implementation</p>
 
   </div>
 </div>
@@ -3504,46 +3932,46 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
-970
-971
-972
-973
-974
-975
-976
-977
-978
-979
-980
-981
-982
-983
-984
-985
-986
-987
-988
-989
-990
-991
-992
-993
-994
-995
-996
-997
-998
-999
-1000
-1001
-1002
-1003
-1004
-1005
-1006</pre>
+1136
+1137
+1138
+1139
+1140
+1141
+1142
+1143
+1144
+1145
+1146
+1147
+1148
+1149
+1150
+1151
+1152
+1153
+1154
+1155
+1156
+1157
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 970</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1136</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_refocus_windows'>refocus_windows</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_ensure_windows_modules'>ensure_windows_modules</span>
@@ -3598,11 +4026,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Registers a frontend with its capabilities and metadata.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Registers a frontend with its capabilities and metadata.</p>
 
   </div>
 </div>
@@ -3665,6 +4089,7 @@ an empty or malformed tag before login has populated the id.</p>
       <pre class="lines">
 
 
+161
 162
 163
 164
@@ -3682,11 +4107,10 @@ an empty or malformed tag before login has populated the id.</p>
 176
 177
 178
-179
-180</pre>
+179</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 162</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 161</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_register'>register</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='label'>capabilities:</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>metadata:</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -3723,11 +4147,7 @@ an empty or malformed tag before login has populated the id.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns every recognized frontend name: canonical catalog identifiers
+    <p>Returns every recognized frontend name: canonical catalog identifiers
 followed by their accepted aliases.</p>
 
   </div>
@@ -3754,12 +4174,12 @@ followed by their accepted aliases.</p>
       <pre class="lines">
 
 
+445
 446
-447
-448</pre>
+447</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 446</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 445</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_registered_frontends'>registered_frontends</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='lbrace'>{</span> <span class='ivar'>@registry</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='op'>+</span> <span class='ivar'>@aliases</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='rbrace'>}</span>
@@ -3780,11 +4200,7 @@ followed by their accepted aliases.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Replaces the complete process-local user configuration in one operation.
+    <p class="note returns_void">This method returns an undefined value.</p><p>Replaces the complete process-local user configuration in one operation.
 Built-ins are restored from their sealed defaults before launch-only
 overrides are applied, and custom definitions from an earlier load are
 removed before the new set is registered.</p>
@@ -3828,6 +4244,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
       <pre class="lines">
 
 
+224
 225
 226
 227
@@ -3851,11 +4268,10 @@ narrow application seam that keeps catalog reloads deterministic.</p>
 245
 246
 247
-248
-249</pre>
+248</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 225</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 224</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_replace_user_configuration!'>replace_user_configuration!</span><span class='lparen'>(</span><span class='label'>built_in_overrides:</span><span class='comma'>,</span> <span class='label'>custom_definitions:</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -3898,11 +4314,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Linux-specific PID resolution</p>
+    <p>Linux-specific PID resolution</p>
 
   </div>
 </div>
@@ -3915,33 +4327,33 @@ narrow application seam that keeps catalog reloads deterministic.</p>
       <pre class="lines">
 
 
-944
-945
-946
-947
-948
-949
-950
-951
-952
-953
-954
-955
-956
-957
-958
-959
-960
-961
-962
-963
-964
-965
-966
-967</pre>
+1110
+1111
+1112
+1113
+1114
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122
+1123
+1124
+1125
+1126
+1127
+1128
+1129
+1130
+1131
+1132
+1133</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 944</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1110</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_linux_pid'>resolve_linux_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_pid'>pid</span> <span class='kw'>unless</span> <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>which xdotool &gt; /dev/null 2&gt;&amp;1</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -3983,11 +4395,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Resolve PID by walking up process tree to find window owner</p>
+    <p>Resolve PID by walking up process tree to find window owner</p>
 
   </div>
 </div>
@@ -4034,24 +4442,24 @@ narrow application seam that keeps catalog reloads deterministic.</p>
       <pre class="lines">
 
 
-864
-865
-866
-867
-868
-869
-870
-871
-872
-873
-874
-875
-876
-877
-878</pre>
+1030
+1031
+1032
+1033
+1034
+1035
+1036
+1037
+1038
+1039
+1040
+1041
+1042
+1043
+1044</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 864</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1030</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_pid'>resolve_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='id identifier rubyid_pid'>pid</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -4084,11 +4492,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Windows-specific PID resolution</p>
+    <p>Windows-specific PID resolution</p>
 
   </div>
 </div>
@@ -4101,63 +4505,63 @@ narrow application seam that keeps catalog reloads deterministic.</p>
       <pre class="lines">
 
 
-881
-882
-883
-884
-885
-886
-887
-888
-889
-890
-891
-892
-893
-894
-895
-896
-897
-898
-899
-900
-901
-902
-903
-904
-905
-906
-907
-908
-909
-910
-911
-912
-913
-914
-915
-916
-917
-918
-919
-920
-921
-922
-923
-924
-925
-926
-927
-928
-929
-930
-931
-932
-933
-934</pre>
+1047
+1048
+1049
+1050
+1051
+1052
+1053
+1054
+1055
+1056
+1057
+1058
+1059
+1060
+1061
+1062
+1063
+1064
+1065
+1066
+1067
+1068
+1069
+1070
+1071
+1072
+1073
+1074
+1075
+1076
+1077
+1078
+1079
+1080
+1081
+1082
+1083
+1084
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092
+1093
+1094
+1095
+1096
+1097
+1098
+1099
+1100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 881</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1047</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_resolve_windows_pid'>resolve_windows_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>=== resolve_windows_pid starting with PID: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'> ===</span><span class='tstring_end'>&quot;</span></span>
@@ -4229,11 +4633,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p class="note returns_void">This method returns an undefined value.</p><p>Captures immutable built-in defaults after all built-ins are registered.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Captures immutable built-in defaults after all built-ins are registered.</p>
 
   </div>
 </div>
@@ -4246,6 +4646,7 @@ narrow application seam that keeps catalog reloads deterministic.</p>
       <pre class="lines">
 
 
+308
 309
 310
 311
@@ -4258,11 +4659,10 @@ narrow application seam that keeps catalog reloads deterministic.</p>
 318
 319
 320
-321
-322</pre>
+321</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 309</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 308</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_seal_built_in_catalog!'>seal_built_in_catalog!</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -4294,12 +4694,10 @@ narrow application seam that keeps catalog reloads deterministic.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Send version string, ready signals, and setup commands to the game server.
-Used during login handshake for wizard/avalon/frostbite frontends.</p>
+    <p>Send version string, ready signals, and setup commands to the game server.
+Used during login handshake for wizard/avalon/frostbite frontends, whose
+own version line is discarded. Logs the version string as sent in place
+of the front end's (log_client_string).</p>
 
   </div>
 </div>
@@ -4312,26 +4710,28 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-689
-690
-691
-692
-693
-694
-695
-696
-697
-698
-699
-700
-701
-702
-703</pre>
+851
+852
+853
+854
+855
+856
+857
+858
+859
+860
+861
+862
+863
+864
+865
+866</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 689</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 851</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_send_handshake'>send_handshake</span><span class='lparen'>(</span><span class='id identifier rubyid_version_string'>version_string</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_log_client_string'>log_client_string</span><span class='lparen'>(</span><span class='symbol'>:game</span><span class='comma'>,</span> <span class='id identifier rubyid_version_string'>version_string</span><span class='comma'>,</span> <span class='label'>note:</span> <span class='const'><span class='object_link'><a href="#CLIENT_STRING_REPLACED_NOTE-constant" title="Lich::Common::Frontend::CLIENT_STRING_REPLACED_NOTE (constant)">CLIENT_STRING_REPLACED_NOTE</a></span></span><span class='rparen'>)</span>
   <span class='gvar'>$_CLIENTBUFFER_</span><span class='period'>.</span><span class='id identifier rubyid_push'>push</span><span class='lparen'>(</span><span class='id identifier rubyid_version_string'>version_string</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='rparen'>)</span>
   <span class='const'>Game</span><span class='period'>.</span><span class='id identifier rubyid__puts'>_puts</span><span class='lparen'>(</span><span class='id identifier rubyid_version_string'>version_string</span><span class='rparen'>)</span>
   <span class='int'>2</span><span class='period'>.</span><span class='id identifier rubyid_times'>times</span> <span class='kw'>do</span>
@@ -4352,6 +4752,112 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
 </div>
     
       <div class="method_details ">
+  <h3 class="signature " id="sentinel_requested=-class_method">
+  
+    .<strong>sentinel_requested=</strong>(value)  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>value</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+701
+702
+703</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 701</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sentinel_requested='>sentinel_requested=</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='rparen'>)</span>
+  <span class='ivar'>@sentinel_requested</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span> <span class='op'>==</span> <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sentinel_requested?-class_method">
+  
+    .<strong>sentinel_requested?</strong>  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether --sentinel was passed for this session.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+696
+697
+698</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 696</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_sentinel_requested?'>sentinel_requested?</span>
+  <span class='ivar'>@sentinel_requested</span> <span class='op'>==</span> <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
   <h3 class="signature " id="session_file_location-class_method">
   
     .<strong>session_file_location</strong>  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
@@ -4362,11 +4868,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns the path to the most recently created session descriptor file.</p>
+    <p>Returns the path to the current session descriptor file, if created.</p>
 
   </div>
 </div>
@@ -4383,11 +4885,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the session file path, or nil if no session file has been created</p></div>
+        <div class='inline'><p>the file path, or nil if no session file was created</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#create_session_file-class_method" title="Lich::Common::Frontend.create_session_file (method)">create_session_file</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -4395,12 +4904,12 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-732
-733
-734</pre>
+896
+897
+898</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 732</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 896</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_session_file_location'>session_file_location</span>
   <span class='ivar'>@session_file</span>
@@ -4421,11 +4930,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Set PID from a detachable frontend such as Profanity or Saga.</p>
+    <p>Set PID from a detachable frontend such as Profanity or Saga.</p>
 
   </div>
 </div>
@@ -4472,19 +4977,130 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-795
-796
-797
-798
-799</pre>
+961
+962
+963
+964
+965</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 795</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 961</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_set_from_client'>set_from_client</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span> <span class='op'>=</span> <span class='id identifier rubyid_pid'>pid</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Frontend PID set from client: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span><span class='rparen'>)</span>
   <span class='id identifier rubyid_pid'>pid</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="supports_double_bold?-class_method">
+  
+    .<strong>supports_double_bold?</strong>(fe = $frontend)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether the front end handles DragonRealms' creature bold: the doubled
+<pushBold/><pushBold/> around linked creatures in room-object listings
+and the single pair around them in action and assess lines. Others get
+the legacy line: one pair in the listings (Markup.collapse_double_bold)
+and none elsewhere (Markup.strip_link_bold).
+Reads the front end's table only; each client's set comes from ClientCapabilities.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+681
+682
+683</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 681</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_double_bold?'>supports_double_bold?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:double_bold</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="supports_game_links?-class_method">
+  
+    .<strong>supports_game_links?</strong>(fe = $frontend)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether the front end handles DragonRealms' <a exist> object links.
+Others get them stripped to the legacy text (Markup.strip_game_links).
+Reads the front end's table only; each client's set comes from ClientCapabilities.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+671
+672
+673</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 671</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_game_links?'>supports_game_links?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:game_links</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4502,16 +5118,20 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend supports GSL (Gemstone Scripting Language).</p>
+    <p>Checks if a frontend supports GSL (GemStone Scripting Language) output.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_gsl?'>supports_gsl?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -4526,7 +5146,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
+        <div class='inline'><p>the frontend name (defaults to current $frontend)</p></div>
       
     </li>
   
@@ -4543,11 +5163,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend has the :gsl capability</p></div>
+        <div class='inline'><p>true if the frontend has :gsl capability</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">has_capability?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -4555,12 +5182,12 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-624
 625
-626</pre>
+626
+627</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 624</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 625</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_gsl?'>supports_gsl?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:gsl</span><span class='rparen'>)</span>
@@ -4581,16 +5208,20 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend supports monospace text rendering.</p>
+    <p>Checks if a frontend supports monospace output.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_mono?'>supports_mono?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>avalon</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -4605,7 +5236,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
+        <div class='inline'><p>the frontend name (defaults to current $frontend)</p></div>
       
     </li>
   
@@ -4622,7 +5253,69 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend has the :mono capability</p></div>
+        <div class='inline'><p>true if the frontend has :mono capability</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">has_capability?</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+647
+648
+649</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 647</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_mono?'>supports_mono?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:mono</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="supports_room_element?-class_method">
+  
+    .<strong>supports_room_element?</strong>(fe = $frontend)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Whether the front end renders the Saga-identity stream's inline <room>
+block itself. Others get it rewritten to the legacy roomName/roomDesc
+layout (see Lich::Common::RoomBlock).
+Reads the front end's table only; each client's set comes from ClientCapabilities.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
       
     </li>
   
@@ -4634,15 +5327,15 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-640
-641
-642</pre>
+664
+665
+666</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 640</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 664</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_mono?'>supports_mono?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:mono</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_room_element?'>supports_room_element?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:room_element</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -4660,11 +5353,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend can display the room window independently.</p>
+    <p>Checks if a frontend supports a dedicated room window pane.</p>
 
   </div>
 </div>
@@ -4684,7 +5373,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
+        <div class='inline'><p>the frontend name (defaults to current $frontend)</p></div>
       
     </li>
   
@@ -4701,11 +5390,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend has the :room_window capability</p></div>
+        <div class='inline'><p>true if the frontend has :room_window capability</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">has_capability?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -4713,12 +5409,12 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-648
-649
-650</pre>
+656
+657
+658</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 648</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 656</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_room_window?'>supports_room_window?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:room_window</span><span class='rparen'>)</span>
@@ -4739,36 +5435,14 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend is the Sentinel client.</p>
+    <p>The running session also gets the sentinel when --sentinel asked for
+it, so a client can identify as another frontend (stormfront, for the
+scripts that test for it) and still receive the origin marker.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>fe</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>$frontend</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
-      
-    </li>
-  
-</ul>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -4778,9 +5452,6 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
         <span class='type'>(<tt>Boolean</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>true if the frontend has the :sentinel capability</p></div>
       
     </li>
   
@@ -4792,14 +5463,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-656
-657
-658</pre>
+688
+689
+690
+691
+692</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 656</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 688</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_sentinel?'>supports_sentinel?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_sentinel_requested?'>sentinel_requested?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='id identifier rubyid_canonical_name'>canonical_name</span><span class='lparen'>(</span><span class='gvar'>$frontend</span><span class='rparen'>)</span>
+
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:sentinel</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -4818,16 +5493,20 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend supports streaming data.</p>
+    <p>Checks if a frontend supports game streams (segmented XML).</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_streams?'>supports_streams?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>genie</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -4842,7 +5521,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
+        <div class='inline'><p>the frontend name (defaults to current $frontend)</p></div>
       
     </li>
   
@@ -4859,11 +5538,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend has the :streams capability</p></div>
+        <div class='inline'><p>true if the frontend has :streams capability</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">has_capability?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -4871,12 +5557,12 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-632
-633
-634</pre>
+636
+637
+638</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 632</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 636</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_streams?'>supports_streams?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:streams</span><span class='rparen'>)</span>
@@ -4897,11 +5583,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Checks whether a frontend supports the XML stream protocol.</p>
+    <p>Checks if a frontend supports XML output.</p>
 
   </div>
 </div>
@@ -4911,8 +5593,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span> <span class='comment'>#=&gt; true if current frontend supports XML</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Common::Frontend (module)">Frontend</a></span></span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>wrayth</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -4930,7 +5611,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>the frontend name (defaults to the current $frontend global)</p></div>
+        <div class='inline'><p>the frontend name (defaults to current $frontend)</p></div>
       
     </li>
   
@@ -4947,11 +5628,18 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       
       
         &mdash;
-        <div class='inline'><p>true if the frontend has the :xml capability</p></div>
+        <div class='inline'><p>true if the frontend has :xml capability</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#has_capability%3F-class_method" title="Lich::Common::Frontend.has_capability? (method)">has_capability?</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -4959,12 +5647,12 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
       <pre class="lines">
 
 
-616
-617
-618</pre>
+614
+615
+616</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 616</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 614</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supports_xml?'>supports_xml?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span> <span class='op'>=</span> <span class='gvar'>$frontend</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_has_capability?'>has_capability?</span><span class='lparen'>(</span><span class='id identifier rubyid_fe'>fe</span><span class='comma'>,</span> <span class='symbol'>:xml</span><span class='rparen'>)</span>
@@ -4985,11 +5673,7 @@ Used during login handshake for wizard/avalon/frostbite frontends.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns whether an identifier is available for a settings-owned custom
+    <p>Returns whether an identifier is available for a settings-owned custom
 frontend. An identifier already owned by the current settings document
 remains available so reloads can replace it without colliding with
 themselves. Registry entries and aliases owned elsewhere are reserved.</p>
@@ -5033,6 +5717,7 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
       <pre class="lines">
 
 
+203
 204
 205
 206
@@ -5040,11 +5725,10 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
 208
 209
 210
-211
-212</pre>
+211</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 204</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 203</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_user_definition_id_available?'>user_definition_id_available?</span><span class='lparen'>(</span><span class='id identifier rubyid_frontend_name'>frontend_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_registry_synchronize'>registry_synchronize</span> <span class='kw'>do</span>
@@ -5071,11 +5755,7 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Validates a canonical platform key used by discovery and launch plans.</p>
+    <p>Validates a canonical platform key used by discovery and launch plans.</p>
 
   </div>
 </div>
@@ -5132,14 +5812,14 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
       <pre class="lines">
 
 
+418
 419
 420
 421
-422
-423</pre>
+422</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 419</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 418</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_validate_platform_key!'>validate_platform_key!</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='id identifier rubyid_key'>key</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="#PLATFORM_KEYS-constant" title="Lich::Common::Frontend::PLATFORM_KEYS (constant)">PLATFORM_KEYS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='rparen'>)</span>
@@ -5162,11 +5842,7 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Get parent process ID on Windows</p>
+    <p>Get parent process ID on Windows</p>
 
   </div>
 </div>
@@ -5179,14 +5855,14 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
       <pre class="lines">
 
 
-937
-938
-939
-940
-941</pre>
+1103
+1104
+1105
+1106
+1107</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 937</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 1103</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_windows_parent_pid'>windows_parent_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_wmi'>wmi</span><span class='comma'>,</span> <span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_rows'>rows</span> <span class='op'>=</span> <span class='id identifier rubyid_wmi'>wmi</span><span class='period'>.</span><span class='const'>ExecQuery</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SELECT ParentProcessId FROM Win32_Process WHERE ProcessId=</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -5209,11 +5885,7 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Returns whether the current host is classified as Windows.</p>
+    <p>Returns whether the current host is classified as Windows.</p>
 
   </div>
 </div>
@@ -5239,12 +5911,12 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
       <pre class="lines">
 
 
+427
 428
-429
-430</pre>
+429</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 428</span>
+      <pre class="code"><span class="info file"># File 'documented/common/frontend.rb', line 427</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_windows_platform?'>windows_platform?</span>
   <span class='id identifier rubyid_platform_key'>platform_key</span> <span class='op'>==</span> <span class='symbol'>:windows</span>
@@ -5259,7 +5931,7 @@ themselves. Registry entries and aliases owned elsewhere are reserved.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:15 2026 by
+  Generated on Wed Oct 28 05:27:11 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

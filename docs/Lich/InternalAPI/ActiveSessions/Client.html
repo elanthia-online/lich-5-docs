@@ -108,20 +108,16 @@
   <strong>This class is part of a private API.</strong>
   You should avoid using this class if possible, as it may be removed or be changed in the future.
 </p>
-<p>Client for managing active sessions with the Lich internal API.</p>
-<p>This class handles communication with the server, including sending requests and receiving responses.</p>
+<p>Thin JSON client for the local active sessions service.</p>
+<p>The client intentionally knows nothing about lifecycle semantics. It is
+only responsible for packaging JSON commands, reading JSON responses,
+and normalizing failures into a predictable <code>{ ok: false, error: ... }</code>
+shape for higher-level callers.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../ActiveSessions.html" title="Lich::InternalAPI::ActiveSessions (module)">Lich::InternalAPI::ActiveSessions</a></span></li>
-    
-  </ul>
 
 </div>
   
@@ -132,6 +128,37 @@
 
     <dl class="constants">
       
+        <dt id="CONNECT_TIMEOUT-constant" class="">CONNECT_TIMEOUT =
+          <div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This constant is part of a private API.</strong>
+  You should avoid using this constant if possible, as it may be removed or be changed in the future.
+</p>
+<p>Maximum number of seconds to wait while opening the loopback socket.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>1</span></pre></dd>
+      
         <dt id="READ_TIMEOUT-constant" class="">READ_TIMEOUT =
           <div class="docstring">
   <div class="discussion">
@@ -139,12 +166,26 @@
   <strong>This constant is part of a private API.</strong>
   You should avoid using this constant if possible, as it may be removed or be changed in the future.
 </p>
-
+<p>Maximum number of seconds to wait for a server response before
+treating the request as failed.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
 
 </div>
         </dt>
@@ -186,7 +227,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Initializes a new Client instance.</p></div></span>
+    <span class="summary_desc"><div class='inline'></div></span>
   
 </li>
 
@@ -208,7 +249,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends a ping request to the server to check connectivity.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sends a lightweight health probe to the service.</p></div></span>
   
 </li>
 
@@ -230,7 +271,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends a remove request to the server for the specified process ID.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Removes a session by pid over the transport.</p></div></span>
   
 </li>
 
@@ -252,7 +293,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends a request to the server with the specified command and payload.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sends a raw command payload to the active sessions service.</p></div></span>
   
 </li>
 
@@ -274,7 +315,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends a snapshot request to the server.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Requests the current active sessions snapshot.</p></div></span>
   
 </li>
 
@@ -296,7 +337,7 @@
   <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends an upsert request to the server with the provided payload.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Registers or updates a session over the transport.</p></div></span>
   
 </li>
 
@@ -323,7 +364,7 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Initializes a new Client instance.</p>
+
 
   </div>
 </div>
@@ -340,9 +381,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the hostname of the server</p></div>
-      
     </li>
   
     <li>
@@ -353,9 +391,6 @@
         <span class='type'>(<tt>Integer</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the port number of the server</p></div>
       
     </li>
   
@@ -368,9 +403,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the authentication token for the session</p></div>
-      
     </li>
   
     <li>
@@ -378,14 +410,14 @@
         <span class='name'>socket_factory</span>
       
       
-        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>#call</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>a factory for creating sockets (defaults to TCPSocket)</p></div>
+        <div class='inline'><p>builds a connected client socket</p></div>
       
     </li>
   
@@ -398,21 +430,25 @@
       <pre class="lines">
 
 
-23
-24
-25
-26
-27
-28</pre>
+41
+42
+43
+44
+45
+46
+47
+48</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 23</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 41</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='label'>host:</span><span class='comma'>,</span> <span class='label'>port:</span><span class='comma'>,</span> <span class='label'>auth_token:</span><span class='comma'>,</span> <span class='label'>socket_factory:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='ivar'>@host</span> <span class='op'>=</span> <span class='id identifier rubyid_host'>host</span>
   <span class='ivar'>@port</span> <span class='op'>=</span> <span class='id identifier rubyid_port'>port</span>
   <span class='ivar'>@auth_token</span> <span class='op'>=</span> <span class='id identifier rubyid_auth_token'>auth_token</span>
-  <span class='ivar'>@socket_factory</span> <span class='op'>=</span> <span class='id identifier rubyid_socket_factory'>socket_factory</span> <span class='op'>||</span> <span class='tlambda'>-&gt;</span><span class='lparen'>(</span><span class='id identifier rubyid_connect_host'>connect_host</span><span class='comma'>,</span> <span class='id identifier rubyid_connect_port'>connect_port</span><span class='rparen'>)</span> <span class='tlambeg'>{</span> <span class='const'>TCPSocket</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='id identifier rubyid_connect_host'>connect_host</span><span class='comma'>,</span> <span class='id identifier rubyid_connect_port'>connect_port</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
+  <span class='ivar'>@socket_factory</span> <span class='op'>=</span> <span class='id identifier rubyid_socket_factory'>socket_factory</span> <span class='op'>||</span> <span class='id identifier rubyid_lambda'>lambda</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_connect_host'>connect_host</span><span class='comma'>,</span> <span class='id identifier rubyid_connect_port'>connect_port</span><span class='op'>|</span>
+    <span class='const'>Socket</span><span class='period'>.</span><span class='id identifier rubyid_tcp'>tcp</span><span class='lparen'>(</span><span class='id identifier rubyid_connect_host'>connect_host</span><span class='comma'>,</span> <span class='id identifier rubyid_connect_port'>connect_port</span><span class='comma'>,</span> <span class='label'>connect_timeout:</span> <span class='const'><span class='object_link'><a href="#CONNECT_TIMEOUT-constant" title="Lich::InternalAPI::ActiveSessions::Client::CONNECT_TIMEOUT (constant)">CONNECT_TIMEOUT</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -441,23 +477,12 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Sends a ping request to the server to check connectivity.</p>
+<p>Sends a lightweight health probe to the service.</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-        <h5 class="example_title"><div class='inline'><p>Check server connectivity</p></div></h5>
-      
-      <pre class="example code"><code><span class='id identifier rubyid_client'>client</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../InternalAPI.html" title="Lich::InternalAPI (module)">InternalAPI</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../ActiveSessions.html" title="Lich::InternalAPI::ActiveSessions (module)">ActiveSessions</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::InternalAPI::ActiveSessions::Client (class)">Client</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="#initialize-instance_method" title="Lich::InternalAPI::ActiveSessions::Client#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>host:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>localhost</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>port:</span> <span class='int'>1234</span><span class='comma'>,</span> <span class='label'>auth_token:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>token</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-<span class='id identifier rubyid_client'>client</span><span class='period'>.</span><span class='id identifier rubyid_ping'>ping</span></code></pre>
-    
-  </div>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -469,7 +494,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if the server responds positively, false otherwise</p></div>
+        <div class='inline'><p>true when the service responds with <code>ok: true</code></p></div>
       
     </li>
   
@@ -481,12 +506,12 @@
       <pre class="lines">
 
 
-56
-57
-58</pre>
+74
+75
+76</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 56</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 74</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ping'>ping</span>
   <span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>ping</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='symbol'>:ok</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span>
@@ -511,7 +536,7 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Sends a remove request to the server for the specified process ID.</p>
+<p>Removes a session by pid over the transport.</p>
 
   </div>
 </div>
@@ -524,12 +549,9 @@
         <span class='name'>pid</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt>Integer</tt>)</span>
       
       
-      
-        &mdash;
-        <div class='inline'><p>the process ID to remove</p></div>
       
     </li>
   
@@ -545,9 +567,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the server's response to the remove request</p></div>
-      
     </li>
   
 </ul>
@@ -558,12 +577,12 @@
       <pre class="lines">
 
 
-70
-71
-72</pre>
+90
+91
+92</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 70</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 90</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>remove</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>pid:</span> <span class='id identifier rubyid_pid'>pid</span><span class='rparen'>)</span>
@@ -588,7 +607,7 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Sends a request to the server with the specified command and payload.</p>
+<p>Sends a raw command payload to the active sessions service.</p>
 
   </div>
 </div>
@@ -606,7 +625,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the command to send to the server</p></div>
+        <div class='inline'><p>protocol command name</p></div>
       
     </li>
   
@@ -622,7 +641,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the data to include with the command</p></div>
+        <div class='inline'><p>request-specific payload</p></div>
       
     </li>
   
@@ -639,23 +658,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the server's response, including success status and any data or error messages</p></div>
-      
-    </li>
-  
-</ul>
-<p class="tag_title">Raises:</p>
-<ul class="raise">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>StandardError</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>if an error occurs during the request</p></div>
+        <div class='inline'><p>parsed response payload or a normalized error hash</p></div>
       
     </li>
   
@@ -667,24 +670,24 @@
       <pre class="lines">
 
 
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49</pre>
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 35</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 55</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='id identifier rubyid_command'>command</span><span class='comma'>,</span> <span class='id identifier rubyid_payload'>payload</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_socket'>socket</span> <span class='op'>=</span> <span class='ivar'>@socket_factory</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='ivar'>@host</span><span class='comma'>,</span> <span class='ivar'>@port</span><span class='rparen'>)</span>
@@ -721,7 +724,7 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Sends a snapshot request to the server.</p>
+<p>Requests the current active sessions snapshot.</p>
 
   </div>
 </div>
@@ -737,9 +740,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the server's response containing the snapshot data</p></div>
-      
     </li>
   
 </ul>
@@ -750,12 +750,12 @@
       <pre class="lines">
 
 
-76
-77
-78</pre>
+97
+98
+99</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 76</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 97</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_snapshot'>snapshot</span>
   <span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>snapshot</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -780,7 +780,7 @@
   <strong>This method is part of a private API.</strong>
   You should avoid using this method if possible, as it may be removed or be changed in the future.
 </p>
-<p>Sends an upsert request to the server with the provided payload.</p>
+<p>Registers or updates a session over the transport.</p>
 
   </div>
 </div>
@@ -797,9 +797,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the data to upsert</p></div>
-      
     </li>
   
 </ul>
@@ -814,9 +811,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>the server's response to the upsert request</p></div>
-      
     </li>
   
 </ul>
@@ -827,12 +821,12 @@
       <pre class="lines">
 
 
-63
-64
-65</pre>
+82
+83
+84</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 63</span>
+      <pre class="code"><span class="info file"># File 'documented/internal_api/active_sessions/client.rb', line 82</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_upsert'>upsert</span><span class='lparen'>(</span><span class='id identifier rubyid_payload'>payload</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_request'>request</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>upsert</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_payload'>payload</span><span class='rparen'>)</span>
@@ -847,7 +841,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:42 2026 by
+  Generated on Wed Oct 28 05:27:30 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

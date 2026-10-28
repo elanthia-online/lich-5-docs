@@ -93,20 +93,22 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Module for managing active spells in the Lich game.</p>
-<p>This module handles spell duration updates and displays.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>This is internal machinery; most scripts use Spell directly.</p></div>
+  </div>
+
+<p>Tracks active spell durations and notifies when spells change state.</p>
+<p>This module watches the game's active spell list and normalizes spell names
+(e.g., &quot;Mage Armor 520 - ...&quot; becomes &quot;Mage Armor&quot;). It calculates duration
+changes and reports when spells are cast, renewed, or end. Spell timing is
+kept synchronized with the game server to within ~1 second.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li><span class='object_link'><a href="../Gemstone.html" title="Lich::Gemstone (module)">Lich::Gemstone</a></span></li>
-    
-  </ul>
 
 </div>
 
@@ -137,10 +139,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Blocks until an update request is made and clears the queue.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Blocks until an update is requested, then clears and returns the timestamp.</p></div></span>
   
 </li>
 
@@ -148,7 +150,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#get_spell_info-class_method" title="get_spell_info (class method)">.<strong>get_spell_info</strong>(spell_check = XMLData.active_spells)  &#x21d2; Array&lt;String&gt;, Hash </a>
+      <a href="#get_spell_info-class_method" title="get_spell_info (class method)">.<strong>get_spell_info</strong>(spell_check = XMLData.active_spells)  &#x21d2; Array(Array&lt;String&gt;, Hash{String =&gt; Time}) </a>
     
 
     
@@ -159,10 +161,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves information about active spells and their durations.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Normalizes spell names and returns active spell data in a standardized form.</p></div></span>
   
 </li>
 
@@ -181,10 +183,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the queue for update requests.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the thread-safe queue for spell update requests.</p></div></span>
   
 </li>
 
@@ -206,7 +208,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Requests an update for spell durations.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Queues a request for spell durations to be refreshed.</p></div></span>
   
 </li>
 
@@ -225,10 +227,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Displays changes in active spell durations.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Compares active spell durations against the prior state and reports changes.</p></div></span>
   
 </li>
 
@@ -250,7 +252,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if spell durations should be displayed.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether spell duration change notifications are enabled.</p></div></span>
   
 </li>
 
@@ -269,10 +271,10 @@
   
   
   
-  
+  <span class="private note title">private</span>
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates the durations of active spells based on the latest information.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Synchronizes Spell objects with the game's active spell list.</p></div></span>
   
 </li>
 
@@ -294,7 +296,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Starts a thread that watches for update requests and processes them.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Starts a background thread that listens for spell update requests.</p></div></span>
   
 </li>
 
@@ -332,7 +334,14 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Blocks until an update request is made and clears the queue.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Blocks until an update is requested, then clears and returns the timestamp.</p>
+<p>Pops the first item from the queue (blocking if empty), then discards all
+remaining queued items so that rapid .request_update calls do not cause a
+backlog of updates.</p>
 
   </div>
 </div>
@@ -349,7 +358,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the time when the update was requested</p></div>
+        <div class='inline'><p>the timestamp of the update request</p></div>
       
     </li>
   
@@ -361,14 +370,14 @@
       <pre class="lines">
 
 
-196
-197
-198
-199
-200</pre>
+249
+250
+251
+252
+253</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 196</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 249</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_block_until_update_requested'>block_until_update_requested</span>
   <span class='id identifier rubyid_event'>event</span> <span class='op'>=</span> <span class='id identifier rubyid_queue'>queue</span><span class='period'>.</span><span class='id identifier rubyid_pop'>pop</span>
@@ -383,7 +392,7 @@
       <div class="method_details ">
   <h3 class="signature " id="get_spell_info-class_method">
   
-    .<strong>get_spell_info</strong>(spell_check = XMLData.active_spells)  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>, <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+    .<strong>get_spell_info</strong>(spell_check = XMLData.active_spells)  &#x21d2; <tt>Array(Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;, <span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; Time})</tt> 
   
 
   
@@ -391,12 +400,30 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves information about active spells and their durations.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Normalizes spell names and returns active spell data in a standardized form.</p>
+<p>Applies name transformations to spells where the game's XML feed uses verbose
+or abbreviated identifiers: &quot;Mage Armor 520 - ...&quot; → &quot;Mage Armor&quot;,
+&quot;CoS 712 - ...&quot; → &quot;Cloak of Shadows&quot;, etc. These aliases ensure spell names
+are consistent across lookups in Spell.list.</p>
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_names'>names</span><span class='comma'>,</span> <span class='id identifier rubyid_durations'>durations</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::ActiveSpell (module)">ActiveSpell</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_spell_info'>get_spell_info</span>
+<span class='comment'># names might include &quot;Mage Armor&quot;, &quot;Cloak of Shadows&quot;, &quot;Surge of Strength&quot;
+</span><span class='comment'># durations[&quot;Mage Armor&quot;] is a Time object</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -404,14 +431,16 @@
         <span class='name'>spell_check</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; Time}</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>XMLData.active_spells</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>a hash of active spells to check</p></div>
+        <div class='inline'><p>a Hash mapping spell display names
+(from the game's XML) to their expiration times; defaults to the current
+active spells from XMLData</p></div>
       
     </li>
   
@@ -423,12 +452,14 @@
     <li>
       
       
-        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>, <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt>Array(Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;, <span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span>{<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span> =&gt; Time})</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>an array containing spell names and a hash of their durations</p></div>
+        <div class='inline'><p>a two-element array:
+the first is normalized spell names (in iteration order), the second is
+a Hash with transformed keys and the same expiration times</p></div>
       
     </li>
   
@@ -440,24 +471,6 @@
       <pre class="lines">
 
 
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
 51
 52
 53
@@ -508,10 +521,28 @@
 98
 99
 100
-101</pre>
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 51</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_spell_info'>get_spell_info</span><span class='lparen'>(</span><span class='id identifier rubyid_spell_check'>spell_check</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_active_spells'>active_spells</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_respond'><span class='object_link'><a href="../../top-level-namespace.html#respond-instance_method" title="#respond (method)">respond</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>spell update requested\r\n</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='gvar'>$infomon_debug</span>
@@ -598,7 +629,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the queue for update requests.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns the thread-safe queue for spell update requests.</p>
+<p>Lazily initializes and caches a single Queue.</p>
 
   </div>
 </div>
@@ -615,7 +651,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the queue of update requests</p></div>
+        <div class='inline'><p>the queue where .request_update posts timestamps</p></div>
       
     </li>
   
@@ -627,12 +663,12 @@
       <pre class="lines">
 
 
-190
-191
-192</pre>
+237
+238
+239</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 190</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 237</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_queue'>queue</span>
   <span class='ivar'>@queue</span> <span class='op'>||=</span> <span class='const'>Queue</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
@@ -653,7 +689,9 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Requests an update for spell durations.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Queues a request for spell durations to be refreshed.</p>
+<p>Posts the current time to the update queue, waking the background thread
+so that .update_spell_durations runs on its next iteration.</p>
 
   </div>
 </div>
@@ -666,12 +704,12 @@
       <pre class="lines">
 
 
-184
-185
-186</pre>
+227
+228
+229</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 184</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 227</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_request_update'>request_update</span>
   <span class='id identifier rubyid_queue'>queue</span> <span class='op'>&lt;&lt;</span> <span class='const'>Time</span><span class='period'>.</span><span class='id identifier rubyid_now'>now</span>
@@ -692,7 +730,22 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Displays changes in active spell durations.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Mutates the @current_durations cache to track prior end times</p></div>
+  </div>
+
+<p class="note returns_void">This method returns an undefined value.</p><p>Compares active spell durations against the prior state and reports changes.</p>
+<p>Iterates all spell effects (spells, cooldowns, buffs, debuffs), calculates the
+time elapsed since each was last seen, and announces new spells, renewals, and
+endings in [bracket notation] to the player. Skips group effects (307, 310, 1605,
+1609, 1618, 1608) that the character does not know. On the first call, does not
+announce anything (waits for a baseline).</p>
 
   </div>
 </div>
@@ -705,44 +758,44 @@
       <pre class="lines">
 
 
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
 132
 133
-134</pre>
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 105</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 132</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_show_duration_change'>show_duration_change</span>
   <span class='id identifier rubyid_active_durations'>active_durations</span> <span class='op'>=</span> <span class='const'>Array</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
   <span class='id identifier rubyid_group_effects'>group_effects</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='int'>307</span><span class='comma'>,</span> <span class='int'>310</span><span class='comma'>,</span> <span class='int'>1605</span><span class='comma'>,</span> <span class='int'>1609</span><span class='comma'>,</span> <span class='int'>1618</span><span class='comma'>,</span> <span class='int'>1608</span><span class='rbracket'>]</span>
-  <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Spells-constant" title="Lich::Gemstone::Effects::Spells (constant)">Spells</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Cooldowns-constant" title="Lich::Gemstone::Effects::Cooldowns (constant)">Cooldowns</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Buffs-constant" title="Lich::Gemstone::Effects::Buffs (constant)">Buffs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Debuffs-constant" title="Lich::Gemstone::Effects::Debuffs (constant)">Debuffs</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_effect_type'>effect_type</span><span class='op'>|</span>
+  <span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Spells-constant" title="Lich::Gemstone::Effects::Spells (constant)">Spells</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Cooldowns-constant" title="Lich::Gemstone::Effects::Cooldowns (constant)">Cooldowns</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Buffs-constant" title="Lich::Gemstone::Effects::Buffs (constant)">Buffs</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="Effects.html" title="Lich::Gemstone::Effects (module)">Effects</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Effects.html#Debuffs-constant" title="Lich::Gemstone::Effects::Debuffs (constant)">Debuffs</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_effect_type'>effect_type</span><span class='op'>|</span>
     <span class='id identifier rubyid_active_durations'>active_durations</span> <span class='op'>+=</span> <span class='id identifier rubyid_effect_type'>effect_type</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
     <span class='id identifier rubyid_effect_type'>effect_type</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_effect'>effect</span><span class='comma'>,</span> <span class='id identifier rubyid_end_time'>end_time</span><span class='op'>|</span>
       <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_effect'>effect</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
@@ -785,7 +838,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if spell durations should be displayed.</p>
+    <p>Checks whether spell duration change notifications are enabled.</p>
 
   </div>
 </div>
@@ -802,11 +855,18 @@
       
       
         &mdash;
-        <div class='inline'><p>true if durations should be shown, false otherwise</p></div>
+        <div class='inline'><p>true if the player has enabled infomon duration display</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li>#update_spell_durations</li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -814,12 +874,12 @@
       <pre class="lines">
 
 
-26
-27
-28</pre>
+29
+30
+31</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 29</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_show_durations?'>show_durations?</span>
   <span class='const'><span class='object_link'><a href="Infomon.html" title="Lich::Gemstone::Infomon (module)">Infomon</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_bool'><span class='object_link'><a href="Infomon.html#get_bool-class_method" title="Lich::Gemstone::Infomon.get_bool (method)">get_bool</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>infomon.show_durations</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -840,7 +900,21 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates the durations of active spells based on the latest information.</p>
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p class="note returns_void">This method returns an undefined value.</p><p>Synchronizes Spell objects with the game's active spell list.</p>
+<p>Calls .get_spell_info to fetch normalized spell names and durations, then:</p>
+<ul>
+<li>marks spells in Spell.active as inactive if they no longer appear in the
+game feed (excluding Berserk, Council/Bounty spells, Briar Betrayer, and
+cooldown recovery patterns)</li>
+<li>updates the corresponding Spell object's .active and .timeleft attributes</li>
+<li>triggers a Spellsong renewal notification if a circle 10 spell is newly active</li>
+<li>calls .show_duration_change if duration display is enabled</li>
+</ul>
+<p>Rescues and logs all errors to respond() if $infomon_debug is set.</p>
 
   </div>
 </div>
@@ -853,52 +927,52 @@
       <pre class="lines">
 
 
-138
-139
-140
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
 177
 178
 179
-180</pre>
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 138</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 177</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_update_spell_durations'>update_spell_durations</span>
   <span class='kw'>begin</span>
@@ -959,7 +1033,10 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Starts a thread that watches for update requests and processes them.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Starts a background thread that listens for spell update requests.</p>
+<p>Lazily initializes and starts a thread that calls .block_until_update_requested
+in an infinite loop, then runs .update_spell_durations in response. Handles and
+logs all errors without halting the thread.</p>
 
   </div>
 </div>
@@ -972,20 +1049,20 @@
       <pre class="lines">
 
 
-204
-205
-206
-207
-208
-209
-210
-211
-212
-213
-214</pre>
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 204</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/infomon/activespell.rb', line 262</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_watch!'>watch!</span>
   <span class='ivar'>@thread</span> <span class='op'>||=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='kw'>do</span>
@@ -1008,7 +1085,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:23 2026 by
+  Generated on Wed Oct 28 05:27:17 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

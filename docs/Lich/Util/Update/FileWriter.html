@@ -86,6 +86,51 @@
   
 </div>
 
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>Atomic file writing utilities for safe, transactional updates.</p>
+<p>Provides the write-temp-then-rename pattern and SHA map building for
+detecting file changes. Methods in this module are called from the update
+system and from script initialization; script authors do not use this
+module directly.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+  
+    <h2>
+      Constant Summary
+      <small><a href="#" class="constants_summary_toggle">collapse</a></small>
+    </h2>
+
+    <dl class="constants">
+      
+        <dt id="STALE_STAGING_AGE-constant" class="">STALE_STAGING_AGE =
+          <div class="docstring">
+  <div class="discussion">
+    <p>A staging file is only left behind when its writer was hard-killed:
+SIGKILL, power loss, or a Process.exit! (which skips ensure blocks),
+such as the shutdown watchdog's forced exit when a shutdown overruns
+its deadline mid-write. One older than this is treated as such a
+leftover and removed after the next successful write of the same
+file. The age is large so that a writer stalled on a slow or hung
+drive keeps its staging file; if one is removed anyway, that
+writer's rename fails and the live file is left untouched.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>24</span> <span class='op'>*</span> <span class='int'>60</span> <span class='op'>*</span> <span class='int'>60</span></pre></dd>
+      
+    </dl>
+  
 
 
 
@@ -104,7 +149,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#build_local_sha_map-class_method" title="build_local_sha_map (class method)">.<strong>build_local_sha_map</strong>(dir, pattern = &#39;*.lic&#39;)  &#x21d2; Hash </a>
+      <a href="#build_local_sha_map-class_method" title="build_local_sha_map (class method)">.<strong>build_local_sha_map</strong>(dir, pattern = &#39;*.lic&#39;)  &#x21d2; Hash&lt;String, String&gt; </a>
     
 
     
@@ -118,7 +163,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Builds a SHA1 hash map for files in a directory matching a given pattern.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Builds filename =&gt; git-SHA map for files in directory.</p></div></span>
   
 </li>
 
@@ -140,7 +185,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Safely writes content to a file using a temporary rename-delete pattern.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Atomically replaces the file at <code>path</code> with <code>content</code>.</p></div></span>
   
 </li>
 
@@ -158,7 +203,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="build_local_sha_map-class_method">
   
-    .<strong>build_local_sha_map</strong>(dir, pattern = &#39;*.lic&#39;)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt> 
+    .<strong>build_local_sha_map</strong>(dir, pattern = &#39;*.lic&#39;)  &#x21d2; <tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt> 
   
 
   
@@ -166,21 +211,12 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Builds a SHA1 hash map for files in a directory matching a given pattern.</p>
+    <p>Builds filename =&gt; git-SHA map for files in directory.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='id identifier rubyid_sha_map'>sha_map</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../../Util.html" title="Lich::Util (module)">Util</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Update.html" title="Lich::Util::Update (module)">Update</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="" title="Lich::Util::Update::FileWriter (module)">FileWriter</a></span></span><span class='period'>.</span><span class='id identifier rubyid_build_local_sha_map'>build_local_sha_map</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/path/to/dir</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-<span class='id identifier rubyid_puts'>puts</span> <span class='id identifier rubyid_sha_map'>sha_map</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -193,7 +229,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the directory to scan for files.</p></div>
+        <div class='inline'><p>directory path</p></div>
       
     </li>
   
@@ -209,7 +245,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the pattern to match files (default is '*.lic').</p></div>
+        <div class='inline'><p>glob pattern (default: '*.lic')</p></div>
       
     </li>
   
@@ -221,12 +257,12 @@
     <li>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../../Hash.html" title="Hash (class)">Hash</a></span>&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>, <span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>a hash mapping file names to their SHA1 hashes.</p></div>
+        <div class='inline'><p>filename =&gt; SHA1 hash</p></div>
       
     </li>
   
@@ -238,15 +274,15 @@
       <pre class="lines">
 
 
-46
-47
-48
-49
-50
-51</pre>
+198
+199
+200
+201
+202
+203</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_writer.rb', line 46</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_writer.rb', line 198</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_build_local_sha_map'>build_local_sha_map</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_pattern'>pattern</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>*.lic</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='const'>Dir</span><span class='lbracket'>[</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span><span class='comma'>,</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='rparen'>)</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_each_with_object'>each_with_object</span><span class='lparen'>(</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_map'>map</span><span class='op'>|</span>
@@ -270,7 +306,29 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Safely writes content to a file using a temporary rename-delete pattern.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Atomically replaces the file at <code>path</code> with <code>content</code>.</p>
+<p>The content is written to a temporary file in the same directory
+and then renamed over <code>path</code>. The live file is never moved away,
+so a reader (for example a script start resolving the name) sees
+either the old content or the new content, never a missing file.
+File.rename replaces an existing destination on POSIX (rename(2))
+and on Windows (MoveFileExW with MOVEFILE_REPLACE_EXISTING).</p>
+<p>The temporary name carries the process and thread so two writers of
+the same file (two sessions sharing a scripts directory, or a manual
+sync during the login sync) never share one. It ends in <code>.tmp</code>, so
+neither the script resolver nor any sync SHA glob (+*.lic+,
+<code>*.yaml</code>, <code>*.xml</code>) ever matches it.</p>
+<p>The temporary file is removed however safe_write exits: an
+exception, a Thread#kill, or the process exiting while the
+background login sync is mid-write. Only a hard kill (SIGKILL,
+power loss, or a Process.exit! such as the shutdown watchdog's
+forced exit) can leave one; see STALE_STAGING_AGE.</p>
+<p>After a successful write, leftovers beside <code>path</code> are removed (best
+effort): a <code>.old</code> left by an older version (unless it holds exactly
+<code>content</code>), and a <code>.tmp</code> left by an older version or a staging file
+of this name, once either is older than STALE_STAGING_AGE. If the
+file system kept an existing name that differs from +path+'s only in
+case, the file is renamed to +path+'s exact name.</p>
 
   </div>
 </div>
@@ -288,7 +346,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the path to the file to write.</p></div>
+        <div class='inline'><p>target file path</p></div>
       
     </li>
   
@@ -302,7 +360,7 @@
       
       
         &mdash;
-        <div class='inline'><p>the content to write to the file.</p></div>
+        <div class='inline'><p>file content to write</p></div>
       
     </li>
   
@@ -319,7 +377,10 @@
       
       
         &mdash;
-        <div class='inline'><p>if the write operation fails.</p></div>
+        <div class='inline'><p>if the write or rename fails; <code>path</code> is left
+untouched and the temporary file is removed. Nothing else is
+touched either: a <code>.old</code> left by an interrupted older update is
+not renamed back, even when <code>path</code> is missing.</p></div>
       
     </li>
   
@@ -331,37 +392,39 @@
       <pre class="lines">
 
 
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36</pre>
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/update/file_writer.rb', line 23</span>
+      <pre class="code"><span class="info file"># File 'documented/common/update/file_writer.rb', line 68</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_safe_write'>safe_write</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_content'>content</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_tmp'>tmp</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'>.tmp</span><span class='tstring_end'>&quot;</span></span>
-  <span class='id identifier rubyid_old'>old</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'>.old</span><span class='tstring_end'>&quot;</span></span>
-  <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_rename'>rename</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_old'>old</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_tmp'>tmp</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_path'>path</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='embexpr_beg'>#{</span><span class='const'>Process</span><span class='period'>.</span><span class='id identifier rubyid_pid'>pid</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='embexpr_beg'>#{</span><span class='const'>Thread</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_object_id'>object_id</span><span class='embexpr_end'>}</span><span class='tstring_content'>.tmp</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>begin</span>
     <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_binwrite'>binwrite</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='comma'>,</span> <span class='id identifier rubyid_content'>content</span><span class='rparen'>)</span>
     <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_rename'>rename</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
-  <span class='kw'>rescue</span> <span class='const'>StandardError</span>
-    <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_rename'>rename</span><span class='lparen'>(</span><span class='id identifier rubyid_old'>old</span><span class='comma'>,</span> <span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_old'>old</span><span class='rparen'>)</span>
-    <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_raise'>raise</span>
+  <span class='kw'>ensure</span>
+    <span class='comment'># After a successful rename the staging file no longer exists.
+</span>    <span class='kw'>begin</span>
+      <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_tmp'>tmp</span><span class='rparen'>)</span>
+    <span class='kw'>rescue</span> <span class='const'>StandardError</span>
+      <span class='kw'>nil</span> <span class='comment'># the write error, if any, is the one worth reporting
+</span>    <span class='kw'>end</span>
   <span class='kw'>end</span>
-  <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_old'>old</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_exist?'>exist?</span><span class='lparen'>(</span><span class='id identifier rubyid_old'>old</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_remove_leftovers'>remove_leftovers</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='comma'>,</span> <span class='id identifier rubyid_content'>content</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -373,7 +436,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:21 2026 by
+  Generated on Wed Oct 28 05:27:15 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

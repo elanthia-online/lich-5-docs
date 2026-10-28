@@ -88,10 +88,13 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Parses server output from DragonRealms and updates game state objects.</p>
-<p>Handles inventory scrapes, skill experience, spell/ability discovery, account
-info, room contents, and game shutdown announcements. Routes parsed data to
-DRStats, DRSkill, DRSpells, DRRoom, GameObj, and related game-state models.</p>
+    <p>Parser for DragonRealms server output.</p>
+<p>Processes each line of server output to extract and update game state: character stats (DRStats),
+skills and experience (DRSkill), inventory (GameObj), room contents (DRRoom), known spells/abilities
+(DRSpells), and special events like scheduled maintenance shutdowns.</p>
+<p>Patterns are matched against normalized lines (<span class='object_link'><a href="#match_line-class_method" title="Lich::DragonRealms::DRParser.match_line (method)">DRParser.match_line</a></span>) where object links are removed and
+doubled bold tags are collapsed to the legacy stream format that all scripts expect. The inline
+experience formatter (<span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span>) is the only consumer that rewrites server_line itself.</p>
 
   </div>
 </div>
@@ -101,7 +104,17 @@ DRStats, DRSkill, DRSpells, DRRoom, GameObj, and related game-state models.</p>
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></li>
+      <li><span class='object_link'><a href="#parse-class_method" title="Lich::DragonRealms::DRParser.parse (method)">DRParser.parse</a></span></li>
+    
+      <li><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></li>
+    
+      <li><span class='object_link'><a href="DRSkill.html" title="Lich::DragonRealms::DRSkill (class)">DRSkill</a></span></li>
+    
+      <li>GameObj</li>
+    
+      <li><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></li>
+    
+      <li><span class='object_link'><a href="DRSpells.html" title="Lich::DragonRealms::DRSpells (module)">DRSpells</a></span></li>
     
   </ul>
 
@@ -125,6 +138,118 @@ DRStats, DRSkill, DRSpells, DRRoom, GameObj, and related game-state models.</p>
     </h2>
 
     <dl class="constants">
+      
+        <dt id="LINK_TAG-constant" class="">LINK_TAG =
+          <div class="docstring">
+  <div class="discussion">
+    <p>The Saga-identity stream wraps names in object links
+(<a exist="-10700002" noun="Aldric">Aldric</a>) and currently sends the
+bold around linked creatures doubled (<pushBold/><pushBold/>a &lt;a ...&gt;
+leopard</a><popBold/><popBold/>); a single bold works too. The legacy
+stream sends neither, so every DRParser pattern, every drdefs room helper
+and every script Flag was written against link-free, single-bold text.
+<span class='object_link'><a href="#match_line-class_method" title="Lich::DragonRealms::DRParser.match_line (method)">match_line</a></span> restores that shape.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>&lt;/?a\b[^&gt;]*&gt;</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="PUSH_BOLD_RUN-constant" class="">PUSH_BOLD_RUN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches two or more consecutive <pushBold/> tags.</p>
+<p>The Saga-identity stream sometimes doubles bold markup around linked creatures and room features.
+This pattern detects and normalizes them back to a single tag for consistency with the legacy stream.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;pushBold/&gt;&lt;pushBold/&gt;text&lt;popBold/&gt;&lt;popBold/&gt;</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='const'>PUSH_BOLD_RUN</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;&lt;pushBold/&gt;text&lt;popBold/&gt;&lt;popBold/&gt;&quot;</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#POP_BOLD_RUN-constant" title="Lich::DragonRealms::DRParser::POP_BOLD_RUN (constant)">POP_BOLD_RUN</a></span></li>
+    
+      <li><span class='object_link'><a href="#match_line-class_method" title="Lich::DragonRealms::DRParser.match_line (method)">match_line</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>(?:&lt;pushBold/&gt;){2,}</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="POP_BOLD_RUN-constant" class="">POP_BOLD_RUN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches two or more consecutive <popBold/> tags.</p>
+<p>The Saga-identity stream sometimes doubles bold markup around linked creatures and room features.
+This pattern detects and normalizes them back to a single tag for consistency with the legacy stream.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>&lt;pushBold/&gt;&lt;pushBold/&gt;text&lt;popBold/&gt;&lt;popBold/&gt;</span><span class='tstring_end'>&quot;</span></span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='const'>POP_BOLD_RUN</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;popBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;&lt;pushBold/&gt;text&lt;popBold/&gt;&quot;</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#PUSH_BOLD_RUN-constant" title="Lich::DragonRealms::DRParser::PUSH_BOLD_RUN (constant)">PUSH_BOLD_RUN</a></span></li>
+    
+      <li><span class='object_link'><a href="#match_line-class_method" title="Lich::DragonRealms::DRParser.match_line (method)">match_line</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>%r{</span><span class='tstring_content'>(?:&lt;popBold/&gt;){2,}</span><span class='regexp_end'>}</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="parsing_exp_mods_output-classvariable" class="">@@parsing_exp_mods_output =
           <div class="docstring">
@@ -327,7 +452,29 @@ from a shutdown announcement. nil when no shutdown is pending.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(line)  &#x21d2; void </a>
+      <a href="#match_line-class_method" title="match_line (class method)">.<strong>match_line</strong>(line)  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the line in the shape DRParser patterns and Flags expect: object links removed (their inner text kept) and doubled bold collapsed.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(server_line)  &#x21d2; void </a>
     
 
     
@@ -503,26 +650,26 @@ Updates Flags.flags hash when a pattern matches.</p>
       <pre class="lines">
 
 
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133</pre>
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 123</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 188</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_events'>check_events</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="Flags.html" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='period'>.</span><span class='id identifier rubyid_matchers'><span class='object_link'><a href="Flags.html#matchers-class_method" title="Lich::DragonRealms::Flags.matchers (method)">matchers</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_regexes'>regexes</span><span class='op'>|</span>
     <span class='id identifier rubyid_regexes'>regexes</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_regex'>regex</span><span class='op'>|</span>
       <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_matches'>matches</span> <span class='op'>=</span> <span class='id identifier rubyid_server_string'>server_string</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_regex'>regex</span><span class='rparen'>)</span><span class='rparen'>)</span>
-        <span class='const'><span class='object_link'><a href="Flags.html" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='period'>.</span><span class='id identifier rubyid_flags'><span class='object_link'><a href="Flags.html#flags-class_method" title="Lich::DragonRealms::Flags.flags (method)">flags</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_key'>key</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_matches'>matches</span>
+        <span class='const'><span class='object_link'><a href="Flags.html" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='period'>.</span><span class='id identifier rubyid_record_match'><span class='object_link'><a href="Flags.html#record_match-class_method" title="Lich::DragonRealms::Flags.record_match (method)">record_match</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_regexes'>regexes</span><span class='comma'>,</span> <span class='id identifier rubyid_matches'>matches</span><span class='rparen'>)</span>
         <span class='kw'>break</span>
       <span class='kw'>end</span>
     <span class='kw'>end</span>
@@ -593,53 +740,53 @@ Called for each line when @@parsing_exp_mods_output is true.</p>
       <pre class="lines">
 
 
-367
-368
-369
-370
-371
-372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-382
-383
-384
-385
-386
-387
-388
-389
-390
-391
-392
-393
-394
-395
-396
-397
-398
-399
-400
-401
-402
-403
-404
-405
-406
-407
-408
-409
-410</pre>
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 367</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 431</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_exp_mods'>check_exp_mods</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># This method parses the output from `exp mods` command
@@ -737,15 +884,15 @@ no number) means shutdown is now.</p>
       <pre class="lines">
 
 
-143
-144
-145
-146
-147
-148</pre>
+208
+209
+210
+211
+212
+213</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 143</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 208</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_game_shutdown'>check_game_shutdown</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#GameShutdown-constant" title="Lich::DragonRealms::DRParser::Pattern::GameShutdown (constant)">GameShutdown</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
@@ -817,50 +964,50 @@ Populates DRSpells.known_spells (abilities) and DRSpells.known_feats (masteries)
       <pre class="lines">
 
 
-519
-520
-521
-522
-523
-524
-525
-526
-527
-528
-529
-530
-531
-532
-533
-534
-535
-536
-537
-538
-539
-540
-541
-542
-543
-544
-545
-546
-547
-548
-549
-550
-551
-552
-553
-554
-555
-556
-557
-558
-559</pre>
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+605
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 519</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 583</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_known_barbarian_abilities'>check_known_barbarian_abilities</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># This method parses the output from `ability` command for Barbarians
@@ -968,70 +1115,6 @@ Handles both column-formatted and non-column output formats.</p>
       <pre class="lines">
 
 
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
-427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444
-445
-446
-447
-448
-449
-450
-451
-452
-453
-454
-455
-456
-457
-458
-459
-460
-461
-462
-463
-464
-465
-466
-467
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477
-478
-479
-480
 481
 482
 483
@@ -1064,10 +1147,74 @@ Handles both column-formatted and non-column output formats.</p>
 510
 511
 512
-513</pre>
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 417</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 481</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_known_spells'>check_known_spells</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># This method parses the output from `spells` command for magic users
@@ -1230,37 +1377,37 @@ Populates DRSpells.known_spells with known khri abilities.</p>
       <pre class="lines">
 
 
-565
-566
-567
-568
-569
-570
-571
-572
-573
-574
-575
-576
-577
-578
-579
-580
-581
-582
-583
-584
-585
-586
-587
-588
-589
-590
-591
-592</pre>
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 565</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 629</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_check_known_thief_khri'>check_known_thief_khri</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='comment'># This method parses the output from `ability` command for Thieves
@@ -1296,9 +1443,9 @@ Populates DRSpells.known_spells with known khri abilities.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="parse-class_method">
+  <h3 class="signature " id="match_line-class_method">
   
-    .<strong>parse</strong>(line)  &#x21d2; <tt>void</tt> 
+    .<strong>match_line</strong>(line)  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt> 
   
 
   
@@ -1306,8 +1453,10 @@ Populates DRSpells.known_spells with known khri abilities.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Main parser entry point. Processes a line of server output
-and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
+    <p>Returns the line in the shape DRParser patterns and Flags expect: object
+links removed (their inner text kept) and doubled bold collapsed. A line
+with neither (the whole legacy stream) is returned unchanged, as the same
+object.</p>
 
   </div>
 </div>
@@ -1318,6 +1467,83 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
     <li>
       
         <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>one server string</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+178
+179
+180
+181
+182</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 178</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_match_line'>match_line</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_line'>line</span> <span class='kw'>unless</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;/a&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+
+  <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#LINK_TAG-constant" title="Lich::DragonRealms::DRParser::LINK_TAG (constant)">LINK_TAG</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#PUSH_BOLD_RUN-constant" title="Lich::DragonRealms::DRParser::PUSH_BOLD_RUN (constant)">PUSH_BOLD_RUN</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;pushBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_gsub'>gsub</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#POP_BOLD_RUN-constant" title="Lich::DragonRealms::DRParser::POP_BOLD_RUN (constant)">POP_BOLD_RUN</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>&lt;popBold/&gt;</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="parse-class_method">
+  
+    .<strong>parse</strong>(server_line)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Main parser entry point. Processes a line of server output
+and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).
+Patterns and Flags are matched against <span class='object_link'><a href="#match_line-class_method" title="Lich::DragonRealms::DRParser.match_line (method)">match_line</a></span>; only the inline
+exp display rewrites <code>server_line</code> itself (it is what reaches the client).</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>server_line</span>
       
       
         <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
@@ -1338,72 +1564,6 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
       <pre class="lines">
 
 
-598
-599
-600
-601
-602
-603
-604
-605
-606
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618
-619
-620
-621
-622
-623
-624
-625
-626
-627
-628
-629
-630
-631
-632
-633
-634
-635
-636
-637
-638
-639
-640
-641
-642
-643
-644
-645
-646
-647
-648
-649
-650
-651
-652
-653
-654
-655
-656
-657
-658
-659
-660
-661
-662
-663
 664
 665
 666
@@ -1516,12 +1676,90 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
 773
 774
 775
-776</pre>
+776
+777
+778
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808
+809
+810
+811
+812
+813
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833
+834
+835
+836
+837
+838
+839
+840
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 598</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 664</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_server_line'>server_line</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_line'>line</span> <span class='op'>=</span> <span class='id identifier rubyid_match_line'>match_line</span><span class='lparen'>(</span><span class='id identifier rubyid_server_line'>server_line</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_check_events'>check_events</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>begin</span>
     <span class='id identifier rubyid_check_game_shutdown'>check_game_shutdown</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
@@ -1551,7 +1789,7 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
       <span class='const'><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></span><span class='period'>.</span><span class='id identifier rubyid_encumbrance'><span class='object_link'><a href="DRStats.html#encumbrance-class_method" title="Lich::DragonRealms::DRStats.encumbrance (method)">encumbrance</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:encumbrance</span><span class='rbracket'>]</span>
     <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#LuckValue-constant" title="Lich::DragonRealms::DRParser::Pattern::LuckValue (constant)">LuckValue</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
       <span class='const'><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></span><span class='period'>.</span><span class='id identifier rubyid_luck'><span class='object_link'><a href="DRStats.html#luck-class_method" title="Lich::DragonRealms::DRStats.luck (method)">luck</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:luck</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
-    <span class='kw'>elsif</span> <span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#StatValue-constant" title="Lich::DragonRealms::DRParser::Pattern::StatValue (constant)">StatValue</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+    <span class='kw'>elsif</span> <span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#StatLine-constant" title="Lich::DragonRealms::DRParser::Pattern::StatLine (constant)">StatLine</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
       <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#StatValue-constant" title="Lich::DragonRealms::DRParser::Pattern::StatValue (constant)">StatValue</a></span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_stat'>stat</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span>
         <span class='const'><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></span><span class='period'>.</span><span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_stat'>stat</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='embexpr_end'>}</span><span class='tstring_content'>=</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rparen'>)</span>
       <span class='kw'>end</span>
@@ -1591,21 +1829,26 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
       <span class='id identifier rubyid_percent'>percent</span>  <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:percent</span><span class='rbracket'>]</span>
       <span class='const'><span class='object_link'><a href="DRSkill.html" title="Lich::DragonRealms::DRSkill (class)">DRSkill</a></span></span><span class='period'>.</span><span class='id identifier rubyid_update'><span class='object_link'><a href="DRSkill.html#update-class_method" title="Lich::DragonRealms::DRSkill.update (method)">update</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_skill'>skill</span><span class='comma'>,</span> <span class='id identifier rubyid_rank'>rank</span><span class='comma'>,</span> <span class='id identifier rubyid_rate'>rate</span><span class='comma'>,</span> <span class='id identifier rubyid_percent'>percent</span><span class='rparen'>)</span>
 
-      <span class='comment'># Inline display of cumulative gained experience (from DRExpMonitor)
+      <span class='comment'># Inline display of cumulative gained experience (from DRExpMonitor).
+</span>      <span class='comment'># The formatters edit server_line, the string the client receives,
+</span>      <span class='comment'># not the normalized copy. No captured exp component, in either
+</span>      <span class='comment'># dialect, carries a link or doubled bold, so match_line returns
+</span>      <span class='comment'># server_line itself for them; editing server_line keeps the client&#39;s
+</span>      <span class='comment'># line right if one ever did.
 </span>      <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_inline_display?'><span class='object_link'><a href="DRExpMonitor.html#inline_display%3F-class_method" title="Lich::DragonRealms::DRExpMonitor.inline_display? (method)">inline_display?</a></span></span>
         <span class='kw'>if</span> <span class='id identifier rubyid_rate_raw'>rate_raw</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span> <span class='op'>&gt;</span> <span class='int'>0</span>
           <span class='comment'># BRIEFEXP ON format (rate is numeric)
-</span>          <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_replace'>replace</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_format_briefexp_on'><span class='object_link'><a href="DRExpMonitor.html#format_briefexp_on-class_method" title="Lich::DragonRealms::DRExpMonitor.format_briefexp_on (method)">format_briefexp_on</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span><span class='rparen'>)</span><span class='rparen'>)</span>
+</span>          <span class='id identifier rubyid_server_line'>server_line</span><span class='period'>.</span><span class='id identifier rubyid_replace'>replace</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_format_briefexp_on'><span class='object_link'><a href="DRExpMonitor.html#format_briefexp_on-class_method" title="Lich::DragonRealms::DRExpMonitor.format_briefexp_on (method)">format_briefexp_on</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_server_line'>server_line</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span><span class='rparen'>)</span><span class='rparen'>)</span>
         <span class='kw'>else</span>
           <span class='comment'># BRIEFEXP OFF format (rate is word like &quot;learning&quot;, &quot;pondering&quot;)
-</span>          <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_replace'>replace</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_format_briefexp_off'><span class='object_link'><a href="DRExpMonitor.html#format_briefexp_off-class_method" title="Lich::DragonRealms::DRExpMonitor.format_briefexp_off (method)">format_briefexp_off</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span><span class='comma'>,</span> <span class='id identifier rubyid_rate_raw'>rate_raw</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span>
+</span>          <span class='id identifier rubyid_server_line'>server_line</span><span class='period'>.</span><span class='id identifier rubyid_replace'>replace</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRExpMonitor.html" title="Lich::DragonRealms::DRExpMonitor (module)">DRExpMonitor</a></span></span><span class='period'>.</span><span class='id identifier rubyid_format_briefexp_off'><span class='object_link'><a href="DRExpMonitor.html#format_briefexp_off-class_method" title="Lich::DragonRealms::DRExpMonitor.format_briefexp_off (method)">format_briefexp_off</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_server_line'>server_line</span><span class='comma'>,</span> <span class='id identifier rubyid_skill'>skill</span><span class='comma'>,</span> <span class='id identifier rubyid_rate_raw'>rate_raw</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span><span class='rparen'>)</span>
         <span class='kw'>end</span>
       <span class='kw'>end</span>
     <span class='kw'>elsif</span> <span class='lparen'>(</span><span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#ExpClearMindstate-constant" title="Lich::DragonRealms::DRParser::Pattern::ExpClearMindstate (constant)">ExpClearMindstate</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span>
       <span class='id identifier rubyid_skill'>skill</span> <span class='op'>=</span> <span class='id identifier rubyid_match'><span class='object_link'><a href="../../top-level-namespace.html#match-instance_method" title="#match (method)">match</a></span></span><span class='lbracket'>[</span><span class='symbol'>:skill</span><span class='rbracket'>]</span>
       <span class='const'><span class='object_link'><a href="DRSkill.html" title="Lich::DragonRealms::DRSkill (class)">DRSkill</a></span></span><span class='period'>.</span><span class='id identifier rubyid_clear_mind'><span class='object_link'><a href="DRSkill.html#clear_mind-class_method" title="Lich::DragonRealms::DRSkill.clear_mind (method)">clear_mind</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_skill'>skill</span><span class='rparen'>)</span>
-    <span class='kw'>elsif</span> <span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#ExpColumns-constant" title="Lich::DragonRealms::DRParser::Pattern::ExpColumns (constant)">ExpColumns</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#ExpColumns-constant" title="Lich::DragonRealms::DRParser::Pattern::ExpColumns (constant)">ExpColumns</a></span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_skill_value'>skill_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rank_value'>rank_value</span><span class='comma'>,</span> <span class='id identifier rubyid_percent_value'>percent_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rate_as_word'>rate_as_word</span><span class='op'>|</span>
+    <span class='kw'>elsif</span> <span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#ExpColumnsLine-constant" title="Lich::DragonRealms::DRParser::Pattern::ExpColumnsLine (constant)">ExpColumnsLine</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='lparen'>(</span><span class='id identifier rubyid_columns'>columns</span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_scan'>scan</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html" title="Lich::DragonRealms::DRParser::Pattern (module)">Pattern</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRParser/Pattern.html#ExpColumns-constant" title="Lich::DragonRealms::DRParser::Pattern::ExpColumns (constant)">ExpColumns</a></span></span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+      <span class='id identifier rubyid_columns'>columns</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_skill_value'>skill_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rank_value'>rank_value</span><span class='comma'>,</span> <span class='id identifier rubyid_percent_value'>percent_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rate_as_word'>rate_as_word</span><span class='op'>|</span>
         <span class='id identifier rubyid_rate_as_number'>rate_as_number</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../DragonRealms.html#DR_LEARNING_RATES-constant" title="Lich::DragonRealms::DR_LEARNING_RATES (constant)">DR_LEARNING_RATES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='id identifier rubyid_rate_as_word'>rate_as_word</span><span class='rparen'>)</span> <span class='comment'># convert word to number
 </span>        <span class='const'><span class='object_link'><a href="DRSkill.html" title="Lich::DragonRealms::DRSkill (class)">DRSkill</a></span></span><span class='period'>.</span><span class='id identifier rubyid_update'><span class='object_link'><a href="DRSkill.html#update-class_method" title="Lich::DragonRealms::DRSkill.update (method)">update</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_skill_value'>skill_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rank_value'>rank_value</span><span class='comma'>,</span> <span class='id identifier rubyid_rate_as_number'>rate_as_number</span><span class='comma'>,</span> <span class='id identifier rubyid_percent_value'>percent_value</span><span class='rparen'>)</span>
       <span class='kw'>end</span>
@@ -1694,10 +1937,15 @@ and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).</p>
     <span class='comment'># Parse bank transactions passively
 </span>    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../DragonRealms.html" title="Lich::DragonRealms (module)">DragonRealms</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="DRBanking.html" title="Lich::DragonRealms::DRBanking (module)">DRBanking</a></span></span><span class='period'>.</span><span class='id identifier rubyid_parse'><span class='object_link'><a href="DRBanking.html#parse-class_method" title="Lich::DragonRealms::DRBanking.parse (method)">parse</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+    <span class='comment'># Report the line as the server sent it (Saga markup is the likeliest
+</span>    <span class='comment'># cause), plus the copy the patterns saw when normalization changed it.
+</span>    <span class='id identifier rubyid_normalized'>normalized</span> <span class='op'>=</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_equal?'>equal?</span><span class='lparen'>(</span><span class='id identifier rubyid_server_line'>server_line</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='kw'>nil</span> <span class='op'>:</span> <span class='id identifier rubyid_line'>line</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRParser: error in parse: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRParser: line: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_line'>line</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRParser: line: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_server_line'>server_line</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRParser: matched as: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_normalized'>normalized</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_normalized'>normalized</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: DRParser.parse: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n\t</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_backtrace'>backtrace</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\n\t</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
-    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: line: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_line'>line</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n\t</span><span class='tstring_end'>&quot;</span></span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: line: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_server_line'>server_line</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n\t</span><span class='tstring_end'>&quot;</span></span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: matched as: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_normalized'>normalized</span><span class='embexpr_end'>}</span><span class='tstring_content'>\n\t</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id identifier rubyid_normalized'>normalized</span>
   <span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1764,70 +2012,6 @@ Called for each line when @@parsing_inventory_get is true.</p>
       <pre class="lines">
 
 
-246
-247
-248
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296
-297
-298
-299
-300
-301
-302
-303
-304
-305
-306
-307
-308
-309
 310
 311
 312
@@ -1865,10 +2049,74 @@ Called for each line when @@parsing_inventory_get is true.</p>
 344
 345
 346
-347</pre>
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 246</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 310</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_populate_inventory_get'>populate_inventory_get</span><span class='lparen'>(</span><span class='id identifier rubyid_server_string'>server_string</span><span class='rparen'>)</span>
   <span class='kw'>case</span> <span class='id identifier rubyid_server_string'>server_string</span>
@@ -2015,14 +2263,14 @@ time (never negative). nil when no shutdown is pending.</p>
       <pre class="lines">
 
 
-158
-159
-160
-161
-162</pre>
+223
+224
+225
+226
+227</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 158</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 223</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_shutdown_minutes'>shutdown_minutes</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='cvar'>@@shutdown_at</span>
@@ -2074,12 +2322,12 @@ time (never negative). nil when no shutdown is pending.</p>
       <pre class="lines">
 
 
-151
-152
-153</pre>
+216
+217
+218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 151</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 216</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_shutting_down?'>shutting_down?</span>
   <span class='op'>!</span><span class='cvar'>@@shutdown_at</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -2117,16 +2365,16 @@ never wipes unrelated inventory.</p>
       <pre class="lines">
 
 
-355
-356
-357
-358
-359
-360
-361</pre>
+419
+420
+421
+422
+423
+424
+425</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 355</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drparser.rb', line 419</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_store_inv_item'>store_inv_item</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_noun'>noun</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='id identifier rubyid_before'>before</span><span class='comma'>,</span> <span class='id identifier rubyid_after'>after</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='cvar'>@@inventory_partial</span>
@@ -2145,7 +2393,7 @@ never wipes unrelated inventory.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:25 2026 by
+  Generated on Wed Oct 28 05:27:18 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

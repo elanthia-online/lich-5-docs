@@ -88,14 +88,26 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>DragonRealms Common Travel: utilities for navigation, merchant interactions, and room finding.</p>
-<p>Provides methods for walking between rooms, buying/selling/asking merchants, disposing items,
-and locating empty rooms suitable for spellcasting or hunting.</p>
+    <p>Common travel utilities for DragonRealms scripts.</p>
+<p>Provides methods to navigate between rooms, visit merchants to buy and sell
+items, and search for empty rooms. All navigation is performed via the go2
+script using the map.</p>
 
   </div>
 </div>
 <div class="tags">
   
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#walk_to-class_method" title="Lich::DragonRealms::DRCT.walk_to (method)">DRCT.walk_to</a></span></li>
+    
+      <li><span class='object_link'><a href="#buy_item-class_method" title="Lich::DragonRealms::DRCT.buy_item (method)">DRCT.buy_item</a></span></li>
+    
+      <li><span class='object_link'><a href="#sell_item-class_method" title="Lich::DragonRealms::DRCT.sell_item (method)">DRCT.sell_item</a></span></li>
+    
+  </ul>
 
 </div>
   
@@ -170,9 +182,10 @@ Note: With frozen_string_literal: true, string literals are already frozen</p>
         <dt id="BUY_PRICE_PATTERNS-constant" class="">BUY_PRICE_PATTERNS =
           <div class="docstring">
   <div class="discussion">
-    <p>Patterns matching merchant price quotes in response to a BUY request.</p>
-<p>Extracted named capture group 'amount' contains the numeric price in kronars, lirums, or dokoras.
-Each pattern accounts for merchant personality variation across GemStone and DragonRealms towns.</p>
+    <p>Patterns that match merchant responses containing the price for a buy offer.</p>
+<p>Each pattern includes a named capture group <code>amount</code> that extracts the price
+in the merchant's text. The amount may be numeric or spelled out (e.g.,
+&quot;100&quot; or &quot;one hundred&quot;).</p>
 
   </div>
 </div>
@@ -182,10 +195,7 @@ Each pattern accounts for merchant personality variation across GemStone and Dra
     <h4 class="tag_title">Examples:</h4>
     
       
-        <h5 class="example_title"><div class='inline'><p>Merchant quote matching</p></div></h5>
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>prepared to offer it to you for 500 kronars</span><span class='tstring_end'>&quot;</span></span> <span class='comment'>#=&gt; captures amount: &quot;500&quot;
-</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Cost you just 250 lirums?, okie dokie?</span><span class='tstring_end'>&quot;</span></span> <span class='comment'>#=&gt; captures amount: &quot;250&quot;</span></code></pre>
+      <pre class="example code"><code>&quot;I&#39;ll give that to you for 1000 kronars&quot; matches, captures amount: &quot;1000&quot;</code></pre>
     
   </div>
 
@@ -193,7 +203,7 @@ Each pattern accounts for merchant personality variation across GemStone and Dra
   <p class="tag_title">See Also:</p>
   <ul class="see">
     
-      <li><span class='object_link'>#buy_item</span></li>
+      <li><span class='object_link'><a href="#buy_item-class_method" title="Lich::DragonRealms::DRCT.buy_item (method)">buy_item</a></span></li>
     
   </ul>
 
@@ -292,6 +302,39 @@ game server connection is lost or go2 repeatedly fails.</p>
         </dt>
         <dd><pre class="code"><span class='int'>3</span></pre></dd>
       
+        <dt id="WALK_TO_UNRESOLVED_WAIT-constant" class="">WALK_TO_UNRESOLVED_WAIT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Seconds walk_to waits for Room.current to resolve a room it could not
+resolve at first, before treating the room as unresolved. This also
+bounds how fast a caller that loops on walk_to without checking the
+result retries from such a room.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>1</span></pre></dd>
+      
+        <dt id="MAX_UNREACHABLE_SEARCHES-constant" class="">MAX_UNREACHABLE_SEARCHES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>find_empty_room gives up after this many searches in a row in which
+walk_to reached none of the search rooms. Searches that reach a room
+but find it occupied are not counted: those wait for max_search_attempts.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>3</span></pre></dd>
+      
     </dl>
   
 
@@ -370,7 +413,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Discards an item by walking to a trash room and disposing of it in a trashcan.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Discards an item in a trash room or worn container.</p></div></span>
   
 </li>
 
@@ -392,7 +435,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Searches for a suitable room (empty or matching a condition) across multiple locations.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds and navigates to an empty room suitable for casting or resting.</p></div></span>
   
 </li>
 
@@ -414,7 +457,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Finds an empty room by searching destinations sorted by shortest path distance.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds an empty room after sorting the search list by distance from the current room.</p></div></span>
   
 </li>
 
@@ -436,7 +479,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the room id of a target location (e.g. &quot;bank&quot;, &quot;healer&quot;) in a specific hometown.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Looks up a room id for a location within a hometown.</p></div></span>
   
 </li>
 
@@ -480,7 +523,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Buys lockpicks from the locksmith in a hometown and stores them in a container.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Buys lockpicks and stores them in a container at the locksmith.</p></div></span>
   
 </li>
 
@@ -502,7 +545,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retreats from combat if there are non-ignored NPCs in the room.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calls DRC.retreat if there are unignored NPCs in the current room.</p></div></span>
   
 </li>
 
@@ -524,7 +567,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Reverses a path of compass directions into the opposite sequence.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reverses a path to travel backwards along the same route.</p></div></span>
   
 </li>
 
@@ -568,7 +611,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sorts a list of destination room ids by shortest path distance from the current room.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sorts a list of room ids by shortest path distance from the current room.</p></div></span>
   
 </li>
 
@@ -576,7 +619,7 @@ game server connection is lost or go2 repeatedly fails.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#tag_to_id-class_method" title="tag_to_id (class method)">.<strong>tag_to_id</strong>(target)  &#x21d2; Integer<sup>?</sup> </a>
+      <a href="#tag_to_id-class_method" title="tag_to_id (class method)">.<strong>tag_to_id</strong>(target)  &#x21d2; Object </a>
     
 
     
@@ -590,7 +633,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts a map tag (e.g. &quot;bank&quot;, &quot;healer&quot;) to the room id of the closest reachable room with that tag.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>The id of the nearest room tagged <code>target</code>, measured from the room Room.current resolves, or nil (with a message) when there is none or the current room is still unresolved after walk_to_current_room's wait.</p></div></span>
   
 </li>
 
@@ -612,7 +655,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Computes the shortest number of moves required to travel between two rooms.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the shortest path distance in moves from origin to destination.</p></div></span>
   
 </li>
 
@@ -662,6 +705,7 @@ game server connection is lost or go2 repeatedly fails.</p>
   <div class="discussion">
     <p>Visit a merchant and ask for an item.
 Usually this is for bundling ropes or gem pouches.</p>
+<p>Returns false without asking when the walk to <code>room</code> fails.</p>
 
   </div>
 </div>
@@ -687,22 +731,22 @@ Usually this is for bundling ropes or gem pouches.</p>
       <pre class="lines">
 
 
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135</pre>
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 126</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 141</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_ask_for_item?'>ask_for_item?</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_walk_to_merchant'>walk_to_merchant</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>asking </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 
   <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ask </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'> for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#ASK_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCT::ASK_SUCCESS_PATTERNS (constant)">ASK_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#ASK_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::ASK_FAILURE_PATTERNS (constant)">ASK_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
   <span class='kw'>when</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#ASK_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCT::ASK_SUCCESS_PATTERNS (constant)">ASK_SUCCESS_PATTERNS</a></span></span>
@@ -729,6 +773,8 @@ Usually this is for bundling ropes or gem pouches.</p>
   <div class="discussion">
     <p>Visit a merchant and buy an item by offering their asking price.
 Usually for restocking ammunition or other misc items.</p>
+<p>Returns nil without buying when the walk to <code>room</code> fails, so nothing
+is bought from whichever merchant stands in another room.</p>
 
   </div>
 </div>
@@ -741,23 +787,23 @@ Usually for restocking ammunition or other misc items.</p>
       <pre class="lines">
 
 
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122</pre>
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 112</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 125</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_buy_item'>buy_item</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_walk_to_merchant'>walk_to_merchant</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>buying </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 
   <span class='id identifier rubyid_all_patterns'>all_patterns</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#BUY_PRICE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::BUY_PRICE_PATTERNS (constant)">BUY_PRICE_PATTERNS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#BUY_NON_PRICE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::BUY_NON_PRICE_PATTERNS (constant)">BUY_NON_PRICE_PATTERNS</a></span></span>
   <span class='id identifier rubyid_result'>result</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>buy </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='id identifier rubyid_all_patterns'>all_patterns</span><span class='rparen'>)</span>
@@ -783,23 +829,15 @@ Usually for restocking ammunition or other misc items.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Discards an item by walking to a trash room and disposing of it in a trashcan.</p>
-<p>If no trash room is provided, disposes in the current room. If a worn trashcan
-(e.g., a backpack or sack) is specified, deposits the item there instead.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Discards an item in a trash room or worn container.</p>
+<p>Walks to the trash room if provided, then calls DRCI.dispose_trash to drop or
+remove the item from a worn container. If trash_room is nil, only attempts to
+dispose via the worn container.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dispose'>dispose</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>my junk</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>4711</span><span class='rparen'>)</span>
-<span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_dispose'>dispose</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>my lockpick</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>5000</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>my lockpick container</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>on</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -807,12 +845,12 @@ Usually for restocking ammunition or other misc items.</p>
         <span class='name'>item</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the item name or pronoun (e.g. &quot;my lockpick&quot;, &quot;junk&quot;)</p></div>
+        <div class='inline'><p>the item noun or &quot;my <item>&quot;; if nil, does nothing</p></div>
       
     </li>
   
@@ -821,14 +859,14 @@ Usually for restocking ammunition or other misc items.</p>
         <span class='name'>trash_room</span>
       
       
-        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>nil</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>room id to walk to before disposing; if nil, disposes in place</p></div>
+        <div class='inline'><p>room id or map tag for the trash location</p></div>
       
     </li>
   
@@ -844,7 +882,7 @@ Usually for restocking ammunition or other misc items.</p>
       
       
         &mdash;
-        <div class='inline'><p>worn container to put item into (e.g. &quot;my backpack&quot;)</p></div>
+        <div class='inline'><p>worn container noun, e.g. &quot;my trash bag&quot;</p></div>
       
     </li>
   
@@ -860,7 +898,7 @@ Usually for restocking ammunition or other misc items.</p>
       
       
         &mdash;
-        <div class='inline'><p>preposition for inserting into the container (e.g. &quot;on&quot;, &quot;in&quot;)</p></div>
+        <div class='inline'><p>verb to remove from container, e.g. &quot;remove&quot; or &quot;open&quot;</p></div>
       
     </li>
   
@@ -873,15 +911,15 @@ Usually for restocking ammunition or other misc items.</p>
       <pre class="lines">
 
 
-159
-160
-161
-162
-163
-164</pre>
+213
+214
+215
+216
+217
+218</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 159</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 213</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_dispose'>dispose</span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='comma'>,</span> <span class='id identifier rubyid_trash_room'>trash_room</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_worn_trashcan'>worn_trashcan</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_worn_trashcan_verb'>worn_trashcan_verb</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_item'>item</span>
@@ -905,21 +943,18 @@ Usually for restocking ammunition or other misc items.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Messages are logged to indicate search attempts and outcomes.</p></div>
-  </div>
-
-<p>Searches for a suitable room (empty or matching a condition) across multiple locations.</p>
-<p>Walks through search_rooms and applies a suitability check. On each attempt, evaluates
-each room using a predicate (or the default: room is empty and contains no non-grouped PCs).
-If min_mana &gt; 0 and not a Moon Mage or Trader, also checks mana percentage.</p>
-<p>If no suitable room is found on an attempt, walks to idle_room (or a random one if it's
-an Array), pauses 20-40 seconds, and retries up to max_search_attempts times.</p>
-<p>With prioritize_buddies=true, prefers rooms containing friends (UserVars.friends) over
-empty rooms on the first pass.</p>
-<p>Returns true immediately when a suitable room is found. Returns false if all attempts exhaust.</p>
+    <p>Finds and navigates to an empty room suitable for casting or resting.</p>
+<p>Searches a list of rooms for one that is empty (no non-grouped players),
+optionally meets a custom predicate, and has sufficient mana if required.
+If no suitable room is found, waits at the idle room and retries. Stops after
+MAX_UNREACHABLE_SEARCHES consecutive unreachable searches or when max_search_attempts
+is reached.</p>
+<p>With prioritize_buddies true, first looks for a room with a friend and no
+nemesis, running the predicate only in such rooms. On reaching the last room
+without finding a suitable buddy room, retries without the buddy pass.</p>
+<p>Mana is checked if min_mana &gt; 0 and the character is not a Moon Mage or Trader.
+If strict_mana is false (default), relaxes the mana requirement if empty rooms
+are found but none meet the mana threshold.</p>
 
   </div>
 </div>
@@ -929,278 +964,8 @@ empty rooms on the first pass.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_find_empty_room'>find_empty_room</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='int'>5000</span><span class='comma'>,</span> <span class='int'>5001</span><span class='comma'>,</span> <span class='int'>5002</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='int'>5010</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='int'>50</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='int'>5</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>search_rooms</span>
-      
-      
-        <span class='type'>(<tt>Array&lt;Integer&gt;</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>room ids to check in order</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>idle_room</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>, <tt>Array&lt;Integer&gt;</tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>room(s) to idle in between attempts; no idle if nil</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>predicate</span>
-      
-      
-        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>nil</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>custom suitability check: receives search_attempt (1-indexed) and returns Boolean</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>min_mana</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>0</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>minimum mana percentage required if mana checking is enabled (0 disables)</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>strict_mana</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>false</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>if false, allows empty rooms without mana after first pass</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>max_search_attempts</span>
-      
-      
-        <span class='type'>(<tt>Integer</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>Float::INFINITY</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>maximum search attempts before giving up</p></div>
-      
-    </li>
-  
-    <li>
-      
-        <span class='name'>prioritize_buddies</span>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>false</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'><p>on first pass, prefer rooms with friends over empty rooms</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Boolean</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>true if a suitable room was found, false otherwise</p></div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-404
-405
-406
-407
-408
-409
-410
-411
-412
-413
-414
-415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
-427
-428
-429
-430
-431
-432
-433
-434
-435
-436
-437
-438
-439
-440
-441
-442
-443
-444
-445
-446
-447
-448
-449
-450
-451
-452
-453</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 404</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_find_empty_room'>find_empty_room</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='comma'>,</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='comma'>,</span> <span class='id identifier rubyid_predicate'>predicate</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_min_mana'>min_mana</span> <span class='op'>=</span> <span class='int'>0</span><span class='comma'>,</span> <span class='id identifier rubyid_strict_mana'>strict_mana</span> <span class='op'>=</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span> <span class='op'>=</span> <span class='const'>Float</span><span class='op'>::</span><span class='const'>INFINITY</span><span class='comma'>,</span> <span class='id identifier rubyid_prioritize_buddies'>prioritize_buddies</span> <span class='op'>=</span> <span class='kw'>false</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_search_attempt'>search_attempt</span> <span class='op'>=</span> <span class='int'>0</span>
-  <span class='id identifier rubyid_check_mana'>check_mana</span> <span class='op'>=</span> <span class='id identifier rubyid_min_mana'>min_mana</span> <span class='op'>&gt;</span> <span class='int'>0</span>
-  <span class='id identifier rubyid_rooms_searched'>rooms_searched</span> <span class='op'>=</span> <span class='int'>0</span>
-  <span class='id identifier rubyid_loop'>loop</span> <span class='kw'>do</span>
-    <span class='id identifier rubyid_search_attempt'>search_attempt</span> <span class='op'>+=</span> <span class='int'>1</span>
-    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Search attempt </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_search_attempt'>search_attempt</span><span class='embexpr_end'>}</span><span class='tstring_content'> of </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span><span class='embexpr_end'>}</span><span class='tstring_content'> to find a suitable room.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_found_empty'>found_empty</span> <span class='op'>=</span> <span class='kw'>false</span>
-    <span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_room_id'>room_id</span><span class='op'>|</span>
-      <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room_id'>room_id</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span> <span class='float'>0.1</span> <span class='kw'>until</span> <span class='id identifier rubyid_room_id'>room_id</span> <span class='op'>==</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
-
-      <span class='id identifier rubyid_rooms_searched'>rooms_searched</span> <span class='op'>+=</span> <span class='int'>1</span>
-
-      <span class='kw'>if</span> <span class='id identifier rubyid_prioritize_buddies'>prioritize_buddies</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='id identifier rubyid_rooms_searched'>rooms_searched</span> <span class='op'>&lt;=</span> <span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span><span class='rparen'>)</span>
-        <span class='id identifier rubyid_suitable_room'>suitable_room</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_pcs'><span class='object_link'><a href="DRRoom.html#pcs-class_method" title="Lich::DragonRealms::DRRoom.pcs (method)">pcs</a></span></span> <span class='op'>&amp;</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_friends'>friends</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_pcs'><span class='object_link'><a href="DRRoom.html#pcs-class_method" title="Lich::DragonRealms::DRRoom.pcs (method)">pcs</a></span></span> <span class='op'>&amp;</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_hunting_nemesis'>hunting_nemesis</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_none?'>none?</span><span class='rparen'>)</span>
-        <span class='kw'>if</span> <span class='id identifier rubyid_rooms_searched'>rooms_searched</span> <span class='op'>==</span> <span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='period'>.</span><span class='id identifier rubyid_size'>size</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_pcs'><span class='object_link'><a href="DRRoom.html#pcs-class_method" title="Lich::DragonRealms::DRRoom.pcs (method)">pcs</a></span></span> <span class='op'>&amp;</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_friends'>friends</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_pcs'><span class='object_link'><a href="DRRoom.html#pcs-class_method" title="Lich::DragonRealms::DRRoom.pcs (method)">pcs</a></span></span> <span class='op'>&amp;</span> <span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_hunting_nemesis'>hunting_nemesis</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
-          <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRCT: Reached last room in list, and found no buddies. Retrying for empty room.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-          <span class='kw'>return</span> <span class='id identifier rubyid_find_empty_room'>find_empty_room</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='comma'>,</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='comma'>,</span> <span class='id identifier rubyid_predicate'>predicate</span><span class='comma'>,</span> <span class='id identifier rubyid_min_mana'>min_mana</span><span class='comma'>,</span> <span class='id identifier rubyid_strict_mana'>strict_mana</span><span class='comma'>,</span> <span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span><span class='comma'>,</span> <span class='kw'>false</span><span class='rparen'>)</span>
-        <span class='kw'>end</span>
-      <span class='kw'>else</span>
-        <span class='id identifier rubyid_suitable_room'>suitable_room</span> <span class='op'>=</span> <span class='id identifier rubyid_predicate'>predicate</span> <span class='op'>?</span> <span class='id identifier rubyid_predicate'>predicate</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_search_attempt'>search_attempt</span><span class='rparen'>)</span> <span class='op'>:</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_pcs'><span class='object_link'><a href="DRRoom.html#pcs-class_method" title="Lich::DragonRealms::DRRoom.pcs (method)">pcs</a></span></span> <span class='op'>-</span> <span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_group_members'><span class='object_link'><a href="DRRoom.html#group_members-class_method" title="Lich::DragonRealms::DRRoom.group_members (method)">group_members</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
-      <span class='kw'>end</span>
-      <span class='kw'>if</span> <span class='id identifier rubyid_suitable_room'>suitable_room</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_check_mana'>check_mana</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></span><span class='period'>.</span><span class='id identifier rubyid_moon_mage?'><span class='object_link'><a href="DRStats.html#moon_mage%3F-class_method" title="Lich::DragonRealms::DRStats.moon_mage? (method)">moon_mage?</a></span></span> <span class='op'>||</span> <span class='const'><span class='object_link'><a href="DRStats.html" title="Lich::DragonRealms::DRStats (module)">DRStats</a></span></span><span class='period'>.</span><span class='id identifier rubyid_trader?'><span class='object_link'><a href="DRStats.html#trader%3F-class_method" title="Lich::DragonRealms::DRStats.trader? (method)">trader?</a></span></span><span class='rparen'>)</span>
-        <span class='id identifier rubyid_found_empty'>found_empty</span> <span class='op'>=</span> <span class='kw'>true</span>
-        <span class='id identifier rubyid_suitable_room'>suitable_room</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRCA.html" title="Lich::DragonRealms::DRCA (module)">DRCA</a></span></span><span class='period'>.</span><span class='id identifier rubyid_perc_mana'><span class='object_link'><a href="DRCA.html#perc_mana-class_method" title="Lich::DragonRealms::DRCA.perc_mana (method)">perc_mana</a></span></span> <span class='op'>&gt;=</span> <span class='id identifier rubyid_min_mana'>min_mana</span><span class='rparen'>)</span>
-      <span class='kw'>end</span>
-      <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_suitable_room'>suitable_room</span>
-    <span class='kw'>end</span>
-
-    <span class='kw'>if</span> <span class='id identifier rubyid_found_empty'>found_empty</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_check_mana'>check_mana</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='id identifier rubyid_strict_mana'>strict_mana</span>
-      <span class='id identifier rubyid_check_mana'>check_mana</span> <span class='op'>=</span> <span class='kw'>false</span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRCT: Empty rooms found, but not with the right mana. Going to use those anyway.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-      <span class='kw'>next</span>
-    <span class='kw'>end</span>
-
-    <span class='id identifier rubyid_check_mana'>check_mana</span> <span class='op'>=</span> <span class='id identifier rubyid_min_mana'>min_mana</span> <span class='op'>&gt;</span> <span class='int'>0</span>
-
-    <span class='kw'>if</span> <span class='id identifier rubyid_idle_room'>idle_room</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_search_attempt'>search_attempt</span> <span class='op'>&lt;</span> <span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span>
-      <span class='id identifier rubyid_idle_room'>idle_room</span> <span class='op'>=</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='period'>.</span><span class='id identifier rubyid_sample'>sample</span> <span class='kw'>if</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Array</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_idle_room'>idle_room</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_wait_time'>wait_time</span> <span class='op'>=</span> <span class='id identifier rubyid_rand'>rand</span><span class='lparen'>(</span><span class='int'>20</span><span class='op'>..</span><span class='int'>40</span><span class='rparen'>)</span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Failed to find an empty room, pausing </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_wait_time'>wait_time</span><span class='embexpr_end'>}</span><span class='tstring_content'> seconds.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_pause'><span class='object_link'><a href="../../top-level-namespace.html#pause-instance_method" title="#pause (method)">pause</a></span></span> <span class='id identifier rubyid_wait_time'>wait_time</span>
-    <span class='kw'>else</span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRCT: Failed to find an empty room, stopping the search.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-      <span class='kw'>return</span> <span class='kw'>false</span>
-    <span class='kw'>end</span>
-  <span class='kw'>end</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="find_sorted_empty_room-class_method">
-  
-    .<strong>find_sorted_empty_room</strong>(search_rooms, idle_room, predicate = nil)  &#x21d2; <tt>Boolean</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    <p>Finds an empty room by searching destinations sorted by shortest path distance.</p>
-<p>Sorts search_rooms by distance from the current room using #sort_destinations,
-then searches them in that order using #find_empty_room with default parameters.</p>
-
-  </div>
-</div>
-<div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_find_sorted_empty_room'>find_sorted_empty_room</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='int'>5000</span><span class='comma'>,</span> <span class='int'>5001</span><span class='comma'>,</span> <span class='int'>5002</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='int'>5010</span><span class='rparen'>)</span></code></pre>
+      <pre class="example code"><code><span class='comment'># Search three rooms, idle at the bank, need at least 50 mana
+</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_find_empty_room'>find_empty_room</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='int'>1234</span><span class='comma'>,</span> <span class='int'>1235</span><span class='comma'>,</span> <span class='int'>1236</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bank</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='label'>min_mana:</span> <span class='int'>50</span><span class='rparen'>)</span> <span class='comment'>#=&gt; true or false</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -1225,12 +990,12 @@ then searches them in that order using #find_empty_room with default parameters.
         <span class='name'>idle_room</span>
       
       
-        <span class='type'>(<tt>Integer</tt>, <tt>Array&lt;Integer&gt;</tt>, <tt>nil</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Array&lt;Integer&gt;</tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>room(s) to idle in between search attempts</p></div>
+        <div class='inline'><p>where to wait between searches; if an Array, one is chosen randomly</p></div>
       
     </li>
   
@@ -1246,7 +1011,71 @@ then searches them in that order using #find_empty_room with default parameters.
       
       
         &mdash;
-        <div class='inline'><p>optional custom suitability check</p></div>
+        <div class='inline'><p>callable that returns truthy if the current room (and search attempt) is suitable; called with the search attempt number</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>min_mana</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>0</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>minimum mana percentage required, default 0 (no check)</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>strict_mana</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>if true, reject all empty rooms that don't meet min_mana; if false, relax mana when no strict rooms are found</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>max_search_attempts</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>Float</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>Float::INFINITY</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>maximum number of search attempts before giving up, default infinite</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>prioritize_buddies</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>false</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>if true, prioritize rooms with friends on the buddy pass</p></div>
       
     </li>
   
@@ -1263,7 +1092,7 @@ then searches them in that order using #find_empty_room with default parameters.
       
       
         &mdash;
-        <div class='inline'><p>true if an empty room was found, false otherwise</p></div>
+        <div class='inline'><p>true if a suitable room was found and occupied, false if search was abandoned</p></div>
       
     </li>
   
@@ -1275,13 +1104,118 @@ then searches them in that order using #find_empty_room with default parameters.
       <pre class="lines">
 
 
-492
-493
-494
-495</pre>
+482
+483
+484</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 492</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 482</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_find_empty_room'>find_empty_room</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='comma'>,</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='comma'>,</span> <span class='id identifier rubyid_predicate'>predicate</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id identifier rubyid_min_mana'>min_mana</span> <span class='op'>=</span> <span class='int'>0</span><span class='comma'>,</span> <span class='id identifier rubyid_strict_mana'>strict_mana</span> <span class='op'>=</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span> <span class='op'>=</span> <span class='const'>Float</span><span class='op'>::</span><span class='const'>INFINITY</span><span class='comma'>,</span> <span class='id identifier rubyid_prioritize_buddies'>prioritize_buddies</span> <span class='op'>=</span> <span class='kw'>false</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_find_empty_room_search'>find_empty_room_search</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='comma'>,</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='comma'>,</span> <span class='id identifier rubyid_predicate'>predicate</span><span class='comma'>,</span> <span class='id identifier rubyid_min_mana'>min_mana</span><span class='comma'>,</span> <span class='id identifier rubyid_strict_mana'>strict_mana</span><span class='comma'>,</span> <span class='id identifier rubyid_max_search_attempts'>max_search_attempts</span><span class='comma'>,</span> <span class='id identifier rubyid_prioritize_buddies'>prioritize_buddies</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="find_sorted_empty_room-class_method">
+  
+    .<strong>find_sorted_empty_room</strong>(search_rooms, idle_room, predicate = nil)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Finds an empty room after sorting the search list by distance from the current room.</p>
+<p>Sorts the search rooms using sort_destinations, then calls find_empty_room
+to search them in order from nearest to farthest.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>search_rooms</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;Integer, <span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>room ids to search</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>idle_room</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>Array&lt;Integer&gt;</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>where to wait between searches</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>predicate</span>
+      
+      
+        <span class='type'>(<tt>Proc</tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>callable that returns truthy if the current room is suitable</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if a suitable empty room was found, false otherwise</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+643
+644
+645
+646</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 643</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_find_sorted_empty_room'>find_sorted_empty_room</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='comma'>,</span> <span class='id identifier rubyid_idle_room'>idle_room</span><span class='comma'>,</span> <span class='id identifier rubyid_predicate'>predicate</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_sorted_rooms'>sorted_rooms</span> <span class='op'>=</span> <span class='id identifier rubyid_sort_destinations'>sort_destinations</span><span class='lparen'>(</span><span class='id identifier rubyid_search_rooms'>search_rooms</span><span class='rparen'>)</span>
@@ -1306,26 +1240,19 @@ then searches them in that order using #find_empty_room with default parameters.
     
   <div class="note notetag">
     <strong>Note:</strong>
-    <div class='inline'><p>Debug logging is controlled by the global $common_travel_debug flag.</p></div>
+    <div class='inline'><p>Mutates $common_travel_debug by reading it; consider it advisory only</p></div>
   </div>
 
-<p>Retrieves the room id of a target location (e.g. &quot;bank&quot;, &quot;healer&quot;) in a specific hometown.</p>
-<p>Looks up the target in town data for the hometown. If not found on first attempt,
-pauses 2 seconds and retries. Logs debug messages (if $common_travel_debug is true)
-on first failure, second success, and final result.</p>
+<p>Looks up a room id for a location within a hometown.</p>
+<p>Retrieves the id for a named target (e.g. 'bank', 'locksmithing') within a
+hometown from the town data. On first failure, waits 2 seconds and retries
+(to handle potential data loading delays). Logs debug messages if
+$common_travel_debug is truthy.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_get_hometown_target_id'>get_hometown_target_id</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Wehnimer&#39;s Landing</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bank</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; 5000</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1338,7 +1265,7 @@ on first failure, second success, and final result.</p>
       
       
         &mdash;
-        <div class='inline'><p>the hometown key in town data (e.g. &quot;Wehnimer's Landing&quot;, &quot;River's Rest&quot;)</p></div>
+        <div class='inline'><p>the hometown key, e.g. &quot;Wehnimer's Landing&quot;</p></div>
       
     </li>
   
@@ -1352,7 +1279,7 @@ on first failure, second success, and final result.</p>
       
       
         &mdash;
-        <div class='inline'><p>the location key (e.g. &quot;bank&quot;, &quot;healer&quot;, &quot;council&quot;)</p></div>
+        <div class='inline'><p>the target name, e.g. &quot;bank&quot; or &quot;locksmithing&quot;</p></div>
       
     </li>
   
@@ -1369,7 +1296,7 @@ on first failure, second success, and final result.</p>
       
       
         &mdash;
-        <div class='inline'><p>the room id, or nil if not found after two attempts</p></div>
+        <div class='inline'><p>the room id, or nil if not found after retry</p></div>
       
     </li>
   
@@ -1381,27 +1308,27 @@ on first failure, second success, and final result.</p>
       <pre class="lines">
 
 
-552
-553
-554
-555
-556
-557
-558
-559
-560
-561
-562
-563
-564
-565
-566
-567
-568
-569</pre>
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 552</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 700</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get_hometown_target_id'>get_hometown_target_id</span><span class='lparen'>(</span><span class='id identifier rubyid_hometown'>hometown</span><span class='comma'>,</span> <span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_hometown_data'>hometown_data</span> <span class='op'>=</span> <span class='id identifier rubyid_get_data'><span class='object_link'><a href="../../top-level-namespace.html#get_data-instance_method" title="#get_data (method)">get_data</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>town</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='id identifier rubyid_hometown'>hometown</span><span class='rbracket'>]</span>
@@ -1438,6 +1365,8 @@ on first failure, second success, and final result.</p>
 </h3><div class="docstring">
   <div class="discussion">
     <p>Visit a merchant and order from a menu.</p>
+<p>Returns nil without ordering when the walk to <code>room</code> fails: ORDER takes
+a menu number, so the same ORDER in another shop could buy another item.</p>
 
   </div>
 </div>
@@ -1450,19 +1379,19 @@ on first failure, second success, and final result.</p>
       <pre class="lines">
 
 
-138
-139
-140
-141
-142
-143
-144</pre>
+156
+157
+158
+159
+160
+161
+162</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 138</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 156</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_order_item'>order_item</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='id identifier rubyid_item_number'>item_number</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_walk_to_merchant'>walk_to_merchant</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ordering </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_number'>item_number</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>order </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item_number'>item_number</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Just order it again</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>you don\&#39;t have enough coins</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>you don\&#39;t have enough coins</span><span class='tstring_end'>&#39;</span></span>
 
@@ -1484,31 +1413,16 @@ on first failure, second success, and final result.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Logs messages if locksmith location is not found or if put-away fails.</p></div>
-  </div>
-
-<p class="note returns_void">This method returns an undefined value.</p><p>Buys lockpicks from the locksmith in a hometown and stores them in a container.</p>
-<p>Walks to the locksmith location (looked up from town data), buys the specified number
-of lockpicks of a given type, and places each into a worn container. Stops early if
-a put-away fails (e.g., due to container type mismatch). Fixes standing and exits
-the locksmith room afterward to be polite to thieves.</p>
-<p>Returns silently if count &lt; 1 or if no locksmith location is found for the hometown.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Buys lockpicks and stores them in a container at the locksmith.</p>
+<p>Walks to the locksmith location for the hometown, buys the specified number
+of lockpicks, and puts them on the given container. If the locksmith location
+is not found, the walk fails, or putting away fails, logs a message and stops.
+Exits the shop when done (if an &quot;out&quot; exit exists) to keep the room clear.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_refill_lockpick_container'>refill_lockpick_container</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>iron</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Wehnimer&#39;s Landing</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>my lockpick container</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>10</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1521,7 +1435,7 @@ the locksmith room afterward to be polite to thieves.</p>
       
       
         &mdash;
-        <div class='inline'><p>lockpick type (e.g. &quot;iron&quot;, &quot;silver&quot;)</p></div>
+        <div class='inline'><p>the lockpick type, e.g. &quot;steel&quot; or &quot;veniom&quot;</p></div>
       
     </li>
   
@@ -1535,7 +1449,7 @@ the locksmith room afterward to be polite to thieves.</p>
       
       
         &mdash;
-        <div class='inline'><p>the character's hometown (used to look up locksmith location)</p></div>
+        <div class='inline'><p>the hometown key in the town data, e.g. &quot;Wehnimer's Landing&quot;</p></div>
       
     </li>
   
@@ -1549,7 +1463,7 @@ the locksmith room afterward to be polite to thieves.</p>
       
       
         &mdash;
-        <div class='inline'><p>worn container name for storage (e.g. &quot;my lockpick container&quot;)</p></div>
+        <div class='inline'><p>the container noun, e.g. &quot;my lockpick pouch&quot;</p></div>
       
     </li>
   
@@ -1563,7 +1477,7 @@ the locksmith room afterward to be polite to thieves.</p>
       
       
         &mdash;
-        <div class='inline'><p>number of lockpicks to buy; skipped if &lt; 1</p></div>
+        <div class='inline'><p>how many lockpicks to buy and store</p></div>
       
     </li>
   
@@ -1576,37 +1490,37 @@ the locksmith room afterward to be polite to thieves.</p>
       <pre class="lines">
 
 
-183
-184
-185
-186
-187
-188
-189
-190
-191
-192
-193
-194
-195
-196
-197
-198
-199
-200
-201
-202
-203
-204
-205
-206
-207
-208
-209
-210</pre>
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 183</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 232</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_refill_lockpick_container'>refill_lockpick_container</span><span class='lparen'>(</span><span class='id identifier rubyid_lockpick_type'>lockpick_type</span><span class='comma'>,</span> <span class='id identifier rubyid_hometown'>hometown</span><span class='comma'>,</span> <span class='id identifier rubyid_container'>container</span><span class='comma'>,</span> <span class='id identifier rubyid_count'>count</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='id identifier rubyid_count'>count</span> <span class='op'>&lt;</span> <span class='int'>1</span>
@@ -1652,22 +1566,14 @@ the locksmith room afterward to be polite to thieves.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Retreats from combat if there are non-ignored NPCs in the room.</p>
-<p>Checks if the room contains any NPCs other than those in ignored_npcs.
-If so, calls DRC.retreat. Otherwise does nothing.</p>
+    <p class="note returns_void">This method returns an undefined value.</p><p>Calls DRC.retreat if there are unignored NPCs in the current room.</p>
+<p>Filters the NPCs in the room by the ignored_npcs list and only retreats
+if at least one NPC remains after filtering.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_retreat'>retreat</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Grukk</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1675,14 +1581,14 @@ If so, calls DRC.retreat. Otherwise does nothing.</p>
         <span class='name'>ignored_npcs</span>
       
       
-        <span class='type'>(<tt>Array</tt>)</span>
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>[]</tt>)</em>
       
       
         &mdash;
-        <div class='inline'><p>NPC names to exclude from retreat logic</p></div>
+        <div class='inline'><p>NPC names to ignore, default empty</p></div>
       
     </li>
   
@@ -1695,17 +1601,17 @@ If so, calls DRC.retreat. Otherwise does nothing.</p>
       <pre class="lines">
 
 
-373
-374
-375
-376
-377</pre>
+444
+445
+446
+447
+448</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 373</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 444</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_retreat'>retreat</span><span class='lparen'>(</span><span class='id identifier rubyid_ignored_npcs'>ignored_npcs</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_npcs'><span class='object_link'><a href="DRRoom.html#npcs-class_method" title="Lich::DragonRealms::DRRoom.npcs (method)">npcs</a></span></span> <span class='op'>-</span> <span class='id identifier rubyid_ignored_npcs'>ignored_npcs</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+  <span class='kw'>return</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="DRRoom.html" title="Lich::DragonRealms::DRRoom (class)">DRRoom</a></span></span><span class='period'>.</span><span class='id identifier rubyid_unignored_npcs'><span class='object_link'><a href="DRRoom.html#unignored_npcs-class_method" title="Lich::DragonRealms::DRRoom.unignored_npcs (method)">unignored_npcs</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_ignored_npcs'>ignored_npcs</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
 
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_retreat'><span class='object_link'><a href="DRC.html#retreat-class_method" title="Lich::DragonRealms::DRC.retreat (method)">retreat</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_ignored_npcs'>ignored_npcs</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
@@ -1725,16 +1631,11 @@ If so, calls DRC.retreat. Otherwise does nothing.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Direction names must be spelled out in full (e.g. &quot;northeast&quot; not &quot;ne&quot;).</p></div>
-  </div>
-
-<p>Reverses a path of compass directions into the opposite sequence.</p>
-<p>Takes an array of full direction names (e.g. [&quot;north&quot;, &quot;east&quot;, &quot;northeast&quot;])
-and returns an array of reversed directions in reverse order (e.g. [&quot;southwest&quot;, &quot;west&quot;, &quot;south&quot;]).
-Unknown directions cause a message to be logged and nil to be returned.</p>
+    <p>Reverses a path to travel backwards along the same route.</p>
+<p>Takes an array of directions and returns them in reverse order with each
+direction reversed using DIRECTION_REVERSE. Returns nil and logs an error
+if a direction has no reverse mapping (e.g. abbreviations like 'ne' instead
+of 'northeast').</p>
 
   </div>
 </div>
@@ -1744,8 +1645,7 @@ Unknown directions cause a message to be logged and nil to be returned.</p>
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_reverse_path'>reverse_path</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>north</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>east</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='comment'>#=&gt; [&quot;west&quot;, &quot;south&quot;]
-</span><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_reverse_path'>reverse_path</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>up</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='comment'>#=&gt; [&quot;down&quot;]</span></code></pre>
+      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_reverse_path'>reverse_path</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>north</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>east</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>up</span><span class='tstring_end'>&quot;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='comment'>#=&gt; [&quot;down&quot;, &quot;west&quot;, &quot;south&quot;]</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -1761,7 +1661,7 @@ Unknown directions cause a message to be logged and nil to be returned.</p>
       
       
         &mdash;
-        <div class='inline'><p>array of full direction names (e.g. &quot;northeast&quot;, &quot;up&quot;, &quot;south&quot;)</p></div>
+        <div class='inline'><p>direction names, e.g. [&quot;north&quot;, &quot;east&quot;, &quot;up&quot;]</p></div>
       
     </li>
   
@@ -1778,11 +1678,18 @@ Unknown directions cause a message to be logged and nil to be returned.</p>
       
       
         &mdash;
-        <div class='inline'><p>reversed path, or nil if an unknown direction is encountered</p></div>
+        <div class='inline'><p>the reversed directions, or nil if any direction lacks a reverse mapping</p></div>
       
     </li>
   
 </ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#DIRECTION_REVERSE-constant" title="Lich::DragonRealms::DRCT::DIRECTION_REVERSE (constant)">DIRECTION_REVERSE</a></span></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -1790,19 +1697,19 @@ Unknown directions cause a message to be logged and nil to be returned.</p>
       <pre class="lines">
 
 
-529
-530
-531
-532
-533
-534
-535
-536
-537
-538</pre>
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 529</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 678</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reverse_path'>reverse_path</span><span class='lparen'>(</span><span class='id identifier rubyid_path'>path</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_path'>path</span><span class='period'>.</span><span class='id identifier rubyid_reverse'>reverse</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_dir'>dir</span><span class='op'>|</span>
@@ -1832,6 +1739,10 @@ Unknown directions cause a message to be logged and nil to be returned.</p>
   <div class="discussion">
     <p>Visit a merchant and sell an item.
 Usually to sell junk at pawn shops.</p>
+<p>The item is referenced through <span class='object_link'><a href="DRCI.html#item_ref-class_method" title="Lich::DragonRealms::DRCI.item_ref (method)">Lich::DragonRealms::DRCI.item_ref</a></span>, like the DRCI verbs: a
+noun gets &quot;my &quot;, while &quot;my sword&quot; and &quot;#<id>&quot; are sent unchanged.</p>
+<p>Returns false without selling when the item is not in hand or the
+walk to <code>room</code> fails, so the item is never offered in another room.</p>
 
   </div>
 </div>
@@ -1844,28 +1755,26 @@ Usually to sell junk at pawn shops.</p>
       <pre class="lines">
 
 
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108</pre>
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 97</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 108</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sell_item'>sell_item</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_in_hands?'><span class='object_link'><a href="DRCI.html#in_hands%3F-class_method" title="Lich::DragonRealms::DRCI.in_hands? (method)">in_hands?</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_walk_to_merchant'>walk_to_merchant</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>selling </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 
-  <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='rparen'>)</span>
-
-  <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sell my </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_item'>item</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_SUCCESS_PATTERNS (constant)">SELL_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_FAILURE_PATTERNS (constant)">SELL_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
+  <span class='kw'>case</span> <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_bput'><span class='object_link'><a href="DRC.html#bput-class_method" title="Lich::DragonRealms::DRC.bput (method)">bput</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>sell </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="DRCI.html" title="Lich::DragonRealms::DRCI (module)">DRCI</a></span></span><span class='period'>.</span><span class='id identifier rubyid_item_ref'><span class='object_link'><a href="DRCI.html#item_ref-class_method" title="Lich::DragonRealms::DRCI.item_ref (method)">item_ref</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_item'>item</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_SUCCESS_PATTERNS (constant)">SELL_SUCCESS_PATTERNS</a></span></span><span class='comma'>,</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_FAILURE_PATTERNS (constant)">SELL_FAILURE_PATTERNS</a></span></span><span class='rparen'>)</span>
   <span class='kw'>when</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_SUCCESS_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_SUCCESS_PATTERNS (constant)">SELL_SUCCESS_PATTERNS</a></span></span>
     <span class='kw'>true</span>
   <span class='kw'>when</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SELL_FAILURE_PATTERNS-constant" title="Lich::DragonRealms::DRCT::SELL_FAILURE_PATTERNS (constant)">SELL_FAILURE_PATTERNS</a></span></span>
@@ -1888,25 +1797,16 @@ Usually to sell junk at pawn shops.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Sorts a list of destination room ids by shortest path distance from the current room.</p>
-<p>Uses Dijkstra pathfinding to compute shortest distances from the current room to all
-destinations. Unreachable rooms are filtered out. Returns the sorted list in ascending
-order of distance.</p>
-<p>If pathfinding fails or a room is unreachable, it is removed (except the current room itself,
-which is preserved even without a distance).</p>
+    <p>Sorts a list of room ids by shortest path distance from the current room.</p>
+<p>Uses dijkstra pathfinding from the current room to order the targets from
+nearest to farthest. If a room has no path or pathfinding fails, it is
+removed (except the current room itself, which is always kept). Returns the
+input list if pathfinding fails entirely.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_sort_destinations'>sort_destinations</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='int'>5000</span><span class='comma'>,</span> <span class='int'>5001</span><span class='comma'>,</span> <span class='int'>4999</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='comment'>#=&gt; [4999, 5000, 5001] (assuming those distances)</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -1919,7 +1819,7 @@ which is preserved even without a distance).</p>
       
       
         &mdash;
-        <div class='inline'><p>room ids to sort (converted to Integer)</p></div>
+        <div class='inline'><p>room ids (converted to integers)</p></div>
       
     </li>
   
@@ -1936,7 +1836,7 @@ which is preserved even without a distance).</p>
       
       
         &mdash;
-        <div class='inline'><p>target_list sorted by distance from current room (nearest first)</p></div>
+        <div class='inline'><p>sorted room ids, nearest first</p></div>
       
     </li>
   
@@ -1948,21 +1848,21 @@ which is preserved even without a distance).</p>
       <pre class="lines">
 
 
-468
-469
-470
-471
-472
-473
-474
-475
-476
-477
-478
-479</pre>
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 468</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 621</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sort_destinations'>sort_destinations</span><span class='lparen'>(</span><span class='id identifier rubyid_target_list'>target_list</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_target_list'>target_list</span> <span class='op'>=</span> <span class='id identifier rubyid_target_list'>target_list</span><span class='period'>.</span><span class='id identifier rubyid_collect'>collect</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_i</span><span class='rparen'>)</span>
@@ -1984,7 +1884,7 @@ which is preserved even without a distance).</p>
       <div class="method_details ">
   <h3 class="signature " id="tag_to_id-class_method">
   
-    .<strong>tag_to_id</strong>(target)  &#x21d2; <tt>Integer</tt><sup>?</sup> 
+    .<strong>tag_to_id</strong>(target)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1992,63 +1892,14 @@ which is preserved even without a distance).</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    
-  <div class="note notetag">
-    <strong>Note:</strong>
-    <div class='inline'><p>Messages are logged (at 'bold' level) on failure.</p></div>
-  </div>
-
-<p>Converts a map tag (e.g. &quot;bank&quot;, &quot;healer&quot;) to the room id of the closest reachable room with that tag.</p>
-<p>Uses Dijkstra pathfinding to find the shortest path from the current room to any room
-tagged with the target. If already in a room with the target tag, returns the current room.
-Returns nil if no rooms match, no path exists, or pathfinding fails.</p>
+    <p>The id of the nearest room tagged <code>target</code>, measured from the room
+Room.current resolves, or nil (with a message) when there is none or
+the current room is still unresolved after walk_to_current_room's wait.</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_tag_to_id'>tag_to_id</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>bank</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; 5000</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>target</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>a map tag such as &quot;bank&quot;, &quot;healer&quot;, &quot;council&quot;</p></div>
-      
-    </li>
-  
-</ul>
-
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Integer</tt>, <tt>nil</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>the room id of the closest tagged room, or nil if not found</p></div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -2056,44 +1907,49 @@ Returns nil if no rooms match, no path exists, or pathfinding fails.</p>
       <pre class="lines">
 
 
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362</pre>
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 331</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 398</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_tag_to_id'>tag_to_id</span><span class='lparen'>(</span><span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_start_room'>start_room</span> <span class='op'>=</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
   <span class='id identifier rubyid_target_list'>target_list</span> <span class='op'>=</span> <span class='const'>Map</span><span class='period'>.</span><span class='id identifier rubyid_rooms_by_tag'>rooms_by_tag</span><span class='lparen'>(</span><span class='id identifier rubyid_target'>target</span><span class='rparen'>)</span>
 
   <span class='kw'>if</span> <span class='id identifier rubyid_target_list'>target_list</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -2101,11 +1957,18 @@ Returns nil if no rooms match, no path exists, or pathfinding fails.</p>
     <span class='kw'>return</span> <span class='kw'>nil</span>
   <span class='kw'>end</span>
 
+  <span class='id identifier rubyid_start'>start</span> <span class='op'>=</span> <span class='id identifier rubyid_walk_to_current_room'>walk_to_current_room</span>
+  <span class='kw'>if</span> <span class='id identifier rubyid_start'>start</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+    <span class='id identifier rubyid_walk_to_unresolved_message'>walk_to_unresolved_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>cannot find the nearest room tagged &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target'>target</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39;</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>return</span> <span class='kw'>nil</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_start_room'>start_room</span> <span class='op'>=</span> <span class='id identifier rubyid_start'>start</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_target_list'>target_list</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_start_room'>start_room</span><span class='rparen'>)</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: You&#39;re already here.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='id identifier rubyid_start_room'>start_room</span>
   <span class='kw'>end</span>
-  <span class='id identifier rubyid__previous'>_previous</span><span class='comma'>,</span> <span class='id identifier rubyid_shortest_distances'>shortest_distances</span> <span class='op'>=</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_dijkstra'>dijkstra</span><span class='lparen'>(</span><span class='id identifier rubyid_target_list'>target_list</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid__previous'>_previous</span><span class='comma'>,</span> <span class='id identifier rubyid_shortest_distances'>shortest_distances</span> <span class='op'>=</span> <span class='id identifier rubyid_start'>start</span><span class='period'>.</span><span class='id identifier rubyid_dijkstra'>dijkstra</span><span class='lparen'>(</span><span class='id identifier rubyid_target_list'>target_list</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_shortest_distances'>shortest_distances</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Pathfinding failed while looking for a &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_target'>target</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; tag.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='kw'>nil</span>
@@ -2140,22 +2003,14 @@ Returns nil if no rooms match, no path exists, or pathfinding fails.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Computes the shortest number of moves required to travel between two rooms.</p>
-<p>Uses Dijkstra pathfinding from origin to destination. Returns the distance (number of moves),
-or nil if no path exists or pathfinding fails.</p>
+    <p>Returns the shortest path distance in moves from origin to destination.</p>
+<p>Uses dijkstra pathfinding to compute the minimum number of moves. Returns nil
+if pathfinding fails or no path exists.</p>
 
   </div>
 </div>
 <div class="tags">
-  
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::DragonRealms::DRCT (module)">DRCT</a></span></span><span class='period'>.</span><span class='id identifier rubyid_time_to_room'>time_to_room</span><span class='lparen'>(</span><span class='int'>5000</span><span class='comma'>,</span> <span class='int'>5001</span><span class='rparen'>)</span> <span class='comment'>#=&gt; 2</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
+  <p class="tag_title">Parameters:</p>
 <ul class="param">
   
     <li>
@@ -2177,12 +2032,12 @@ or nil if no path exists or pathfinding fails.</p>
         <span class='name'>destination</span>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>target room id</p></div>
+        <div class='inline'><p>target room id (converted to integer)</p></div>
       
     </li>
   
@@ -2199,7 +2054,7 @@ or nil if no path exists or pathfinding fails.</p>
       
       
         &mdash;
-        <div class='inline'><p>minimum number of moves to reach destination, or nil if unreachable</p></div>
+        <div class='inline'><p>the distance in moves, or nil if unreachable or pathfinding failed</p></div>
       
     </li>
   
@@ -2211,18 +2066,18 @@ or nil if no path exists or pathfinding fails.</p>
       <pre class="lines">
 
 
-507
-508
-509
-510
-511
-512
-513
-514
-515</pre>
+656
+657
+658
+659
+660
+661
+662
+663
+664</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 507</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 656</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_time_to_room'>time_to_room</span><span class='lparen'>(</span><span class='id identifier rubyid_origin'>origin</span><span class='comma'>,</span> <span class='id identifier rubyid_destination'>destination</span><span class='rparen'>)</span>
   <span class='comment'># Results are keyed by Integer room id, and dijkstra only terminates
@@ -2250,6 +2105,12 @@ or nil if no path exists or pathfinding fails.</p>
 </h3><div class="docstring">
   <div class="discussion">
     <p>Navigate to <code>target_room</code> using the go2 script.</p>
+<p>Room.current (the map's resolver, Map.current) is the only rule for
+where the character is, both for the start room and for arrival, so
+walk_to is exactly as strict as that resolver and no stricter. From a
+room it cannot resolve, even after waiting WALK_TO_UNRESOLVED_WAIT
+seconds, walk_to sends nothing and returns false; this holds for tag
+targets too (see tag_to_id).</p>
 
   </div>
 </div>
@@ -2328,68 +2189,6 @@ or nil if no path exists or pathfinding fails.</p>
       <pre class="lines">
 
 
-223
-224
-225
-226
-227
-228
-229
-230
-231
-232
-233
-234
-235
-236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247
-248
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
 285
 286
 287
@@ -2423,50 +2222,60 @@ or nil if no path exists or pathfinding fails.</p>
 315
 316
 317
-318</pre>
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 223</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/common-travel.rb', line 285</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_target_room'>target_room</span><span class='comma'>,</span> <span class='id identifier rubyid_restart_on_fail'>restart_on_fail</span> <span class='op'>=</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>retry_depth:</span> <span class='int'>0</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_target_room'>target_room</span> <span class='op'>=</span> <span class='id identifier rubyid_tag_to_id'>tag_to_id</span><span class='lparen'>(</span><span class='id identifier rubyid_target_room'>target_room</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_target_room'>target_room</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_target_room'>target_room</span><span class='period'>.</span><span class='id identifier rubyid_count'>count</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>a-zA-Z</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='op'>&gt;</span> <span class='int'>0</span>
+  <span class='id identifier rubyid_target_room'>target_room</span> <span class='op'>=</span> <span class='id identifier rubyid_tag_to_id'>tag_to_id</span><span class='lparen'>(</span><span class='id identifier rubyid_target_room'>target_room</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_map_tag?'>map_tag?</span><span class='lparen'>(</span><span class='id identifier rubyid_target_room'>target_room</span><span class='rparen'>)</span>
 
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='id identifier rubyid_target_room'>target_room</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
   <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>=</span> <span class='id identifier rubyid_target_room'>target_room</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
-  <span class='comment'># Room.current is nil when the room could not be resolved. Under Lich&#39;s
-</span>  <span class='comment'># NilClass patch nil.id yielded nil, so the comparison simply failed.
-</span>  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>==</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='op'>&amp;.</span><span class='id identifier rubyid_id'>id</span>
+  <span class='id identifier rubyid_current_id'>current_id</span> <span class='op'>=</span> <span class='id identifier rubyid_walk_to_current_room_id'>walk_to_current_room_id</span>
+  <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>==</span> <span class='id identifier rubyid_current_id'>current_id</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_walk_to_unresolved_failure'>walk_to_unresolved_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_room_num'>room_num</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_current_id'>current_id</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
 
   <span class='const'><span class='object_link'><a href="DRC.html" title="Lich::DragonRealms::DRC (module)">DRC</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fix_standing'><span class='object_link'><a href="DRC.html#fix_standing-class_method" title="Lich::DragonRealms::DRC.fix_standing (method)">fix_standing</a></span></span>
-
-  <span class='kw'>if</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='op'>&amp;.</span><span class='id identifier rubyid_id'>id</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
-    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>plain</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: In an unknown room, manually attempting to navigate to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_room_num'>room_num</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_rooms'>rooms</span> <span class='op'>=</span> <span class='const'>Map</span><span class='period'>.</span><span class='id identifier rubyid_list'>list</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_room'>room</span><span class='op'>|</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_description'>description</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_description'>room_description</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_title'>title</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span> <span class='op'>||</span> <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_length'>length</span> <span class='op'>&gt;</span> <span class='int'>1</span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRCT: Failed to find a matching room from unknown location.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
-      <span class='kw'>return</span> <span class='kw'>false</span>
-    <span class='kw'>end</span>
-    <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span>
-    <span class='kw'>return</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>==</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
-
-    <span class='kw'>if</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span><span class='lbracket'>[</span><span class='id identifier rubyid_room_num'>room_num</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rbracket'>]</span>
-      <span class='id identifier rubyid_move'><span class='object_link'><a href="../../top-level-namespace.html#move-instance_method" title="#move (method)">move</a></span></span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span><span class='lbracket'>[</span><span class='id identifier rubyid_room_num'>room_num</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rbracket'>]</span>
-      <span class='kw'>return</span> <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>==</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
-    <span class='kw'>end</span>
-    <span class='id identifier rubyid_path'>path</span> <span class='op'>=</span> <span class='const'>Map</span><span class='period'>.</span><span class='id identifier rubyid_findpath'>findpath</span><span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='comma'>,</span> <span class='const'>Map</span><span class='lbracket'>[</span><span class='id identifier rubyid_room_num'>room_num</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-    <span class='id identifier rubyid_way'>way</span> <span class='op'>=</span> <span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span><span class='lbracket'>[</span><span class='id identifier rubyid_path'>path</span><span class='period'>.</span><span class='id identifier rubyid_first'>first</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rbracket'>]</span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_way'>way</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>StringProc</span><span class='rparen'>)</span>
-      <span class='id identifier rubyid_way'>way</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span>
-    <span class='kw'>else</span>
-      <span class='id identifier rubyid_move'><span class='object_link'><a href="../../top-level-namespace.html#move-instance_method" title="#move (method)">move</a></span></span> <span class='id identifier rubyid_way'>way</span>
-    <span class='kw'>end</span>
-    <span class='kw'>if</span> <span class='id identifier rubyid_retry_depth'>retry_depth</span> <span class='op'>&gt;=</span> <span class='const'><span class='object_link'><a href="#MAX_WALK_TO_RETRIES-constant" title="Lich::DragonRealms::DRCT::MAX_WALK_TO_RETRIES (constant)">MAX_WALK_TO_RETRIES</a></span></span>
-      <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Failed to navigate from unknown room after </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_WALK_TO_RETRIES-constant" title="Lich::DragonRealms::DRCT::MAX_WALK_TO_RETRIES (constant)">MAX_WALK_TO_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> retries, giving up.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-      <span class='kw'>return</span> <span class='kw'>false</span>
-    <span class='kw'>end</span>
-    <span class='kw'>return</span> <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room_num'>room_num</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>retry_depth:</span> <span class='id identifier rubyid_retry_depth'>retry_depth</span> <span class='op'>+</span> <span class='int'>1</span><span class='rparen'>)</span>
-  <span class='kw'>end</span>
 
   <span class='id identifier rubyid_script_handle'>script_handle</span> <span class='op'>=</span> <span class='id identifier rubyid_start_script'><span class='object_link'><a href="../../top-level-namespace.html#start_script-instance_method" title="#start_script (method)">start_script</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>go2</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='id identifier rubyid_room_num'>room_num</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>force:</span> <span class='kw'>true</span><span class='rparen'>)</span>
 
@@ -2514,7 +2323,11 @@ or nil if no path exists or pathfinding fails.</p>
     <span class='const'><span class='object_link'><a href="Flags.html" title="Lich::DragonRealms::Flags (class)">Flags</a></span></span><span class='period'>.</span><span class='id identifier rubyid_delete'><span class='object_link'><a href="Flags.html#delete-class_method" title="Lich::DragonRealms::Flags.delete (method)">delete</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>travel-engaged</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
   <span class='kw'>end</span>
 
-  <span class='kw'>if</span> <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>!=</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_restart_on_fail'>restart_on_fail</span>
+  <span class='id identifier rubyid_current_id'>current_id</span> <span class='op'>=</span> <span class='id identifier rubyid_walk_to_current_room_id'>walk_to_current_room_id</span>
+  <span class='id identifier rubyid_arrived'>arrived</span> <span class='op'>=</span> <span class='id identifier rubyid_current_id'>current_id</span> <span class='op'>==</span> <span class='id identifier rubyid_room_num'>room_num</span>
+  <span class='kw'>if</span> <span class='op'>!</span><span class='id identifier rubyid_arrived'>arrived</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_restart_on_fail'>restart_on_fail</span>
+    <span class='kw'>return</span> <span class='id identifier rubyid_walk_to_unresolved_failure'>walk_to_unresolved_failure</span><span class='lparen'>(</span><span class='id identifier rubyid_room_num'>room_num</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_current_id'>current_id</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
+
     <span class='kw'>if</span> <span class='id identifier rubyid_retry_depth'>retry_depth</span> <span class='op'>&gt;=</span> <span class='const'><span class='object_link'><a href="#MAX_WALK_TO_RETRIES-constant" title="Lich::DragonRealms::DRCT::MAX_WALK_TO_RETRIES (constant)">MAX_WALK_TO_RETRIES</a></span></span>
       <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Failed to navigate to room </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_room_num'>room_num</span><span class='embexpr_end'>}</span><span class='tstring_content'> after </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_WALK_TO_RETRIES-constant" title="Lich::DragonRealms::DRCT::MAX_WALK_TO_RETRIES (constant)">MAX_WALK_TO_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> retries, giving up.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
       <span class='kw'>return</span> <span class='kw'>false</span>
@@ -2522,7 +2335,7 @@ or nil if no path exists or pathfinding fails.</p>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRCT: Failed to navigate to room </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_room_num'>room_num</span><span class='embexpr_end'>}</span><span class='tstring_content'>, attempting again (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_retry_depth'>retry_depth</span> <span class='op'>+</span> <span class='int'>1</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="#MAX_WALK_TO_RETRIES-constant" title="Lich::DragonRealms::DRCT::MAX_WALK_TO_RETRIES (constant)">MAX_WALK_TO_RETRIES</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>).</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='id identifier rubyid_walk_to'>walk_to</span><span class='lparen'>(</span><span class='id identifier rubyid_room_num'>room_num</span><span class='comma'>,</span> <span class='kw'>true</span><span class='comma'>,</span> <span class='label'>retry_depth:</span> <span class='id identifier rubyid_retry_depth'>retry_depth</span> <span class='op'>+</span> <span class='int'>1</span><span class='rparen'>)</span>
   <span class='kw'>end</span>
-  <span class='id identifier rubyid_room_num'>room_num</span> <span class='op'>==</span> <span class='const'>Room</span><span class='period'>.</span><span class='id identifier rubyid_current'>current</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span>
+  <span class='id identifier rubyid_arrived'>arrived</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2534,7 +2347,7 @@ or nil if no path exists or pathfinding fails.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:29 2026 by
+  Generated on Wed Oct 28 05:27:20 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

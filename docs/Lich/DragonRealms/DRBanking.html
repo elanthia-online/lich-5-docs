@@ -91,9 +91,25 @@
     <p>DRBanking provides bank account tracking and vault information storage.</p>
 <p>Bank balances are tracked passively by parsing game output when players
 deposit, withdraw, or check their balance at banks across Elanthia.</p>
-<p>DRBanking provides bank account tracking and vault information storage.</p>
-<p>Bank balances are tracked passively by parsing game output when players
-deposit, withdraw, or check their balance at banks across Elanthia.</p>
+<p>Storage: each character's balances live in that character's own row of
+the shared settings table (script STORE_SCRIPT, scope &quot;<game>:<name>&quot;,
+value { &quot;Town&quot; =&gt; copper }). Normally only that character's session
+writes its row; the one-time migration and <code>;banks reset all</code> write all
+of this game's rows, each in one transaction. Every read comes straight
+from the database, and every write is an atomic read-modify-write. So
+several sessions on one install can't overwrite each other's balances,
+and <code>;banks all</code> always shows every character's latest recorded
+balances. A row that can't be loaded is logged and treated as empty.</p>
+<p>Older versions kept every character in one game-wide row (script 'core',
+scope &quot;<game>&quot;, key 'banking'), and each session wrote back its own stale
+copy of it. The first read or write that finds that row moves it into
+per-character rows (see migrate_legacy!).</p>
+<p>Usage:</p>
+<pre class="code ruby"><code class="ruby"><span class='const'>DRBanking</span><span class='period'>.</span><span class='id identifier rubyid_my_accounts'><span class='object_link'><a href="#my_accounts-class_method" title="Lich::DragonRealms::DRBanking.my_accounts (method)">my_accounts</a></span></span>                    <span class='comment'># Current character&#39;s bank balances
+</span><span class='const'>DRBanking</span><span class='period'>.</span><span class='id identifier rubyid_all_accounts'><span class='object_link'><a href="#all_accounts-class_method" title="Lich::DragonRealms::DRBanking.all_accounts (method)">all_accounts</a></span></span>                   <span class='comment'># All characters&#39; bank balances
+</span><span class='const'>DRBanking</span><span class='period'>.</span><span class='id identifier rubyid_update_balance'><span class='object_link'><a href="#update_balance-class_method" title="Lich::DragonRealms::DRBanking.update_balance (method)">update_balance</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Crossings</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>15000</span><span class='rparen'>)</span>  <span class='comment'># Update a balance
+</span><span class='const'>DRBanking</span><span class='period'>.</span><span class='id identifier rubyid_total_wealth'><span class='object_link'><a href="#total_wealth-class_method" title="Lich::DragonRealms::DRBanking.total_wealth (method)">total_wealth</a></span></span>                   <span class='comment'># Sum of current character&#39;s balances
+</span><span class='const'>DRBanking</span><span class='period'>.</span><span class='id identifier rubyid_total_wealth_all'><span class='object_link'><a href="#total_wealth_all-class_method" title="Lich::DragonRealms::DRBanking.total_wealth_all (method)">total_wealth_all</a></span></span>               <span class='comment'># Sum across all characters</span></code></pre>
 
   </div>
 </div>
@@ -122,9 +138,7 @@ deposit, withdraw, or check their balance at banks across Elanthia.</p>
         <dt id="DENOMINATION_VALUES-constant" class="">DENOMINATION_VALUES =
           <div class="docstring">
   <div class="discussion">
-    <p>Denomination multipliers for converting to copper
-Denomination multipliers for converting to copper.</p>
-<p>This hash maps currency denominations to their values in copper.</p>
+    <p>Denomination multipliers for converting to copper</p>
 
   </div>
 </div>
@@ -144,9 +158,7 @@ Denomination multipliers for converting to copper.</p>
         <dt id="CURRENCY_BANKS-constant" class="">CURRENCY_BANKS =
           <div class="docstring">
   <div class="discussion">
-    <p>Currency to bank list mapping
-Currency to bank list mapping.</p>
-<p>This hash maps currency types to their respective bank lists.</p>
+    <p>Currency to bank list mapping</p>
 
   </div>
 </div>
@@ -164,9 +176,7 @@ Currency to bank list mapping.</p>
         <dt id="SETTINGS_KEY-constant" class="">SETTINGS_KEY =
           <div class="docstring">
   <div class="discussion">
-    <p>Settings key for banking data
-Settings key for banking data.</p>
-<p>This constant holds the key used to store and retrieve banking data.</p>
+    <p>Key that held every character's balances in the legacy game-wide row</p>
 
   </div>
 </div>
@@ -177,37 +187,53 @@ Settings key for banking data.</p>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>banking</span><span class='tstring_end'>&#39;</span></span></pre></dd>
       
-        <dt id="BALANCE_AMOUNT_PATTERN-constant" class="">BALANCE_AMOUNT_PATTERN =
+        <dt id="STORE_SCRIPT-constant" class="">STORE_SCRIPT =
           <div class="docstring">
   <div class="discussion">
-    <p>Pattern for parsing balance amounts from strings
-Pattern for parsing balance amounts from strings.</p>
-<p>Matches strings that represent balance amounts in various denominations.</p>
+    <p>Script name of the per-character balance rows in script_auto_settings</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>10 gold</span><span class='tstring_end'>&quot;</span></span></code></pre>
-    
-      
-      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>5 platinum</span><span class='tstring_end'>&quot;</span></span></code></pre>
-    
-  </div>
 
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>core.banking</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="LEGACY_SCRIPT-constant" class="">LEGACY_SCRIPT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Script name of the legacy game-wide row (InstanceSettings.game)</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>core</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
+        <dt id="BALANCE_AMOUNT_PATTERN-constant" class="">BALANCE_AMOUNT_PATTERN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Pattern for parsing balance amounts from strings</p>
+
+  </div>
+</div>
+<div class="tags">
+  
 
 </div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(\d+)\s+(platinum|gold|silver|bronze|copper)</span><span class='regexp_end'>/i</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="accounts_cache-classvariable" class="">@@accounts_cache =
+        <dt id="DEFERRED_LOG_KEY-constant" class="">DEFERRED_LOG_KEY =
           <div class="docstring">
   <div class="discussion">
-    <p>In-memory cache of accounts data</p>
+    <p>Thread-local key of the log lines held back while a transaction runs
+(see in_transaction)</p>
 
   </div>
 </div>
@@ -216,7 +242,22 @@ Pattern for parsing balance amounts from strings.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='kw'>nil</span></pre></dd>
+        <dd><pre class="code"><span class='symbol'>:lich_drbanking_deferred_log</span></pre></dd>
+      
+        <dt id="SYNC_HINT-constant" class="">SYNC_HINT =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Added to a failed balance write's error: nothing is cached, so the
+change is gone and the recorded balance stays off until a BALANCE.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>check BALANCE to sync</span><span class='tstring_end'>&#39;</span></span></pre></dd>
       
     </dl>
   
@@ -252,7 +293,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves all bank accounts for the current character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns the bank accounts of every character in this game, read fresh from the database on every call (nothing is cached).</p></div></span>
   
 </li>
 
@@ -260,7 +301,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#clear_balance-class_method" title="clear_balance (class method)">.<strong>clear_balance</strong>(town)  &#x21d2; void </a>
+      <a href="#clear_balance-class_method" title="clear_balance (class method)">.<strong>clear_balance</strong>(town)  &#x21d2; Object </a>
     
 
     
@@ -274,7 +315,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Clears the balance for a specific town by setting it to zero.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Clears the balance for a town (no account).</p></div></span>
   
 </li>
 
@@ -296,7 +337,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Determines the current bank town based on the room title.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Finds the current bank town based on room title.</p></div></span>
   
 </li>
 
@@ -304,7 +345,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#display_banks-class_method" title="display_banks (class method)">.<strong>display_banks</strong>  &#x21d2; void </a>
+      <a href="#display_banks-class_method" title="display_banks (class method)">.<strong>display_banks</strong>  &#x21d2; Object </a>
     
 
     
@@ -318,7 +359,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Displays the bank balances for the current character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Displays bank balances for current character.</p></div></span>
   
 </li>
 
@@ -326,7 +367,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#display_banks_all-class_method" title="display_banks_all (class method)">.<strong>display_banks_all</strong>  &#x21d2; void </a>
+      <a href="#display_banks_all-class_method" title="display_banks_all (class method)">.<strong>display_banks_all</strong>  &#x21d2; Object </a>
     
 
     
@@ -340,7 +381,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Displays the bank balances for all characters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Displays bank balances for all characters.</p></div></span>
   
 </li>
 
@@ -362,7 +403,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Formats a copper amount into a human-readable currency string.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Formats copper amount as a readable currency string.</p></div></span>
   
 </li>
 
@@ -384,7 +425,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Retrieves the bank accounts for the current character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Returns bank accounts for the current character (a fresh copy).</p></div></span>
   
 </li>
 
@@ -392,7 +433,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(line)  &#x21d2; void </a>
+      <a href="#parse-class_method" title="parse (class method)">.<strong>parse</strong>(line)  &#x21d2; Object </a>
     
 
     
@@ -406,7 +447,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses a line of game output to handle banking actions.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses a line of game output for bank transactions Called by DRParser for each line of server output.</p></div></span>
   
 </li>
 
@@ -428,7 +469,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Parses a balance string and converts it to copper.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Parses a balance string like &quot;5 platinum, 3 gold, 2 silver&quot; into copper.</p></div></span>
   
 </li>
 
@@ -436,7 +477,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reload!-class_method" title="reload! (class method)">.<strong>reload!</strong>  &#x21d2; void </a>
+      <a href="#reload!-class_method" title="reload! (class method)">.<strong>reload!</strong>  &#x21d2; Object </a>
     
 
     
@@ -450,7 +491,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Reloads the bank accounts from storage.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Balances are no longer cached, so there is nothing to reload.</p></div></span>
   
 </li>
 
@@ -458,7 +499,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset_all!-class_method" title="reset_all! (class method)">.<strong>reset_all!</strong>  &#x21d2; void </a>
+      <a href="#reset_all!-class_method" title="reset_all! (class method)">.<strong>reset_all!</strong>  &#x21d2; Object </a>
     
 
     
@@ -472,7 +513,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resets the bank data for all characters.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset all bank data for all characters in this game.</p></div></span>
   
 </li>
 
@@ -480,7 +521,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reset_character!-class_method" title="reset_character! (class method)">.<strong>reset_character!</strong>  &#x21d2; void </a>
+      <a href="#reset_character!-class_method" title="reset_character! (class method)">.<strong>reset_character!</strong>  &#x21d2; Object </a>
     
 
     
@@ -494,7 +535,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Resets the bank data for the current character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reset current character's bank data.</p></div></span>
   
 </li>
 
@@ -516,7 +557,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Converts an amount of currency to copper based on its denomination.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Converts an amount and denomination to copper.</p></div></span>
   
 </li>
 
@@ -538,7 +579,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the total wealth across all accounts for the current character.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculates total wealth for current character.</p></div></span>
   
 </li>
 
@@ -560,7 +601,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Calculates the total wealth across all characters' accounts.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Calculates total wealth across all characters.</p></div></span>
   
 </li>
 
@@ -568,7 +609,7 @@ Pattern for parsing balance amounts from strings.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#update_balance-class_method" title="update_balance (class method)">.<strong>update_balance</strong>(town, copper)  &#x21d2; void </a>
+      <a href="#update_balance-class_method" title="update_balance (class method)">.<strong>update_balance</strong>(town, copper)  &#x21d2; Object </a>
     
 
     
@@ -582,7 +623,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Updates the balance for a specific town.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Updates a bank balance for the current character.</p></div></span>
   
 </li>
 
@@ -608,8 +649,10 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves all bank accounts for the current character.</p>
-<p>If the accounts are not already loaded, they will be loaded from storage.</p>
+    <p>Returns the bank accounts of every character in this game, read
+fresh from the database on every call (nothing is cached).
+Characters with no recorded balance are left out. A database error
+is reported and gives {}.</p>
 
   </div>
 </div>
@@ -626,7 +669,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash of bank accounts for the character.</p></div>
+        <div class='inline'><p>{ &quot;CharName&quot; =&gt; { &quot;Town&quot; =&gt; copper_amount } }</p></div>
       
     </li>
   
@@ -638,17 +681,15 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-142
-143
-144
-145</pre>
+116
+117
+118</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 142</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 116</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_all_accounts'>all_accounts</span>
-  <span class='id identifier rubyid_load_accounts'>load_accounts</span> <span class='kw'>unless</span> <span class='cvar'>@@accounts_cache</span>
-  <span class='cvar'>@@accounts_cache</span>
+  <span class='id identifier rubyid_read_all_accounts'>read_all_accounts</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -658,7 +699,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="clear_balance-class_method">
   
-    .<strong>clear_balance</strong>(town)  &#x21d2; <tt>void</tt> 
+    .<strong>clear_balance</strong>(town)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -666,7 +707,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Clears the balance for a specific town by setting it to zero.</p>
+    <p>Clears the balance for a town (no account)</p>
 
   </div>
 </div>
@@ -684,7 +725,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the town to clear the balance for.</p></div>
+        <div class='inline'><p>The town/bank name</p></div>
       
     </li>
   
@@ -697,12 +738,12 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-171
-172
-173</pre>
+141
+142
+143</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 171</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 141</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_clear_balance'>clear_balance</span><span class='lparen'>(</span><span class='id identifier rubyid_town'>town</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_update_balance'>update_balance</span><span class='lparen'>(</span><span class='id identifier rubyid_town'>town</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span>
@@ -723,7 +764,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Determines the current bank town based on the room title.</p>
+    <p>Finds the current bank town based on room title</p>
 
   </div>
 </div>
@@ -740,7 +781,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the current bank town or nil if not in a bank.</p></div>
+        <div class='inline'><p>The town name or nil if not in a bank</p></div>
       
     </li>
   
@@ -752,18 +793,18 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-235
-236
-237
-238
-239
-240
-241
-242
-243</pre>
+199
+200
+201
+202
+203
+204
+205
+206
+207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 235</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 199</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_current_bank_town'>current_bank_town</span>
   <span class='id identifier rubyid_room_title'>room_title</span> <span class='op'>=</span> <span class='const'>XMLData</span><span class='period'>.</span><span class='id identifier rubyid_room_title'>room_title</span>
@@ -782,7 +823,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="display_banks-class_method">
   
-    .<strong>display_banks</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>display_banks</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -790,7 +831,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Displays the bank balances for the current character.</p>
+    <p>Displays bank balances for current character</p>
 
   </div>
 </div>
@@ -803,38 +844,44 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296
-297
-298
-299</pre>
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 274</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 236</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_display_banks'>display_banks</span>
-  <span class='id identifier rubyid_accounts'>accounts</span> <span class='op'>=</span> <span class='id identifier rubyid_my_accounts'>my_accounts</span>
+  <span class='comment'># One read: the per-bank lines and the totals come from the same copy.
+</span>  <span class='id identifier rubyid_accounts'>accounts</span> <span class='op'>=</span> <span class='id identifier rubyid_read_my_accounts'>read_my_accounts</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_accounts'>accounts</span> <span class='comment'># the failed read was already reported
+</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_accounts'>accounts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRBanking: No bank account info recorded.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span>
@@ -857,7 +904,7 @@ Pattern for parsing balance amounts from strings.</p>
   <span class='kw'>end</span>
 
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-</span><span class='tstring_end'>&#39;</span></span> <span class='op'>*</span> <span class='int'>50</span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  </span><span class='embexpr_beg'>#{</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Grand Total:</span><span class='tstring_end'>&#39;</span></span><span class='period'>.</span><span class='id identifier rubyid_rjust'>rjust</span><span class='lparen'>(</span><span class='int'>25</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_format_currency'>format_currency</span><span class='lparen'>(</span><span class='id identifier rubyid_total_wealth'>total_wealth</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>  </span><span class='embexpr_beg'>#{</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Grand Total:</span><span class='tstring_end'>&#39;</span></span><span class='period'>.</span><span class='id identifier rubyid_rjust'>rjust</span><span class='lparen'>(</span><span class='int'>25</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_format_currency'>format_currency</span><span class='lparen'>(</span><span class='id identifier rubyid_accounts'>accounts</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_sum'>sum</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -867,7 +914,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="display_banks_all-class_method">
   
-    .<strong>display_banks_all</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>display_banks_all</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -875,7 +922,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Displays the bank balances for all characters.</p>
+    <p>Displays bank balances for all characters</p>
 
   </div>
 </div>
@@ -888,40 +935,44 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331</pre>
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 304</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 267</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_display_banks_all'>display_banks_all</span>
-  <span class='id identifier rubyid_accounts'>accounts</span> <span class='op'>=</span> <span class='id identifier rubyid_all_accounts'>all_accounts</span>
+  <span class='id identifier rubyid_accounts'>accounts</span> <span class='op'>=</span> <span class='id identifier rubyid_read_all_accounts'>read_all_accounts</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_accounts'>accounts</span> <span class='comment'># the failed read was already reported
+</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_accounts'>accounts</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRBanking: No bank account info recorded for any character.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span>
@@ -964,7 +1015,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Formats a copper amount into a human-readable currency string.</p>
+    <p>Formats copper amount as a readable currency string</p>
 
   </div>
 </div>
@@ -977,12 +1028,12 @@ Pattern for parsing balance amounts from strings.</p>
         <span class='name'>copper</span>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the amount in copper to format.</p></div>
+        <div class='inline'><p>Amount in copper</p></div>
       
     </li>
   
@@ -999,7 +1050,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the formatted currency string.</p></div>
+        <div class='inline'><p>Formatted string like &quot;5 platinum, 3 gold, 2 silver&quot;</p></div>
       
     </li>
   
@@ -1011,23 +1062,23 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-217
-218
-219
-220
-221
-222
-223
-224
-225
-226
-227
-228
-229
-230</pre>
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 217</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 182</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_format_currency'>format_currency</span><span class='lparen'>(</span><span class='id identifier rubyid_copper'>copper</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_copper'>copper</span> <span class='op'>=</span> <span class='id identifier rubyid_copper'>copper</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
@@ -1059,8 +1110,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Retrieves the bank accounts for the current character.</p>
-<p>If no accounts exist, an empty hash is returned.</p>
+    <p>Returns bank accounts for the current character (a fresh copy)</p>
 
   </div>
 </div>
@@ -1077,7 +1127,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>a hash of the current character's bank accounts.</p></div>
+        <div class='inline'><p>{ &quot;Town&quot; =&gt; copper_amount }</p></div>
       
     </li>
   
@@ -1089,15 +1139,15 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-151
-152
-153</pre>
+122
+123
+124</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 151</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 122</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_my_accounts'>my_accounts</span>
-  <span class='id identifier rubyid_all_accounts'>all_accounts</span><span class='lbracket'>[</span><span class='id identifier rubyid_character_name'>character_name</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+  <span class='id identifier rubyid_read_my_accounts'>read_my_accounts</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1107,7 +1157,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="parse-class_method">
   
-    .<strong>parse</strong>(line)  &#x21d2; <tt>void</tt> 
+    .<strong>parse</strong>(line)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1115,7 +1165,14 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Parses a line of game output to handle banking actions.</p>
+    
+  <div class="note notetag">
+    <strong>Note:</strong>
+    <div class='inline'><p>Uses explicit match variables instead of Regexp.last_match for reliability</p></div>
+  </div>
+
+<p>Parses a line of game output for bank transactions
+Called by DRParser for each line of server output</p>
 
   </div>
 </div>
@@ -1133,7 +1190,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the line of output to parse.</p></div>
+        <div class='inline'><p>A line of game output</p></div>
       
     </li>
   
@@ -1146,30 +1203,30 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-249
-250
-251
-252
-253
-254
-255
-256
-257
-258
-259
-260
-261
-262
-263
-264
-265
-266
-267
-268
-269</pre>
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 249</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 213</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse'>parse</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_line'>line</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></span><span class='rparen'>)</span>
@@ -1208,7 +1265,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Parses a balance string and converts it to copper.</p>
+    <p>Parses a balance string like &quot;5 platinum, 3 gold, 2 silver&quot; into copper</p>
 
   </div>
 </div>
@@ -1226,7 +1283,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the string representing the balance.</p></div>
+        <div class='inline'><p>The balance text from game output</p></div>
       
     </li>
   
@@ -1243,7 +1300,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the total balance in copper.</p></div>
+        <div class='inline'><p>The total value in copper</p></div>
       
     </li>
   
@@ -1255,18 +1312,18 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-203
-204
-205
-206
-207
-208
-209
-210
-211</pre>
+169
+170
+171
+172
+173
+174
+175
+176
+177</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 203</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_parse_balance_string'>parse_balance_string</span><span class='lparen'>(</span><span class='id identifier rubyid_balance_string'>balance_string</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_balance_string'>balance_string</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_balance_string'>balance_string</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -1285,7 +1342,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="reload!-class_method">
   
-    .<strong>reload!</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>reload!</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1293,7 +1350,8 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Reloads the bank accounts from storage.</p>
+    <p>Balances are no longer cached, so there is nothing to reload.
+Kept for compatibility; returns a fresh read, like all_accounts.</p>
 
   </div>
 </div>
@@ -1306,17 +1364,15 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-336
-337
-338
-339</pre>
+300
+301
+302</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 336</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 300</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reload!'>reload!</span>
-  <span class='cvar'>@@accounts_cache</span> <span class='op'>=</span> <span class='kw'>nil</span>
-  <span class='id identifier rubyid_load_accounts'>load_accounts</span>
+  <span class='id identifier rubyid_all_accounts'>all_accounts</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1326,7 +1382,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset_all!-class_method">
   
-    .<strong>reset_all!</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>reset_all!</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1334,7 +1390,12 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Resets the bank data for all characters.</p>
+    <p>Reset all bank data for all characters in this game.
+Empties every character's row and removes the old game-wide row's
+'banking' key, in one transaction. Character rows are overwritten
+without being read, so a character row that can't be loaded is
+cleared too. An old game-wide row that can't be loaded is left as it
+is, since it isn't DRBanking's alone.</p>
 
   </div>
 </div>
@@ -1347,19 +1408,45 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-353
-354
-355
-356
-357</pre>
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 353</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 321</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset_all!'>reset_all!</span>
-  <span class='cvar'>@@accounts_cache</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
-  <span class='id identifier rubyid_save_accounts'>save_accounts</span>
+  <span class='id identifier rubyid_game'>game</span> <span class='op'>=</span> <span class='id identifier rubyid_game_code'>game_code</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_game'>game</span>
+    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRBanking: Can&#39;t clear bank data before the game is known.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='kw'>return</span>
+  <span class='kw'>end</span>
+
+  <span class='id identifier rubyid_db'>db</span> <span class='op'>=</span> <span class='id identifier rubyid_adapter'>adapter</span>
+  <span class='id identifier rubyid_in_transaction'>in_transaction</span><span class='lparen'>(</span><span class='id identifier rubyid_db'>db</span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_migrate_legacy!'>migrate_legacy!</span><span class='lparen'>(</span><span class='id identifier rubyid_db'>db</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_db'>db</span><span class='period'>.</span><span class='id identifier rubyid_scopes_by_prefix'>scopes_by_prefix</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#STORE_SCRIPT-constant" title="Lich::DragonRealms::DRBanking::STORE_SCRIPT (constant)">STORE_SCRIPT</a></span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_game'>game</span><span class='embexpr_end'>}</span><span class='tstring_content'>:</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_scope'>scope</span><span class='op'>|</span>
+      <span class='id identifier rubyid_db'>db</span><span class='period'>.</span><span class='id identifier rubyid_save_settings!'>save_settings!</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#STORE_SCRIPT-constant" title="Lich::DragonRealms::DRBanking::STORE_SCRIPT (constant)">STORE_SCRIPT</a></span></span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='id identifier rubyid_scope'>scope</span><span class='rparen'>)</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>DRBanking: Cleared all bank data for all characters.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
+<span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+  <span class='id identifier rubyid_report_storage_error'>report_storage_error</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>clear all bank data</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1369,7 +1456,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="reset_character!-class_method">
   
-    .<strong>reset_character!</strong>  &#x21d2; <tt>void</tt> 
+    .<strong>reset_character!</strong>  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1377,7 +1464,8 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Resets the bank data for the current character.</p>
+    <p>Reset current character's bank data. The row is overwritten without
+being read, so a row that can't be loaded is cleared too.</p>
 
   </div>
 </div>
@@ -1390,18 +1478,24 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-344
-345
-346
-347
-348</pre>
+306
+307
+308
+309
+310
+311
+312
+313</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 344</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 306</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_reset_character!'>reset_character!</span>
-  <span class='id identifier rubyid_all_accounts'>all_accounts</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_character_name'>character_name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_save_accounts'>save_accounts</span>
+  <span class='id identifier rubyid_cleared'>cleared</span> <span class='op'>=</span> <span class='id identifier rubyid_in_my_row_transaction'>in_my_row_transaction</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>clear your bank data</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_db'>db</span><span class='comma'>,</span> <span class='id identifier rubyid_scope'>scope</span><span class='op'>|</span>
+    <span class='id identifier rubyid_db'>db</span><span class='period'>.</span><span class='id identifier rubyid_save_settings!'>save_settings!</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#STORE_SCRIPT-constant" title="Lich::DragonRealms::DRBanking::STORE_SCRIPT (constant)">STORE_SCRIPT</a></span></span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='comma'>,</span> <span class='id identifier rubyid_scope'>scope</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_cleared'>cleared</span>
+
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRBanking: Cleared bank data for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_character_name'>character_name</span><span class='embexpr_end'>}</span><span class='tstring_content'>.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1420,7 +1514,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Converts an amount of currency to copper based on its denomination.</p>
+    <p>Converts an amount and denomination to copper</p>
 
   </div>
 </div>
@@ -1433,12 +1527,12 @@ Pattern for parsing balance amounts from strings.</p>
         <span class='name'>amount</span>
       
       
-        <span class='type'>(<tt>Integer</tt>)</span>
+        <span class='type'>(<tt>Integer</tt>, <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the amount of currency to convert.</p></div>
+        <div class='inline'><p>The amount</p></div>
       
     </li>
   
@@ -1452,7 +1546,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the denomination of the currency.</p></div>
+        <div class='inline'><p>The denomination (platinum, gold, silver, bronze, copper)</p></div>
       
     </li>
   
@@ -1469,7 +1563,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the equivalent amount in copper.</p></div>
+        <div class='inline'><p>The value in copper</p></div>
       
     </li>
   
@@ -1481,13 +1575,13 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-194
-195
-196
-197</pre>
+161
+162
+163
+164</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 194</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 161</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_copper'>to_copper</span><span class='lparen'>(</span><span class='id identifier rubyid_amount'>amount</span><span class='comma'>,</span> <span class='id identifier rubyid_denomination'>denomination</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_multiplier'>multiplier</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#DENOMINATION_VALUES-constant" title="Lich::DragonRealms::DRBanking::DENOMINATION_VALUES (constant)">DENOMINATION_VALUES</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_denomination'>denomination</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='int'>1</span>
@@ -1509,7 +1603,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the total wealth across all accounts for the current character.</p>
+    <p>Calculates total wealth for current character</p>
 
   </div>
 </div>
@@ -1526,7 +1620,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the total wealth in copper.</p></div>
+        <div class='inline'><p>Total copper across all banks</p></div>
       
     </li>
   
@@ -1538,12 +1632,12 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-178
-179
-180</pre>
+147
+148
+149</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 178</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 147</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_total_wealth'>total_wealth</span>
   <span class='id identifier rubyid_my_accounts'>my_accounts</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_sum'>sum</span>
@@ -1564,7 +1658,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Calculates the total wealth across all characters' accounts.</p>
+    <p>Calculates total wealth across all characters</p>
 
   </div>
 </div>
@@ -1581,7 +1675,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the total wealth in copper.</p></div>
+        <div class='inline'><p>Total copper across all characters and banks</p></div>
       
     </li>
   
@@ -1593,12 +1687,12 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-185
-186
-187</pre>
+153
+154
+155</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 185</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 153</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_total_wealth_all'>total_wealth_all</span>
   <span class='id identifier rubyid_all_accounts'>all_accounts</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_banks'>banks</span><span class='op'>|</span> <span class='id identifier rubyid_banks'>banks</span><span class='period'>.</span><span class='id identifier rubyid_values'>values</span><span class='period'>.</span><span class='id identifier rubyid_sum'>sum</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_sum'>sum</span>
@@ -1611,7 +1705,7 @@ Pattern for parsing balance amounts from strings.</p>
       <div class="method_details ">
   <h3 class="signature " id="update_balance-class_method">
   
-    .<strong>update_balance</strong>(town, copper)  &#x21d2; <tt>void</tt> 
+    .<strong>update_balance</strong>(town, copper)  &#x21d2; <tt>Object</tt> 
   
 
   
@@ -1619,7 +1713,7 @@ Pattern for parsing balance amounts from strings.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Updates the balance for a specific town.</p>
+    <p>Updates a bank balance for the current character</p>
 
   </div>
 </div>
@@ -1637,7 +1731,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the name of the town where the account is held.</p></div>
+        <div class='inline'><p>The town/bank name</p></div>
       
     </li>
   
@@ -1651,7 +1745,7 @@ Pattern for parsing balance amounts from strings.</p>
       
       
         &mdash;
-        <div class='inline'><p>the new balance in copper.</p></div>
+        <div class='inline'><p>The balance in copper</p></div>
       
     </li>
   
@@ -1664,20 +1758,26 @@ Pattern for parsing balance amounts from strings.</p>
       <pre class="lines">
 
 
-160
-161
-162
-163
-164
-165</pre>
+129
+130
+131
+132
+133
+134
+135
+136
+137</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 160</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/drinfomon/drbanking.rb', line 129</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_balance'>update_balance</span><span class='lparen'>(</span><span class='id identifier rubyid_town'>town</span><span class='comma'>,</span> <span class='id identifier rubyid_copper'>copper</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_all_accounts'>all_accounts</span><span class='lbracket'>[</span><span class='id identifier rubyid_character_name'>character_name</span><span class='rbracket'>]</span> <span class='op'>||=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
-  <span class='id identifier rubyid_all_accounts'>all_accounts</span><span class='lbracket'>[</span><span class='id identifier rubyid_character_name'>character_name</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='id identifier rubyid_town'>town</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_copper'>copper</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
-  <span class='id identifier rubyid_save_accounts'>save_accounts</span>
+  <span class='id identifier rubyid_stored'>stored</span> <span class='op'>=</span> <span class='id identifier rubyid_modify_my_accounts'>modify_my_accounts</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>save the </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_town'>town</span><span class='embexpr_end'>}</span><span class='tstring_content'> balance</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='label'>hint:</span> <span class='const'><span class='object_link'><a href="#SYNC_HINT-constant" title="Lich::DragonRealms::DRBanking::SYNC_HINT (constant)">SYNC_HINT</a></span></span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_accounts'>accounts</span><span class='op'>|</span>
+    <span class='id identifier rubyid_accounts'>accounts</span><span class='lbracket'>[</span><span class='id identifier rubyid_town'>town</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_copper'>copper</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
+    <span class='id identifier rubyid_accounts'>accounts</span>
+  <span class='kw'>end</span>
+  <span class='kw'>return</span> <span class='kw'>unless</span> <span class='id identifier rubyid_stored'>stored</span>
+
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>info</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>DRBanking: Updated </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_town'>town</span><span class='embexpr_end'>}</span><span class='tstring_content'> balance to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_format_currency'>format_currency</span><span class='lparen'>(</span><span class='id identifier rubyid_copper'>copper</span><span class='rparen'>)</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1690,7 +1790,7 @@ Pattern for parsing balance amounts from strings.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:26 2026 by
+  Generated on Wed Oct 28 05:27:18 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

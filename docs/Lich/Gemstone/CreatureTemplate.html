@@ -123,8 +123,9 @@
         <dt id="BOON_ADJECTIVES-constant" class="">BOON_ADJECTIVES =
           <div class="docstring">
   <div class="discussion">
-    <p>Adjectives that boon creatures may spawn with, stripped during template name
-lookups to handle creature names like &quot;adroit goblin&quot; (stored and matched as &quot;goblin&quot;).</p>
+    <p>Adjectives applied by boons that are stripped from creature names for
+template lookup. The regex built from this list removes these prefixes
+so a &quot;deft orc&quot; and a bare &quot;orc&quot; both find the same template.</p>
 
   </div>
 </div>
@@ -135,6 +136,8 @@ lookups to handle creature names like &quot;adroit goblin&quot; (stored and matc
   <ul class="see">
     
       <li><span class='object_link'><a href="#fix_template_name-class_method" title="Lich::Gemstone::CreatureTemplate.fix_template_name (method)">fix_template_name</a></span></li>
+    
+      <li><span class='object_link'><a href="#BOON_REGEX-constant" title="Lich::Gemstone::CreatureTemplate::BOON_REGEX (constant)">BOON_REGEX</a></span></li>
     
   </ul>
 
@@ -927,7 +930,7 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Cleans a creature name by removing a leading boon adjective and lowercasing.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Normalizes a creature name for template lookup by lowercasing and stripping boon adjectives.</p></div></span>
   
 </li>
 
@@ -981,7 +984,7 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Rooms bordering the creature's rooms: connected by an edge - in either direction - to a room the creature is found in, without being one themselves (bigshot's perimeter list).</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Rooms bordering the creature's rooms: every room an exit of the creature's rooms leads to that is not one of them (bigshot's perimeter list).</p></div></span>
   
 </li>
 
@@ -1283,9 +1286,6 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-33
-34
-35
 36
 37
 38
@@ -1330,10 +1330,13 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
 77
 78
 79
-80</pre>
+80
+81
+82
+83</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 36</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_data'>data</span><span class='rparen'>)</span>
   <span class='ivar'>@name</span> <span class='op'>=</span> <span class='id identifier rubyid_data'>data</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span>
@@ -1419,12 +1422,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_abilities'>abilities</span>
   <span class='ivar'>@abilities</span>
@@ -1460,12 +1463,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_alchemy'>alchemy</span>
   <span class='ivar'>@alchemy</span>
@@ -1501,12 +1504,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_areas'>areas</span>
   <span class='ivar'>@areas</span>
@@ -1542,12 +1545,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_attack_attributes'>attack_attributes</span>
   <span class='ivar'>@attack_attributes</span>
@@ -1583,12 +1586,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_bcs'>bcs</span>
   <span class='ivar'>@bcs</span>
@@ -1624,12 +1627,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_boss'>boss</span>
   <span class='ivar'>@boss</span>
@@ -1665,12 +1668,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_boss_type'>boss_type</span>
   <span class='ivar'>@boss_type</span>
@@ -1706,12 +1709,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_defense_attributes'>defense_attributes</span>
   <span class='ivar'>@defense_attributes</span>
@@ -1747,12 +1750,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_equipment'>equipment</span>
   <span class='ivar'>@equipment</span>
@@ -1788,12 +1791,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_family'>family</span>
   <span class='ivar'>@family</span>
@@ -1829,12 +1832,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_height'>height</span>
   <span class='ivar'>@height</span>
@@ -1870,12 +1873,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_level'>level</span>
   <span class='ivar'>@level</span>
@@ -1911,12 +1914,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_max_hp'>max_hp</span>
   <span class='ivar'>@max_hp</span>
@@ -1952,12 +1955,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_messaging'>messaging</span>
   <span class='ivar'>@messaging</span>
@@ -1993,12 +1996,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_name'>name</span>
   <span class='ivar'>@name</span>
@@ -2034,12 +2037,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_otherclass'>otherclass</span>
   <span class='ivar'>@otherclass</span>
@@ -2075,12 +2078,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_picture'>picture</span>
   <span class='ivar'>@picture</span>
@@ -2116,12 +2119,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_size'>size</span>
   <span class='ivar'>@size</span>
@@ -2157,12 +2160,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_special_other'>special_other</span>
   <span class='ivar'>@special_other</span>
@@ -2198,12 +2201,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_speed'>speed</span>
   <span class='ivar'>@speed</span>
@@ -2239,12 +2242,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_treasure'>treasure</span>
   <span class='ivar'>@treasure</span>
@@ -2280,12 +2283,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_type'>type</span>
   <span class='ivar'>@type</span>
@@ -2321,12 +2324,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_undead'>undead</span>
   <span class='ivar'>@undead</span>
@@ -2362,12 +2365,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 14</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_url'>url</span>
   <span class='ivar'>@url</span>
@@ -2408,21 +2411,21 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-167
-168
-169
-170
-171
-172
 173
 174
 175
 176
 177
-178</pre>
+178
+179
+180
+181
+182
+183
+184</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 167</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 173</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='op'>[]</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_load_all'>load_all</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -2465,13 +2468,13 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-181
-182
-183
-184</pre>
+187
+188
+189
+190</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 181</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 187</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_all'>all</span>
   <span class='id identifier rubyid_load_all'>load_all</span> <span class='kw'>unless</span> <span class='cvar'>@@loaded</span>
@@ -2506,12 +2509,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
       <pre class="lines">
 
 
-199
-200
-201</pre>
+205
+206
+207</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 199</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 205</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_at_uid'>at_uid</span><span class='lparen'>(</span><span class='id identifier rubyid_uid'>uid</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_all'>all</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_t'>t</span><span class='op'>|</span> <span class='id identifier rubyid_t'>t</span><span class='period'>.</span><span class='id identifier rubyid_found_at_uid?'>found_at_uid?</span><span class='lparen'>(</span><span class='id identifier rubyid_uid'>uid</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
@@ -2532,9 +2535,12 @@ Optimized to use single compiled regex instead of 50+ sequential matches</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Cleans a creature name by removing a leading boon adjective and lowercasing.</p>
-<p>Produces the lookup key for template storage and retrieval: &quot;Adroit Orc&quot; becomes &quot;orc&quot;.
-Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).</p>
+    <p>Normalizes a creature name for template lookup by lowercasing and
+stripping boon adjectives.</p>
+<p>Creature names from the game feed include randomly applied adjectives
+(&quot;deft orc&quot;, &quot;ethereal wraith&quot;). This method removes them so the resulting
+key matches the stored template name regardless of boons. Uses a single
+compiled regex for efficiency instead of 50+ sequential checks.</p>
 
   </div>
 </div>
@@ -2544,8 +2550,10 @@ Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).</p
     <h4 class="tag_title">Examples:</h4>
     
       
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fix_template_name'>fix_template_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Adroit Orc</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;orc&quot;
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::CreatureTemplate (class)">CreatureTemplate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_fix_template_name'>fix_template_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Orc</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;orc&quot;</span></code></pre>
+      <pre class="example code"><code><span class='id identifier rubyid_fix_template_name'>fix_template_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>deft orc</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;orc&quot;</span></code></pre>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_fix_template_name'>fix_template_name</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Luminous Wraith</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; &quot;wraith&quot;</span></code></pre>
     
   </div>
 <p class="tag_title">Parameters:</p>
@@ -2578,7 +2586,7 @@ Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).</p
       
       
         &mdash;
-        <div class='inline'><p>the normalized name, lowercased and stripped of leading boon adjective</p></div>
+        <div class='inline'><p>lowercase name with leading boon adjectives removed and whitespace stripped</p></div>
       
     </li>
   
@@ -2586,8 +2594,6 @@ Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).</p
 
   <p class="tag_title">See Also:</p>
   <ul class="see">
-    
-      <li><span class='object_link'><a href="#BOON_ADJECTIVES-constant" title="Lich::Gemstone::CreatureTemplate::BOON_ADJECTIVES (constant)">BOON_ADJECTIVES</a></span></li>
     
       <li><span class='object_link'><a href="#BOON_REGEX-constant" title="Lich::Gemstone::CreatureTemplate::BOON_REGEX (constant)">BOON_REGEX</a></span></li>
     
@@ -2599,14 +2605,14 @@ Uses a precompiled regex for efficiency (50+ adjectives checked in one pass).</p
       <pre class="lines">
 
 
-146
-147
-148
-149
-150</pre>
+152
+153
+154
+155
+156</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 146</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 152</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_fix_template_name'>fix_template_name</span><span class='lparen'>(</span><span class='id identifier rubyid_template_name'>template_name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_name'>name</span> <span class='op'>=</span> <span class='id identifier rubyid_template_name'>template_name</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span><span class='period'>.</span><span class='id identifier rubyid_downcase'>downcase</span>
@@ -2644,9 +2650,6 @@ can load an isolated fixture directory instead.</p>
       <pre class="lines">
 
 
-85
-86
-87
 88
 89
 90
@@ -2687,10 +2690,13 @@ can load an isolated fixture directory instead.</p>
 125
 126
 127
-128</pre>
+128
+129
+130
+131</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 85</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 88</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_load_all'>load_all</span><span class='lparen'>(</span><span class='id identifier rubyid_dir'>dir</span> <span class='op'>=</span> <span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='const'>File</span><span class='period'>.</span><span class='id identifier rubyid_dirname'>dirname</span><span class='lparen'>(</span><span class='kw'>__FILE__</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>creatures</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>if</span> <span class='cvar'>@@loaded</span>
@@ -2758,10 +2764,10 @@ can load an isolated fixture directory instead.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Rooms bordering the creature's rooms: connected by an edge - in
-either direction - to a room the creature is found in, without
-being one themselves (bigshot's perimeter list). The reverse-edge
-pass scans the map once; the result is memoized.</p>
+    <p>Rooms bordering the creature's rooms: every room an exit of the
+creature's rooms leads to that is not one of them (bigshot's
+perimeter list). The walk is Map.boundary_rooms_for, which works
+over any set of rooms; the result is memoized here.</p>
 
   </div>
 </div>
@@ -2774,49 +2780,15 @@ pass scans the map once; the result is memoized.</p>
       <pre class="lines">
 
 
-229
-230
-231
-232
-233
-234
 235
 236
-237
-238
-239
-240
-241
-242
-243
-244
-245
-246
-247
-248</pre>
+237</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 229</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 235</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_boundary_rooms'>boundary_rooms</span>
-  <span class='ivar'>@boundary_rooms</span> <span class='op'>||=</span> <span class='kw'>begin</span>
-    <span class='id identifier rubyid_inside'>inside</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
-    <span class='id identifier rubyid_rooms'>rooms</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='op'>|</span> <span class='id identifier rubyid_inside'>inside</span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='rbrace'>}</span>
-    <span class='id identifier rubyid_border'>border</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
-    <span class='id identifier rubyid_inside'>inside</span><span class='period'>.</span><span class='id identifier rubyid_each_key'>each_key</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_id'>id</span><span class='op'>|</span>
-      <span class='id identifier rubyid_room'>room</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/Map.html" title="Lich::Common::Map (class)">Map</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='kw'>or</span> <span class='kw'>next</span>
-      <span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_each_key'>each_key</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_dest'>dest</span><span class='op'>|</span>
-        <span class='id identifier rubyid_d'><span class='object_link'><a href="../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span> <span class='op'>=</span> <span class='id identifier rubyid_dest'>dest</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
-        <span class='id identifier rubyid_border'>border</span><span class='lbracket'>[</span><span class='id identifier rubyid_d'><span class='object_link'><a href="../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='kw'>unless</span> <span class='id identifier rubyid_inside'>inside</span><span class='lbracket'>[</span><span class='id identifier rubyid_d'><span class='object_link'><a href="../../top-level-namespace.html#d-instance_method" title="#d (method)">d</a></span></span><span class='rbracket'>]</span>
-      <span class='kw'>end</span>
-    <span class='kw'>end</span>
-    <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/Map.html" title="Lich::Common::Map (class)">Map</a></span></span><span class='period'>.</span><span class='id identifier rubyid_list'><span class='object_link'><a href="../Common/Map.html#list-class_method" title="Lich::Common::Map.list (method)">list</a></span></span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_room'>room</span><span class='op'>|</span>
-      <span class='kw'>next</span> <span class='kw'>if</span> <span class='id identifier rubyid_inside'>inside</span><span class='lbracket'>[</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='id identifier rubyid_border'>border</span><span class='lbracket'>[</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span>
-
-      <span class='id identifier rubyid_border'>border</span><span class='lbracket'>[</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='kw'>true</span> <span class='kw'>if</span> <span class='lparen'>(</span><span class='id identifier rubyid_room'>room</span><span class='period'>.</span><span class='id identifier rubyid_wayto'>wayto</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_dest'>dest</span><span class='op'>|</span> <span class='id identifier rubyid_inside'>inside</span><span class='lbracket'>[</span><span class='id identifier rubyid_dest'>dest</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
-    <span class='kw'>end</span>
-    <span class='id identifier rubyid_border'>border</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_sort'>sort</span>
-  <span class='kw'>end</span>
+  <span class='ivar'>@boundary_rooms</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/Map.html" title="Lich::Common::Map (class)">Map</a></span></span><span class='period'>.</span><span class='id identifier rubyid_boundary_rooms_for'>boundary_rooms_for</span><span class='lparen'>(</span><span class='id identifier rubyid_rooms'>rooms</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2861,12 +2833,12 @@ the ranges directly, so no expansion cost.</p>
       <pre class="lines">
 
 
-194
-195
-196</pre>
+200
+201
+202</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 194</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 200</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_found_at_uid?'>found_at_uid?</span><span class='lparen'>(</span><span class='id identifier rubyid_uid'>uid</span><span class='rparen'>)</span>
   <span class='ivar'>@areas</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_a'>a</span><span class='lbracket'>[</span><span class='symbol'>:uids</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_any?'>any?</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_r'>r</span><span class='op'>|</span> <span class='id identifier rubyid_r'>r</span><span class='period'>.</span><span class='id identifier rubyid_cover?'>cover?</span><span class='lparen'>(</span><span class='id identifier rubyid_uid'>uid</span><span class='rparen'>)</span> <span class='rbrace'>}</span> <span class='rbrace'>}</span>
@@ -2916,12 +2888,12 @@ the ranges directly, so no expansion cost.</p>
       <pre class="lines">
 
 
-253
-254
-255</pre>
+242
+243
+244</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 253</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 242</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_blood?'>has_blood?</span>
   <span class='ivar'>@blood</span>
@@ -2971,12 +2943,12 @@ the ranges directly, so no expansion cost.</p>
       <pre class="lines">
 
 
-260
-261
-262</pre>
+249
+250
+251</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 260</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 249</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_bones?'>has_bones?</span>
   <span class='ivar'>@bones</span>
@@ -3027,12 +2999,12 @@ creature (&quot;The X has no limbs left!&quot; on a fresh target = false).</p>
       <pre class="lines">
 
 
-268
-269
-270</pre>
+257
+258
+259</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 268</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 257</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_has_limbs?'>has_limbs?</span>
   <span class='ivar'>@limbs</span>
@@ -3082,12 +3054,12 @@ creature (&quot;The X has no limbs left!&quot; on a fresh target = false).</p>
       <pre class="lines">
 
 
-294
-295
-296</pre>
+283
+284
+285</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 294</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 283</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_muggable?'>muggable?</span>
   <span class='ivar'>@muggable</span>
@@ -3122,12 +3094,12 @@ ranges combined, deduped, sorted.</p>
       <pre class="lines">
 
 
-212
-213
-214</pre>
+218
+219
+220</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 212</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 218</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rooms'>rooms</span>
   <span class='ivar'>@rooms</span> <span class='op'>||=</span> <span class='id identifier rubyid_uids'>uids</span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_u'><span class='object_link'><a href="../../top-level-namespace.html#u-instance_method" title="#u (method)">u</a></span></span><span class='op'>|</span> <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common.html" title="Lich::Common (module)">Common</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Common/Map.html" title="Lich::Common::Map (class)">Map</a></span></span><span class='period'>.</span><span class='id identifier rubyid_ids_from_uid'><span class='object_link'><a href="../Common/Map.html#ids_from_uid-class_method" title="Lich::Common::Map.ids_from_uid (method)">ids_from_uid</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_u'><span class='object_link'><a href="../../top-level-namespace.html#u-instance_method" title="#u (method)">u</a></span></span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_uniq'>uniq</span><span class='period'>.</span><span class='id identifier rubyid_sort'>sort</span>
@@ -3162,15 +3134,15 @@ ranges combined, deduped, sorted.</p>
       <pre class="lines">
 
 
-218
-219
-220
-221
-222
-223</pre>
+224
+225
+226
+227
+228
+229</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 218</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 224</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_rooms_by_area'>rooms_by_area</span>
   <span class='ivar'>@rooms_by_area</span> <span class='op'>||=</span> <span class='ivar'>@areas</span><span class='period'>.</span><span class='id identifier rubyid_to_h'>to_h</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span>
@@ -3224,12 +3196,12 @@ the game's own refusal (&quot;does not seem to be affected&quot;).</p>
       <pre class="lines">
 
 
-302
-303
-304</pre>
+291
+292
+293</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 302</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 291</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sleepable?'>sleepable?</span>
   <span class='ivar'>@sleepable</span>
@@ -3279,12 +3251,12 @@ the game's own refusal (&quot;does not seem to be affected&quot;).</p>
       <pre class="lines">
 
 
-287
-288
-289</pre>
+276
+277
+278</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 287</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 276</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sympathy?'>sympathy?</span>
   <span class='ivar'>@sympathy</span>
@@ -3319,12 +3291,12 @@ ranges (memoized - ranges stay compact on disk).</p>
       <pre class="lines">
 
 
-188
-189
-190</pre>
+194
+195
+196</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 188</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 194</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_uids'>uids</span>
   <span class='ivar'>@uids</span> <span class='op'>||=</span> <span class='ivar'>@areas</span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_a'>a</span><span class='op'>|</span> <span class='const'>Array</span><span class='lparen'>(</span><span class='id identifier rubyid_a'>a</span><span class='lbracket'>[</span><span class='symbol'>:uids</span><span class='rbracket'>]</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_flat_map'>flat_map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:to_a</span><span class='rparen'>)</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_uniq'>uniq</span><span class='period'>.</span><span class='id identifier rubyid_sort'>sort</span>
@@ -3379,12 +3351,12 @@ families.</p>
       <pre class="lines">
 
 
-280
-281
-282</pre>
+269
+270
+271</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 280</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/creature.rb', line 269</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_witherable?'>witherable?</span>
   <span class='ivar'>@witherable</span>
@@ -3399,7 +3371,7 @@ families.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:36 2026 by
+  Generated on Wed Oct 28 05:27:25 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

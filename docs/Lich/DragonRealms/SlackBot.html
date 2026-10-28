@@ -104,20 +104,20 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Represents a Slack bot for interacting with the Slack API.</p>
-<p>This class handles authentication, user messaging, and error management.</p>
+    <p>Slack API client for sending direct messages via DragonRealms LNet.</p>
+<p>Caches the Slack users list in a shared SQLite store (DB_Store) with a
+1-hour TTL. The cache is kept per token, so characters on the same game
+instance that use the same token share one cached copy, and a character
+never reads another workspace's users. Entries are never deleted:
+DB_Store has no delete and the TTL is checked on read, so lich.db keeps
+one row per token ever used.
+Randomized startup jitter prevents thundering herd on simultaneous
+character logins.</p>
 
   </div>
 </div>
 <div class="tags">
   
-
-  <p class="tag_title">See Also:</p>
-  <ul class="see">
-    
-      <li>for error handling.</li>
-    
-  </ul>
 
 </div><h2>Defined Under Namespace</h2>
 <p class="children">
@@ -125,7 +125,7 @@
     
   
     
-      <strong class="classes">Classes:</strong> <span class='object_link'><a href="SlackBot/ApiError.html" title="Lich::DragonRealms::SlackBot::ApiError (class)">ApiError</a></span>, <span class='object_link'><a href="SlackBot/Error.html" title="Lich::DragonRealms::SlackBot::Error (class)">Error</a></span>, <span class='object_link'><a href="SlackBot/NetworkError.html" title="Lich::DragonRealms::SlackBot::NetworkError (class)">NetworkError</a></span>, <span class='object_link'><a href="SlackBot/ThrottlingError.html" title="Lich::DragonRealms::SlackBot::ThrottlingError (class)">ThrottlingError</a></span>
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="SlackBot/ApiError.html" title="Lich::DragonRealms::SlackBot::ApiError (class)">ApiError</a></span>, <span class='object_link'><a href="SlackBot/Error.html" title="Lich::DragonRealms::SlackBot::Error (class)">Error</a></span>, <span class='object_link'><a href="SlackBot/MalformedResponseError.html" title="Lich::DragonRealms::SlackBot::MalformedResponseError (class)">MalformedResponseError</a></span>, <span class='object_link'><a href="SlackBot/NetworkError.html" title="Lich::DragonRealms::SlackBot::NetworkError (class)">NetworkError</a></span>, <span class='object_link'><a href="SlackBot/ThrottlingError.html" title="Lich::DragonRealms::SlackBot::ThrottlingError (class)">ThrottlingError</a></span>
     
   
 </p>
@@ -138,6 +138,24 @@
 
     <dl class="constants">
       
+        <dt id="SLACK_UNAVAILABLE_ERRORS-constant" class="">SLACK_UNAVAILABLE_ERRORS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Errors meaning Slack could not answer a request (as opposed to Slack
+answering it with a refusal). A token check that fails with one of
+these neither judges nor replaces the token. A new ApiError subclass
+for &quot;Slack could not answer&quot; belongs here, or a token check that hits
+it is treated as a rejected token and starts LNet token discovery.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span><span class='const'><span class='object_link'><a href="SlackBot/NetworkError.html" title="Lich::DragonRealms::SlackBot::NetworkError (class)">NetworkError</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="SlackBot/ThrottlingError.html" title="Lich::DragonRealms::SlackBot::ThrottlingError (class)">ThrottlingError</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="SlackBot/MalformedResponseError.html" title="Lich::DragonRealms::SlackBot::MalformedResponseError (class)">MalformedResponseError</a></span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
         <dt id="API_URL-constant" class="">API_URL =
           
         </dt>
@@ -149,7 +167,38 @@
         <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>lnet</span><span class='tstring_end'>&#39;</span></span></pre></dd>
       
         <dt id="LICHBOTS-constant" class="">LICHBOTS =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>LichBot characters from which to request a Slack token via LNet.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'>#find_token</span></li>
+    
+      <li><span class='object_link'>#request_token</span></li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>Quilsilgas</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
@@ -164,7 +213,44 @@
         <dd><pre class="code"><span class='int'>5</span></pre></dd>
       
         <dt id="NO_USER_PATTERN-constant" class="">NO_USER_PATTERN =
-          
+          <div class="docstring">
+  <div class="discussion">
+    <p>Matches a game server message indicating a user does not exist in the game.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>[server]: \&quot;no user jsmith\&quot;</span><span class='tstring_end'>&quot;</span></span> <span class='comment'>#=&gt; matches</span></code></pre>
+    
+  </div>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'>#request_token</span></li>
+    
+  </ul>
+
+</div>
         </dt>
         <dd><pre class="code"><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\[server\]: &quot;no user .*</span><span class='regexp_end'>/</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
@@ -203,6 +289,95 @@
         </dt>
         <dd><pre class="code"><span class='int'>10</span></pre></dd>
       
+        <dt id="SEND_REQUEST_BUDGET-constant" class="">SEND_REQUEST_BUDGET =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Hard cap, in seconds, on each Slack API step (token check, users.list)
+that #direct_message runs when it has to restore the connection. A
+message is often sent right before an emergency logout, so it must
+never wait out the full network or rate-limit backoff.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>5</span></pre></dd>
+      
+        <dt id="STARTUP_REQUEST_BUDGET-constant" class="">STARTUP_REQUEST_BUDGET =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Hard cap, in seconds, on each Slack API step (token check, users.list)
+while the bot starts. SlackBot.new runs on the calling script's thread,
+often before that script's own safety checks start, so startup must
+not wait out the full network or rate-limit backoff either. A bot that
+gives up here retries on the next message.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>10</span></pre></dd>
+      
+        <dt id="STARTUP_JITTER_SECONDS-constant" class="">STARTUP_JITTER_SECONDS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Most seconds the startup waits before users.list, so characters that
+log in together let the first one fill the shared cache. Not counted
+against STARTUP_REQUEST_BUDGET.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='float'>5.0</span></pre></dd>
+      
+        <dt id="CONNECT_SHARE_OF_BUDGET-constant" class="">CONNECT_SHARE_OF_BUDGET =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Part of a deadline request's remaining budget that net/http's own
+connect timeouts share out. The rest is headroom before the hard
+Timeout on the whole connect, so the two do not fire together.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='float'>0.9</span></pre></dd>
+      
+        <dt id="USERS_LIST_RETRY_COOLDOWN-constant" class="">USERS_LIST_RETRY_COOLDOWN =
+          <div class="docstring">
+  <div class="discussion">
+    <p>After a failed users.list call, #direct_message makes no new call for
+this many seconds (or for Slack's Retry-After, if longer, but never
+more than MAX_RETRY_DELAY_SECONDS), so a burst of messages during an
+outage neither waits on Slack nor hammers it.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='int'>30</span></pre></dd>
+      
+        <dt id="USERS_LIST_UNAVAILABLE-constant" class="">USERS_LIST_UNAVAILABLE =
+          
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Slack user list unavailable</span><span class='tstring_end'>&#39;</span></span></pre></dd>
+      
     </dl>
   
 
@@ -215,7 +390,7 @@
       <li class="public ">
   <span class="summary_signature">
     
-      <a href="#error_message-instance_method" title="#error_message (instance method)">#<strong>error_message</strong>  &#x21d2; Object </a>
+      <a href="#error_message-instance_method" title="#error_message (instance method)">#<strong>error_message</strong>  &#x21d2; String<sup>?</sup> </a>
     
 
     
@@ -234,7 +409,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Returns the value of attribute error_message.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Human-readable error from the last failed operation.</p></div></span>
   
 </li>
 
@@ -255,7 +430,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#authed%3F-instance_method" title="#authed? (instance method)">#<strong>authed?</strong>(token)  &#x21d2; Boolean </a>
+      <a href="#authed%3F-instance_method" title="#authed? (instance method)">#<strong>authed?</strong>(token, budget: nil)  &#x21d2; Boolean </a>
     
 
     
@@ -269,7 +444,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the provided token is authenticated with the Slack API.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Tests whether a Slack API token is valid.</p></div></span>
   
 </li>
 
@@ -277,7 +452,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#direct_message-instance_method" title="#direct_message (instance method)">#<strong>direct_message</strong>(username, message)  &#x21d2; void </a>
+      <a href="#direct_message-instance_method" title="#direct_message (instance method)">#<strong>direct_message</strong>(username, message)  &#x21d2; Hash<sup>?</sup> </a>
     
 
     
@@ -291,7 +466,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Sends a direct message to a specified user on Slack.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Sends a direct message to a Slack user.</p></div></span>
   
 </li>
 
@@ -315,7 +490,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>A new instance of SlackBot.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Connects at once: checks (or discovers) the token and loads the users list, capping each Slack API step at STARTUP_REQUEST_BUDGET.</p></div></span>
   
 </li>
 
@@ -337,7 +512,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Checks if the SlackBot has been initialized successfully.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>True if the bot has a valid token and a non-empty users list.</p></div></span>
   
 </li>
 
@@ -359,7 +534,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'><p>Checks whether the LNet connection is alive and responsive.</p></div></span>
   
 </li>
 
@@ -367,7 +542,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#reconnect!-instance_method" title="#reconnect! (instance method)">#<strong>reconnect!</strong>  &#x21d2; Boolean </a>
+      <a href="#reconnect!-instance_method" title="#reconnect! (instance method)">#<strong>reconnect!</strong>(budget: nil, jitter: true)  &#x21d2; Boolean </a>
     
 
     
@@ -381,7 +556,7 @@
   
 
   
-    <span class="summary_desc"><div class='inline'><p>Reconnects the SlackBot to the Slack API.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>Reinitializes the bot by re-checking the token and re-loading the users list.</p></div></span>
   
 </li>
 
@@ -404,7 +579,11 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns a new instance of SlackBot.</p>
+    <p>Connects at once: checks (or discovers) the token and loads the users
+list, capping each Slack API step at STARTUP_REQUEST_BUDGET. If a step
+fails or runs out of time, the bot is left uninitialized and the next
+#direct_message tries again. The LNet token discovery keeps its own
+timeouts.</p>
 
   </div>
 </div>
@@ -417,29 +596,31 @@
       <pre class="lines">
 
 
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61</pre>
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 52</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 130</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span>
   <span class='ivar'>@initialized</span> <span class='op'>=</span> <span class='kw'>false</span>
   <span class='ivar'>@error_message</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@token_verified</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='ivar'>@users_list</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@users_list_retry_at</span> <span class='op'>=</span> <span class='kw'>nil</span>
+  <span class='ivar'>@restore_mutex</span> <span class='op'>=</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span>
+  <span class='ivar'>@restore_attempts</span> <span class='op'>=</span> <span class='int'>0</span>
 
-  <span class='id identifier rubyid_ensure_slack_token'>ensure_slack_token</span> <span class='kw'>unless</span> <span class='id identifier rubyid_authed?'>authed?</span><span class='lparen'>(</span><span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_slack_token'>slack_token</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>if</span> <span class='ivar'>@error_message</span>
-
-  <span class='id identifier rubyid_fetch_users_list'>fetch_users_list</span>
-  <span class='ivar'>@initialized</span> <span class='op'>=</span> <span class='kw'>true</span>
+  <span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='label'>budget:</span> <span class='const'><span class='object_link'><a href="#STARTUP_REQUEST_BUDGET-constant" title="Lich::DragonRealms::SlackBot::STARTUP_REQUEST_BUDGET (constant)">STARTUP_REQUEST_BUDGET</a></span></span><span class='comma'>,</span> <span class='label'>jitter:</span> <span class='kw'>true</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -456,7 +637,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="error_message-instance_method">
   
-    #<strong>error_message</strong>  &#x21d2; <tt>Object</tt>  <span class="extras">(readonly)</span>
+    #<strong>error_message</strong>  &#x21d2; <tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt><sup>?</sup>  <span class="extras">(readonly)</span>
   
 
   
@@ -464,12 +645,28 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Returns the value of attribute error_message.</p>
+    <p>Returns human-readable error from the last failed operation.</p>
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>human-readable error from the last failed operation</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -477,12 +674,12 @@
       <pre class="lines">
 
 
-33
-34
-35</pre>
+64
+65
+66</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 33</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 64</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_error_message'>error_message</span>
   <span class='ivar'>@error_message</span>
@@ -502,7 +699,7 @@
       <div class="method_details first">
   <h3 class="signature first" id="authed?-instance_method">
   
-    #<strong>authed?</strong>(token)  &#x21d2; <tt>Boolean</tt> 
+    #<strong>authed?</strong>(token, budget: nil)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -510,7 +707,10 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the provided token is authenticated with the Slack API.</p>
+    <p>Tests whether a Slack API token is valid.</p>
+<p>Answers false both when Slack rejects the token and when Slack cannot
+be asked (a network failure, a rate limit or a reply that is not
+JSON); the cause of the latter is logged.</p>
 
   </div>
 </div>
@@ -523,12 +723,29 @@
         <span class='name'>token</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the Slack token to validate.</p></div>
+        <div class='inline'><p>the token to test</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>budget</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>seconds allowed for the check, or nil for
+the full retry policy</p></div>
       
     </li>
   
@@ -544,9 +761,6 @@
       
       
       
-        &mdash;
-        <div class='inline'><p>true if authenticated, false otherwise.</p></div>
-      
     </li>
   
 </ul>
@@ -557,22 +771,20 @@
       <pre class="lines">
 
 
-99
-100
-101
-102
-103
-104
-105</pre>
+192
+193
+194
+195
+196
+197</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 99</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 192</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_authed?'>authed?</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id identifier rubyid_token'>token</span>
-
-  <span class='id identifier rubyid_post'>post</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>auth.test</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>token</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_token'>token</span> <span class='rbrace'>}</span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>ok</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
-<span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="SlackBot/ApiError.html" title="Lich::DragonRealms::SlackBot::ApiError (class)">ApiError</a></span></span><span class='comma'>,</span> <span class='const'><span class='object_link'><a href="SlackBot/NetworkError.html" title="Lich::DragonRealms::SlackBot::NetworkError (class)">NetworkError</a></span></span>
+<span class='kw'>def</span> <span class='id identifier rubyid_authed?'>authed?</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='comma'>,</span> <span class='label'>budget:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_token_accepted?'>token_accepted?</span><span class='lparen'>(</span><span class='id identifier rubyid_token'>token</span><span class='comma'>,</span> <span class='id identifier rubyid_budget'>budget</span><span class='rparen'>)</span>
+<span class='kw'>rescue</span> <span class='op'>*</span><span class='const'><span class='object_link'><a href="#SLACK_UNAVAILABLE_ERRORS-constant" title="Lich::DragonRealms::SlackBot::SLACK_UNAVAILABLE_ERRORS (constant)">SLACK_UNAVAILABLE_ERRORS</a></span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
+  <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SlackBot: Could not check a Slack token: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='kw'>false</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -583,7 +795,7 @@
       <div class="method_details ">
   <h3 class="signature " id="direct_message-instance_method">
   
-    #<strong>direct_message</strong>(username, message)  &#x21d2; <tt>void</tt> 
+    #<strong>direct_message</strong>(username, message)  &#x21d2; <tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt><sup>?</sup> 
   
 
   
@@ -591,7 +803,8 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note returns_void">This method returns an undefined value.</p><p>Sends a direct message to a specified user on Slack.</p>
+    <p>Sends a direct message to a Slack user.
+Validates the username first, then reconnects if needed.</p>
 
   </div>
 </div>
@@ -604,12 +817,12 @@
         <span class='name'>username</span>
       
       
-        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="../../String.html" title="String (class)">String</a></span></tt>, <tt>nil</tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>the username of the recipient.</p></div>
+        <div class='inline'><p>Slack username to message</p></div>
       
     </li>
   
@@ -623,12 +836,28 @@
       
       
         &mdash;
-        <div class='inline'><p>the message content to send.</p></div>
+        <div class='inline'><p>message body</p></div>
       
     </li>
   
 </ul>
 
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Hash.html" title="Hash (class)">Hash</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>Slack API response, or nil on failure</p></div>
+      
+    </li>
+  
+</ul>
 
 </div><table class="source_code">
   <tr>
@@ -636,39 +865,41 @@
       <pre class="lines">
 
 
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140</pre>
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 111</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 205</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_direct_message'>direct_message</span><span class='lparen'>(</span><span class='id identifier rubyid_username'>username</span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_username'>username</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_username'>username</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_strip'>strip</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
@@ -676,7 +907,7 @@
     <span class='kw'>return</span> <span class='kw'>nil</span>
   <span class='kw'>end</span>
 
-  <span class='id identifier rubyid_reconnect!'>reconnect!</span> <span class='kw'>unless</span> <span class='id identifier rubyid_initialized?'>initialized?</span>
+  <span class='id identifier rubyid_restore_connection'>restore_connection</span> <span class='kw'>unless</span> <span class='id identifier rubyid_initialized?'>initialized?</span>
 
   <span class='kw'>unless</span> <span class='id identifier rubyid_initialized?'>initialized?</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>SlackBot: Cannot send message - not connected. Will retry on next attempt.</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
@@ -684,6 +915,7 @@
   <span class='kw'>end</span>
 
   <span class='id identifier rubyid_dm_channel'>dm_channel</span> <span class='op'>=</span> <span class='id identifier rubyid_get_dm_channel'>get_dm_channel</span><span class='lparen'>(</span><span class='id identifier rubyid_username'>username</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_dm_channel'>dm_channel</span> <span class='op'>=</span> <span class='id identifier rubyid_get_dm_channel'>get_dm_channel</span><span class='lparen'>(</span><span class='id identifier rubyid_username'>username</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_dm_channel'>dm_channel</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_reload_users_cache'>reload_users_cache</span><span class='lparen'>(</span><span class='id identifier rubyid_username'>username</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_dm_channel'>dm_channel</span>
     <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SlackBot: Cannot send message - user &#39;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_username'>username</span><span class='embexpr_end'>}</span><span class='tstring_content'>&#39; not found in Slack workspace.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
     <span class='kw'>return</span> <span class='kw'>nil</span>
@@ -699,6 +931,7 @@
 <span class='kw'>rescue</span> <span class='const'><span class='object_link'><a href="SlackBot/Error.html" title="Lich::DragonRealms::SlackBot::Error (class)">Error</a></span></span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='period'>.</span><span class='id identifier rubyid_log'><span class='object_link'><a href="../../Lich.html#log-class_method" title="Lich.log (method)">log</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SlackBot: Failed to send Slack message to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_username'>username</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_msg'><span class='object_link'><a href="../Messaging.html#msg-class_method" title="Lich::Messaging.msg (method)">msg</a></span></span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>bold</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SlackBot: Failed to send Slack message to </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_username'>username</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_e'><span class='object_link'><a href="../../top-level-namespace.html#e-instance_method" title="#e (method)">e</a></span></span><span class='period'>.</span><span class='id identifier rubyid_message'>message</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='kw'>nil</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -716,7 +949,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Checks if the SlackBot has been initialized successfully.</p>
+    <p>Returns true if the bot has a valid token and a non-empty users list.</p>
 
   </div>
 </div>
@@ -733,7 +966,7 @@
       
       
         &mdash;
-        <div class='inline'><p>true if initialized, false otherwise.</p></div>
+        <div class='inline'><p>true if the bot has a valid token and a non-empty users list</p></div>
       
     </li>
   
@@ -745,12 +978,12 @@
       <pre class="lines">
 
 
-65
-66
-67</pre>
+143
+144
+145</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 65</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 143</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialized?'>initialized?</span>
   <span class='ivar'>@initialized</span>
@@ -771,7 +1004,7 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    
+    <p>Checks whether the LNet connection is alive and responsive.</p>
 
   </div>
 </div>
@@ -797,22 +1030,22 @@
       <pre class="lines">
 
 
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94</pre>
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 82</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 168</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lnet_connected?'>lnet_connected?</span>
   <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='const'>LNet</span><span class='rparen'>)</span>
@@ -835,7 +1068,7 @@
       <div class="method_details ">
   <h3 class="signature " id="reconnect!-instance_method">
   
-    #<strong>reconnect!</strong>  &#x21d2; <tt>Boolean</tt> 
+    #<strong>reconnect!</strong>(budget: nil, jitter: true)  &#x21d2; <tt>Boolean</tt> 
   
 
   
@@ -843,12 +1076,52 @@
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>Reconnects the SlackBot to the Slack API.</p>
+    <p>Reinitializes the bot by re-checking the token and re-loading the users list.
+A failed users-list load keeps any list loaded earlier.</p>
 
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>budget</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>, <tt>nil</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>nil</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>seconds allowed for each Slack API step
+(token check, users.list), or nil for the full retry policy. The LNet
+token discovery keeps its own timeouts.</p></div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>jitter</span>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>true</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>wait a random moment before calling users.list
+(on for a manual reconnect; the in-send reconnect turns it off)</p></div>
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -860,7 +1133,8 @@
       
       
         &mdash;
-        <div class='inline'><p>true if reconnected successfully, false otherwise.</p></div>
+        <div class='inline'><p>true if the token is valid and a non-empty users list
+(fresh, cached, or the one loaded earlier) is available</p></div>
       
     </li>
   
@@ -872,29 +1146,23 @@
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80</pre>
+157
+158
+159
+160
+161
+162
+163</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 71</span>
+      <pre class="code"><span class="info file"># File 'documented/dragonrealms/commons/slackbot.rb', line 157</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_reconnect!'>reconnect!</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_reconnect!'>reconnect!</span><span class='lparen'>(</span><span class='label'>budget:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>jitter:</span> <span class='kw'>true</span><span class='rparen'>)</span>
   <span class='ivar'>@error_message</span> <span class='op'>=</span> <span class='kw'>nil</span>
   <span class='ivar'>@initialized</span> <span class='op'>=</span> <span class='kw'>false</span>
+  <span class='ivar'>@token_verified</span> <span class='op'>=</span> <span class='kw'>false</span>
 
-  <span class='id identifier rubyid_ensure_slack_token'>ensure_slack_token</span> <span class='kw'>unless</span> <span class='id identifier rubyid_authed?'>authed?</span><span class='lparen'>(</span><span class='const'>UserVars</span><span class='period'>.</span><span class='id identifier rubyid_slack_token'>slack_token</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>if</span> <span class='ivar'>@error_message</span>
-
-  <span class='id identifier rubyid_fetch_users_list'>fetch_users_list</span>
-  <span class='ivar'>@initialized</span> <span class='op'>=</span> <span class='kw'>true</span>
+  <span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='label'>budget:</span> <span class='id identifier rubyid_budget'>budget</span><span class='comma'>,</span> <span class='label'>jitter:</span> <span class='id identifier rubyid_jitter'>jitter</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -906,7 +1174,7 @@
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:40 2026 by
+  Generated on Wed Oct 28 05:27:28 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

@@ -98,8 +98,8 @@ UpstreamHook are otherwise near-identical apart from their backing storage
 and their per-direction <code>run</code>, so the registration/bookkeeping lives here
 and a fix (e.g. to source tracking) lands in one place.</p>
 <p>An including class is +extend+ed with these as class methods and supplies
-its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook_owners</code> and
-<code>_hook_persist</code>, keeping its own <code>run</code>.</p>
+its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook_owners</code>,
+<code>_hook_persist</code> and <code>_hook_priorities</code>, keeping its own <code>run</code>.</p>
 
   </div>
 </div>
@@ -115,6 +115,38 @@ its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook
 
   
     <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#extended-class_method" title="extended (class method)">.<strong>extended</strong>(registry)  &#x21d2; void </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Initialize each registry's lock before it accepts registrations.</p></div></span>
+  
+</li>
+
+      
+    </ul>
+    
+  
+    <h2>
       Instance Method Summary
       <small><a href="#" class="summary_toggle">collapse</a></small>
     </h2>
@@ -124,7 +156,7 @@ its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#add-instance_method" title="#add (instance method)">#<strong>add</strong>(name, action, persist: nil)  &#x21d2; Proc, false </a>
+      <a href="#add-instance_method" title="#add (instance method)">#<strong>add</strong>(name, action, persist: nil, priority: 0)  &#x21d2; Proc, false </a>
     
 
     
@@ -212,6 +244,28 @@ its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#ordered_hook_names-instance_method" title="#ordered_hook_names (instance method)">#<strong>ordered_hook_names</strong>  &#x21d2; Array&lt;String&gt; </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Snapshot names and priorities together with registration/removal excluded.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#remove-instance_method" title="#remove (instance method)">#<strong>remove</strong>(name)  &#x21d2; Proc<sup>?</sup> </a>
     
 
@@ -259,6 +313,70 @@ its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook
 
 
 
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="extended-class_method">
+  
+    .<strong>extended</strong>(registry)  &#x21d2; <tt>void</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note returns_void">This method returns an undefined value.</p><p>Initialize each registry's lock before it accepts registrations. Keep
+the same lock if the registry is extended again during a reload.</p>
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>registry</span>
+      
+      
+        <span class='type'>(<tt>Class</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>the extending hook registry</p></div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+20
+21
+22</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 20</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extended'>extended</span><span class='lparen'>(</span><span class='id identifier rubyid_registry'>registry</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_registry'>registry</span><span class='period'>.</span><span class='id identifier rubyid_instance_variable_set'>instance_variable_set</span><span class='lparen'>(</span><span class='symbol'>:@hook_mutex</span><span class='comma'>,</span> <span class='const'>Mutex</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_registry'>registry</span><span class='period'>.</span><span class='id identifier rubyid_instance_variable_defined?'>instance_variable_defined?</span><span class='lparen'>(</span><span class='symbol'>:@hook_mutex</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
   <div id="instance_method_details" class="method_details_list">
     <h2>Instance Method Details</h2>
 
@@ -266,7 +384,7 @@ its own storage via <code>_hooks</code>, <code>_hook_sources</code>, <code>_hook
       <div class="method_details first">
   <h3 class="signature first" id="add-instance_method">
   
-    #<strong>add</strong>(name, action, persist: nil)  &#x21d2; <tt>Proc</tt>, <tt>false</tt> 
+    #<strong>add</strong>(name, action, persist: nil, priority: 0)  &#x21d2; <tt>Proc</tt>, <tt>false</tt> 
   
 
   
@@ -282,7 +400,11 @@ script dies:</p>
 <pre class="code ruby"><code class="ruby">* +true+  - keep it (it is meant to outlive the script, e.g. ;alias)
 * +false+ - remove it (it is scoped to this script&#39;s lifetime)
 * +nil+   - undeclared: kept for backwards compatibility, but the death
-          path warns once so the author can declare intent.</code></pre>
+          path warns once so the author can declare intent.
+</code></pre>
+<p>Higher-priority hooks run first. Hooks with equal priority retain their
+registration order, preserving historical behaviour at the default of
+zero. A named replacement keeps its original equal-priority position.</p>
 
   </div>
 </div>
@@ -328,6 +450,22 @@ script dies:</p>
       
     </li>
   
+    <li>
+      
+        <span class='name'>priority</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../Numeric.html" title="Numeric (class)">Numeric</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>0</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>execution priority; higher values run first</p></div>
+      
+    </li>
+  
 </ul>
 
 <p class="tag_title">Returns:</p>
@@ -353,29 +491,49 @@ script dies:</p>
       <pre class="lines">
 
 
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41</pre>
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 32</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 44</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_action'>action</span><span class='comma'>,</span> <span class='label'>persist:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_add'>add</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_action'>action</span><span class='comma'>,</span> <span class='label'>persist:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>priority:</span> <span class='int'>0</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_action'>action</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Proc</span><span class='rparen'>)</span>
     <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_hook_label'>hook_label</span><span class='embexpr_end'>}</span><span class='tstring_content'>: not a Proc (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_action'>action</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
     <span class='kw'>return</span> <span class='kw'>false</span>
   <span class='kw'>end</span>
-  <span class='id identifier rubyid__hook_sources'>_hook_sources</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_current'><span class='object_link'><a href="Script.html#current-class_method" title="Lich::Common::Script.current (method)">current</a></span></span><span class='op'>&amp;.</span><span class='id identifier rubyid_name'><span class='object_link'><a href="Script.html#name-instance_method" title="Lich::Common::Script#name (method)">name</a></span></span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
-  <span class='id identifier rubyid__hook_owners'>_hook_owners</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span>  <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_current'><span class='object_link'><a href="Script.html#current-class_method" title="Lich::Common::Script.current (method)">current</a></span></span><span class='op'>&amp;.</span><span class='id identifier rubyid_object_id'>object_id</span>
-  <span class='id identifier rubyid__hook_persist'>_hook_persist</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_persist'>persist</span>
-  <span class='id identifier rubyid__hooks'>_hooks</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_action'>action</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_priority'>priority</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="../../Numeric.html" title="Numeric (class)">Numeric</a></span></span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id identifier rubyid_priority'>priority</span><span class='period'>.</span><span class='id identifier rubyid_real?'>real?</span> <span class='op'>&amp;&amp;</span>
+         <span class='lparen'>(</span><span class='op'>!</span><span class='id identifier rubyid_priority'>priority</span><span class='period'>.</span><span class='id identifier rubyid_respond_to?'>respond_to?</span><span class='lparen'>(</span><span class='symbol'>:finite?</span><span class='rparen'>)</span> <span class='op'>||</span> <span class='id identifier rubyid_priority'>priority</span><span class='period'>.</span><span class='id identifier rubyid_finite?'>finite?</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_echo'><span class='object_link'><a href="../../top-level-namespace.html#echo-instance_method" title="#echo (method)">echo</a></span></span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_hook_label'>hook_label</span><span class='embexpr_end'>}</span><span class='tstring_content'>: priority must be a finite real Numeric (</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_priority'>priority</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span><span class='embexpr_end'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
+    <span class='kw'>return</span> <span class='kw'>false</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_script'>script</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="Script.html" title="Lich::Common::Script (class)">Script</a></span></span><span class='period'>.</span><span class='id identifier rubyid_current'><span class='object_link'><a href="Script.html#current-class_method" title="Lich::Common::Script.current (method)">current</a></span></span>
+  <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid__hook_sources'>_hook_sources</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='lparen'>(</span><span class='id identifier rubyid_script'>script</span><span class='op'>&amp;.</span><span class='id identifier rubyid_name'>name</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Unknown</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid__hook_owners'>_hook_owners</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span>  <span class='op'>=</span> <span class='id identifier rubyid_script'>script</span><span class='op'>&amp;.</span><span class='id identifier rubyid_object_id'>object_id</span>
+    <span class='id identifier rubyid__hook_persist'>_hook_persist</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_persist'>persist</span>
+    <span class='id identifier rubyid__hook_priorities'>_hook_priorities</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_priority'>priority</span>
+    <span class='id identifier rubyid__hooks'>_hooks</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id identifier rubyid_action'>action</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_action'>action</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -446,37 +604,37 @@ the author can declare intent. Default behaviour is therefore unchanged
       <pre class="lines">
 
 
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79</pre>
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 64</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 83</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_cleanup_on_death'>cleanup_on_death</span><span class='lparen'>(</span><span class='id identifier rubyid_owner_id'>owner_id</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_owned'>owned</span> <span class='op'>=</span> <span class='id identifier rubyid__hook_owners'>_hook_owners</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__name'>_name</span><span class='comma'>,</span> <span class='id identifier rubyid_owner'>owner</span><span class='op'>|</span> <span class='id identifier rubyid_owner'>owner</span> <span class='op'>==</span> <span class='id identifier rubyid_owner_id'>owner_id</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
-  <span class='kw'>return</span> <span class='int'>0</span> <span class='kw'>if</span> <span class='id identifier rubyid_owned'>owned</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
-
   <span class='id identifier rubyid_removed'>removed</span>    <span class='op'>=</span> <span class='int'>0</span>
   <span class='id identifier rubyid_undeclared'>undeclared</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
-  <span class='id identifier rubyid_owned'>owned</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
-    <span class='kw'>case</span> <span class='id identifier rubyid__hook_persist'>_hook_persist</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span>
-    <span class='kw'>when</span> <span class='kw'>false</span> <span class='kw'>then</span> <span class='lparen'>(</span><span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span><span class='semicolon'>;</span> <span class='id identifier rubyid_removed'>removed</span> <span class='op'>+=</span> <span class='int'>1</span><span class='rparen'>)</span>
-    <span class='kw'>when</span> <span class='kw'>true</span>  <span class='kw'>then</span> <span class='kw'>next</span>
-    <span class='kw'>else</span> <span class='id identifier rubyid_undeclared'>undeclared</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_name'>name</span>
+  <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_owned'>owned</span> <span class='op'>=</span> <span class='id identifier rubyid__hook_owners'>_hook_owners</span><span class='period'>.</span><span class='id identifier rubyid_select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__name'>_name</span><span class='comma'>,</span> <span class='id identifier rubyid_owner'>owner</span><span class='op'>|</span> <span class='id identifier rubyid_owner'>owner</span> <span class='op'>==</span> <span class='id identifier rubyid_owner_id'>owner_id</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span>
+    <span class='id identifier rubyid_owned'>owned</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='op'>|</span>
+      <span class='kw'>case</span> <span class='id identifier rubyid__hook_persist'>_hook_persist</span><span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span>
+      <span class='kw'>when</span> <span class='kw'>false</span> <span class='kw'>then</span> <span class='lparen'>(</span><span class='id identifier rubyid_remove_hook'>remove_hook</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span><span class='semicolon'>;</span> <span class='id identifier rubyid_removed'>removed</span> <span class='op'>+=</span> <span class='int'>1</span><span class='rparen'>)</span>
+      <span class='kw'>when</span> <span class='kw'>true</span>  <span class='kw'>then</span> <span class='kw'>next</span>
+      <span class='kw'>else</span> <span class='id identifier rubyid_undeclared'>undeclared</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_name'>name</span>
+      <span class='kw'>end</span>
     <span class='kw'>end</span>
   <span class='kw'>end</span>
   <span class='id identifier rubyid_warn_undeclared'>warn_undeclared</span><span class='lparen'>(</span><span class='id identifier rubyid_undeclared'>undeclared</span><span class='rparen'>)</span>
@@ -527,12 +685,12 @@ the author can declare intent. Default behaviour is therefore unchanged
       <pre class="lines">
 
 
-96
-97
-98</pre>
+116
+117
+118</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 96</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 116</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_hook_sources'>hook_sources</span>
   <span class='id identifier rubyid__hook_sources'>_hook_sources</span>
@@ -582,15 +740,80 @@ the author can declare intent. Default behaviour is therefore unchanged
       <pre class="lines">
 
 
-82
-83
-84</pre>
+101
+102
+103</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 82</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 101</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_list'>list</span>
-  <span class='id identifier rubyid__hooks'>_hooks</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+  <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid__hooks'>_hooks</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span> <span class='rbrace'>}</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="ordered_hook_names-instance_method">
+  
+    #<strong>ordered_hook_names</strong>  &#x21d2; <tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Snapshot names and priorities together with registration/removal excluded.
+There is no order cache: legacy direct edits to the live maps are visible
+on the next dispatch, but bypass synchronization; use add/remove for
+concurrent mutations. Sorting and callbacks run outside the lock.</p>
+<p>New names and priority changes take effect on the next dispatch. Actions
+are read live before invocation: removed names are skipped, and a name
+replaced before its turn runs the new action at its old position for this
+pass, preserving historical replacement behaviour.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+130
+131
+132
+133
+134
+135</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 130</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_ordered_hook_names'>ordered_hook_names</span>
+  <span class='id identifier rubyid_entries'>entries</span> <span class='op'>=</span> <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid__hooks'>_hooks</span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_each_with_index'>each_with_index</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid__hook_priorities'>_hook_priorities</span><span class='period'>.</span><span class='id identifier rubyid_fetch'>fetch</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
+  <span class='kw'>end</span>
+  <span class='id identifier rubyid_entries'>entries</span><span class='period'>.</span><span class='id identifier rubyid_sort_by'>sort_by</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid__name'>_name</span><span class='comma'>,</span> <span class='id identifier rubyid_priority'>priority</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='op'>-</span><span class='id identifier rubyid_priority'>priority</span><span class='comma'>,</span> <span class='id identifier rubyid_index'>index</span><span class='rbracket'>]</span> <span class='rbrace'>}</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:first</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -652,21 +875,15 @@ the author can declare intent. Default behaviour is therefore unchanged
       <pre class="lines">
 
 
-47
-48
-49
-50
-51
-52</pre>
+69
+70
+71</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 47</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 69</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_remove'>remove</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid__hook_sources'>_hook_sources</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid__hook_owners'>_hook_owners</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid__hook_persist'>_hook_persist</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid__hooks'>_hooks</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+  <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid_remove_hook'>remove_hook</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -697,19 +914,21 @@ the author can declare intent. Default behaviour is therefore unchanged
       <pre class="lines">
 
 
-88
-89
-90
-91
-92
-93</pre>
+107
+108
+109
+110
+111
+112
+113</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 88</span>
+      <pre class="code"><span class="info file"># File 'documented/common/hook_registry.rb', line 107</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_sources'>sources</span>
+  <span class='id identifier rubyid_rows'>rows</span> <span class='op'>=</span> <span class='ivar'>@hook_mutex</span><span class='period'>.</span><span class='id identifier rubyid_synchronize'>synchronize</span> <span class='lbrace'>{</span> <span class='id identifier rubyid__hook_sources'>_hook_sources</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span> <span class='rbrace'>}</span>
   <span class='id identifier rubyid_info_table'>info_table</span> <span class='op'>=</span> <span class='const'>Terminal</span><span class='op'>::</span><span class='const'>Table</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='symbol'>:headings</span> <span class='op'>=&gt;</span> <span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Hook</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>Source</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='comma'>,</span>
-                                   <span class='symbol'>:rows</span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid__hook_sources'>_hook_sources</span><span class='period'>.</span><span class='id identifier rubyid_to_a'>to_a</span><span class='comma'>,</span>
+                                   <span class='symbol'>:rows</span>     <span class='op'>=&gt;</span> <span class='id identifier rubyid_rows'>rows</span><span class='comma'>,</span>
                                    <span class='symbol'>:style</span>    <span class='op'>=&gt;</span> <span class='lbrace'>{</span> <span class='symbol'>:all_separators</span> <span class='op'>=&gt;</span> <span class='kw'>true</span> <span class='rbrace'>}</span>
   <span class='const'><span class='object_link'><a href="../../Lich.html" title="Lich (module)">Lich</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Messaging.html" title="Lich::Messaging (module)">Messaging</a></span></span><span class='period'>.</span><span class='id identifier rubyid_mono'><span class='object_link'><a href="../Messaging.html#mono-class_method" title="Lich::Messaging.mono (method)">mono</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_info_table'>info_table</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
@@ -723,7 +942,7 @@ the author can declare intent. Default behaviour is therefore unchanged
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:18 2026 by
+  Generated on Wed Oct 28 05:27:13 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

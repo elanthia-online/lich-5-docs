@@ -116,7 +116,7 @@ value outside an explicit allow-list.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#extract_flag_value-class_method" title="extract_flag_value (class method)">.<strong>extract_flag_value</strong>(flag, usage:, valid_values: nil)  &#x21d2; String<sup>?</sup> </a>
+      <a href="#extract_flag_value-class_method" title="extract_flag_value (class method)">.<strong>extract_flag_value</strong>(flag, usage:, valid_values: nil, argv: ARGV)  &#x21d2; String<sup>?</sup> </a>
     
 
     
@@ -192,7 +192,7 @@ value outside an explicit allow-list.</p>
       <div class="method_details first">
   <h3 class="signature first" id="extract_flag_value-class_method">
   
-    .<strong>extract_flag_value</strong>(flag, usage:, valid_values: nil)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
+    .<strong>extract_flag_value</strong>(flag, usage:, valid_values: nil, argv: ARGV)  &#x21d2; <tt><span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span></tt><sup>?</sup> 
   
 
   
@@ -252,6 +252,23 @@ value outside an explicit allow-list.</p>
       
     </li>
   
+    <li>
+      
+        <span class='name'>argv</span>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../../../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>ARGV</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>arguments to search; callers whose positionals may
+legitimately equal the flag name pass ARGV without those slots</p></div>
+      
+    </li>
+  
 </ul>
 
 <p class="tag_title">Returns:</p>
@@ -277,8 +294,6 @@ value outside an explicit allow-list.</p>
       <pre class="lines">
 
 
-18
-19
 20
 21
 22
@@ -291,15 +306,17 @@ value outside an explicit allow-list.</p>
 29
 30
 31
-32</pre>
+32
+33
+34</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 18</span>
+      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 20</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extract_flag_value'>extract_flag_value</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='comma'>,</span> <span class='label'>usage:</span><span class='comma'>,</span> <span class='label'>valid_values:</span> <span class='kw'>nil</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_extract_flag_value'>extract_flag_value</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='comma'>,</span> <span class='label'>usage:</span><span class='comma'>,</span> <span class='label'>valid_values:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>argv:</span> <span class='const'>ARGV</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span>
 
-  <span class='id identifier rubyid_value'>value</span> <span class='op'>=</span> <span class='const'>ARGV</span><span class='lbracket'>[</span><span class='const'>ARGV</span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='op'>+</span> <span class='int'>1</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_value'>value</span> <span class='op'>=</span> <span class='id identifier rubyid_argv'>argv</span><span class='lbracket'>[</span><span class='id identifier rubyid_argv'>argv</span><span class='period'>.</span><span class='id identifier rubyid_index'>index</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='rparen'>)</span> <span class='op'>+</span> <span class='int'>1</span><span class='rbracket'>]</span>
 
   <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span> <span class='op'>||</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_start_with?'>start_with?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>-</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
     <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_flag'>flag</span><span class='embexpr_end'>}</span><span class='tstring_content'> requires a value</span><span class='tstring_end'>&quot;</span></span>
@@ -403,15 +420,15 @@ the failure the same way this module does.</p>
       <pre class="lines">
 
 
-44
-45
 46
 47
 48
-49</pre>
+49
+50
+51</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 44</span>
+      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 46</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_reject_invalid_value'>reject_invalid_value</span><span class='lparen'>(</span><span class='id identifier rubyid_flag'>flag</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='label'>valid_values:</span><span class='comma'>,</span> <span class='label'>usage:</span><span class='rparen'>)</span>
   <span class='gvar'>$stdout</span><span class='period'>.</span><span class='id identifier rubyid_puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>error: Invalid value for </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_flag'>flag</span><span class='embexpr_end'>}</span><span class='tstring_content'>: </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_value'>value</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -514,8 +531,6 @@ character name and goes on to persist it.</p>
       <pre class="lines">
 
 
-61
-62
 63
 64
 65
@@ -528,10 +543,12 @@ character name and goes on to persist it.</p>
 72
 73
 74
-75</pre>
+75
+76
+77</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 61</span>
+      <pre class="code"><span class="info file"># File 'documented/common/cli/cli_option_validator.rb', line 63</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_require_positional'>require_positional</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='label'>name:</span><span class='comma'>,</span> <span class='label'>usage:</span><span class='rparen'>)</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_value'>value</span><span class='period'>.</span><span class='id identifier rubyid_nil?'>nil?</span>
@@ -558,7 +575,7 @@ character name and goes on to persist it.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:25 2026 by
+  Generated on Wed Oct 28 05:27:18 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>

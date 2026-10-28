@@ -90,20 +90,11 @@
 
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
-    <p>Attack pattern definitions for parsing combat log messages in GemStone IV.</p>
-<p>This module defines all recognized attack types (melee, ranged, maneuvers,
-spells, companion/pet actions, and environmental damage) as regular expressions.
-Attack definitions are organized by priority and category (PRIORITY_ATTACKS,
-BASIC_ATTACKS, WEAPON_ATTACKS, MANEUVER_ATTACKS, etc.) and concatenated in
-ALL_ATTACKS with load-bearing order: priority defs preempt generic patterns,
-and second-person patterns are matched before third-person to avoid ambiguity.</p>
-<p>Each attack is defined as an AttackDef Struct with a symbolic name and an
-array of Regexp patterns that capture attacker, target, and weapon details.
-Named capture groups (.+?, [^!]+, etc.) bind these extracted values to the
-parsed event.</p>
-<p>The module also provides prefix-detection methods for modifier lines (ambush
-and redirect prefixes) that affect how attacks are classified, and gate-based
-pattern matching for performance.</p>
+    <p>Spell attack definitions - reopens Attacks with the spell-initiation
+def groups. Loaded from attacks.rb (mid-module require, after
+AttackDef is defined); the constants here are spliced into
+ALL_ATTACKS there, so ordering notes below refer to that final
+concatenation.</p>
 
   </div>
 </div>
@@ -149,9 +140,58 @@ pattern matching for performance.</p>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:blood_burst</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Blood sprays from (?&lt;target&gt;.+?) neck in a crimson arc!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:cold_snap</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An airy mist rolls into the area, carrying a harsh chill with it.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:ethereal_censer</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) becomes enveloped in the incense smoke!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:divine_wrath</span><span class='comma'>,</span> <span class='lbracket'>[</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A shadowy figure briefly materializes behind (?&lt;target&gt;[^,]+), and a silent scream courses over .+? visage.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Within the reddish haze, the man brings his forging-hammer sharply down upon the anvil, producing a loud clang\.</span><span class='regexp_end'>/</span></span>
+  <span class='comment'># 335 Divine Wrath. The manifestation and strike lines are
+</span>  <span class='comment'># deity-specific (~35 catalogued forms from wiki and game logs).
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:divine_wrath</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The sounds of crashing waves increase to an almost deafening level until, suddenly, a powerful wave surges into the area, violently slamming directly into (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>White sparks flicker around you, and you sense electrical energy gathering in the instant before a massive bolt of lightning spears toward (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A throwing knife formed of shimmering golden light hurtles from the hand of one of the spirit jesters toward (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Within the reddish haze swirling beside (?&lt;target&gt;[^,]+), the man brings his forging-hammer sharply down upon the anvil, producing a loud clang\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Within the reddish haze, the man brings his forging-hammer sharply down upon the anvil, producing a loud clang\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A brown stag materializes in midair, leaping out of nowhere to try to impale (?&lt;target&gt;[^!]+) upon its magnificent antlers!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A beam of vermilion light lances away from the rainbow around you to strike (?&lt;target&gt;[^,]+), bathing the .+? in colored radiance\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A beam of cerulean light lances away from the rainbow around you to strike (?&lt;target&gt;[^,]+), bathing the .+? in colored radiance\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The ground shakes powerfully directly underneath (?&lt;target&gt;.+?) as a beam of golden light lances away from (?:you|.+?) to transfix .+?\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As several faintly glowing snowflakes settle upon (?&lt;target&gt;[^,]+), they ignite with cold white flame\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Guided by the knowledge within you, you concentrate upon (?&lt;target&gt;[^,]+), and, by strength of will alone, you expose the natural weaknesses of .+?\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A shroud of pale pink light suddenly encircles (?:a |an )?(?&lt;target&gt;[^,]+), and tiny tongues of pure white flame flicker at the heart of the shroud\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As your gaze falls across (?:a |an )?(?&lt;target&gt;[^,]+), brilliant radiance suddenly surrounds (?:him|her|it), burning as brightly as the sun\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Seen only by your spirit gaze, one of the dream unicorns lowers its head and charges fiercely toward (?&lt;target&gt;[^!]+)! Just before impact, the unicorn&#39;s horn glows fiercely amber in hue\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Accompanied by a particularly impressive gust of wind, a fleeting golden blur flashes past (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Shimmering black flames lash out toward (?&lt;target&gt;[^,]+), encircling the .+? in their deadly grasp\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Long, spectral talons materialize from midair to tear viciously at the body of (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Marlu, not Gosaena (GSWiki lists this line under Marlu; Gosaena has
+</span>    <span class='comment'># a separate, still-unfilled section). 1p form, per the wiki.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A tendril of black mist suddenly senses the proximity of (?&lt;target&gt;[^.]+)\. The mist expands into a large, quickly moving, highly lethal cloud that rapidly surrounds .+?, obliterating it from view\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Marlu 3p: a groupmate&#39;s cast landing on a nearby creature. Log-
+</span>    <span class='comment'># confirmed; the second and third mentions were pronouns (&quot;her&quot;),
+</span>    <span class='comment'># not the creature name, hence the .+? tails.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As (?&lt;target&gt;.+?) comes too close to a tendril of black mist, the mist suddenly expands into a large black cloud, which rapidly surrounds .+?, obliterating .+? from view\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Not present on GSWiki as of this writing - log-sourced only.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A shadowy figure briefly materializes behind (?&lt;target&gt;[^,]+), and a silent scream courses over .+? visage\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The ethereal barbed whip that lies loosely coiled around you uncoils at terrifying speed\. It snaps out toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Suddenly, (?&lt;target&gt;.+?) tries to bolt away, but instead smashes into a wall of spectral force hidden within the shadows!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Divine will surges through you, and you command the scimitar to strike at (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>An ethereal pair of feathered white wings materializes from midair and closes around (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You notice (?&lt;target&gt;.+?) nearby\. How marvelous! You command (?:the moon Liabo|some lilies of the valley|the bartender|seventeen will&#39;o&#39;the&#39;wisps) to </span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Suddenly, a long, leafy vine shoots out and tries to wrap around (?:a |an )?(?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>[Aa] tendril of scarlet mist lashes away from you to coil around (?&lt;target&gt;.+?) with a suddenly razor-sharp edge\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Ghezresh&#39;s GSWiki section is an unfilled stub; log-sourced only,
+</span>    <span class='comment'># confirmed via a live self-cast (target repeated verbatim both times).
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A strand of barnacle-laced kelp suddenly lashes out at (?&lt;target&gt;[^!]+)!(?:  As the slippery skein connects, strands of silvery mist coil around .+? furiously\.)?</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A silver-bladed scythe materializes from thin air, spinning end over end as it hurtles toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>One of the vines suddenly whips about and lashes out at (?&lt;target&gt;[^!]+)! Despite its slightly ethereal appearance, the vine moves with every evidence of heavy, solid weight\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Laethe, not Onar (GSWiki has this under Laethe; Onar&#39;s line is the
+</span>    <span class='comment'># bone-shafted crossbow bolt below). The wiki&#39;s 3p form ends &quot;...into
+</span>    <span class='comment'># it.&quot; rather than repeating the target, so the tail accepts either.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A shadowy black rose touches (?&lt;target&gt;.+?) and wraps immediately about it, struggling to force its long, barbed thorns into (?:the .+?|it)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A dagger of ivory light suddenly flashes away from the aura surrounding you to strike at (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^(?:.*, )?[Tt]he intense waves of elegant sound focus upon (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Onar - confirmed via a live self-cast (cast message and strike
+</span>    <span class='comment'># line both observed against real targets).
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A bone-shafted crossbow bolt flies out of the shadows toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Listening carefully to the quiet harmony around you, you give voice to wordless song, and the notes of your song ring discordantly against the sounds of the world that relate to (?:a |an )?(?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A glowing golden rose touches (?&lt;target&gt;.+?) and bursts into scarlet flame!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:earthen_fury</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Fiery debris explodes from the ground beneath (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -180,7 +220,13 @@ pattern matching for performance.</p>
     <span class='comment'># ground|floor: indoor rooms print &quot;floor&quot; (Ojandhaart great hall,
 </span>    <span class='comment'># real-feed 2026-09-07) - the ground-only form orphaned every
 </span>    <span class='comment'># indoor entangle tick as an unknown attack with no target
-</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;weed&gt;.+?) lashes out at (?&lt;target&gt;[^,]+), wraps itself around .+? body and entangles .+? on the (?:ground|floor)\.</span><span class='regexp_end'>/</span></span>
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;weed&gt;.+?) lashes out at (?&lt;target&gt;[^,]+), wraps itself around .+? body and entangles .+? on the (?:ground|floor)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># the miss: same line is the :miss outcome (defs/outcomes.rb).
+</span>    <span class='comment'># Without an attack def the SMR before it was orphaned into a
+</span>    <span class='comment'># targetless :unknown (hunt log 2026-09-07 19:21:44)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;weed&gt;.+?) lashes out at (?&lt;target&gt;[^,]+), but is unable to grasp</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># the other miss form (no SMR printed; hunt log 2026-09-07 21:30)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;weed&gt;.+?) grabs at (?&lt;target&gt;[^,]+), unable to find a purchase\.</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:tonis_bolt</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You unleash a bolt of churning air at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:unbalance</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Bands of spectral mist ripple and surge beneath (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
@@ -197,6 +243,26 @@ pattern matching for performance.</p>
 </span>  <span class='comment'># is ours. foreign_caster is set downstream from the attacker.
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:weapon_infusion</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As (?&lt;attacker&gt;.+?) attempts to strike with .+?, a surge of power flows out of it, through .+?, and leaps out at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># A nearby player&#39;s shadow-barb spell (SMR + damage follow; the
+</span>  <span class='comment'># caster is the player link, so foreign_caster). Hunt log
+</span>  <span class='comment'># 2026-09-07: Burns vs a shield-maiden, recorded as a targetless
+</span>  <span class='comment'># unknown with an orphaned SMR.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fiery_barbs</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Fiery red barbs uncoil from the shadows near (?&lt;attacker&gt;.+?) and lash out at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># A nearby player&#39;s flaming aura lashing a creature (SMR + damage
+</span>  <span class='comment'># follow; hunt log 2026-09-07 23:20, Meb)
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:flaming_aura</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The flaming aura surrounding (?&lt;attacker&gt;.+?) lashes out at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># DoT tick naming the victim, never the caster (unowned unless
+</span>  <span class='comment'># our cast is in the blob - see UNOWNED_TICK_ATTACKS). Its
+</span>  <span class='comment'># &quot;causing N&quot; is a summary: the &quot;... N points of damage!&quot; line
+</span>  <span class='comment'># that follows carries the hit and its crit, so the inline
+</span>  <span class='comment'># number is NOT applied (see SUMMARY_DAMAGE_ATTACKS).
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spiritual_malady</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A spiritual malady wracks (?&lt;target&gt;.+?) causing \d+ points? of damage!</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
@@ -236,8 +302,7 @@ the generic 2p bolt def is LAST in this group for the same reason.</p>
   <span class='comment'># Excalibur-style weapon spell surge: opens its own CS/TD (the
 </span>  <span class='comment'># patron-aura flavor rides between); the actual swing opens
 </span>  <span class='comment'># separately after. The fizzle form is a prefix - no def.
-</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:weapon_cast</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As you attempt to strike with your (?&lt;weapon&gt;.+?), it sends a surge of power through you that quickly leaps out at (?:the )?(?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:elemental_strike</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A vortex of elemental energy suddenly strikes (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:elemental_strike</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A vortex of elemental energy suddenly strikes (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fervent_reproach</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>With a quick flick of your wrists, the orbs dance through the air toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:force_projection</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A translucent force moves outward from you and toward (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># 1630 Judgment. The summon is deity-specific and so is its strike
@@ -291,7 +356,13 @@ the generic 2p bolt def is LAST in this group for the same reason.</p>
 </span>  <span class='comment'># matched OUR OWN limb (&quot;Your right leg explodes!&quot;) and opened an
 </span>  <span class='comment'># attack event against us.
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:limb_disruption</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?:right|left) (?:leg|arm|hand|eye) explodes!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:moonbeam</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You level a nebulous beam of shadowy luminescence at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:moonbeam</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You level a nebulous beam of shadowy luminescence at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># 611 evoked: &quot;Tapping the moons above, you draw down a shaft of
+</span>    <span class='comment'># swirling moonlight and bathe X in its muted glow.&quot; then SMR
+</span>    <span class='comment'># (hunt log 2026-09-09 10:45); the moon adjectives vary
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>you draw down a shaft of \w+ moonlight and bathes? (?&lt;target&gt;.+?) in its \w+ glow\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:pestilence</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You exhale a virulent green mist toward (?&lt;target&gt;[^,]+), instantly infecting</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='comment'># 3p: a group member casts it. Without this the per-target
@@ -325,7 +396,15 @@ the generic 2p bolt def is LAST in this group for the same reason.</p>
   <span class='comment'># shared cast line of targeted bard attack songs (1008, 1016...)
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spellsong</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You weave another verse into your harmony, directing the sound of your voice at (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:sunburst</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A sudden burst of bright light emanates from your hand toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:templars_verdict</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A column of violet flame envelops (?&lt;target&gt;.+?) in its searing embrace!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># 1603. The ERUPT line is the cast (wiki messaging: &quot;You gesture
+</span>  <span class='comment'># at X. Violet flames erupt from beneath X.&quot; then the CS/TD roll);
+</span>  <span class='comment'># the envelops line that follows is its HIT line, deliberately
+</span>  <span class='comment'># not a def. On a paladin the spell is usually RELEASED by a Holy
+</span>  <span class='comment'># Weapon (1625) infusion mid-swing rather than gestured: the proc
+</span>  <span class='comment'># is a flare (:weapon_cast, defs/flares) and the processor treats
+</span>  <span class='comment'># the cast that follows it as an interruption of the swing - the
+</span>  <span class='comment'># swing resumes when its own AS/DS arrives (SPELL_RELEASING_FLARES).
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:templars_verdict</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Violet flames erupt from beneath (?&lt;target&gt;.+?)\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:thought_lash</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A crackling whip of energy lashes out at (?:the )?(?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:web_bolt</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You shoot strands of webbing at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:wither</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A nebulous haze shimmers into view around (?&lt;target&gt;[^,.]+)</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
@@ -398,6 +477,19 @@ alongside it (2p defs always come first).</p>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) directs the force of </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> voice at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:channel</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) channels at (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Nearby players&#39; spells on creatures we can see (hunt log
+</span>  <span class='comment'># 2026-09-09, gigas village). Each names the caster, so the
+</span>  <span class='comment'># foreign latch keeps the CS/TD, SMR/SSR and damage lines that
+</span>  <span class='comment'># follow off our ledger - a bard&#39;s sonic disruption kill was
+</span>  <span class='comment'># credited to us before the 3p spellsong form existed.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:spellsong</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) skillfully weaves another verse into </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> harmony, directing the sound of </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> voice at (?&lt;target&gt;[^.]+)\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># bard fear AoE: one cry, then an SSR + &quot;X looks at &lt;bard&gt; in
+</span>  <span class='comment'># utter terror!&quot; per creature in the room
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fear_cry</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lets loose an eerie, modulating cry!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:golden_waves</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Golden brown waves billow outward from (?&lt;attacker&gt;.+?) to buffet (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:moonbeam</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) draws down a shaft of \w+ moonlight and bathes (?&lt;target&gt;.+?) in its \w+ glow\.</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># creature wand flourish - the erupt tail rides the same line
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:wand</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) flourishes (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^.]+)\.\s+A .+? erupts toward</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># &quot;hurls a/an &lt;bolt&gt;&quot; - bolt spells from players AND creatures;
@@ -451,7 +543,7 @@ folded into the target capture.</p>
         <dd><pre class="code"><span class='lbracket'>[</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:attack</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?&lt;aimed&gt; take aim and)? swing .+? at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?&lt;aimed&gt; take aim and)? (?:punch|jab|kick|grapple) with (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?&lt;aimed&gt; take aim and)? (?:thrust|punch|jab|kick|grapple) with (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:fire</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?&lt;aimed&gt; take aim and)? fire .+? at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hurl</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You(?&lt;aimed&gt; take aim and)? throw (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
@@ -594,6 +686,24 @@ the wiki documents them. Sources: docs/COMBAT_DEFS_WIKI_CATALOG.md</p>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) springs upon (?&lt;target&gt;you|.+?) from behind and attempts to slit </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:your|his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> throat(?: with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?)?!</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:bearhug</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) charges towards (?&lt;target&gt;you|.+?) and attempts to grasp </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:you|him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> in a ferocious bearhug!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Mug (CMAN, rogues) - wiki: type Attack, &quot;plunder your target&#39;s
+</span>  <span class='comment'># pockets as you distract them with an attack&quot;. The accost line
+</span>  <span class='comment'># OPENS the maneuver; the wrapped attack (any type, via
+</span>  <span class='comment'># CMAN MUG [attack] [target]) then resolves normally with its own
+</span>  <span class='comment'># AS/DS or UAF/UDF. The theft SMR prints AFTER that attack settles,
+</span>  <span class='comment'># followed by the pat-down announce, so the roll trails the swing
+</span>  <span class='comment'># it rode in on. Without a def both the accost and the theft roll
+</span>  <span class='comment'># orphaned into synthetic :unknown attacks (Rysk logs 2026-09-11:
+</span>  <span class='comment'># 71 accosts, 62 pat-downs, 62 orphaned SMR rolls).
+</span>  <span class='comment'># Theft outcomes: &quot;In your hasty search, you don&#39;t find anything
+</span>  <span class='comment'># worth taking.&quot; / &quot;You rifle his pockets and discover N silvers!&quot;
+</span>  <span class='comment'># / &quot;Your hasty search scatters the X&#39;s riches to the ground!&quot;
+</span>  <span class='comment'># A creature that cannot be mugged prints &quot;too wary&quot; - per the
+</span>  <span class='comment'># wiki that is not a failure, the action is simply unavailable.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:mug</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You boldly accost (?&lt;target&gt;.+?), your attack masking your larcenous intent!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Taking advantage of the scuffle, you roughly pat (?&lt;target&gt;.+?) down for hidden valuables!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:charge</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) rushes forward at (?&lt;target&gt;you|.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and attempts a charge!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='comment'># 2p (logs/examples/weapon_charge.txt). The graded connect line
@@ -654,15 +764,42 @@ the wiki documents them. Sources: docs/COMBAT_DEFS_WIKI_CATALOG.md</p>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_pin</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You attempt to expose a vulnerability with a diversionary shield bash on (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_push</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You raise your (?&lt;weapon&gt;.+?) before you and attempt to push (?&lt;target&gt;.+?) away!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_strike</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You launch a quick bash with your (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_charge</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You raise your (?&lt;weapon&gt;.+?) before you and charge headlong towards (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_charge</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You raise your (?&lt;weapon&gt;.+?) before you and charge headlong towards (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Second 2p form (Dreadt log 2026-09-11: 15 occurrences, every
+</span>    <span class='comment'># one orphaning its SMR, damage and crits). Like :charge above,
+</span>    <span class='comment'># the graded connect line (&quot;You lunge forward with an expert
+</span>    <span class='comment'># shield charge!&quot;) sits between the roll and the damage and is
+</span>    <span class='comment'># deliberately NOT a def - matching it would double-open the
+</span>    <span class='comment'># event. Ten grades observed (half-hearted..expert).
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You charge forward at (?&lt;target&gt;.+?) with your (?&lt;weapon&gt;.+?) and attempt a shield charge!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># Assassinate (rogue): the uncoil line opens the event; the SMR
 </span>  <span class='comment'># roll follows it directly, then the &quot;carve into&quot; hit line
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:eviscerate</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You uncoil from the shadows, your (?&lt;weapon&gt;.+?) poised to eviscerate (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># Coup de Grace - messaging varies by weapon type; this is the
 </span>  <span class='comment'># THW form, catalogue other weapon variants as they&#39;re observed
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:coup_de_grace</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You lunge towards (?&lt;target&gt;.+?), intending to finish </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> off!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
-  <span class='comment'># &quot;dark wings&quot; equipment proc (SMR attack); name pending
+  <span class='comment'># Energy Wings (Dark), tier 1 offensive: Shadow Barb - a
+</span>  <span class='comment'># single-target SMR attack, disruption damage plus poison.
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shadow_barb</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Your umbrous wings twitch sharply, launching a barbed shard of shadow that hisses through the air toward (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Energy Wings (Dark), tier 2 offensive: Barbed Sweep - an AoE
+</span>  <span class='comment'># SMR attack over up to 5 targets. ONLY the per-target thrash
+</span>  <span class='comment'># line is the attack: it names its creature and is preceded by
+</span>  <span class='comment'># that creature&#39;s own SMR, so one row per target falls out of
+</span>  <span class='comment'># the normal switch path.
+</span>  <span class='comment'>#
+</span>  <span class='comment'># The opener (&quot;Your umbrous wings lash outward in a wide arc&quot;)
+</span>  <span class='comment'># is deliberately NOT matched. It carries no target, no roll and
+</span>  <span class='comment'># no damage, and including it double-counted the first creature:
+</span>  <span class='comment'># the opener adopted whichever target the first thrash line
+</span>  <span class='comment'># named, then that same thrash line fired as a second attack for
+</span>  <span class='comment'># the same creature - one row holding the roll, the next holding
+</span>  <span class='comment'># the damage (Rysk log 2026-09-11 7716). The cost is that a
+</span>  <span class='comment'># sweep which reaches nothing records nothing; it has no facts
+</span>  <span class='comment'># to record either way.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:barbed_sweep</span><span class='comma'>,</span>
+                <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>The dark tendrils thrash across (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> skin in a devastating assault!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># Whirlwind (THW AoE, single round - not a sequence). Known to
 </span>  <span class='comment'># have ~4 message variants; two catalogued so far plus the
 </span>  <span class='comment'># per-target strike line, all under one name.
@@ -735,6 +872,36 @@ spliced into ALL_ATTACKS just before this group.</p>
   <span class='comment'># &quot;.+?&quot; not &quot;[^!]+&quot; for target: the cman form appends &quot; and
 </span>  <span class='comment'># connects!&quot; which a greedy class would swallow into the target
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:tackle</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) hurls </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:himself|herself|itself)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> at (?&lt;target&gt;.+?)(?: and connects)?!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Creature fear maneuvers (SSR follows, then our save/fail line).
+</span>  <span class='comment'># Room-wide, no target named - ROOM_TARGETED classifies them
+</span>  <span class='comment'># inbound (hunt log 2026-09-07: Ojandhaart warg / mastodon).
+</span>  <span class='comment'># (the pronouns are links in the live feed: &quot;sits back on &lt;its&gt;
+</span>  <span class='comment'># haunches&quot; - hence MK_PRE/MK_POST; the bare form never matched)
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:howl</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) sits back on </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>its</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> haunches and unleashes a long, high-pitched howl that sends a shiver of primal terror down your spine\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:trumpet</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) raises </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>its</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> trunk and rears back onto </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>its</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> immense hind legs, blaring out a note of sheer fury!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Mutant-farm room maneuvers (hunt log 2026-09-07 23:19-23:20):
+</span>  <span class='comment'># sanguine ooze crystalline shrapnel burst (SMR, then our dodge)
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shrapnel_spray</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Froth disturbs the surface of (?&lt;attacker&gt;.+?) as bubbling bulges form over </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>its</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> surface</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># flayed gigas disciple&#39;s spatial rift (SMR follows)
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:rift_tentacles</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Zeal twisting </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> features, (?&lt;attacker&gt;.+?) raises a raw and fleshless hand overhead and draws it down</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Shield-maiden targe push (SMR follows; hunt log 2026-09-07)
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_push</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) raises </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> (?&lt;weapon&gt;.+?) and attempts to push (?&lt;target&gt;you|.+?) away!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># 3p feint: the result line is the only line (&quot;X feints high, but
+</span>  <span class='comment'># you aren&#39;t fooled&quot;) - target captured as &quot;you&quot; so it classifies
+</span>  <span class='comment'># inbound; the same line is the :evade outcome
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:feint</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) feints (?:high|low|to the (?:left|right)), but (?&lt;target&gt;you) aren&#39;t fooled for a second\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># Maneuver-style strike opener (round-14 sweep: 40/40 resolve
 </span>  <span class='comment'># in the very next line, usually the target&#39;s evanescent
 </span>  <span class='comment'># shield absorb or an outmaneuver outcome, then the swing
@@ -751,7 +918,22 @@ spliced into ALL_ATTACKS just before this group.</p>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># creature natural weapons and maneuvers
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:natural</span><span class='comma'>,</span> <span class='lbracket'>[</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) claws at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># no comma in the target: &quot;Fear still claws at your heart, but
+</span>    <span class='comment'># you stand fast...&quot; is a fear-save outcome, not a claw swing
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) claws at (?&lt;target&gt;[^!,]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) tries to spear (?&lt;target&gt;.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>its</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> enormous tusks!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># sanguine ooze (mutant farm, hunt log 2026-09-07 23:20); the
+</span>    <span class='comment'># whip&#39;s miss rides the same line (:miss outcome)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) manifests a thick pseudopod and brings it smashing down at (?&lt;target&gt;you|.+?)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) whips a thick pseudopod at (?&lt;target&gt;you|.+?)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># the ooze&#39;s vitality drain: touch, then &quot;Dizziness rushes
+</span>    <span class='comment'># through you...&quot; and the damage line
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) whips a pseudopod toward (?&lt;target&gt;you|.+?), brushing</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># halfling cannibal ambush swing (hunt log 2026-09-07 23:34)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>With an ululating shriek, (?&lt;attacker&gt;.+?) leaps from the shadows and hammers blindly at (?&lt;target&gt;you|.+?) with grimy little fists!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># gigas disciple leech fling: the SMR roll prints BEFORE this
+</span>    <span class='comment'># line and the evade rides on it (hunt log 2026-09-07 23:52)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) reaches into a pouch at </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> waist and draws back a hand covered in fat leeches.*?flings the parasites at (?&lt;target&gt;you|.+?)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) snaps at (?&lt;target&gt;.+?) with its (?&lt;weapon&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) pounds at (?&lt;target&gt;.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .*?fists?!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) tries to bite (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -794,7 +976,23 @@ spliced into ALL_ATTACKS just before this group.</p>
     <span class='comment'># Ward-probe opener (CS/TD follows). &quot;sneaking in an attack on
 </span>    <span class='comment'># the magical wards&quot; is the creature form of spell_thieve.
 </span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) hangs back for a moment and concentrates intently on (?&lt;target&gt;[^,]+), before sneaking in an attack</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
-    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lifts a slender hand and points unerringly at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lifts a slender hand and points unerringly at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Round-8 inbound forms, mined the same way from the Rysk logs
+</span>    <span class='comment'># 2026-09-11: every one left its AS/DS roll, damage and crits
+</span>    <span class='comment'># orphaned. Treekin (root/sap/fist) and the Illoke jarl&#39;s
+</span>    <span class='comment'># CS/TD ward attack.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lashes a root out at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) raises a large root and slams it down at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) suddenly spits a gob of sap directly at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) strikes out at (?&lt;target&gt;.+?) with all of </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> might!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) pounds at (?&lt;target&gt;.+?) with a leafy fist!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) summons the wrath of </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> god while pointing at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Krolvin slaver subdue-and-kidnap (Dreadt log 2026-09-11 7280):
+</span>    <span class='comment'># one line - it bludgeons us &quot;until your eyes glaze over&quot; (the
+</span>    <span class='comment'># STUNNED indicator fires just before) and &quot;drags you off into
+</span>    <span class='comment'># the dank hold&quot;, a room move. Its SMR PRECEDES the line,
+</span>    <span class='comment'># maneuver-style; the inbound held-roll exception claims it.
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) reaches outward, </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> arm encircling (?&lt;target&gt;your) neck\.</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># ambush - &quot;waylay&quot; IS its own attack line (it names a target).
 </span>  <span class='comment'># The bare &quot;leaps from hiding&quot; form is NOT here: it is a
@@ -805,7 +1003,11 @@ spliced into ALL_ATTACKS just before this group.</p>
 </span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) leaps from the shadows and (?:throws </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? around|hurtles at) (?&lt;target&gt;[^,!]+)</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='comment'># PSM maneuvers, third person
-</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hamstring</span><span class='comma'>,</span> <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lunges forward and tries to hamstring (?&lt;target&gt;.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?!</span><span class='regexp_end'>/</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:hamstring</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lunges forward and tries to hamstring (?&lt;target&gt;.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># warg jaws form (hunt log 2026-09-07)
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>With a quick lunge, (?&lt;attacker&gt;.+?) tries to hamstring (?&lt;target&gt;you|.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> jaws!</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
   <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:shield_bash</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) lunges forward at (?&lt;target&gt;.+?) with </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? and attempts a shield bash!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;attacker&gt;.+?) launches a quick bash with (?&lt;weapon&gt;.+?) at (?&lt;target&gt;[^!]+)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
@@ -873,7 +1075,7 @@ first or the plain flash pattern swallows it. The wind-up line
           <div class="docstring">
   <div class="discussion">
     <p>Environmental / self-inflicted damage. No attacker, no target
-capture: the parser classifies every name in SELF_INFLICTED as
+capture: the parser classifies every name in ATTACKERLESS as
 inbound (damage to US), so the &quot;... N points of damage!&quot; line that
 follows lands on our taken ledger instead of orphaning or, worse,
 attaching to whatever creature event was open (real-feed
@@ -904,6 +1106,45 @@ taken recorded as 0).</p>
 </span>  <span class='comment'># put it away&quot;)
 </span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:thorn_recoil</span><span class='comma'>,</span> <span class='lbracket'>[</span>
     <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>As (?:a|an|your) .+? leaves your (?:left|right) hand, the thorns embedded in your skin painfully rip away</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Bleed ticks from open wounds. Nobody&#39;s ability: the processor
+</span>  <span class='comment'># marks a creature&#39;s tick :unowned (UNOWNED_TICK_ATTACKS) so the
+</span>  <span class='comment'># damage lands on the creature without joining our rollup; ours
+</span>  <span class='comment'># (&quot;Your right leg drips...&quot;) is inbound via the &quot;Your&quot; capture.
+</span>  <span class='comment'># Lives in this list so the chunk gate passes our own tick, which
+</span>  <span class='comment'># carries no creature link.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:bleed</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Blood weeps from (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> open .+? wound\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+? drips as </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:he|she|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> continues to bleed\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Trickles of blood course from (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;Your) .+? drips as you continue to bleed\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='comment'># Further wound-tick phrasings (Rysk logs 2026-09-11; every
+</span>    <span class='comment'># occurrence carried a damage line, and all 14 orphaned).
+</span>    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> wounded .+? oozes fresh blood\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Fresh blood drips down (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> .+?\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Blood continues to stream from (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> wounded .+?\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Poison ticks from the weapon_poison flare (defs/flares.rb).
+</span>  <span class='comment'># Unlike :bleed these DO have an owner - our own envenomed
+</span>  <span class='comment'># weapon put them there - but the tick line itself names no
+</span>  <span class='comment'># weapon, so ownership is resolved the same way as the other
+</span>  <span class='comment'># ticks: unowned unless our cast is visible in the blob.
+</span>  <span class='comment'>#
+</span>  <span class='comment'># Seven phrasings, all from the Rysk logs 2026-09-11, all
+</span>  <span class='comment'># carrying a damage line, all previously orphaned (24 hits).
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:poison_tick</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Shuddering and twitching, (?&lt;target&gt;.+?) suffers visibly from the poison afflicting </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:him|her|it)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>A spasm of pain overtakes (?&lt;target&gt;.+?)\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) is a study of agonized misery, </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:his|her|its)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> every movement a torment\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) sweats copiously and groans in pain\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) wheezes out an agonized breath\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) curls in on </span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_PRE-constant" title="Lich::Gemstone::Combat::Definitions::MK_PRE (constant)">MK_PRE</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>(?:himself|herself|itself)</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'>, rigid with tension\.</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(?&lt;target&gt;.+?) wavers with infirmity and pales slightly\.</span><span class='regexp_end'>/</span></span>
+  <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span><span class='comma'>,</span>
+  <span class='comment'># Rot tick (a nearby player&#39;s curse on a creature; hunt log
+</span>  <span class='comment'># 2026-09-07 23:36). Unowned like bleed.
+</span>  <span class='const'><span class='object_link'><a href="Attacks/AttackDef.html" title="Lich::Gemstone::Combat::Definitions::Attacks::AttackDef (class)">AttackDef</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='symbol'>:rot</span><span class='comma'>,</span> <span class='lbracket'>[</span>
+    <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>Skin peels off (?&lt;target&gt;.+?)&#39;s</span><span class='embexpr_beg'>#{</span><span class='const'><span class='object_link'><a href="../Definitions.html#MK_POST-constant" title="Lich::Gemstone::Combat::Definitions::MK_POST (constant)">MK_POST</a></span></span><span class='embexpr_end'>}</span><span class='tstring_content'> body, exposing rotting flesh\.</span><span class='regexp_end'>/</span></span>
   <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span><span class='rparen'>)</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
@@ -927,11 +1168,18 @@ they are seen. Each entry: [pattern, location].</p>
 </span>  <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>You stiffen your fingers and drive them into .+? neck, tearing out a handful of dripping trachea!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>neck</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="SELF_INFLICTED-constant" class="">SELF_INFLICTED =
+        <dt id="ENVIRONMENTAL-constant" class="">ENVIRONMENTAL =
           <div class="docstring">
   <div class="discussion">
-    <p>Def names whose lines describe damage to US with no attacker: the
-parser reports them inbound without needing a &quot;you&quot; capture.</p>
+    <p>Def names whose lines describe damage to US with no creature
+attacker: the parser reports them inbound without needing a &quot;you&quot;
+capture, and names the attacker for the ledger.
+ENVIRONMENTAL - the world did it (weather ticks); attacker
+'environment'
+SELF_INFLICTED - our own gear did it (thorn bow recoil);
+attacker 'self'
+(owner 2026-09-07: &quot;frigid wind is environmental, it's not self
+inflicted&quot; - the two must stay distinguishable in reports)</p>
 
   </div>
 </div>
@@ -940,9 +1188,75 @@ parser reports them inbound without needing a &quot;you&quot; capture.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>frigid_wind</span><span class='words_sep'> </span><span class='tstring_content'>thorn_recoil</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>frigid_wind</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="SELF_INFLICTED_PATTERN-constant" class="">SELF_INFLICTED_PATTERN =
+        <dt id="SELF_INFLICTED-constant" class="">SELF_INFLICTED =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Attack def names whose lines describe damage inflicted by the character's own
+gear with no creature attacker. The parser reports these inbound and names the
+attacker as 'self' for the ledger.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ENVIRONMENTAL-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ENVIRONMENTAL (constant)">ENVIRONMENTAL</a></span></li>
+    
+      <li><span class='object_link'><a href="#ATTACKERLESS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACKERLESS (constant)">ATTACKERLESS</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>thorn_recoil</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ATTACKERLESS-constant" class="">ATTACKERLESS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Union of attack def names that describe damage to the character with no
+creature attacker. Used by the chunk gate to pass environmentally-triggered
+damage lines that would otherwise be discarded for lacking a bolded creature link.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ENVIRONMENTAL-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ENVIRONMENTAL (constant)">ENVIRONMENTAL</a></span></li>
+    
+      <li><span class='object_link'><a href="#SELF_INFLICTED-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SELF_INFLICTED (constant)">SELF_INFLICTED</a></span></li>
+    
+  </ul>
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#ENVIRONMENTAL-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ENVIRONMENTAL (constant)">ENVIRONMENTAL</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#SELF_INFLICTED-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SELF_INFLICTED (constant)">SELF_INFLICTED</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ROOM_TARGETED-constant" class="">ROOM_TARGETED =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Creature maneuvers aimed at the whole room, us included: the line
+names the attacker and no target, and the SSR that follows is
+OUR save. The parser classifies these inbound.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>howl</span><span class='words_sep'> </span><span class='tstring_content'>trumpet</span><span class='words_sep'> </span><span class='tstring_content'>shrapnel_spray</span><span class='words_sep'> </span><span class='tstring_content'>rift_tentacles</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="ATTACKERLESS_PATTERN-constant" class="">ATTACKERLESS_PATTERN =
           <div class="docstring">
   <div class="discussion">
     <p>The tracker's chunk gate only forwards chunks holding a bolded
@@ -998,8 +1312,61 @@ negated ambush still records as a missed attack via its outcome.</p>
 </span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AYou leap from hiding to (?:attack|strike)!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AYou quickly leap from hiding to deliver your attack!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AYou step from hiding and attack!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+  <span class='comment'># Waylay (rogue CMAN) - weights damage rather than crits. Same
+</span>  <span class='comment'># prefix grammar: the swing that follows carries the target and
+</span>  <span class='comment'># the AS/DS roll (Rysk logs 2026-09-11: 44 waylays, every one
+</span>  <span class='comment'># followed by &quot;You swing ... at &lt;creature&gt;!&quot;).
+</span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\AYou step out of hiding to waylay </span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
   <span class='comment'># 3p, same grammar with an attacker
 </span>  <span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\A(?&lt;attacker&gt;.+?) leaps from hiding to (?:attack|strike)!</span><span class='regexp_end'>/</span></span>
+<span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="AMBUSH_KINDS-constant" class="">AMBUSH_KINDS =
+          <div class="docstring">
+  <div class="discussion">
+    <p>Which maneuver each prefix names, by its index in AMBUSH_PREFIXES.
+The bonuses differ - waylay weights damage, the bare hiding forms
+weight crits - so the kind is recorded alongside the ambush flag
+(attacks.attack_kind) to let the two be compared. Kept as a
+separate map so AMBUSH_PREFIXES stays the flat list PatternGate
+builds its gate from. Indices must track the list above.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qsymbols_beg'>%i[</span><span class='tstring_content'>ambush</span><span class='words_sep'> </span><span class='tstring_content'>ambush</span><span class='words_sep'> </span><span class='tstring_content'>ambush</span><span class='words_sep'> </span><span class='tstring_content'>waylay</span><span class='words_sep'> </span><span class='tstring_content'>ambush</span><span class='tstring_end'>]</span></span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+      
+        <dt id="REACTION_PREFIXES-constant" class="">REACTION_PREFIXES =
+          <div class="docstring">
+  <div class="discussion">
+    <p>REACTION PREFIXES - same prefix grammar as the ambush forms, but
+the attack is triggered by a defensive event rather than made
+from hiding, so it sets attack_kind WITHOUT setting <code>ambush</code>.</p>
+<p>Reverse Strike (Two-Handed Weapons technique, 50 ranks): a parry
+offers it (&quot;You could use this opportunity to Reverse Strike!&quot;),
+and THIS line is the confirmation that it was taken - the offer
+fires whether or not the player uses it, so only the confirmation
+may tag an attack. The swing that follows is byte-identical to a
+normal swing and carries the target and the roll, so this line is
+the only thing distinguishing the attack (Rysk log 2026-09-11).</p>
+<p>Cannot co-occur with an ambush: a reverse strike requires a parry,
+which means engaged and visible. That is why one attack_kind
+column suffices rather than a per-family flag.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='lbracket'>[</span>
+  <span class='lbracket'>[</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>\ASpotting an opening in .+? defenses, you quickly reverse the direction of your .+? and strike from a different angle!</span><span class='regexp_end'>/</span></span><span class='comma'>,</span>
+   <span class='symbol'>:reverse_strike</span><span class='rbracket'>]</span>
 <span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="REDIRECT_PREFIXES-constant" class="">REDIRECT_PREFIXES =
@@ -1044,7 +1411,12 @@ was rolled against, not the intended victim's.</p>
 Ordering is load-bearing: PRIORITY defs pre-empt the generic
 swing patterns; second-person defs come before third-person so
 &quot;You swing&quot; never falls through; the generic 2p bolt sits last
-inside WIKI_SPELL_ATTACKS so named bolts keep their names.</p>
+inside WIKI_SPELL_ATTACKS so named bolts keep their names.
+Player supplements (defs/supplements.rb, DATA_DIR/combat/defs.yaml)
+are spliced by slot: :priority ahead of the generic swings, :generic
+with the second-person defs, :third_person ahead of the shipped
+third-person defs. Each reader returns an empty frozen array when
+there is no file, so the shipped assembly is unchanged.</p>
 
   </div>
 </div>
@@ -1053,9 +1425,12 @@ inside WIKI_SPELL_ATTACKS so named bolts keep their names.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#PRIORITY_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::PRIORITY_ATTACKS (constant)">PRIORITY_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#BASIC_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::BASIC_ATTACKS (constant)">BASIC_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#SPELL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SPELL_ATTACKS (constant)">SPELL_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#WIKI_SPELL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::WIKI_SPELL_ATTACKS (constant)">WIKI_SPELL_ATTACKS</a></span></span> <span class='op'>+</span>
+        <dd><pre class="code"><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#PRIORITY_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::PRIORITY_ATTACKS (constant)">PRIORITY_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="Supplements.html" title="Lich::Gemstone::Combat::Definitions::Supplements (module)">Supplements</a></span></span><span class='period'>.</span><span class='id identifier rubyid_attacks'><span class='object_link'><a href="Supplements.html#attacks-class_method" title="Lich::Gemstone::Combat::Definitions::Supplements.attacks (method)">attacks</a></span></span><span class='lparen'>(</span><span class='symbol'>:priority</span><span class='rparen'>)</span> <span class='op'>+</span>
+<span class='const'><span class='object_link'><a href="#BASIC_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::BASIC_ATTACKS (constant)">BASIC_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="Supplements.html" title="Lich::Gemstone::Combat::Definitions::Supplements (module)">Supplements</a></span></span><span class='period'>.</span><span class='id identifier rubyid_attacks'><span class='object_link'><a href="Supplements.html#attacks-class_method" title="Lich::Gemstone::Combat::Definitions::Supplements.attacks (method)">attacks</a></span></span><span class='lparen'>(</span><span class='symbol'>:generic</span><span class='rparen'>)</span> <span class='op'>+</span>
+<span class='const'><span class='object_link'><a href="#SPELL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SPELL_ATTACKS (constant)">SPELL_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#WIKI_SPELL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::WIKI_SPELL_ATTACKS (constant)">WIKI_SPELL_ATTACKS</a></span></span> <span class='op'>+</span>
 <span class='const'><span class='object_link'><a href="#MANEUVER_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::MANEUVER_ATTACKS (constant)">MANEUVER_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#WEAPON_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::WEAPON_ATTACKS (constant)">WEAPON_ATTACKS</a></span></span> <span class='op'>+</span>
 <span class='const'><span class='object_link'><a href="#SHIELD_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SHIELD_ATTACKS (constant)">SHIELD_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#COMPANION_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::COMPANION_ATTACKS (constant)">COMPANION_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#ENVIRONMENTAL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ENVIRONMENTAL_ATTACKS (constant)">ENVIRONMENTAL_ATTACKS</a></span></span> <span class='op'>+</span>
+<span class='const'><span class='object_link'><a href="Supplements.html" title="Lich::Gemstone::Combat::Definitions::Supplements (module)">Supplements</a></span></span><span class='period'>.</span><span class='id identifier rubyid_attacks'><span class='object_link'><a href="Supplements.html#attacks-class_method" title="Lich::Gemstone::Combat::Definitions::Supplements.attacks (method)">attacks</a></span></span><span class='lparen'>(</span><span class='symbol'>:third_person</span><span class='rparen'>)</span> <span class='op'>+</span>
 <span class='const'><span class='object_link'><a href="#THIRD_PERSON_SPELL_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::THIRD_PERSON_SPELL_ATTACKS (constant)">THIRD_PERSON_SPELL_ATTACKS</a></span></span> <span class='op'>+</span> <span class='const'><span class='object_link'><a href="#THIRD_PERSON_ATTACKS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::THIRD_PERSON_ATTACKS (constant)">THIRD_PERSON_ATTACKS</a></span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
         <dt id="ATTACK_LOOKUP-constant" class="">ATTACK_LOOKUP =
@@ -1074,12 +1449,11 @@ inside WIKI_SPELL_ATTACKS so named bolts keep their names.</p>
   <span class='id identifier rubyid_attack_def'>attack_def</span><span class='period'>.</span><span class='id identifier rubyid_patterns'>patterns</span><span class='period'>.</span><span class='id identifier rubyid_compact'>compact</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span> <span class='lbracket'>[</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_attack_def'>attack_def</span><span class='period'>.</span><span class='id identifier rubyid_name'>name</span><span class='rbracket'>]</span> <span class='rbrace'>}</span>
 <span class='kw'>end</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
-        <dt id="ATTACK_DETECTOR-constant" class="">ATTACK_DETECTOR =
+        <dt id="TABLE-constant" class="">TABLE =
           <div class="docstring">
   <div class="discussion">
-    <p>Compiled regex for fast detection. NOTE: costs ~0.5ms per
-non-matching line (unanchored <code>.+?</code> alternatives); kept for
-compatibility but the literal gate below is what the parser uses.</p>
+    <p>The lookup and its gate as one frozen table, bound last and in a
+single assignment: what the parser reads (see Definitions::Table).</p>
 
   </div>
 </div>
@@ -1088,7 +1462,7 @@ compatibility but the literal gate below is what the parser uses.</p>
 
 </div>
         </dt>
-        <dd><pre class="code"><span class='const'>Regexp</span><span class='period'>.</span><span class='id identifier rubyid_union'>union</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#ATTACK_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACK_LOOKUP (constant)">ATTACK_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:first</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
+        <dd><pre class="code"><span class='const'><span class='object_link'><a href="Table.html" title="Lich::Gemstone::Combat::Definitions::Table (class)">Table</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#ATTACK_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACK_LOOKUP (constant)">ATTACK_LOOKUP</a></span></span><span class='comma'>,</span> <span class='const'>ATTACK_GATE</span><span class='comma'>,</span> <span class='const'>ATTACK_ALWAYS_SCAN</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_freeze'>freeze</span></pre></dd>
       
     </dl>
   
@@ -1124,7 +1498,51 @@ compatibility but the literal gate below is what the parser uses.</p>
   
 
   
-    <span class="summary_desc"><div class='inline'><p>True when the line is an ambush prefix; returns the attacker capture when the 3p form carries one.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>True when the line is an ambush or reaction prefix; returns the maneuver kind, whether it was made from hiding, and the attacker capture when the 3p form carries one.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#attackerless_line%3F-class_method" title="attackerless_line? (class method)">.<strong>attackerless_line?</strong>(line)  &#x21d2; Boolean </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>True when the line matches an attack pattern from ENVIRONMENTAL_ATTACKS, indicating damage to the character from the environment or self-inflicted gear with no creature attacker.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#const_missing-class_method" title="const_missing (class method)">.<strong>const_missing</strong>(name)  &#x21d2; Regexp<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>Compiled regex for fast detection.</p></div></span>
   
 </li>
 
@@ -1147,6 +1565,28 @@ compatibility but the literal gate below is what the parser uses.</p>
 
   
     <span class="summary_desc"><div class='inline'><p>The struck location when the line is a coup de grace kill line.</p></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#detector-class_method" title="detector (class method)">.<strong>detector</strong>  &#x21d2; Regexp<sup>?</sup> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  <span class="private note title">private</span>
+
+  
+    <span class="summary_desc"><div class='inline'><p>Returns the compiled regex union of all attack patterns, or nil if the patterns cannot be combined (e.g., due to conflicting backreferences in supplemental defs).</p></div></span>
   
 </li>
 
@@ -1198,7 +1638,7 @@ compatibility but the literal gate below is what the parser uses.</p>
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#self_inflicted_line%3F-class_method" title="self_inflicted_line? (class method)">.<strong>self_inflicted_line?</strong>(line)  &#x21d2; Boolean </a>
+      <a href="#table-class_method" title="table (class method)">.<strong>table</strong>  &#x21d2; Table </a>
     
 
     
@@ -1209,10 +1649,10 @@ compatibility but the literal gate below is what the parser uses.</p>
   
   
   
-  <span class="private note title">private</span>
+  
 
   
-    <span class="summary_desc"><div class='inline'><p>Detects whether a combat log line describes environmental damage or a weapon recoil that the parser should report as inbound (damage taken by US) without requiring an explicit attacker.</p></div></span>
+    <span class="summary_desc"><div class='inline'><p>The current attack table; read once per call.</p></div></span>
   
 </li>
 
@@ -1238,7 +1678,8 @@ compatibility but the literal gate below is what the parser uses.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p>True when the line is an ambush prefix; returns the attacker
+    <p>True when the line is an ambush or reaction prefix; returns the
+maneuver kind, whether it was made from hiding, and the attacker
 capture when the 3p form carries one.</p>
 
   </div>
@@ -1252,29 +1693,208 @@ capture when the 3p form carries one.</p>
       <pre class="lines">
 
 
-529
-530
-531
-532
-533
-534
-535
-536
-537
-538</pre>
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 529</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 717</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_ambush_prefix'>ambush_prefix</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>AMBUSH_GATE</span><span class='comma'>,</span> <span class='const'>AMBUSH_ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>AMBUSH_GATE</span><span class='comma'>,</span> <span class='const'>AMBUSH_ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="#AMBUSH_PREFIXES-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::AMBUSH_PREFIXES (constant)">AMBUSH_PREFIXES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each_with_index'>each_with_index</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_i'>i</span><span class='op'>|</span>
+      <span class='kw'>next</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_m'>m</span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
 
-  <span class='const'><span class='object_link'><a href="#AMBUSH_PREFIXES-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::AMBUSH_PREFIXES (constant)">AMBUSH_PREFIXES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='op'>|</span>
-    <span class='kw'>next</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id identifier rubyid_m'>m</span> <span class='op'>=</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span><span class='rparen'>)</span>
-
-    <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>attacker:</span> <span class='id identifier rubyid_m'>m</span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacker</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_m'>m</span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span> <span class='op'>:</span> <span class='kw'>nil</span> <span class='rbrace'>}</span>
+      <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>attacker:</span> <span class='id identifier rubyid_m'>m</span><span class='period'>.</span><span class='id identifier rubyid_names'>names</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacker</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_m'>m</span><span class='lbracket'>[</span><span class='symbol'>:attacker</span><span class='rbracket'>]</span> <span class='op'>:</span> <span class='kw'>nil</span><span class='comma'>,</span>
+               <span class='label'>kind:</span> <span class='const'><span class='object_link'><a href="#AMBUSH_KINDS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::AMBUSH_KINDS (constant)">AMBUSH_KINDS</a></span></span><span class='lbracket'>[</span><span class='id identifier rubyid_i'>i</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='label'>hidden:</span> <span class='kw'>true</span> <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
   <span class='kw'>end</span>
+
+  <span class='kw'>unless</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>REACTION_GATE</span><span class='comma'>,</span> <span class='const'>REACTION_ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+    <span class='const'><span class='object_link'><a href="#REACTION_PREFIXES-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::REACTION_PREFIXES (constant)">REACTION_PREFIXES</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_kind'>kind</span><span class='op'>|</span>
+      <span class='kw'>next</span> <span class='kw'>unless</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match'>match</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+
+      <span class='kw'>return</span> <span class='lbrace'>{</span> <span class='label'>attacker:</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='label'>kind:</span> <span class='id identifier rubyid_kind'>kind</span><span class='comma'>,</span> <span class='label'>hidden:</span> <span class='kw'>false</span> <span class='rbrace'>}</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+
   <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="attackerless_line?-class_method">
+  
+    .<strong>attackerless_line?</strong>(line)  &#x21d2; <tt>Boolean</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>True when the line matches an attack pattern from ENVIRONMENTAL_ATTACKS,
+indicating damage to the character from the environment or self-inflicted gear
+with no creature attacker.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <h4 class="tag_title">Examples:</h4>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_attackerless_line?'>attackerless_line?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The burn of the cold tears precious warmth from your flesh.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true</span></code></pre>
+    
+  </div>
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>line</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../../../../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>a line from the combat log</p></div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>true if the line matches an attackerless pattern</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#ATTACKERLESS_PATTERN-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACKERLESS_PATTERN (constant)">ATTACKERLESS_PATTERN</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+638
+639
+640</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 638</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_attackerless_line?'>attackerless_line?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#ATTACKERLESS_PATTERN-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACKERLESS_PATTERN (constant)">ATTACKERLESS_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="const_missing-class_method">
+  
+    .<strong>const_missing</strong>(name)  &#x21d2; <tt>Regexp</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p>Compiled regex for fast detection. NOTE: costs ~0.5ms per
+non-matching line (unanchored <code>.+?</code> alternatives); kept for
+compatibility but the literal gate below is what the parser uses.</p>
+<p>Built on first use rather than at load: a supplemental pattern
+that is perfectly valid alone can still be illegal inside a
+union (a numbered backreference beside a shipped named capture
+raises RegexpError), and a union built here would take the whole
+def file down with it before TABLE ever existed. Nothing in Lich
+reads this; PatternGate.build handles each pattern separately.</p>
+<p>Back-compat: the old constant name resolves to <span class='object_link'><a href="#detector-class_method" title="Lich::Gemstone::Combat::Definitions::Attacks.detector (method)">detector</a></span>,
+so a script still reading ATTACK_DETECTOR keeps working.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>nil when the patterns cannot be combined</p></div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+818
+819
+820
+821
+822</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 818</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_const_missing'>const_missing</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
+  <span class='kw'>return</span> <span class='id identifier rubyid_detector'>detector</span> <span class='kw'>if</span> <span class='id identifier rubyid_name'>name</span> <span class='op'>==</span> <span class='symbol'>:ATTACK_DETECTOR</span>
+
+  <span class='kw'>super</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1323,17 +1943,94 @@ de grace kill line</p></div>
       <pre class="lines">
 
 
-459
-460
-461
-462</pre>
+587
+588
+589
+590</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 459</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 587</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_coup_kill_location'>coup_kill_location</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#COUP_KILL_PATTERNS-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::COUP_KILL_PATTERNS (constant)">COUP_KILL_PATTERNS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id identifier rubyid_pattern'>pattern</span><span class='comma'>,</span> <span class='id identifier rubyid_loc'>loc</span><span class='op'>|</span> <span class='kw'>return</span> <span class='id identifier rubyid_loc'>loc</span> <span class='kw'>if</span> <span class='id identifier rubyid_pattern'>pattern</span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span> <span class='rbrace'>}</span>
   <span class='kw'>nil</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="detector-class_method">
+  
+    .<strong>detector</strong>  &#x21d2; <tt>Regexp</tt><sup>?</sup> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    <p class="note private">
+  <strong>This method is part of a private API.</strong>
+  You should avoid using this method if possible, as it may be removed or be changed in the future.
+</p>
+<p>Returns the compiled regex union of all attack patterns, or nil if the
+patterns cannot be combined (e.g., due to conflicting backreferences in
+supplemental defs). Built lazily on first call and memoized as a module ivar.</p>
+<p>Primarily for back-compatibility: older code reading the legacy ATTACK_DETECTOR
+constant will receive this union. The parser itself uses the PatternGate literal
+gate for better performance.</p>
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Regexp</tt>, <tt>nil</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>union of all ATTACK_LOOKUP patterns, or nil if union fails</p></div>
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><span class='object_link'><a href="#TABLE-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::TABLE (constant)">TABLE</a></span></li>
+    
+      <li><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></li>
+    
+  </ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+836
+837
+838
+839
+840</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 836</span>
+
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_detector'>detector</span>
+  <span class='kw'>return</span> <span class='ivar'>@detector</span> <span class='kw'>if</span> <span class='kw'>defined?</span><span class='lparen'>(</span><span class='ivar'>@detector</span><span class='rparen'>)</span>
+
+  <span class='ivar'>@detector</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_union_or_nil'><span class='object_link'><a href="PatternGate.html#union_or_nil-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.union_or_nil (method)">union_or_nil</a></span></span><span class='lparen'>(</span><span class='const'><span class='object_link'><a href="#ATTACK_LOOKUP-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::ATTACK_LOOKUP (constant)">ATTACK_LOOKUP</a></span></span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:first</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>attacks</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1366,19 +2063,19 @@ intended victim's noun.</p>
       <pre class="lines">
 
 
-572
-573
-574
-575
-576
-577
-578
-579
-580
-581</pre>
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 572</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 770</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_redirect_prefix'>redirect_prefix</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>if</span> <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>REDIRECT_GATE</span><span class='comma'>,</span> <span class='const'>REDIRECT_ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
@@ -1432,15 +2129,15 @@ intended victim's noun.</p>
       <pre class="lines">
 
 
-608
-609
-610</pre>
+863
+864
+865</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 608</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 863</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_rejects?'>rejects?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="PatternGate.html" title="Lich::Gemstone::Combat::Definitions::PatternGate (module)">PatternGate</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'><span class='object_link'><a href="PatternGate.html#rejects%3F-class_method" title="Lich::Gemstone::Combat::Definitions::PatternGate.rejects? (method)">rejects?</a></span></span><span class='lparen'>(</span><span class='const'>ATTACK_GATE</span><span class='comma'>,</span> <span class='const'>ATTACK_ALWAYS_SCAN</span><span class='comma'>,</span> <span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
+  <span class='const'><span class='object_link'><a href="#TABLE-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::TABLE (constant)">TABLE</a></span></span><span class='period'>.</span><span class='id identifier rubyid_rejects?'>rejects?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -1448,9 +2145,9 @@ intended victim's noun.</p>
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="self_inflicted_line?-class_method">
+  <h3 class="signature " id="table-class_method">
   
-    .<strong>self_inflicted_line?</strong>(line)  &#x21d2; <tt>Boolean</tt> 
+    .<strong>table</strong>  &#x21d2; <tt><span class='object_link'><a href="Table.html" title="Lich::Gemstone::Combat::Definitions::Table (class)">Table</a></span></tt> 
   
 
   
@@ -1458,60 +2155,24 @@ intended victim's noun.</p>
   
 </h3><div class="docstring">
   <div class="discussion">
-    <p class="note private">
-  <strong>This method is part of a private API.</strong>
-  You should avoid using this method if possible, as it may be removed or be changed in the future.
-</p>
-<p>Detects whether a combat log line describes environmental damage or a
-weapon recoil that the parser should report as inbound (damage taken by US)
-without requiring an explicit attacker.</p>
-<p>Environmental ticks (frigid wind, thorn recoil) do not include creature links
-and are normally filtered by the chunk gate; this method lets the gate pass
-such lines so they reach the parser with the correct ledger classification.</p>
+    <p>Returns the current attack table; read once per call.</p>
 
   </div>
 </div>
 <div class="tags">
   
-  <div class="examples">
-    <h4 class="tag_title">Examples:</h4>
-    
-      
-      <pre class="example code"><code><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='period'>.</span><span class='id identifier rubyid_self_inflicted_line?'>self_inflicted_line?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The burn of the cold tears precious warmth from your flesh.</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; true
-</span><span class='const'><span class='object_link'><a href="" title="Lich::Gemstone::Combat::Definitions::Attacks (module)">Attacks</a></span></span><span class='period'>.</span><span class='id identifier rubyid_self_inflicted_line?'>self_inflicted_line?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>You swing a longsword at a goblin!</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='comment'>#=&gt; false</span></code></pre>
-    
-  </div>
-<p class="tag_title">Parameters:</p>
-<ul class="param">
-  
-    <li>
-      
-        <span class='name'>line</span>
-      
-      
-        <span class='type'>(<tt><span class='object_link'><a href="../../../../String.html" title="String (class)">String</a></span></tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'><p>a raw combat log line</p></div>
-      
-    </li>
-  
-</ul>
-
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
     <li>
       
       
-        <span class='type'>(<tt>Boolean</tt>)</span>
+        <span class='type'>(<tt><span class='object_link'><a href="Table.html" title="Lich::Gemstone::Combat::Definitions::Table (class)">Table</a></span></tt>)</span>
       
       
       
         &mdash;
-        <div class='inline'><p>true if the line matches a self-inflicted attack pattern</p></div>
+        <div class='inline'><p>the current attack table; read once per call</p></div>
       
     </li>
   
@@ -1523,16 +2184,12 @@ such lines so they reach the parser with the correct ledger classification.</p>
       <pre class="lines">
 
 
-489
-490
-491</pre>
+860</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 489</span>
+      <pre class="code"><span class="info file"># File 'documented/gemstone/combat/defs/attacks.rb', line 860</span>
 
-<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_self_inflicted_line?'>self_inflicted_line?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-  <span class='const'><span class='object_link'><a href="#SELF_INFLICTED_PATTERN-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::SELF_INFLICTED_PATTERN (constant)">SELF_INFLICTED_PATTERN</a></span></span><span class='period'>.</span><span class='id identifier rubyid_match?'>match?</span><span class='lparen'>(</span><span class='id identifier rubyid_line'>line</span><span class='rparen'>)</span>
-<span class='kw'>end</span></pre>
+<span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_table'>table</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="#TABLE-constant" title="Lich::Gemstone::Combat::Definitions::Attacks::TABLE (constant)">TABLE</a></span></span></pre>
     </td>
   </tr>
 </table>
@@ -1543,7 +2200,7 @@ such lines so they reach the parser with the correct ledger classification.</p>
 </div>
 
       <div id="footer">
-  Generated on Thu Sep 10 03:55:23 2026 by
+  Generated on Wed Oct 28 05:27:16 2026 by
   <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.45 (ruby-3.2.11).
 </div>
