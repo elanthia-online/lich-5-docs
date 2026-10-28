@@ -1,21 +1,24 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich scripting engine and its subsystems.
+# Namespace for the Lich 5 scripting engine.
+#
+# @api private
 module Lich
-  # Namespace for GemStone IV and DragonRealms game-specific functionality.
+  # Namespace for GemStone IV game integration.
+  #
+  # @api private
   module Gemstone
-    # Namespace for the infomon subsystem that tracks character stats, experience, skills, and game state.
+    # Namespace for character information monitoring.
+    #
+    # @api private
     module Infomon
       # this module handles all of the logic for parsing game lines that infomon depends on
       module Parser
-        # Namespace for regular expression patterns that parse game server output lines.
+        # Namespace for regex patterns that match game output lines.
         #
-        # Patterns are organized by purpose: character stats (CharRaceProf, Stat), experience (RealExp, TotalExp),
-        # skills and ranks (Skill, SpellRanks), player society and housing (Society, ProfileHouseCHE),
-        # and status conditions (SleepActive, BindActive, CutthroatActive). Most patterns use named captures
-        # to extract values. All patterns are frozen and optimized for high-volume line parsing.
-        #
-        # See ALL_LIST and AllStart for pattern union compilation used in the fast-path parser.
+        # Patterns are grouped by category: character stats, experience, skills,
+        # PSM (Profession Specialization Maneuvers), resources, wealth, status effects,
+        # spells, and enhancives. Each pattern uses named captures to extract game state.
         module Pattern
           # Regex patterns grouped for Info, Exp, Skill and PSM parsing - calls upsert_batch to reduce db impact
           CharRaceProf = /^Name:\s+(?<name>[A-z\s'-]+)\s+Race:\s+(?<race>[A-z]+|[A-z]+(?: |-)[A-z]+)\s+Profession:\s+(?<profession>[-A-z]+)/.freeze
@@ -28,17 +31,17 @@ module Lich
           RealExp = %r{^\s+Experience: [\d,]+\s+Field Exp: (?<fxp_current>[\d,]+)/(?<fxp_max>[\d,]+)$}.freeze
           AscExp = /^\s+Ascension Exp: (?<ascension_experience>[\d,]+)\s+Recent Deaths: [\d,]+$/.freeze
           TotalExp = /^\s+Total Exp: (?<total_experience>[\d,]+)\s+Death's Sting: (?<deaths_sting>None|Light|Moderate|Sharp|Harsh|Piercing|Crushing)$/.freeze
-          # Matches the Long-Term Experience and Deeds line from the full INFO command output.
+          # Matches the Long-Term Exp line from character status.
           #
-          # Captures long-term accumulated experience and the count of deeds completed.
+          # Captures the player's accumulated long-term experience (for exp penalty recovery)
+          # and deed count. Appears in the experience section of character info.
           #
+          # @return [Regexp] pattern with named captures: long_term_experience, deeds
           # @example
-          #   "  Long-Term Exp: 12,345,678  Deeds: 42" =~ Pattern::LTE
-          #   Regexp.last_match[:long_term_experience] #=> "12,345,678"
-          #   Regexp.last_match[:deeds] #=> "42"
-          # @see Pattern::Fame
-          # @see Pattern::TotalExp
-          # @see Pattern::ExprEnd
+          #   "  Long-Term Exp: 50,000  Deeds: 3" =~ LTE
+          #   #=> Regexp.last_match[:long_term_experience] #=> "50,000"
+          #   #=> Regexp.last_match[:deeds] #=> "3"
+          # @see Pattern::Fame Pattern::RealExp
           LTE = /^\s+Long-Term Exp: (?<long_term_experience>[\d,]+)\s+Deeds: (?<deeds>\d+)$/.freeze
           ExprEnd = /^\s+Exp (?:until lvl|to next TP): -?[\d,]+/.freeze
           SkillStart = /^\s\w+\s\(at level \d+\), your current skill bonuses and ranks/.freeze
@@ -49,22 +52,19 @@ module Lich
           GoalsEnded = /^Further information can be found in the FAQs\.$/.freeze
           InnCheckedOut = /^Leaving your room, you check back out of .*, wander over to the front desk and hand the room key back to the innkeeper\./.freeze
           PSMStart = /^\w+, the following (?<cat>Ascension Abilities|Armor Specializations|Combat Maneuvers|Feats|Shield Specializations|Weapon Techniques) are available:$/.freeze
-          # Matches a single entry from the PSM (Personal Special Maneuver / Specialization / Feat) list output.
+          # Matches a single PSM (Combat Maneuver, Feat, Specialization, Technique) ability line.
           #
-          # Each line in a PSM category (Armor Specializations, Combat Maneuvers, Weapon Techniques, etc.)
-          # lists the maneuver name, its slash command, current rank, and maximum rank. The pattern captures
-          # all four components for storage in the infomon database.
+          # Captures the ability name, its command, current ranks, and max ranks from
+          # the output of commands like COMBAT MANEUVERS, FEATS, or armor/shield/weapon lists.
           #
+          # @return [Regexp] pattern with named captures: name, command, ranks, max
           # @example
-          #   "  Shield Slam shield 2/5 abc" =~ Pattern::PSM
-          #   Regexp.last_match[:name] #=> "Shield Slam"
-          #   Regexp.last_match[:command] #=> "shield"
-          #   Regexp.last_match[:ranks] #=> "2"
-          #   Regexp.last_match[:max] #=> "5"
-          # @see Pattern::PSMStart
-          # @see Pattern::PSMEnd
-          # @see Pattern::LearnPSM
-          # @see Pattern::UnlearnPSM
+          #   "  Shield Bash     shieldbash  3/5" =~ PSM
+          #   #=> Regexp.last_match[:name] #=> "Shield Bash"
+          #   #=> Regexp.last_match[:command] #=> "shieldbash"
+          #   #=> Regexp.last_match[:ranks] #=> "3"
+          #   #=> Regexp.last_match[:max] #=> "5"
+          # @see Pattern::PSMStart Pattern::PSMEnd
           PSM = /^\s+(?<name>[A-z\s\-':]+)\s+(?<command>[a-z]+)\s+(?<ranks>\d+)\/(?<max>\d+).*$/.freeze
           PSMEnd = /^   Subcategory: all$/.freeze
 
@@ -111,6 +111,8 @@ module Lich
           TicketGold = /^\s*Gold - (?<gold>[\d,]+) gold\.$/.freeze
           WealthSilver = /^You have (?<silver>no|[,\d]+|but one) silver with you\./.freeze
           WealthSilverContainer = /^You are carrying (?<silver>[\d,]+) silver stored within your /.freeze
+          WealthSilverTotal = /^You are carrying a total of (?<silver>[\d,]+) silver\.$/.freeze
+          WealthNotes = /^Total note value: (?<silver>[\d,]+)$/.freeze
           AccountName = /^Account Name:     (?<name>[\w\d\-\_]+)$/.freeze
           AccountSubscription = /^Account Type:     (?<subscription>F2P|Standard|Premium|Platinum)(?: with Shattered)?(?: \(\w+\))?$/.freeze
           ProfileStart = /^PERSONAL INFORMATION$/.freeze
@@ -140,6 +142,11 @@ module Lich
           # Adding spell regexes.  Does not save to infomon.db.  Used by Spell and by ActiveSpells
           SpellUpMsgs = /^#{Lich::Common::Spell.upmsgs.join('$|^')}$/o.freeze
           SpellDnMsgs = /^#{Lich::Common::Spell.dnmsgs.join('$|^')}$/o.freeze
+          # Spells that name the character they land on. The alternation is
+          # empty when no spell carries a target-start message, and an empty
+          # union would match every line, so fall back to a pattern that
+          # matches nothing.
+          SpellTargetUpMsgs = (Lich::Common::Spell.target_upmsgs.empty? ? /(?!)/ : /^#{Lich::Common::Spell.target_upmsgs.join('$|^')}$/o).freeze
           SpellsongRenewed = /^Your songs? renews?/.freeze
 
           # Enhancive parsing patterns - from INVENTORY ENHANCIVE TOTALS command
@@ -164,25 +171,24 @@ module Lich
           EnhanciveOff = /^You (?:are no longer|already are not|are not currently) accepting the benefit(?:s)? of (?:your|any) enhancive (?:inventory )?items(?: in your inventory)?\./.freeze
           EnhancivePauses = /^You currently have (?<pauses>\d+) enhancive pauses? available\.$/.freeze
 
-          # Comprehensive list of all line-start-anchored regex patterns used by the parser.
+          # List of all regex patterns used by Parser.parse for fast-path guarding.
           #
-          # This array is compiled into AllStart, an optimized union regex anchored to \A that serves as
-          # a guard for the main Parser.parse method. The guard allows the engine to attempt the union only
-          # at position 0 instead of scanning every position of long lines, reducing server-thread CPU time.
-          # Mid-line patterns (AllMid) are checked separately outside this union.
+          # These patterns are anchored to line start (^) and compiled into a union
+          # (AllStart) to enable O(1) matching: the regex engine attempts the match
+          # only at position 0 instead of scanning every position. Mid-line patterns
+          # that cannot use line-start anchoring are handled separately (AllMid).
           #
-          # @see Pattern::AllStart
-          # @see Pattern::AllMid
-          # @see Parser.parse
+          # @return [Array<Regexp>] all documented patterns, frozen
+          # @see Pattern::AllStart Pattern::AllMid
           ALL_LIST = [CharRaceProf, CharGenderAgeExpLevel, Stat, StatEnd, Fame, RealExp, AscExp, TotalExp, LTE,
                       ExprEnd, SkillStart, Skill, SpellRanks, SkillEnd, PSMStart, PSM, PSMEnd, Levelup, SpellsSolo,
                       Citizenship, NoCitizenship, Society, NoSociety, SleepActive, SleepNoActive, BindActive,
                       BindNoActive, SilenceActive, SilenceNoActive, CalmActive, CalmNoActive, CutthroatActiveStart,
-                      CutthroatNoActive, SpellUpMsgs, SpellDnMsgs, Warcries, NoWarcries, SocietyJoin, SocietyStep,
+                      CutthroatNoActive, SpellUpMsgs, SpellTargetUpMsgs, SpellDnMsgs, Warcries, NoWarcries, SocietyJoin, SocietyStep,
                       SocietyResign, LearnPSM, UnlearnPSM, LostTechnique, LearnTechnique, UnlearnTechnique,
                       Resource, Suffused, VolnFavor, GigasArtifactFragments, RedsteelMarks, TicketGeneral, TicketGold,
                       TicketBlackscrip, TicketBloodscrip, TicketEtherealScrip, TicketSoulShards, TicketRaikhen, TicketAevit,
-                      WealthSilver, WealthSilverContainer, GoalsDetected, GoalsEnded, InnCheckedOut, SpellsongRenewed,
+                      WealthSilver, WealthSilverContainer, WealthSilverTotal, WealthNotes, GoalsDetected, GoalsEnded, InnCheckedOut, SpellsongRenewed,
                       ThornPoisonStart, ThornPoisonProgression, ThornPoisonDeprogression, ThornPoisonEnd, CovertArtsCharges,
                       AccountName, AccountSubscription, ProfileStart, ProfileName, ProfileHouseCHE, ResignCHE, ResignConfirmCHE,
                       ShadowEssence, ShadowEssenceGain, ShadowEssenceCap, SacrificeMana, SacrificeChannel, SacrificeInfest,
@@ -203,14 +209,11 @@ module Lich
           AllStart = Regexp.new('\A(?:' + Regexp.union(ALL_LIST).source + ')').freeze
         end
 
-        # Namespace for parser state tracking during multi-line game output parsing.
+        # Tracks parser state during multi-line game output sequences.
         #
-        # Maintains the current parse state (e.g., :ready, :goals, :profile, :enhancive_stats) to handle
-        # commands whose output spans multiple server lines (SKILL GOALS, PROFILE, INVENTORY ENHANCIVE TOTALS).
-        # State transitions are guarded to catch parser state machine errors.
-        #
-        # @see Parser.State.set
-        # @see Parser.State.get
+        # Manages transitions between Ready, Goals training, Profile display,
+        # and multi-step Enhancive inventory reporting. Validates state transitions
+        # and prevents concurrent parsing of conflicting outputs.
         module State
           @state = :ready
           Goals = :goals
@@ -224,18 +227,18 @@ module Lich
           EnhanciveSpells = :enhancive_spells
           EnhanciveStatistics = :enhancive_statistics
 
-          # Sets the parser state with transition validation.
+          # Transitions to a new parser state with validation.
           #
-          # Enforces valid state transitions: Goals and Profile states can only be entered from Ready;
-          # Enhancive states can transition from Ready or between other Enhancive states. Attempting an
-          # invalid transition raises an error with caller context for debugging.
+          # Goals and Profile states can only start from Ready. Enhancive states
+          # may start from Ready or transition between other Enhancive states.
+          # Raises if the transition is invalid for the current state.
           #
-          # @param state [Symbol] the target state (:goals, :profile, :ready, :enhancive_stats, etc.)
-          # @return [Symbol] the state that was set
+          # @param state [Symbol] the target state (one of Goals, Profile, Ready,
+          #   EnhanciveStats, EnhanciveSkills, EnhanciveResources, EnhanciveMartial,
+          #   EnhanciveSpells, EnhanciveStatistics)
+          # @return [void]
           # @raise [RuntimeError] if the state transition is invalid
-          # @see Parser.State.get
-          # @see Parser.State::Goals
-          # @see Parser.State::EnhanciveStats
+          # @see State.get State.enhancive_state?
           def self.set(state)
             case state
             when Goals, Profile
@@ -255,40 +258,36 @@ module Lich
 
           # Returns the current parser state.
           #
-          # @return [Symbol] the current state (:ready, :goals, :profile, :enhancive_stats, etc.)
-          # @see Parser.State.set
+          # @return [Symbol] one of Goals, Profile, Ready, EnhanciveStats, EnhanciveSkills,
+          #   EnhanciveResources, EnhanciveMartial, EnhanciveSpells, or EnhanciveStatistics
+          # @see State.set
           def self.get
             @state
           end
 
-          # Returns true if the parser is in any of the Enhancive parsing states.
+          # Tests whether the parser is in an Enhancive multi-line sequence.
           #
-          # Useful for detecting whether enhancive inventory output is being parsed and for guarding
-          # initialization of @enhancive_hold across multiple section handlers.
-          #
-          # @return [Boolean] true if state is EnhanciveStats, EnhanciveSkills, EnhanciveResources,
-          #   EnhanciveMartial, EnhanciveSpells, or EnhanciveStatistics; false otherwise
-          # @see Parser.State.set
+          # @return [Boolean] true if in any Enhancive state (Stats, Skills, Resources,
+          #   Martial, Spells, or Statistics); false if Ready, Goals, or Profile
+          # @see State.set State.get
           def self.enhancive_state?
             [EnhanciveStats, EnhanciveSkills, EnhanciveResources,
              EnhanciveMartial, EnhanciveSpells, EnhanciveStatistics].include?(@state)
           end
         end
 
-        # Maps a full PSM category name to its short database key.
+        # Normalizes a PSM category name to a database key.
         #
-        # Converts the verbose category names from game server output (e.g., "Armor Specializations")
-        # to the short form stored in infomon.db (e.g., "Armor"). Used during PSM learning/unlearning
-        # to normalize the category before database lookup.
+        # Maps full category names from game output ("Armor Specializations",
+        # "Combat Maneuvers", etc.) to short codes for use as Infomon database keys.
         #
-        # @param category [String] the full category name (e.g., "Combat Maneuvers", "Weapon Techniques")
-        # @return [String, nil] the short form ("Armor", "Ascension", "CMan", "Feat", "Shield", "Weapon"),
-        #   or nil if the category is not recognized
+        # @param category [String] the full category name from a PSMStart line
+        # @return [String] the normalized code: "Armor", "Ascension", "CMan", "Feat",
+        #   "Shield", or "Weapon"; returns nil if the category is unrecognized
         # @example
-        #   Parser.find_cat("Armor Specializations") #=> "Armor"
-        #   Parser.find_cat("Combat Maneuvers") #=> "CMan"
+        #   find_cat("Armor Specializations") #=> "Armor"
+        #   find_cat("Combat Maneuvers") #=> "CMan"
         # @see Pattern::PSMStart
-        # @see Pattern::LearnPSM
         def self.find_cat(category)
           case category
           when /Armor/
@@ -306,36 +305,11 @@ module Lich
           end
         end
 
-        # Parses a single game server output line and updates infomon database state accordingly.
+        # Updates character data from one game-output line.
         #
-        # This is the main entry point for the infomon parser. It employs a fast-path guard
-        # (Pattern::AllStart) to check only line-start patterns on non-matching lines, then uses a
-        # case statement to dispatch the line to specific handlers. Each handler extracts values via
-        # regex captures and calls Infomon.set or Infomon.upsert_batch to update the database.
-        #
-        # For multi-line commands (SKILL GOALS, PROFILE, INVENTORY ENHANCIVE TOTALS), the parser
-        # manages state transitions via Parser.State. Batch operations (stats, experience, skills)
-        # use mutex locks to synchronize with the database.
-        #
-        # Mid-line patterns (e.g., CutthroatActiveMid) are also checked to catch status conditions
-        # that may not be anchored to the start of the line.
-        #
-        # @param line [String] a single physical line from the game server output, typically stripped
-        #   of trailing whitespace and already split from the \r\n-delimited server stream
-        # @return [Symbol] :ok if the line matched and was processed, :noop if the line did not match
-        #   or processing was skipped (e.g., mutex not held), or in rare error cases after logging
-        # @raise [StandardError] lines that raise exceptions are caught, logged with line content,
-        #   and converted to :noop to prevent parser crashes
-        # @note Callers should not rely on the return value to determine action; handlers trigger
-        #   side effects (database writes, state transitions) directly
-        # @example
-        #   line = "Gender: Male  Age: 42  Expr: 1,234,567  Level: 28"
-        #   Parser.parse(line) #=> :ok
-        #   # infomon database now contains updated experience value
-        # @see Pattern
-        # @see Parser.State
-        # @see Infomon.set
-        # @see Infomon.upsert_batch
+        # @param line [String] One physical line of game output
+        # @return [Symbol] :ok when handled, or :noop when ignored
+        # @note Parsing errors are reported to the user, logged, and suppressed; their return is unspecified.
         def self.parse(line)
           # O(1) vs O(N): the anchored union is attempted only at line start; mid-line
           # patterns (AllMid) are checked separately.
@@ -381,8 +355,11 @@ module Lich
             when Pattern::StatEnd
               match = Regexp.last_match
               @stat_hold.push(['currency.silver', match[:silver].delete(',').to_i])
-              Infomon.upsert_batch(@stat_hold)
-              Infomon.mutex_unlock
+              begin
+                Infomon.upsert_batch(@stat_hold)
+              ensure
+                Infomon.mutex_unlock
+              end
               :ok
             when Pattern::Fame # serves as ExprStart
               @expr_hold = []
@@ -410,8 +387,11 @@ module Lich
                               ['experience.deeds', match[:deeds].to_i])
               :ok
             when Pattern::ExprEnd
-              Infomon.upsert_batch(@expr_hold)
-              Infomon.mutex_unlock
+              begin
+                Infomon.upsert_batch(@expr_hold)
+              ensure
+                Infomon.mutex_unlock
+              end
               :ok
             when Pattern::SkillStart
               @skills_hold = []
@@ -436,8 +416,11 @@ module Lich
               end
             when Pattern::SkillEnd
               if Infomon.mutex.owned?
-                Infomon.upsert_batch(@skills_hold)
-                Infomon.mutex_unlock
+                begin
+                  Infomon.upsert_batch(@skills_hold)
+                ensure
+                  Infomon.mutex_unlock
+                end
                 :ok
               else
                 :noop
@@ -479,8 +462,11 @@ module Lich
               @psm_hold.push(["#{@psm_cat.downcase}.%s" % match[:command], match[:ranks].to_i])
               :ok
             when Pattern::PSMEnd
-              Infomon.upsert_batch(@psm_hold)
-              Infomon.mutex_unlock
+              begin
+                Infomon.upsert_batch(@psm_hold)
+              ensure
+                Infomon.mutex_unlock
+              end
               :ok
             when Pattern::NoWarcries
               Infomon.upsert_batch([['warcry.bertrandts_bellow', 0],
@@ -529,7 +515,7 @@ module Lich
               :ok
             when Pattern::SocietyJoin
               match = Regexp.last_match.to_s
-              case match[/Order|Council|Guardians/]
+              case match[/Order|Lodge|Guardians/]
               when 'Order'
                 Infomon.set('society.status', 'Order of Voln')
                 Infomon.set('society.rank', 1)
@@ -675,6 +661,14 @@ module Lich
               match = Regexp.last_match
               Infomon.set('currency.silver_container', match[:silver].delete(',').to_i)
               :ok
+            when Pattern::WealthSilverTotal
+              match = Regexp.last_match
+              Infomon.set('currency.silver_total', match[:silver].delete(',').to_i)
+              :ok
+            when Pattern::WealthNotes
+              match = Regexp.last_match
+              Infomon.set('currency.notes', match[:silver].delete(',').to_i)
+              :ok
             when Pattern::AccountName
               if Lich::Common::Account.name.nil?
                 match = Regexp.last_match
@@ -757,9 +751,29 @@ module Lich
               spell = Spell.list.find do |s|
                 line =~ /^#{s.msgup}$/
               end
-              spell.putup unless spell.active?
+              # A start message while the spell is already up is the game
+              # refreshing it: a refreshable timer resets to its full
+              # duration, anything else keeps the timer it has.
+              spell.putup if !spell.active? || spell.refreshable?
               # add various cooldowns back without affecting parse speed
               Spells.require_cooldown(spell)
+              # The group (EVOKE) version of a spell says so in the caster's
+              # own start message; every other view of the same spell (a
+              # self-cast, or being on the receiving end) leaves the clause
+              # out. That is the only notice the caster gets that a group
+              # casting landed, so it is where the per-target cooldowns start.
+              Group.record_spell_cooldown(spell) if line.include?('your group')
+              :ok
+            when Pattern::SpellTargetUpMsgs
+              # A spell landing on someone else, named in the third person.
+              # The cooldown it starts belongs to that character whoever cast
+              # it, so this counts the same seen from across the room as it
+              # does from the caster.
+              target = Regexp.last_match(:noun)
+              spell = Spell.list.find do |s|
+                s.target_msgup && line =~ /^#{s.target_msgup}$/
+              end
+              Group.record_target_cooldown(spell, target) if spell
               :ok
             when Pattern::SpellDnMsgs
               spell = Spell.list.find do |s|
@@ -773,12 +787,14 @@ module Lich
             # === ENHANCIVE PARSING ===
             # Any section header can start enhancive parsing (output may not include all sections)
             when Pattern::EnhanciveStart
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveStats)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveStats)
               :ok
             when Pattern::EnhanciveStat
               if State.get == State::EnhanciveStats
@@ -790,12 +806,14 @@ module Lich
                 :noop
               end
             when Pattern::EnhanciveSkillsSection
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveSkills)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveSkills)
               :ok
             when Pattern::EnhanciveSkillRanks
               if State.get == State::EnhanciveSkills
@@ -816,12 +834,14 @@ module Lich
                 :noop
               end
             when Pattern::EnhanciveResourcesSection
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveResources)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveResources)
               :ok
             when Pattern::EnhanciveResource
               if State.get == State::EnhanciveResources
@@ -833,12 +853,14 @@ module Lich
                 :noop
               end
             when Pattern::EnhanciveMartialSection
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveMartial)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveMartial)
               :ok
             when Pattern::EnhanciveMartialSkill
               if State.get == State::EnhanciveMartial
@@ -850,12 +872,14 @@ module Lich
                 :noop
               end
             when Pattern::EnhanciveSpellsSection
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveSpells)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveSpells)
               :ok
             when Pattern::EnhanciveSpells
               if State.get == State::EnhanciveSpells
@@ -867,12 +891,14 @@ module Lich
                 :noop
               end
             when Pattern::EnhanciveStatisticsSection
-              unless State.enhancive_state?
+              # Transition first: if State.set raises, the lock has not been taken yet.
+              fresh = !State.enhancive_state?
+              State.set(State::EnhanciveStatistics)
+              if fresh
                 @enhancive_hold = []
                 Infomon.mutex_lock
                 Lich::Gemstone::Enhancive.reset_all
               end
-              State.set(State::EnhanciveStatistics)
               :ok
             when Pattern::EnhanciveStatistic
               if State.get == State::EnhanciveStatistics
@@ -891,9 +917,12 @@ module Lich
               end
             when Pattern::EnhanciveEnd
               if State.enhancive_state?
-                Infomon.upsert_batch(@enhancive_hold)
-                Infomon.mutex_unlock
-                State.set(State::Ready)
+                begin
+                  Infomon.upsert_batch(@enhancive_hold)
+                ensure
+                  Infomon.mutex_unlock
+                  State.set(State::Ready)
+                end
                 :ok
               else
                 :noop

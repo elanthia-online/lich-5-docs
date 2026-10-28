@@ -2,31 +2,52 @@
 
 require File.join(LIB_DIR, 'common', 'xml_entities.rb')
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich 5 scripting engine and its subsystems.
 module Lich
-  # Namespace for DragonRealms game integration and parsing.
+  # Namespace for DragonRealms-specific scripting support, including parser, game object models, and combat system.
   module DragonRealms
-    # Parses server output from DragonRealms and updates game state objects.
+    # Parser for DragonRealms server output.
     #
-    # Handles inventory scrapes, skill experience, spell/ability discovery, account
-    # info, room contents, and game shutdown announcements. Routes parsed data to
-    # DRStats, DRSkill, DRSpells, DRRoom, GameObj, and related game-state models.
+    # Processes each line of server output to extract and update game state: character stats (DRStats),
+    # skills and experience (DRSkill), inventory (GameObj), room contents (DRRoom), known spells/abilities
+    # (DRSpells), and special events like scheduled maintenance shutdowns.
     #
-    # @see Pattern
+    # Patterns are matched against normalized lines ({.match_line}) where object links are removed and
+    # doubled bold tags are collapsed to the legacy stream format that all scripts expect. The inline
+    # experience formatter ({DRExpMonitor}) is the only consumer that rewrites server_line itself.
+    #
+    # @see .parse
+    # @see DRStats
+    # @see DRSkill
+    # @see GameObj
+    # @see DRRoom
+    # @see DRSpells
     module DRParser
-      # Regex patterns for parsing server output.
+      # Regexp patterns for parsing DragonRealms server output.
       #
-      # Constants in this module match game output formats (experience display,
-      # inventory listings, spell rosters, room state, etc.). Patterns are frozen
-      # for reuse and performance.
+      # Patterns are anchored to line starts where noted to prevent player chat, ESP, or book text from
+      # triggering mutations to game state. Several patterns capture named groups used to extract skills,
+      # stats, items, and other values.
       module Pattern
+        # StatLine, ExpColumnsLine, TDPValue and PlayedSubscription write
+        # DRStats/DRSkill/UserVars, so they are anchored to the start of the line
+        # (cf. GameShutdown): another player's speech or ESP, e.g.
+        # [General][Name] "Evasion: 1 0% mind lock", must not rewrite the
+        # listener's state. Logs show the real lines start with only whitespace
+        # and/or tags (buffed INFO stats arrive wrapped in <preset id="speech">),
+        # so all four allow that same (?:<[^>]*>|\s)* prefix and nothing else.
+        # StatLine/ExpColumnsLine gate the line; StatValue/ExpColumns then scan
+        # every column on it. A gated line the ExpColumns scan reads nothing
+        # from falls through to the later branches.
+        ExpColumnsLine = /^(?:<[^>]*>|\s)*[a-zA-Z][a-zA-Z\s]*\b:\s*\d+\s+\d+%/.freeze
         ExpColumns = /(?:\s*(?<skill>[a-zA-Z\s]+)\b:\s*(?<rank>\d+)\s+(?<percent>\d+)%\s+(?<rate>[a-zA-Z\s]+)\b)/.freeze
         BriefExpOn = %r{<component id='exp .*?<d cmd='skill (?<skill>[a-zA-Z\s]+)'.*:\s+(?<rank>\d+)\s+(?<percent>\d+)%\s*\[\s?(?<rate>\d+)\/34\].*?<\/component>}.freeze
         BriefExpOff = %r{<component id='exp .*?\b(?<skill>[a-zA-Z\s]+)\b:\s+(?<rank>\d+)\s+(?<percent>\d+)%\s+\b(?<rate>[a-zA-Z\s]+)\b.*?<\/component>}.freeze
         NameRaceGuild = /^Name:\s+\b(?<name>.+)\b\s+Race:\s+\b(?<race>.+)\b\s+Guild:\s+\b(?<guild>.+)\b\s+/.freeze
         GenderAgeCircle = /^Gender:\s+\b(?<gender>.+)\b\s+Age:\s+\b(?<age>.+)\b\s+Circle:\s+\b(?<circle>.+)/.freeze
+        StatLine = /^(?:<[^>]*>|\s)*(?:Strength|Agility|Discipline|Intelligence|Reflex|Charisma|Wisdom|Stamina|Favors|TDPs)\s+:\s+\d+/.freeze
         StatValue = /(?<stat>Strength|Agility|Discipline|Intelligence|Reflex|Charisma|Wisdom|Stamina|Favors|TDPs)\s+:\s+(?<value>\d+)/.freeze
-        TDPValue = /You have (?<tdp>\d+) TDPs\./.freeze
+        TDPValue = /^(?:<[^>]*>|\s)*You have (?<tdp>\d+) TDPs\./.freeze
         EncumbranceValue = /^\s*Encumbrance\s+:\s+(?<encumbrance>[\w\s'?!]+)$/.freeze
         LuckValue = /^\s*Luck\s+:\s+.*\((?<luck>[-\d]+)\/3\)/.freeze
         BalanceValue = /^(?:You are|\[You're)(?:.*,)? (?<balance>#{Regexp.union(DR_BALANCE_VALUES)}) balanced?\b/.freeze
@@ -45,7 +66,7 @@ module Lich
         ThiefKhriStart = /^From the Subtlety tree, you know the following khri:/.freeze
         SpellBookFormat = /^You will .* (?<format>column-formatted|non-column) output for the SPELLS verb/.freeze
         PlayedAccount = /^(?:<.*?\/>)?Account Info for (?<account>.+):/.freeze
-        PlayedSubscription = /Current Account Status: (?<subscription>F2P|Basic|Premium|Platinum)/.freeze
+        PlayedSubscription = /^(?:<[^>]*>|\s)*Current Account Status: (?<subscription>F2P|Basic|Premium|Platinum)/.freeze
         LastLogoff = /^\s+Logoff :  (?<weekday>[A-Z][a-z]{2}) (?<month>[A-Z][a-z]{2}) (?<day>[\s\d]{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) ET (?<year>\d{4})/.freeze
         Rested_EXP = %r{^<component id='exp rexp'>Rested EXP Stored:\s*(?<stored>.*?)\s*Usable This Cycle:\s*(?<usable>.*?)\s*Cycle Refreshes:\s*(?<refresh>.*)</component>}.freeze
         Rested_EXP_F2P = %r{^<component id='exp rexp'>\[Unlock Rested Experience}.freeze
@@ -116,6 +137,50 @@ module Lich
       # from a shutdown announcement. nil when no shutdown is pending.
       @@shutdown_at = nil
 
+      # The Saga-identity stream wraps names in object links
+      # (<a exist="-10700002" noun="Aldric">Aldric</a>) and currently sends the
+      # bold around linked creatures doubled (<pushBold/><pushBold/>a <a ...>
+      # leopard</a><popBold/><popBold/>); a single bold works too. The legacy
+      # stream sends neither, so every DRParser pattern, every drdefs room helper
+      # and every script Flag was written against link-free, single-bold text.
+      # {.match_line} restores that shape.
+      LINK_TAG = %r{</?a\b[^>]*>}.freeze
+      # Matches two or more consecutive <pushBold/> tags.
+      #
+      # The Saga-identity stream sometimes doubles bold markup around linked creatures and room features.
+      # This pattern detects and normalizes them back to a single tag for consistency with the legacy stream.
+      #
+      # @return [Regexp]
+      # @example
+      #   "<pushBold/><pushBold/>text<popBold/><popBold/>".gsub(PUSH_BOLD_RUN, '<pushBold/>') #=> "<pushBold/>text<popBold/><popBold/>"
+      # @see POP_BOLD_RUN
+      # @see .match_line
+      PUSH_BOLD_RUN = %r{(?:<pushBold/>){2,}}.freeze
+      # Matches two or more consecutive <popBold/> tags.
+      #
+      # The Saga-identity stream sometimes doubles bold markup around linked creatures and room features.
+      # This pattern detects and normalizes them back to a single tag for consistency with the legacy stream.
+      #
+      # @return [Regexp]
+      # @example
+      #   "<pushBold/><pushBold/>text<popBold/><popBold/>".gsub(POP_BOLD_RUN, '<popBold/>') #=> "<pushBold/>text<popBold/>"
+      # @see PUSH_BOLD_RUN
+      # @see .match_line
+      POP_BOLD_RUN = %r{(?:<popBold/>){2,}}.freeze
+
+      # Returns the line in the shape DRParser patterns and Flags expect: object
+      # links removed (their inner text kept) and doubled bold collapsed. A line
+      # with neither (the whole legacy stream) is returned unchanged, as the same
+      # object.
+      #
+      # @param line [String] one server string
+      # @return [String]
+      def self.match_line(line)
+        return line unless line.include?('</a>') || line.include?('<pushBold/><pushBold/>')
+
+        line.gsub(LINK_TAG, '').gsub(PUSH_BOLD_RUN, '<pushBold/>').gsub(POP_BOLD_RUN, '<popBold/>')
+      end
+
       # Checks server output against registered Flag matchers.
       # Updates Flags.flags hash when a pattern matches.
       # @param server_string [String] A line of server output to check
@@ -124,7 +189,7 @@ module Lich
         Flags.matchers.each do |key, regexes|
           regexes.each do |regex|
             if (matches = server_string.match(regex))
-              Flags.flags[key] = matches
+              Flags.record_match(key, regexes, matches)
               break
             end
           end
@@ -168,12 +233,12 @@ module Lich
       class InventoryItemSax
         attr_reader :cmd, :name
 
-        # Initializes a new SAX handler for parsing inventory item elements.
+        # Initializes a SAX handler for parsing a single inventory item line.
         #
-        # Sets up internal state to capture the cmd attribute and item name from
-        # the first <d> element encountered during streaming XML parse.
+        # Sets up internal state to capture the `cmd` attribute and item name from the first <d> element
+        # encountered; later <d> elements are ignored.
         #
-        # @return [void]
+        # @return [InventoryItemSax]
         def initialize
           @in_d = false
           @done = false
@@ -181,24 +246,24 @@ module Lich
           @name = nil
         end
 
-        # Marks the beginning of an XML element.
+        # Called by the SAX parser when an opening tag is encountered.
         #
-        # Enters capture mode when a <d> element is encountered and the handler
-        # has not yet successfully closed one; later <d> elements are ignored.
+        # Marks the <d> element as active so that its `cmd` attribute and text content can be captured.
+        # Only the first <d> element is processed; later ones are skipped.
         #
-        # @param name [String] the element name (e.g., "d", "component")
+        # @param name [String] the tag name (e.g., 'd', 'component')
         # @return [void]
         # @api private
         def start_element(name)
           @in_d = true if name == "d" && !@done
         end
 
-        # Captures the cmd attribute value from a <d> element.
+        # Called by the SAX parser when an attribute is encountered.
         #
-        # Records the cmd attribute only if currently inside a <d> element and
-        # the attribute has not yet been captured.
+        # Captures the `cmd` attribute value from the active <d> element. The cmd attribute contains
+        # the in-game command to retrieve the item (e.g., 'get #12345' or 'get #1 in #2').
         #
-        # @param name [String] the attribute name
+        # @param name [String] the attribute name (e.g., 'cmd', 'id')
         # @param value [String] the attribute value
         # @return [void]
         # @api private
@@ -206,25 +271,24 @@ module Lich
           @cmd = value if @in_d && name == "cmd"
         end
 
-        # Captures text content from inside a <d> element.
+        # Called by the SAX parser when text content is encountered.
         #
-        # Records the first text node encountered within a <d> element as the
-        # item name; subsequent text nodes are ignored.
+        # Captures the item name from inside the <d> element. Only the first text node is stored;
+        # subsequent calls are ignored.
         #
-        # @param value [String] the text content
+        # @param value [String] the text content of the element
         # @return [void]
         # @api private
         def text(value)
           @name = value if @in_d && @name.nil?
         end
 
-        # Marks the end of a <d> element and stops capture.
+        # Called by the SAX parser when a closing tag is encountered.
         #
-        # Exits capture mode after the first <d> element closes, preventing
-        # later <d> elements in the same parse from overwriting the captured
-        # cmd and name values.
+        # Marks the <d> element as closed and sets a flag to ignore any subsequent <d> elements,
+        # since only the first <d> on an inventory line carries the item data.
         #
-        # @param name [String] the element name
+        # @param name [String] the tag name (e.g., 'd', 'component')
         # @return [void]
         # @api private
         def end_element(name)
@@ -593,9 +657,12 @@ module Lich
 
       # Main parser entry point. Processes a line of server output
       # and updates various game state objects (DRStats, DRRoom, DRSkill, etc.).
-      # @param line [String] A line of server output to parse
+      # Patterns and Flags are matched against {.match_line}; only the inline
+      # exp display rewrites +server_line+ itself (it is what reaches the client).
+      # @param server_line [String] A line of server output to parse
       # @return [void]
-      def self.parse(line)
+      def self.parse(server_line)
+        line = match_line(server_line)
         check_events(line)
         begin
           check_game_shutdown(line)
@@ -625,7 +692,7 @@ module Lich
             DRStats.encumbrance = match[:encumbrance]
           elsif (match = line.match(Pattern::LuckValue))
             DRStats.luck = match[:luck].to_i
-          elsif Pattern::StatValue.match?(line)
+          elsif Pattern::StatLine.match?(line)
             line.scan(Pattern::StatValue) do |stat, value|
               DRStats.send("#{stat.downcase}=", value.to_i)
             end
@@ -665,21 +732,26 @@ module Lich
             percent  = match[:percent]
             DRSkill.update(skill, rank, rate, percent)
 
-            # Inline display of cumulative gained experience (from DRExpMonitor)
+            # Inline display of cumulative gained experience (from DRExpMonitor).
+            # The formatters edit server_line, the string the client receives,
+            # not the normalized copy. No captured exp component, in either
+            # dialect, carries a link or doubled bold, so match_line returns
+            # server_line itself for them; editing server_line keeps the client's
+            # line right if one ever did.
             if DRExpMonitor.inline_display?
               if rate_raw.to_i > 0
                 # BRIEFEXP ON format (rate is numeric)
-                line.replace(DRExpMonitor.format_briefexp_on(line, skill))
+                server_line.replace(DRExpMonitor.format_briefexp_on(server_line, skill))
               else
                 # BRIEFEXP OFF format (rate is word like "learning", "pondering")
-                line.replace(DRExpMonitor.format_briefexp_off(line, skill, rate_raw.strip))
+                server_line.replace(DRExpMonitor.format_briefexp_off(server_line, skill, rate_raw.strip))
               end
             end
           elsif (match = line.match(Pattern::ExpClearMindstate))
             skill = match[:skill]
             DRSkill.clear_mind(skill)
-          elsif Pattern::ExpColumns.match?(line)
-            line.scan(Pattern::ExpColumns) do |skill_value, rank_value, percent_value, rate_as_word|
+          elsif Pattern::ExpColumnsLine.match?(line) && !(columns = line.scan(Pattern::ExpColumns)).empty?
+            columns.each do |skill_value, rank_value, percent_value, rate_as_word|
               rate_as_number = DR_LEARNING_RATES.index(rate_as_word) # convert word to number
               DRSkill.update(skill_value, rank_value, rate_as_number, percent_value)
             end
@@ -768,10 +840,15 @@ module Lich
           # Parse bank transactions passively
           Lich::DragonRealms::DRBanking.parse(line)
         rescue StandardError => e
+          # Report the line as the server sent it (Saga markup is the likeliest
+          # cause), plus the copy the patterns saw when normalization changed it.
+          normalized = line.equal?(server_line) ? nil : line
           Lich::Messaging.msg("bold", "DRParser: error in parse: #{e.message}")
-          Lich::Messaging.msg("bold", "DRParser: line: #{line}")
+          Lich::Messaging.msg("bold", "DRParser: line: #{server_line}")
+          Lich::Messaging.msg("bold", "DRParser: matched as: #{normalized}") if normalized
           Lich.log "error: DRParser.parse: #{e.message}\n\t#{e.backtrace.join("\n\t")}"
-          Lich.log "error: line: #{line}\n\t"
+          Lich.log "error: line: #{server_line}\n\t"
+          Lich.log "error: matched as: #{normalized}\n\t" if normalized
         end
       end
     end

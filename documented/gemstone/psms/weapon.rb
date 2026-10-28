@@ -1,12 +1,26 @@
-# Contains the Lich game logic.
-#
-# @see Lich::Gemstone
+# Root module for Lich scripting components.
 module Lich
+  # Namespace for GemStone IV-specific modules.
   module Gemstone
-    # Provides weapon techniques and their management.
+    # Provides logic for using weapon-based PSM techniques.
     #
-    # @see Lich::Gemstone
+    # The Weapon module includes metadata about known weapon techniques (cost, result patterns, buff effect, etc.)
+    # and provides methods to:
+    # - Check whether a technique is known, affordable, or available
+    # - Execute techniques with optional FORCERT or specific targets
+    # - Detect buff activation for some techniques
+    #
+    # Dynamic methods are generated for each weapon technique using its short and long name.
     module Weapon
+      # Internal registry of weapon techniques.
+      #
+      # @return [Hash<String, Hash>] Mapping of technique names to their metadata, including:
+      #   - `:short_name` [String]
+      #   - `:cost` [Integer]
+      #   - `:regex` [Regexp] expected combat log output
+      #   - `:assault_rx` [Regexp, optional] alternate result pattern for assault-style moves
+      #   - `:buff` [String, optional] buff name to check via Effects::Buffs
+      #   - `:usage` [String, optional] override for default usage command
       @@weapon_techniques = {
         "barrage"          => {
           :short_name => "barrage",
@@ -57,8 +71,8 @@ module Lich
           :short_name => "flurry",
           :type       => :assault,
           :cost       => { stamina: 15 },
-          :regex      => /You rotate your wrist, your .+ executing a casual spin to establish your flow as you advance upon .+\!/,
-          :assault_rx => /The mesmerizing sway of body and blade glides to its inevitable end with one final twirl of your .+\!/,
+          :regex      => /You rotate your wrists?, your .+ executing a casual spin to establish your flow as you advance upon .+\!/,
+          :assault_rx => /The mesmerizing sway of body and blade glides to its inevitable end with one final twirl of your .+[.!]/,
           :buff       => "Slashing Strikes"
         },
         "fury"             => {
@@ -141,13 +155,14 @@ module Lich
           :short_name => "thrash",
           :type       => :assault,
           :cost       => { stamina: 15 },
-          :regex      => /You rush .+, raising your .+ high to deliver a sound thrashing\!/
+          :regex      => /You rush .+, raising your .+ high to deliver a sound thrashing\!/,
+          :buff       => "Forceful Blows"
         },
         "twin_hammerfists" => {
           :short_name => "twinhammer",
           :type       => :setup,
           :cost       => { stamina: 7 },
-          :regex      => /You raise your hands high, lace them together and bring them crashing down towards the .+\!/,
+          :regex      => /You raise your hands high, lace them together and bring them crashing down towards .+\!/,
           :usage      => "twinhammer"
         },
         "volley"           => {
@@ -160,7 +175,8 @@ module Lich
           :short_name => "wblade",
           :type       => :area_of_effect,
           :cost       => { stamina: 20 },
-          :regex      => /With a broad flourish, you sweep your .+ into a whirling display of keen-edged menace\!/,
+          :regex      => Regexp.union(/With a broad flourish, you sweep your .+ into a whirling display of keen-edged menace\!/,
+                                      /With a broad flourish, you weave your .+ into a whirling display of coordination and menace\!/),
           :usage      => "wblade"
         },
         "whirlwind"        => {
@@ -171,185 +187,76 @@ module Lich
         }
       }
 
-      # Returns a list of weapon techniques with their long and short names and costs.
-      # @return [Array<Hash>] list of weapon techniques with details
-      # @example
-      #   Weapon.weapon_lookups.each do |weapon|
-      #     puts weapon[:long_name]
-      #   end
-      def self.weapon_lookups
-        @@weapon_techniques.map do |long_name, psm|
-          {
-            long_name: long_name,
-            short_name: psm[:short_name],
-            cost: psm[:cost]
-          }
-        end
+      extend PSMS::Technique
+      techniques @@weapon_techniques, type: "Weapon", verb: "weapon"
+      free_under "Glorious Momentum", type: :area_of_effect
+      free_under "Ardor of the Scourge", type: :assault, affects: :cooldown
+
+      # Lines that end any assault besides its own :assault_rx: other assault
+      # endings, an interrupted assault, and assault-specific refusals.
+      ASSAULT_ENDINGS = Regexp.union(
+        /You complete your assault/,
+        /^With a final, explosive breath, you /,
+        /recentering yourself for the fight/,
+        /Upon firing your last (?:arrow|bolt)/,
+        /Distracted, you hesitate/,
+        /may not be activated within 60 seconds of a Multi-Strike\./,
+        /can not be used with attack as the attack type/,
+        # The assault never started. Anchored to the game's own sentences so
+        # room speech ('Aelric says, "it's already dead."') can't end the wait.
+        /^I could not find what you were referring to\.$/,
+        /^.+ is quite dead already\.$/,
+        /^You are too injured to /,
+        /^You don't seem to be able to move your legs to do that/,
+        /^A little bit late for that don't you think\?$/,
+      )
+
+      # @param name [String] the technique name
+      # @return [Boolean] whether the technique is an assault (several strikes over several seconds)
+      def Weapon.assault?(name)
+        technique(name)[:type] == :assault
       end
 
-      # Retrieves a weapon technique by its name.
-      # @param name [String] the name of the weapon technique
-      # @return [Hash, nil] the weapon technique details or nil if not found
-      # @example
-      #   technique = Weapon["barrage"]
-      #   puts technique[:short_name] if technique
-      def Weapon.[](name)
-        return PSMS.assess(name, 'Weapon')
+      # How long to wait for an assault's ending. There is no captured timing for
+      # a max-rank assault, so this keeps the ~20s the old send-and-retry loop
+      # could wait; stopping early would return mid-assault.
+      ASSAULT_TIMEOUT = 20
+
+      # Uses a Weapon technique if it is available. An assault takes no FORCERT
+      # and returns when it ends, not when it starts.
+      #
+      # @see PSMS::Technique#use
+      def Weapon.use(name, target = "", ignore_cooldown: false, results_of_interest: nil, forcert_count: 0)
+        return super unless assault?(name)
+        return unless available?(name, target: target, ignore_cooldown: ignore_cooldown)
+
+        waitrt?
+        waitcastrt?
+        PSMS.dispatch(command(name, target), results_regex(name, results_of_interest: results_of_interest), timeout: ASSAULT_TIMEOUT)
       end
 
-      # Checks if a weapon technique is known and meets the minimum rank requirement.
-      # @param name [String] the name of the weapon technique
-      # @param min_rank [Integer] the minimum rank to check against
-      # @return [Boolean] true if known and meets rank, false otherwise
-      # @example
-      #   puts Weapon.known?("barrage", 1)
-      def Weapon.known?(name, min_rank: 1)
-        min_rank = 1 unless min_rank >= 1 # in case a 0 or below is passed
-        Weapon[name] >= min_rank
+      # The command {Weapon.use} sends; an assault never takes FORCERT.
+      #
+      # @see PSMS::Technique#command
+      def Weapon.command(name, target = "", forcert_count: 0)
+        super(name, target, forcert_count: assault?(name) ? 0 : forcert_count)
       end
 
-      # Determines if a weapon technique can be afforded based on the current conditions.
-      # @param name [String] the name of the weapon technique
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if affordable, false otherwise
-      # @example
-      #   puts Weapon.affordable?("charge")
-      def Weapon.affordable?(name, forcert_count: 0)
-        return true if @@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:type] == :area_of_effect && Effects::Buffs.active?("Glorious Momentum")
-        return PSMS.assess(name, 'Weapon', true, forcert_count: forcert_count)
+      # The lines {Weapon.use} waits on; an assault waits on its ending instead
+      # of its opening line and roundtime.
+      #
+      # @see PSMS::Technique#results_regex
+      def Weapon.results_regex(name, results_of_interest: nil)
+        return super unless assault?(name)
+
+        PSMS.results_regex(name, technique(name)[:assault_rx], ASSAULT_ENDINGS, results_of_interest: results_of_interest)
       end
 
-      # Checks if a weapon technique is available for use based on known status, affordability, and buffs.
-      # @param name [String] the name of the weapon technique
-      # @param min_rank [Integer] the minimum rank required
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if available, false otherwise
-      # @example
-      #   puts Weapon.available?("flurry")
-      def Weapon.available?(name, min_rank: 1, forcert_count: 0)
-        return false unless Weapon.known?(name, min_rank: min_rank)
-        return false unless Weapon.affordable?(name, forcert_count: forcert_count)
-        if @@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:type] == :area_of_effect && Effects::Buffs.active?("Glorious Momentum")
-          return false unless PSMS.available?(name, true)
-        elsif @@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:type] == :assault && Effects::Buffs.active?("Ardor of the Scourge")
-          return false unless PSMS.available?(name, true)
-        else
-          return false unless PSMS.available?(name)
-        end
-        return true
-      end
-
-      # Checks if a weapon technique is currently active.
-      # @param name [String] the name of the weapon technique
-      # @return [Boolean] true if active, false otherwise
-      # @deprecated Use #buff_active? instead
+      # DEPRECATED: Use {Weapon.buff_active?} instead.
       def Weapon.active?(name)
-        ## DEPRECATED ##
         Lich.deprecated("Weapon.active?", "Weapon.buff_active?", caller[0], fe_log: false)
         buff_active?(name)
       end
-
-      # Checks if the buff associated with a weapon technique is currently active.
-      # @param name [String] the name of the weapon technique
-      # @return [Boolean] true if the buff is active, false otherwise
-      # @example
-      #   puts Weapon.buff_active?("fury")
-      def Weapon.buff_active?(name)
-        buff = @@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:buff]
-        return false if buff.nil?
-        Effects::Buffs.active?(@@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:buff])
-      end
-
-      # Uses a weapon technique against a target, processing the results.
-      # @param name [String] the name of the weapon technique
-      # @param target [String] the target of the weapon technique
-      # @param results_of_interest [Regexp, nil] additional regex patterns to match results
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [String, nil] the result of the weapon use or nil if not applicable
-      # @example
-      #   result = Weapon.use("barrage", "enemy")
-      def Weapon.use(name, target = "", results_of_interest: nil, forcert_count: 0)
-        return unless Weapon.available?(name, forcert_count: forcert_count)
-
-        name_normalized = PSMS.name_normal(name)
-        technique = @@weapon_techniques.fetch(PSMS.find_name(name_normalized, "Weapon")[:long_name])
-        usage = technique.key?(:usage) ? technique[:usage] : name_normalized
-        return if usage.nil?
-
-        in_cooldown_regex = /^#{name} is still in cooldown\./i
-
-        results_regex = Regexp.union(
-          PSMS::FAILURES_REGEXES,
-          /^#{name} what\?$/i,
-          in_cooldown_regex
-        )
-
-        results_regex = Regexp.union(results_regex, results_of_interest) if results_of_interest
-
-        usage_cmd = "weapon #{usage}"
-        if target.is_a?(GameObj)
-          usage_cmd += " ##{target.id}"
-        elsif target.is_a?(Integer)
-          usage_cmd += " ##{target}"
-        elsif target != ""
-          usage_cmd += " #{target}"
-        end
-
-        usage_result = nil
-        if (technique.key?(:assault_rx))
-          results_regex = Regexp.union(results_regex, technique[:assault_rx])
-          break_out = Time.now() + 12
-          loop {
-            usage_result = dothistimeout(usage_cmd, 10, results_regex)
-            if usage_result =~ /\.\.\.wait/i
-              waitrt?
-              next
-            end
-            break if usage_result.eql?(false)
-            break if usage_result =~ technique[:assault_rx]
-            break if usage_result =~ /^#{name} what\?$/i
-            break if usage_result =~ in_cooldown_regex
-            break if Time.now() > break_out
-            sleep 0.25
-          }
-        else
-          results_regex = Regexp.union(results_regex, technique[:regex], /^Roundtime: [0-9]+ sec\.$/)
-
-          if forcert_count > 0
-            usage_cmd += " forcert"
-          else # if we're using forcert, we don't want to wait for rt, but we need to otherwise
-            waitrt?
-            waitcastrt?
-          end
-
-          usage_result = dothistimeout(usage_cmd, 5, results_regex)
-          if usage_result == "You don't seem to be able to move to do that."
-            100.times { break if clear.any? { |line| line =~ /^You regain control of your senses!$/ }; sleep 0.1 }
-            usage_result = dothistimeout(usage_cmd, 5, results_regex)
-          end
-        end
-
-        usage_result
-      end
-
-      # Retrieves the regex pattern associated with a weapon technique.
-      # @param name [String] the name of the weapon technique
-      # @return [Regexp] the regex pattern for the weapon technique
-      # @example
-      #   pattern = Weapon.regexp("charge")
-      def Weapon.regexp(name)
-        @@weapon_techniques.fetch(PSMS.find_name(name, "Weapon")[:long_name])[:regex]
-      end
-
-      Weapon.weapon_lookups.each { |weapon|
-        self.define_singleton_method(weapon[:short_name]) do
-          Weapon[weapon[:short_name]]
-        end
-
-        self.define_singleton_method(weapon[:long_name]) do
-          Weapon[weapon[:short_name]]
-        end
-      }
     end
   end
 end

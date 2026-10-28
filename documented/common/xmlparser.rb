@@ -3,29 +3,29 @@ xmlparser.rb: Core lich file that defines the data extracted from SIMU's XML.
 =end
 
 require File.join(LIB_DIR, 'common', 'xml_entities.rb')
+require File.join(LIB_DIR, 'common', 'xmlparser', 'game_delta.rb')
 
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for shared (game-agnostic) parser and data structures.
   module Common
-    # Parses the XML game server stream into game state and script-visible attributes.
+    # Parses the game server's XML stream and exposes the character state to scripts.
     #
-    # This parser drives the Lich engine's understanding of the player's character,
-    # room, inventory, spell durations, creatures, and other real-time game state.
-    # The server sends a continuous stream of XML fragments describing each command's
-    # effects (room arrival, cast success, inventory change, etc.). XMLParser accumulates
-    # these fragments, hands them to the Ox SAX parser, and routes the resulting events
-    # to tag_start, tag_end, text, and attr callbacks that update game state and fire
-    # hooks for scripts to observe.
+    # Lich receives the game server's real-time data as an XML stream and converts
+    # it to structured attributes. This parser handles both GemStone IV and DragonRealms,
+    # including both legacy and Saga-identity dialects. The parser is driven by Ox SAX
+    # callbacks (start_element, attr, attrs_done, text, end_element) from {Game.process_xml_data}.
     #
-    # Most instance attributes are exposed as attr_reader; accessing XMLData.attribute
-    # from a script returns the parsed value. The parser also maintains internal caches
-    # for staging incomplete operations (e.g., container fills that span multiple text
-    # nodes) and coordinates with related systems like Creature, GameObj, and Claim.
+    # State is exposed as read-only attributes: {#mana}, {#health}, {#spirit}, {#stamina},
+    # {#room_id}, {#room_exits}, {#current_target_id}, {#prepared_spell}, and dozens more.
+    # Scripts read these to know the character's condition, inventory, and surroundings.
     #
-    # Supports both GemStone IV and DragonRealms game streams, with game-specific
-    # handling for room-object identification, creature status flagging, and player
-    # roster tracking.
+    # The parser also manages {GameObj} collections (items, creatures, players) by
+    # calling GameObj methods as it encounters container, inventory, and room data.
     #
-    # @api private
+    # @note The parser must never raise; all exceptions are caught in tag_start, text,
+    #   and tag_end and logged via {Lich.log}, then reset to recovery state.
+    # @see Game#process_xml_data the entry point that drives this parser
     class XMLParser
       attr_reader :mana, :max_mana, :health, :max_health, :spirit, :max_spirit, :last_spirit,
                   :stamina, :max_stamina, :stance_text, :stance_value, :mind_text, :mind_value,
@@ -37,7 +37,7 @@ module Lich
                   :roundtime_end, :cast_roundtime_end, :last_pulse, :level, :next_level_value,
                   :next_level_text, :society_task, :stow_container_id, :name, :game, :in_stream,
                   :player_id, :prompt, :current_target_ids, :current_target_id, :room_window_disabled,
-                  :dialogs, :room_id, :previous_nav_rm, :show_room_id, :concentration, :max_concentration,
+                  :dialogs, :room_id, :previous_nav_rm, :nav_count, :show_room_id, :concentration, :max_concentration,
                   :arrival_pcs, :room_player_hidden, :field_exp, :max_field_exp,
                   :ascension_exp, :exp, :until_next, :fashlonae, :lumnis, :rpa,
                   :room_climate, :room_terrain, :room_weather, :room_bonfire,
@@ -46,15 +46,89 @@ module Lich
 
       @@warned_deprecated_spellfront = 0
 
-      # Initializes the parser with empty game state and default values.
+      # server_time_offset noise model (see accept_server_time_offset_candidate?,
+      # called from the <prompt> handler in tag_start):
       #
-      # All mutable state is reset to sane defaults: strings to empty, arrays to [],
-      # integers to 0, nil to nil. Room ID defaults to 0 (not nil) so that checks like
-      # room_id.zero? and room_id > N in map layers do not raise NoMethodError before
-      # a <nav> tag arrives. The parser is not ready for use until the game sends its
-      # first settingsInfo tag naming the instance (game name and character name).
+      # <prompt time="..."> is whole-second precision, so every sample of
+      # (now - server_time) equals offset_true + latency + frac, where latency
+      # (network/queue delay) and frac (the 0..1s truncation remainder) are
+      # both >= 0 - the raw sample is never smaller than the truth. Because
+      # the error only ever inflates the sample, the minimum sample seen
+      # recently is the best available estimate (the classic NTP min-delay
+      # filter): a bigger latency term can only push a candidate up, so a
+      # queue-delayed prompt (the login burst, a script holding the parser
+      # thread busy - see prompt_ingress_clocks, which already removes most of
+      # this) can lose the minimum but never win it.
       #
-      # @api private
+      # Do NOT key acceptance on how close together two prompts were *parsed*
+      # instead of on the candidate's own value: a backlog drains back-to-back
+      # with a near-zero gap between samples regardless of how delayed each
+      # one was, so a parse-time gap measures queue scheduling, not latency,
+      # and can pin exactly the worst sample - see the "queue-drained batch"
+      # regression spec below for the concrete failure this approach produced
+      # when it was tried.
+      #
+      # `now` still isn't RTT-compensated: `latency` above is one-way
+      # (server-to-client) transmission delay, not round-trip time, and
+      # nothing here sends anything to measure it - that would need
+      # round-trip probe commands from core, a separate tradeoff from this
+      # fix. The remaining one-way latency only ever makes the estimate more
+      # conservative (a longer wait), never early.
+      #
+      # How long a held estimate is trusted before a fresh sample is accepted
+      # unconditionally, win or lose. Not derived from any measurement - a
+      # round number chosen to bound how long a stale estimate (e.g. from a
+      # since-resolved network condition, or a *server*-side clock jump, which
+      # nothing here detects) can linger.
+      SERVER_TIME_OFFSET_STALE_SECONDS = 120
+      # If the wall clock (Time.now) and a monotonic clock disagree about how
+      # much time passed since the held estimate was set by more than this,
+      # the wall clock moved discontinuously (NTP step, VM resume, user
+      # changed the clock) and the held estimate is discarded outright rather
+      # than waited out over SERVER_TIME_OFFSET_STALE_SECONDS - which matters
+      # because a *forward* wall-clock step raises offset_true, and the min
+      # filter cannot recover from that on its own (every subsequent candidate
+      # rises by the same step, so it always loses to the stale, now-too-low
+      # held value) until this guard or the staleness window fires.
+      #
+      # `now - mono_now` in prompt_ingress_clocks reduces to Time.now.to_f
+      # minus a CLOCK_MONOTONIC read taken microseconds earlier either way
+      # (the ingress_mono term cancels out algebraically in the ingress
+      # branch), so wall-vs-monotonic drift is measurable here to microsecond
+      # precision, and the only legitimate non-zero source of it is clock
+      # slewing (NTP/chrony correcting drift gradually instead of stepping).
+      # This is deliberately tuned tight rather than to some slew-rate bound:
+      # the two failure directions aren't symmetric. Firing on ordinary slew
+      # just means one prompt is accepted unconditionally - the same thing
+      # every prompt did before this filter existed - so a false positive is
+      # nearly free. Missing a real step is the early-firing bug this guard
+      # exists to close. That asymmetry is why this stays tight even though
+      # some slew daemons (chrony's default max slew rate, for one) can
+      # legitimately exceed it.
+      SERVER_TIME_OFFSET_CLOCK_STEP_SECONDS = 0.25
+
+      # A bold run that is only an article: in the Saga-identity DR stream it
+      # precedes a linked creature (<pushBold/>a <a ...>jeol moradu</a>). Legacy
+      # DR bold runs are whole names and never match.
+      DR_LINKED_CREATURE_ARTICLE = /\A(?:an?|some|the) \z/i.freeze
+      # A complete legacy-dialect room players list: one tag-free text run. The
+      # Saga dialect's first fragment ("Also here: " or "Also here: Monster ")
+      # always ends in whitespace because a player link follows it.
+      DR_LEGACY_PLAYERS_RUN = /\AAlso here: .*\S\z/m.freeze
+      # Text before the container link on a stow container's header line.
+      STOW_HEADER = /\A(?:In|On|Under|Behind) the\z/.freeze
+      # The room number after a room title, in the legacy roomName style or a
+      # Saga <room><name>: " (230008)", or " (**)" for a room without one.
+      ROOM_NUMBER_SUFFIX = /\s*\((?:\d+|\*\*)\)\s*\z/.freeze
+
+      # Initializes a new XMLParser instance with empty/zero state.
+      #
+      # All character attributes are zeroed or set to empty collections. The parser
+      # is ready to receive tag_start/text/tag_end calls (or Ox SAX callbacks) immediately
+      # after construction. The {#reset} method can later drop mid-parse state without
+      # reinitializing constants or parse errors.
+      #
+      # @return [void]
       def initialize
         @buffer = String.new
         # @unescape = { 'lt' => '<', 'gt' => '>', 'quot' => '"', 'apos' => "'", 'amp' => '&' }
@@ -66,6 +140,20 @@ module Lich
         @current_stream = String.new
         @current_style = String.new
         @stow_container_id = nil
+        # A stow clearContainer seen this burst (see the stow header learning in
+        # tag_start); cleared at the prompt that ends the burst.
+        @stow_clear_pending = false
+        # The container the current stow feed's header named, when that is not
+        # the stow container (see #learn_stow_container); cleared when the next
+        # feed starts (clearContainer).
+        @stow_feed_id = nil
+        # Whether the parser itself opened the worn-inventory staging for the
+        # current pushStream id='inv' (so it commits only its own refresh).
+        @inv_stream_staging = false
+        # A DR worn list opened before the stream's first link was seen: its
+        # refresh opens at the list's first link instead (see
+        # #open_pending_inv_refresh). Only read while that list's stream is open.
+        @inv_stream_pending = false
         @obj_location = nil
         @obj_exist = nil
         @obj_noun = nil
@@ -88,6 +176,8 @@ module Lich
         @nerve_tracker_active = 'no'
         @server_time = Time.now.to_i
         @server_time_offset = 0.0
+        @server_time_offset_at = nil
+        @server_time_offset_monotonic_at = nil
         @roundtime_end = 0
         @cast_roundtime_end = 0
         @last_pulse = Time.now.to_i
@@ -96,6 +186,11 @@ module Lich
         @next_level_text = String.new
         @current_target_ids = Array.new
         @pending_crtr_status = Hash.new
+        # GemStone mount inference: the last room-objs creature registered, and
+        # (once "who is riding" follows a rider="1" creature) the rider whose
+        # mount is the next bold creature link. See the room-objs text branch.
+        @last_room_creature = nil
+        @mount_rider = nil
         # DragonRealms stream-order name backfill: bold room-objs names and the
         # <crtrStatus> batch ids are both captured in order, then paired at the
         # following <prompt> - but only when their counts match exactly (an
@@ -103,6 +198,7 @@ module Lich
         # GemStone, which carries the name inline on the bold <a> tag.
         @dr_room_npc_names = []
         @dr_crtr_ids = []
+        @dr_link_article = nil
 
         @room_count = 0
         @room_title = String.new
@@ -174,6 +270,9 @@ module Lich
         # rather than a NoMethodError on room_id.zero? (DR) or room_id > N (GS) in the map layer.
         @room_id = 0
         @previous_nav_rm = nil
+        # How many <nav> tags (arrivals) have been seen. The map uses it to tell
+        # whether a room it resolved earlier is the room just left.
+        @nav_count = 0
         # True once <nav> has supplied a real (non-zero) UID for the current
         # arrival and the streamWindow subtitle has not yet consumed it. Keeps a
         # ShowRoomID-on subtitle from overwriting an authoritative nav UID in the
@@ -197,6 +296,10 @@ module Lich
         @assess = []
         @assess_buffer = nil
         @assess_ids = []
+        @assess_link_nouns = {}
+
+        # Stream dialect capabilities observed this session (see #stream_feature?).
+        @stream_features = Set.new
 
         # Ox SAX bridge state (see start_element/attr/attrs_done/error below):
         # the element/attributes being accumulated and parse errors for the
@@ -210,7 +313,9 @@ module Lich
       def active_spells
         z = {}
         XMLData.dialogs.sort.each do |a, b|
-          b.each do |k, v|
+          # b is the live Hash the parser writes; iterate a copy so a new
+          # effect arriving mid-scan cannot raise in the parser thread
+          b.dup.each do |k, v|
             case a
             when /Active Spells|Buffs/
               z.merge!(k => v) if k.instance_of?(String)
@@ -233,17 +338,15 @@ module Lich
         z
       end
 
-      # Clears mid-parse state after a fragment error or sync loss.
+      # Drops parse state accumulated mid-fragment (incomplete tag trees, staged data).
       #
-      # Drops any in-flight XML tag stack, active style context, staged GameObj
-      # refreshes (incomplete container fills, room component updates), and cached
-      # creature status/name pairings that were not yet committed. This prevents a
-      # truncated or malformed fragment from leaving stale data that would pollute
-      # the next arrival's state.
+      # Called after a malformed/truncated XML fragment or by the parser when an
+      # exception occurs. Clears the tag stack, disables any in-flight {GameObj} refreshes
+      # (worn inventory, container fills), and drops cached state (creature status flags,
+      # room creature/mount tracking, DR name-id pairings). Does NOT reset character
+      # attributes (health, mana, etc.) or previously-published {GameObj} snapshots.
       #
-      # Called automatically by tag_start and text when they catch an exception,
-      # and between server fragments by Game.process_xml_data.
-      #
+      # @return [void]
       # @api private
       def reset
         @active_tags = Array.new
@@ -256,6 +359,11 @@ module Lich
         # authoritative by the next <prompt>, so drop the in-flight buffers and
         # keep the previously published snapshot visible instead.
         GameObj.discard_staged_refreshes
+        # Those buffers included any worn-list or stow refresh this parser had
+        # opened, so it no longer owns one.
+        @inv_stream_staging = false
+        @stow_clear_pending = false
+        @stow_feed_id = nil
         # A <crtrStatus> tag can be fully parsed and cached here while the
         # matching bold <a> text is still in an as-yet-unparsed remainder of
         # the fragment. If a malformed/truncated fragment forces a reset in
@@ -263,25 +371,24 @@ module Lich
         # could misapply to an unrelated creature that later reuses the same
         # exist id (ids are recycled - see Creature.targets' notes).
         @pending_crtr_status.clear
+        @last_room_creature = @mount_rider = nil
         # A reset mid-fragment invalidates the room-objs<->crtrStatus pairing, so
         # drop any captured names and collected ids.
         @dr_room_npc_names = []
         @dr_crtr_ids = []
+        @dr_link_article = nil
       end
 
-      # Checks whether it is safe for a script to send a command right now.
+      # Returns true when it is safe for a script to inject game commands.
       #
-      # In DragonRealms, returns false if the parser is mid-stream (in_stream true),
-      # mid-bold block (@bold true), or in an active inline style; returns true if safe.
-      # GemStone IV always returns true (no flow control needed).
+      # On DragonRealms, returns false while a stream is open ({#in_stream}), bold
+      # text is active, or styled text is pending (which may precede more output).
+      # On GemStone, always returns true. Commands injected during an open stream or
+      # mid-render can corrupt output parsing.
       #
-      # This gate prevents scripts from sending commands that would land in the middle
-      # of a room component update or other structured multi-line server response,
-      # which could corrupt the parser's state or break the command-response pairing.
-      #
-      # @return [Boolean] true if a command may be sent safely; false otherwise
-      #
-      # @api private
+      # @return [Boolean] true if it is safe to send commands now
+      # @example
+      #   pause until safe_to_respond? if XMLData.game =~ /^DR/
       def safe_to_respond?
         if @game =~ /^DR/
           !in_stream && !@bold && (!@current_style || @current_style.empty?)
@@ -290,30 +397,28 @@ module Lich
         end
       end
 
-      # Encodes wound injury levels into a binary GSL (Gemstone Scripting Language) tag.
+      # Builds the GSL-format wound bitmask and stores it in {#@wound_gsl}.
       #
-      # Constructs a 16-body-part bitfield for the GSL `\034GSV` vital stats packet,
-      # encoding the wound rank (0-3) of each tracked injury location. The bit order is
-      # fixed: nsys, leftEye, rightEye, back, abdomen, chest, leftHand, rightHand,
-      # leftLeg, rightLeg, leftArm, rightArm, neck, head. Called when injuries update
-      # or when fake GSL tags are sent to the Wizard frontend.
+      # Encodes the 14 body parts' wound levels (0-3 each, 2 bits per part) as a
+      # 30-bit binary string for the Wizard FE's GSL protocol. Order: nsys, leftEye,
+      # rightEye, back, abdomen, chest, leftHand, rightHand, leftLeg, rightLeg,
+      # leftArm, rightArm, neck, head. Called whenever the injuries change or the
+      # FE connects to sync state.
       #
       # @return [void]
-      #
       # @api private
       def make_wound_gsl
         @wound_gsl = sprintf("0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b", @injuries['nsys']['wound'], @injuries['leftEye']['wound'], @injuries['rightEye']['wound'], @injuries['back']['wound'], @injuries['abdomen']['wound'], @injuries['chest']['wound'], @injuries['leftHand']['wound'], @injuries['rightHand']['wound'], @injuries['leftLeg']['wound'], @injuries['rightLeg']['wound'], @injuries['leftArm']['wound'], @injuries['rightArm']['wound'], @injuries['neck']['wound'], @injuries['head']['wound'])
       end
 
-      # Encodes scar injury levels into a binary GSL tag.
+      # Builds the GSL-format scar bitmask and stores it in {#@scar_gsl}.
       #
-      # Constructs a 16-body-part bitfield for the GSL `\034GSV` vital stats packet,
-      # encoding the scar rank (0-3) of each tracked injury location in the same order
-      # as make_wound_gsl. Called when scars update or when fake GSL tags are sent to
-      # the Wizard frontend.
+      # Encodes the 14 body parts' scar levels (0-3 each, 2 bits per part) as a
+      # 30-bit binary string for the Wizard FE's GSL protocol, in the same order as
+      # {#make_wound_gsl}. Called whenever the injuries change or the FE connects
+      # to sync state.
       #
       # @return [void]
-      #
       # @api private
       def make_scar_gsl
         @scar_gsl = sprintf("0b0%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b%02b", @injuries['nsys']['scar'], @injuries['leftEye']['scar'], @injuries['rightEye']['scar'], @injuries['back']['scar'], @injuries['abdomen']['scar'], @injuries['chest']['scar'], @injuries['leftHand']['scar'], @injuries['rightHand']['scar'], @injuries['leftLeg']['scar'], @injuries['rightLeg']['scar'], @injuries['leftArm']['scar'], @injuries['rightArm']['scar'], @injuries['neck']['scar'], @injuries['head']['scar'])
@@ -339,30 +444,20 @@ module Lich
       #   }
       # end
 
-      # Sentinel duration for indefinite spell effects.
-      #
-      # Equal to 315,360,000 seconds (10 years). Used as a placeholder expiry time
-      # when a PSM 3.0 progress bar spell has "Indefinite" or "OM" (Omen/Manna)
-      # duration, representing an effect that does not expire during a session.
-      #
-      # @see #parse_psm3_progressbar
+      # [Integer] Ten years in seconds; used as an infinite duration marker for
+      #   indefinite spell effects in the psm 3.0 {#dialogs} tracking.
       DECADE = 10 * 31_536_000
 
-      # Parses a PSM 3.0 progress bar (spell/buff/debuff/cooldown effect) into the dialogs cache.
+      # Parses a psm 3.0 progressBar into the {#dialogs} effect tracker.
       #
-      # Stores the effect's expiry time (Time.now + duration) in @dialogs[kind] keyed
-      # by both the effect name string and its numeric id. If the duration is "Indefinite"
-      # or "OM", sets expiry to DECADE (10 years). Otherwise, parses HH:MM:SS format
-      # and computes the expiry as current time plus that many seconds. The result is
-      # immediately visible to scripts via XMLData.dialogs.
+      # Stores an effect by both its string name and numeric id, with an expiry time.
+      # "Indefinite" effects are set to expire in {DECADE} seconds. Timed effects are
+      # parsed from HH:MM:SS format. Used for Buffs, Active Spells, Debuffs, and Cooldowns.
       #
-      # @param kind [String] the dialog/effect category, e.g. "Buffs", "Cooldowns"
-      # @param attributes [Hash{String => String}] XML attributes of the progressBar tag:
-      #   - "id": numeric effect id (parsed to_i)
-      #   - "text": effect name (e.g., "Heroism")
-      #   - "time": duration as "HH:MM:SS" or "Indefinite" or "OM"
+      # @param kind [String] the dialog id ("Buffs", "Active Spells", etc.)
+      # @param attributes [Hash] the progressBar attributes; requires "id", "text", and "time"
       # @return [void]
-      #
+      # @note Used internally by the {#dialogs} effect tracking (GemStone only).
       # @api private
       def parse_psm3_progressbar(kind, attributes)
         @dialogs[kind] ||= {}
@@ -378,34 +473,36 @@ module Lich
         @dialogs[kind][name] = @dialogs[kind][id] = Time.now + (hour.to_i * 3600) + (minute.to_i * 60) + second.to_i
       end
 
-      # Dialog category IDs that track active spell/buff effects in PSM 3.0.
-      #
-      # When a progressBar tag appears with an id that is one of these categories,
-      # its effect name and expiry are cached in @dialogs. Other categories (e.g.,
-      # "Quest Progress") are not parsed by parse_psm3_progressbar.
-      #
-      # @see #parse_psm3_progressbar
+      # [Array<String>] Dialog category ids recognized by {#parse_psm3_progressbar}.
+      #   Used to filter effect progressBars in the parser.
       PSM_3_DIALOG_IDS = ["Buffs", "Active Spells", "Debuffs", "Cooldowns"]
 
       # assess stream parsing
       ASSESS_RANGES = { 'melee' => :melee, 'pole weapon' => :pole, 'missile' => :missile }.freeze
-      # Regex pattern matching the relation and target in an assess (combat situation) line.
+      # [Regexp] Matches a combatant's relation and target in the assess stream.
       #
-      # Captures the positional relation of one combatant to another (e.g., "flanking",
-      # "behind", "advancing on") and the target's name. Used by parse_assess_line to
-      # break down a creature description into structured fields.
+      # Extracts `:relation` (flanking/facing/beside/etc.) and `:target` (the
+      # opponent's name or "you"): e.g., "flanking a jeol moradu" or "facing you".
+      # If the line does not match, the entire rest-of-line is treated as relation
+      # with no specific target.
       #
-      # @example Match a flanking relation
-      #   ASSESS_RELATION.match("flanking a goblin") #=> MatchData with relation='flanking', target='a goblin'
-      #
+      # @example
+      #   "flanking a jeol moradu" #=> {relation: "flanking", target: "a jeol moradu"}
       # @see #parse_assess_line
       ASSESS_RELATION = /^(?<relation>moving to flank|flanking|facing|behind|in front of|beside|advancing on|next to|to (?:the )?(?:left|right) of)\s+(?<target>.+)$/.freeze
 
       # Parse a single reconstructed line from the 'assess' (combat situation) stream
       # into a structured entry. `ids` is the ordered list of look-target ids pulled
       # from the line's <d cmd='look #id'> tags (subject first, then target).
+      # `link_nouns` maps each `<a exist>` id on the line to its `noun=`: the
+      # Saga-identity stream links every look target inside its <d> tag
+      # (`<d cmd='look #ID'><pushBold/>A <a exist="ID" noun="moradu">jeol
+      # moradu</a><popBold/></d>`), while the legacy stream has no links. The
+      # entry's `:noun` is the server noun of the link whose exist is the
+      # subject id (trimmed; the stream sometimes pads it), or nil when the
+      # subject has no link (legacy lines, self lines).
       # Returns a Hash, or nil for the header / unparseable lines.
-      def parse_assess_line(text, ids)
+      def parse_assess_line(text, ids, link_nouns = {})
         text = text.to_s.strip
         return nil if text.empty?
         return nil if text =~ /assess your combat situation/i
@@ -448,9 +545,11 @@ module Lich
           target_id  = (target && target =~ /^you$/i) ? nil : ids[1]
         end
         is_pc = subject_id.to_s.start_with?('-')
+        noun = subject_id && link_nouns[subject_id]&.strip
+        noun = nil if noun && noun.empty?
 
         {
-          name: name, id: subject_id, number: number, status: status,
+          name: name, id: subject_id, noun: noun, number: number, status: status,
           relation: relation, target: target, target_id: target_id,
           target_number: target_number, range: range, self: is_self, pc: is_pc
         }
@@ -481,27 +580,22 @@ module Lich
         @sax_attributes[name] = XmlEntities.decode(value)
       end
 
-      # Fires after all attributes for an XML element have been accumulated.
+      # Ox SAX callback: signals that all attributes for the current element have been set.
       #
-      # Delegates to tag_start with the accumulated element name and attributes hash,
-      # matching the old REXML-style single tag_start(name, hash) call. Part of the
-      # Ox SAX parser callback sequence: start_element -> attr (repeated) -> attrs_done
-      # -> text/children -> end_element.
+      # Fires {#tag_start} with the accumulated element name and attributes hash.
       #
       # @return [void]
-      #
       # @api private
       def attrs_done
         tag_start(@sax_element, @sax_attributes)
       end
 
-      # Fires when an XML closing tag is encountered.
+      # Ox SAX callback: signals the close of an XML element.
       #
-      # Delegates to tag_end(name), mirroring the Ox SAX parser interface.
+      # Routes to {#tag_end} to handle the element's close and update parser state.
       #
-      # @param name [String] the element name (tag) being closed
+      # @param name [String] the element name
       # @return [void]
-      #
       # @api private
       def end_element(name)
         tag_end(name)
@@ -519,44 +613,194 @@ module Lich
       # The caller clears this between fragments.
       attr_reader :sax_parse_errors
 
-      # Records a non-fatal parse error from Ox SAX.
+      # Stream dialect capabilities, observed per session.
       #
-      # Ox does not raise on malformed XML; instead, it calls this method, auto-balances
-      # the structure, and continues parsing. The parser accumulates these messages so
-      # Game.process_xml_data can distinguish between SIMU's intentional almost-XML
-      # and a genuinely truncated or desynced fragment once parsing completes. Messages
-      # are cleared between fragments by the reset method.
+      # DragonRealms sends two dialects at once depending on the client identity
+      # Lich presents: the Saga identity (Frontend::CLIENT_STRING since #1700)
+      # gets object links and the <room> block, while front ends that send their
+      # own Wrayth handshake get the legacy stream, which has neither. GemStone's
+      # stream (the rich stream it has always sent) also has object links, but
+      # no <room> block, so a feature says what this session's stream contains,
+      # not which game or identity it is: :links alone does not mean Saga.
+      # Parser paths that depend on stream shape, not game semantics, branch on
+      # these instead of on the game:
       #
-      # @param message [String] the error description
-      # @param line [Integer] 1-indexed line number in the fragment
-      # @param column [Integer] 0-indexed column number
+      # - :links              an <a exist=...> object link has been seen
+      # - :room_element       a <room> block has been seen. Not every room
+      #                       arrives as one: a Saga session also gets some
+      #                       moves as the legacy room components.
+      # - :stow_container_tag a <container id='stow' target=...> has been seen.
+      #                       GemStone and the DR Saga stream send it at login.
+      #                       Not the same as {#stow_container_id} being set:
+      #                       without the tag, #learn_stow_container takes
+      #                       that id from a stow feed's header, and this
+      #                       flag tells a tag-sourced id (kept) from a
+      #                       header-learned one (follows the next header).
+      #
+      # Cleared at login (<settingsInfo>); a mid-stream {#reset} keeps them,
+      # since a desync does not change the dialect.
+      #
+      # @param feature [Symbol]
+      # @return [Boolean]
+      def stream_feature?(feature)
+        @stream_features.include?(feature)
+      end
+
+      # @return [Array<Symbol>] the observed capabilities, sorted. A fresh copy:
+      #   mutating it does not change the parser.
+      def stream_features
+        @stream_features.to_a.sort
+      end
+
+      # Records the dialect capabilities an element reveals (see #stream_feature?).
+      # Called for every element, so it only compares the name first.
+      def observe_stream_feature(name, attributes)
+        case name
+        when 'a'
+          @stream_features << :links if attributes['exist']
+        when 'room'
+          @stream_features << :room_element
+        when 'container'
+          @stream_features << :stow_container_tag if attributes['id'] == 'stow'
+        when 'settingsInfo'
+          @stream_features.clear # a new login: the dialect is re-learned
+        end
+      end
+      private :observe_stream_feature
+
+      # The stow feed's header line names the container it lists:
+      # <inv id='stow'>In the <a exist="195648378" noun="pack">pack</a>:</inv>.
+      # GemStone and the DragonRealms Saga-identity stream send <container
+      # id='stow' target=...> at login, and that tag stays the authoritative
+      # stow container id. When none has been seen (a parser that missed the
+      # login, such as a replay with a synthetic login), the stow container id
+      # is taken from the header instead. (The DR legacy feed is plain text and
+      # names no container.)
+      #
+      # Either way the header is skipped as the container itself and the items
+      # after it land in its contents rather than in worn inventory. On
+      # DragonRealms the feed can also list a container that is not the stow
+      # container (a pack handed over by another character), so there the
+      # items go under the container the header names even when the tag is
+      # known, and the stow container keeps its published contents. GemStone
+      # files them under the tag's container, as before.
+      #
+      # A stow clearContainer seen this burst opens its refresh here when the
+      # id was not yet known; a refresh it opened under another container is
+      # abandoned (that container keeps its published contents) and reopened
+      # under the named one.
+      def learn_stow_container(exist)
+        return if exist.nil?
+        return unless @active_tags.include?('inv') && @active_ids.include?('stow')
+        return unless @obj_before_name.to_s.match?(STOW_HEADER)
+
+        tagged = stream_feature?(:stow_container_tag)
+        return if tagged && XMLData.game !~ /^DR/
+
+        previous = @stow_container_id
+        @stow_container_id = exist unless tagged
+        @stow_feed_id = exist == @stow_container_id ? nil : exist
+        @obj_location = exist
+        return unless @stow_clear_pending && previous != exist
+
+        GameObj.abort_container(previous) if previous
+        GameObj.begin_container(exist)
+      end
+      private :learn_stow_container
+
+      # Opens the worn refresh a DR worn list deferred at its pushStream (see
+      # @inv_stream_pending), at the list's first linked item. Every item of the
+      # list follows, so the refresh is still complete.
+      def open_pending_inv_refresh
+        return unless @inv_stream_pending && @current_stream == 'inv'
+
+        @inv_stream_pending = false
+        return if GameObj.inv_refresh_open?
+
+        GameObj.begin_inv
+        @inv_stream_staging = true
+      end
+      private :open_pending_inv_refresh
+
+      # Ox SAX callback: reports a parse error.
+      #
+      # Collects malformed-XML messages from Ox into {#sax_parse_errors}. Unlike
+      # raising, Ox auto-balances and keeps parsing after an error, allowing recovery
+      # from truncated fragments. {Game.process_xml_data} inspects this array to
+      # distinguish almost-XML (a kept truncated read) from a genuinely desynced
+      # fragment.
+      #
+      # @param message [String] the error message from Ox
+      # @param line [Integer] the line number where the error occurred
+      # @param column [Integer] the column number where the error occurred
       # @return [void]
-      #
       # @api private
       def error(message, line, column)
         @sax_parse_errors << "#{message} (line #{line}, column #{column})"
       end
 
-      # Routes an opening XML tag to game-state updates and side effects.
+      # [wall_time, monotonic_time] for the <prompt> handler's clock-sync math.
+      # Prefers Game.current_ingress_time - a monotonic reading the socket
+      # reader thread captured immediately after this string came off the
+      # wire, before it ever waited in the parser queue - over parse-time
+      # Time.now. Queue wait and parser-thread scheduling delay (a busy
+      # script, GC, the synchronous GameLoader.load! on login) are not real
+      # server-to-client latency; folding them in would inflate every
+      # candidate by however long the parser thread happened to be busy.
+      # Falls back to parse time when unavailable: Game may not be loaded at
+      # all (a spec exercising this class in isolation), or this call may not
+      # be happening on Game's own parser thread (current_ingress_time
+      # returns nil for any other caller, by design - see games.rb).
+      def prompt_ingress_clocks
+        ingress_mono = defined?(Game) && Game.respond_to?(:current_ingress_time) ? Game.current_ingress_time : nil
+        return [Time.now.to_f, Process.clock_gettime(Process::CLOCK_MONOTONIC)] unless ingress_mono
+
+        parse_mono = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        [Time.now.to_f - (parse_mono - ingress_mono), ingress_mono]
+      end
+
+      # Whether a new server_time_offset candidate should replace the held
+      # estimate - see the noise-model comment on the constants above for the
+      # reasoning (min-delay filter, staleness expiry, clock-step guard).
+      def accept_server_time_offset_candidate?(candidate, now, mono_now)
+        return true if @server_time_offset_at.nil?
+
+        wall_elapsed = now - @server_time_offset_at
+        return true if wall_elapsed > SERVER_TIME_OFFSET_STALE_SECONDS
+
+        mono_elapsed = mono_now - @server_time_offset_monotonic_at
+        return true if (wall_elapsed - mono_elapsed).abs > SERVER_TIME_OFFSET_CLOCK_STEP_SECONDS
+
+        candidate <= @server_time_offset
+      end
+
+      # Handles the start of an XML element from the server stream.
       #
-      # Called once per element by the Ox SAX parser (via attrs_done). Pushes the tag
-      # name and id attribute onto stacks, then handles 100+ tag types to extract and
-      # cache game state: room arrival (nav), room components (compDef/component), spell
-      # durations (progressBar), creature status (crtrStatus), inventory (inv),
-      # player status, injuries, server time, roundtime, and numerous UI elements.
+      # The main entry point for parsing events (called by REXML or Ox, once per element,
+      # with accumulated attributes). Updates parser state for the element, manages
+      # {GameObj} refresh lifecycles, extracts character attributes (mana, health, room,
+      # target, spells), and coordinates creature tracking across game dialects.
       #
-      # Complex operations span multiple callbacks: container fills begin here and close
-      # at the prompt; creature name/status pairings are staged here and committed at
-      # tag_end; and room-object names (DragonRealms only) are captured during bold text
-      # and paired to creature ids at the next prompt.
+      # Core responsibilities:
+      # - Pushes the element name and id onto the active tag stack
+      # - Observes stream dialect features ({#observe_stream_feature})
+      # - Handles arrivals (<nav>): clears room state, coordinates {Lich::Claim} hiding
+      #   detection, and captures the real room UID
+      # - Manages {GameObj} container and inventory refreshes, including stow container
+      #   learning and DR worn-inventory deferred opens
+      # - Extracts character attributes from progressBar, roundTime, indicator, etc.
+      # - Manages creature tracking state, including creature status flags (<crtrStatus>)
+      #   and mount/rider inference on GemStone
+      # - Tracks server time and clock offset (NTP-style min-delay filter with staleness
+      #   and clock-step guards)
+      # - Manages stream state (assess, inv, bounty, familiar, etc.) and component opens
+      # - Syncs GSL (Wizard FE) tags when {#send_fake_tags} is true
       #
-      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
-      # discard in-flight state.
+      # All exceptions are caught, logged, and trigger a {#reset}.
       #
-      # @param name [String] the element tag name (lowercase)
-      # @param attributes [Hash{String => String}] the element's attributes
+      # @param name [String] the element name (e.g., "prompt", "progressBar")
+      # @param attributes [Hash] element attributes; keys and values are strings
       # @return [void]
-      #
       # @api private
       def tag_start(name, attributes)
         # This is called once per element by REXML in games.rb
@@ -564,6 +808,7 @@ module Lich
         begin
           @active_tags.push(name)
           @active_ids.push(attributes['id'].to_s)
+          observe_stream_feature(name, attributes)
 
           if name == 'nav'
             Lich::Claim.lock if defined?(Lich::Claim)
@@ -581,6 +826,7 @@ module Lich
             # that room - don't let it survive to misapply if the id gets
             # reused elsewhere.
             @pending_crtr_status.clear
+            @last_room_creature = @mount_rider = nil
             @check_obvious_hiding = true
             # The <nav rm='NNNN'/> tag is the authoritative room UID for every game, including
             # DragonRealms, which now emits it on every arrival (a plain <nav/> with no rm
@@ -588,6 +834,7 @@ module Lich
             # gives early room knowledge before the room text streams, and keeps
             # @previous_nav_rm accurate for Map.previous_uid.
             @previous_nav_rm = @room_id
+            @nav_count += 1
             @room_id = attributes['rm'].to_i
             # A real nav UID this arrival is authoritative; flag it so the
             # streamWindow subtitle below treats its own UID marker as a fallback
@@ -626,11 +873,13 @@ module Lich
               # this component; clearing here gives that batch a clean snapshot.
               Lich::DragonRealms::Creature.clear_room if defined?(Lich::DragonRealms::Creature)
               @pending_crtr_status.clear
+              @last_room_creature = @mount_rider = nil
               # Start a fresh room-objs<->crtrStatus pairing for this refresh: the
               # bold names captured below and the crtrStatus ids that follow are
               # zipped at the next <prompt>, gated on equal counts.
               @dr_room_npc_names = []
               @dr_crtr_ids = []
+              @dr_link_article = nil
             elsif attributes['id'] == 'room players'
               GameObj.begin_room_players
             elsif attributes['id'] == 'room exits'
@@ -645,45 +894,45 @@ module Lich
           if name =~ /^(?:a|right|left)$/
             @obj_exist = attributes['exist']
             @obj_noun = attributes['noun']
+            if name == 'a'
+              learn_stow_container(@obj_exist)
+              open_pending_inv_refresh if @obj_exist
+            end
           end
           if name == 'crtrStatus'
             # Self-closing and self-contained (carries its own id), so it needs
             # no surrounding-tag context, unlike the bolded <a> name path below.
-            # Always stash rather than applying directly even when the
-            # creature is already known: Creature.register (and the room-in
-            # marking it does) only ever runs from the <a> text path below, so
-            # syncing here and skipping that path would update the instance's
-            # flags correctly while silently leaving it out of the room
-            # roster after the next clear_room - it would sync but never
+            # Inside room objs, always stash rather than applying directly even
+            # when the creature is already known: Creature.register (and the
+            # room-in marking it does) only ever runs from the <a> text path
+            # below, so syncing here and skipping that path would update the
+            # instance's flags correctly while silently leaving it out of the
+            # room roster after the next clear_room - it would sync but never
             # reappear in Creature.targets/.in_room. Deferring to the text()
             # handler keeps registration/room-marking and flag application on
             # the same path for both new and already-known creatures.
             #
-            # DragonRealms differs: its room-objs carry no per-creature <a exist>
-            # tag, so there is no text() path to defer to. Its <crtrStatus> tags
-            # arrive batched after the room-objs component and carry their own id,
-            # so flags are applied immediately, id-first. The name is backfilled
-            # two ways: the stream-order pairing (bold room-objs names zipped to
-            # this batch's ids at the next <prompt>, gated on equal counts) and,
-            # authoritatively, later from the assess stream (see
-            # lib/dragonrealms/creature.rb).
+            # A game whose delta can apply the tag at once (DragonRealms: id-first
+            # Creature.sync, see Lich::DragonRealms::XMLDelta.apply_crtr_status)
+            # does so; the id is then collected in arrival order so the prompt
+            # handler can pair it to a legacy-stream bold name when the counts
+            # match for this refresh.
+            # GemStone applies a standalone tag (outside room objs) for a
+            # creature already in the current room roster at once and stashes
+            # nothing (:applied, see Lich::Gemstone::XMLDelta.apply_crtr_status).
             crtr_id = attributes['exist']
             if crtr_id
               crtr_flags = attributes.reject { |k, _| k == 'exist' }
-              if XMLData.game =~ /^DR/
-                # Apply flags now (id-first, name-less); collect the id in arrival
-                # order so the prompt handler can pair it to a bold name only if
-                # the counts match for this refresh.
-                Lich::DragonRealms::Creature.sync(crtr_id, crtr_flags) if defined?(Lich::DragonRealms::Creature)
-                @dr_crtr_ids << crtr_id
-              else
-                @pending_crtr_status[crtr_id] = crtr_flags
+              case XMLParserDelta.for(XMLData.game).apply_crtr_status(crtr_id, crtr_flags, in_room_objs: @active_ids.include?('room objs'))
+              when true then @dr_crtr_ids << crtr_id
+              when :applied then nil
+              else @pending_crtr_status[crtr_id] = crtr_flags
               end
             end
           end
           if name == 'inv'
             if attributes['id'] == 'stow'
-              @obj_location = @stow_container_id
+              @obj_location = @stow_feed_id || @stow_container_id
             else
               @obj_location = attributes['id']
             end
@@ -697,7 +946,8 @@ module Lich
             @dialogs[attributes["id"]] ||= {}
             @dialogs[attributes["id"]].clear
             # detect a clear board request for effects, and send to activespell
-            ActiveSpell.request_update
+            # (GemStone-only module; the shared parser must not raise without it)
+            ActiveSpell.request_update if defined?(ActiveSpell)
           end
           if name == 'resource'
             nil
@@ -718,19 +968,45 @@ module Lich
             if attributes['id'].to_s == 'assess'
               @assess_buffer = String.new
               @assess_ids = []
+              @assess_link_nouns = {}
             end
             if XMLData.game =~ /^GS/
-              GameObj.begin_inv if attributes['id'].to_s == 'inv'
+              if attributes['id'].to_s == 'inv'
+                GameObj.begin_inv
+                @inv_stream_staging = true
+              end
               GameObj.begin_reserve if attributes['id'].to_s == 'reserve'
+            elsif attributes['id'].to_s == 'inv'
+              # The linked worn-items list is a complete refresh, as on GemStone.
+              # An open INV LIST scrape already owns the worn staging, so none
+              # opens here then. The legacy list is plain text (no GameObj
+              # entries). Until the stream's first link has been seen (a login's
+              # first list arrives before it) the dialect is unknown, so the
+              # refresh waits for the list's first link; a legacy list has none.
+              @inv_stream_pending = false
+              unless GameObj.inv_refresh_open?
+                if stream_feature?(:links)
+                  GameObj.begin_inv
+                  @inv_stream_staging = true
+                else
+                  @inv_stream_pending = true
+                end
+              end
             end
           end
 
           if name == 'd' && @current_stream == 'assess'
             @assess_ids << $1 if attributes['cmd'].to_s =~ /look #(-?\d+)/
           end
+          # Saga-identity assess lines link each look target; keep each link's
+          # server noun by its exist id so the subject keeps it (see
+          # #parse_assess_line).
+          if name == 'a' && @current_stream == 'assess' && attributes['exist']
+            @assess_link_nouns[attributes['exist']] = attributes['noun']
+          end
           if name == 'popStream'
             if @current_stream == 'assess' && @assess_buffer
-              entry = parse_assess_line(@assess_buffer, @assess_ids)
+              entry = parse_assess_line(@assess_buffer, @assess_ids, @assess_link_nouns)
               if entry
                 @assess << entry
                 # The assess stream is DragonRealms' only tie between an exist id
@@ -750,8 +1026,13 @@ module Lich
             end
             @in_stream = false
             # @current_stream still names the closing stream here; commit_* is a
-            # no-op when the matching refresh was never opened (e.g. in DR).
-            GameObj.commit_inv      if @current_stream == 'inv'
+            # no-op when the matching refresh was never opened. The worn list
+            # commits only a refresh this parser opened, never another writer's
+            # (an INV LIST scrape in flight).
+            if @current_stream == 'inv' && @inv_stream_staging
+              GameObj.commit_inv
+              @inv_stream_staging = false
+            end
             GameObj.commit_reserve  if @current_stream == 'reserve'
             GameObj.commit_familiar if @current_stream == 'familiar'
             if attributes['id'] == 'bounty'
@@ -768,41 +1049,13 @@ module Lich
           if (name == 'streamWindow')
             if (attributes['id'] == 'main') and attributes['subtitle']
               unless attributes['subtitle'].empty? || attributes['subtitle'].nil?
-                if XMLData.game =~ /^GS/
-                  if Lich.display_uid == false && attributes['subtitle'][3..-1] =~ / - \d+$/
-                    Lich.display_uid = true
-                  end
-                  @room_title = '[' + attributes['subtitle'][3..-1].gsub(/ - \d+$/, '') + ']'
-                elsif XMLData.game =~ /^DR/
-                  # - [Bosque Deriel, Hermit's Shacks] (a trailing UID marker is present only when
-                  # the game's ShowRoomID flag is ON): " (230008)" for a room that has a UID, or
-                  # " (**)" for a room that has none. The <nav rm=.../> tag is the PRIMARY UID
-                  # source (see the nav handler above); this subtitle marker is only a FALLBACK
-                  # for arrivals where nav arrived late, was absent, or was a bare no-uid <nav/>.
-                  # When nav already supplied a real UID this arrival (@nav_uid_pending), leave
-                  # room_id alone so the subtitle never clobbers the authoritative nav value; the
-                  # subtitle consumes that flag either way, so the next arrival's marker (if its
-                  # nav is missing) is free to act as the fallback. When nav did not supply one, a
-                  # numeric marker sets the UID and "(**)" clears it to 0 (explicit "no UID",
-                  # dropping any stale id from a prior room). A ShowRoomID-OFF subtitle has no
-                  # marker at all, so room_id is left untouched (never write 0 blindly). The title
-                  # stays UID-free in every case. Guard the match: a blank/identity-less subtitle
-                  # (e.g. " - ") has no "[...]" and returns nil, so leave the prior title untouched
-                  # rather than crash.
-                  room = attributes['subtitle'].match(%r{(?<roomtitle>\[.*?\])(?:\s\((?<uid>\d+|\*+)\))?})
-                  if room
-                    @room_title = "[#{room[:roomtitle]}]"
-                    @room_id = (room[:uid] =~ /\A\d+\z/ ? room[:uid].to_i : 0) if room[:uid] && !@nav_uid_pending
-                    @nav_uid_pending = false
-                    # Record whether the game displayed the RealID this arrival (a UID
-                    # marker present == ShowRoomID ON) so the outbound room-name/subtitle
-                    # rewrite can preserve that choice GS-style. A marker-less subtitle
-                    # (flag OFF) leaves the previous room's flag stale, so clear it here.
-                    @show_room_id = !room[:uid].nil?
-                  end
-                else
-                  @room_title = String.new
-                end
+                # Game-specific grammar (GS " - Room - 1234", DR " - [Room] (230008)"):
+                # see Lich::Common::XMLParserDelta::Base#main_subtitle.
+                update = XMLParserDelta.for(XMLData.game).main_subtitle(attributes['subtitle'], nav_uid_pending: @nav_uid_pending)
+                @room_title = update[:room_title] if update.key?(:room_title)
+                @room_id = update[:room_id] if update.key?(:room_id)
+                @nav_uid_pending = update[:nav_uid_pending] if update.key?(:nav_uid_pending)
+                @show_room_id = update[:show_room_id] if update.key?(:show_room_id)
               end
             end
           end
@@ -819,14 +1072,28 @@ module Lich
           end
 
           if name == 'prompt'
-            @server_time = attributes['time'].to_i
-            @server_time_offset = (Time.now.to_f - @server_time)
+            now, mono_now = prompt_ingress_clocks
+            new_server_time = attributes['time'].to_i
+
+            # server_time_offset is a converging min-delay estimate of the
+            # true client/server clock offset - see the noise-model comment
+            # on the constants above (SERVER_TIME_OFFSET_STALE_SECONDS et al)
+            # for why a smaller candidate always wins and what can override
+            # a held estimate that isn't smaller.
+            candidate = now - new_server_time
+            if accept_server_time_offset_candidate?(candidate, now, mono_now)
+              @server_time_offset = candidate
+              @server_time_offset_at = now
+              @server_time_offset_monotonic_at = mono_now
+            end
+            @server_time = new_server_time
             $_CLIENT_.puts "\034GSq#{sprintf('%010d', @server_time)}\r\n" if @send_fake_tags
 
             # A prompt terminates the command burst and is the reliable close
             # signal for clearContainer/inv container fills, which have no
             # closing tag of their own. No-op when no container refresh is open.
             GameObj.commit_all_containers
+            @stow_clear_pending = false
 
             if @dr_active_spell_tracking
               @dr_active_spell_tracking = false
@@ -858,7 +1125,12 @@ module Lich
 
           if name == 'clearContainer'
             if attributes['id'] == 'stow'
-              GameObj.begin_container(@stow_container_id)
+              # Until the stow container's id is known (no <container
+              # id='stow'> seen yet), the refresh opens when its header line
+              # names the container; see #learn_stow_container.
+              @stow_clear_pending = true
+              @stow_feed_id = nil
+              GameObj.begin_container(@stow_container_id) if @stow_container_id
             else
               GameObj.begin_container(attributes['id'])
             end
@@ -916,7 +1188,7 @@ module Lich
               @last_spirit = @spirit unless @last_spirit
               $_CLIENT_.puts "\034GSV#{sprintf('%010d%010d%010d%010d%010d%010d%010d%010d', @max_health.to_i, @health.to_i, @max_spirit.to_i, @spirit.to_i, @max_mana.to_i, @mana.to_i, @wound_gsl, @scar_gsl)}\r\n" if @send_fake_tags
             elsif attributes['id'] == 'nextLvlPB'
-              Gift.pulse unless @next_level_text == attributes['text']
+              Gift.pulse if defined?(Gift) && @next_level_text != attributes['text'] # GemStone-only module
               @next_level_value = attributes['value'].to_i
               @next_level_text = attributes['text']
             elsif attributes['id'] == 'encumlevel'
@@ -928,7 +1200,7 @@ module Lich
               # puts "kind=(%s) name=%s attributes=%s" % [@active_ids[-2], name, attributes]
               self.parse_psm3_progressbar(@active_ids[-2], attributes)
               # since we received an updated spell duration, let's signal infomon to update
-              ActiveSpell.request_update
+              ActiveSpell.request_update if defined?(ActiveSpell)
             end
           end
           if name == 'roundTime'
@@ -1140,28 +1412,31 @@ module Lich
         end
       end
 
-      # Routes text nodes to game-state updates and message capture.
+      # Handles text content between XML tags from the server stream.
       #
-      # Called once per text node by the Ox SAX parser. First decodes standard XML
-      # entities (since Ox runs with convert_special: false). Then dispatches to
-      # state handlers based on active tag stack and current stream context:
-      # - Inventory items: builds object name and surrounding text
-      # - Room components: registers NPCs, items, players, and descriptions
-      # - Spell tracking: extracts spell names and durations from percWindow stream
-      # - Familiar room: tracks the familiar's location and contents
-      # - Bounty/society tasks: appends to multi-line content
-      # - Assess stream: builds combat situation descriptions
+      # Processes text nodes in the context of active element tags and streams.
+      # Manages character state, item/creature/player names and statuses, room descriptions,
+      # and specialized streams (assess, bounty, familiar). Implements dialect-specific
+      # logic for GemStone vs. DragonRealms legacy and Saga dialects.
       #
-      # In DragonRealms, captures bold NPC names in stream order so they can be paired
-      # to creature status ids at the next prompt. In GemStone, applies creature status
-      # immediately via the bold <a exist> tag path.
+      # Core responsibilities:
+      # - Decodes XML entities (Ox does not auto-decode when convert_special is false)
+      # - Extracts DR active spell tracking (percWindow stream) with duration parsing
+      # - Captures room name, exits, and descriptions
+      # - Creates {GameObj} instances: items (inv), npcs (room objs), players (room players),
+      #   right/left hand items
+      # - Handles creature name and status annotation on GemStone and Saga-dialect DR
+      # - On legacy-dialect DR: parses plain-text worn/room player lists and splits them
+      # - Handles familiar room and item tracking (percfamiliar stream)
+      # - Builds the assess stream buffer line-by-line
+      # - Detects player hiding ("obvious signs of someone hiding")
+      # - Syncs Wizard FE GSL tags for equipped items, prepared spell, etc.
       #
-      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
-      # discard in-flight state.
+      # All exceptions are caught, logged, and trigger a {#reset}.
       #
-      # @param text_string [String] the text node content (may span multiple lines)
+      # @param text_string [String] the text content (Windows-1252 encoded, with standard
+      #   XML entities left encoded for this parser to decode)
       # @return [void]
-      #
       # @api private
       def text(text_string)
         # Called by Ox once per text node. Decode the standard XML entities (Ox
@@ -1220,8 +1495,11 @@ module Lich
             end
           end
 
-          if @current_style == 'roomName'
-            @room_name = text_string.match(/(?<roomname>\[.*?\])/)[:roomname]
+          if @current_style == 'roomName' || (@active_tags[-1] == 'name' && @active_tags[-2] == 'room')
+            # Legacy roomName style, or the Saga-identity <room><name> child.
+            # A name without a bracketed title keeps the text as sent, minus
+            # the room-number suffix, rather than going nil.
+            @room_name = text_string[/\[.*?\]/] || text_string.sub(ROOM_NUMBER_SUFFIX, '').strip
           end
 
           if @active_tags.include?('inv')
@@ -1257,39 +1535,87 @@ module Lich
                 if @bold
                   @last_npc = GameObj.new_npc(@obj_exist, @obj_noun, text_string)
                   if XMLData.game =~ /^DR/
-                    # Future-proofing: DragonRealms room-objs creatures currently
-                    # carry no <a> tag, but if that ever changes to GemStone's
-                    # <a exist noun> shape, register id-first with the inline
-                    # name/noun via DR's own Creature (never the unqualified
-                    # Gemstone Creature below, which is not loaded in DR). With an
-                    # <a> present the stream-order capture branch is skipped, so
-                    # this becomes the sole name source - no double-set.
+                    # The Saga-identity DR stream links creatures GemStone-style
+                    # (<pushBold/>a <a exist noun>jeol moradu</a><popBold/>, the
+                    # bold currently sent doubled; @bold is a flag, so either works).
+                    # Register id-first with the inline noun via DR's own Creature
+                    # (never the unqualified Gemstone Creature below, which is not
+                    # loaded in DR). The name keeps the article that precedes the
+                    # link ("a jeol moradu"), the form the legacy stream and the
+                    # assess backfill both produce. With links present the
+                    # stream-order name capture below is skipped, so this is the
+                    # sole name source.
+                    # The link's noun= is the server's noun and wins over the
+                    # name's last word ("a sleek golden panther with enigmatic
+                    # violet eyes" is a panther); it is occasionally sent padded
+                    # (noun=" moth"), hence the strip.
                     if @obj_exist && defined?(Lich::DragonRealms::Creature)
-                      dr_creature = Lich::DragonRealms::Creature.register(text_string, @obj_exist, @obj_noun)
-                      dr_creature&.apply_room_name(text_string)
+                      dr_name = "#{@dr_link_article}#{text_string}"
+                      dr_noun = @obj_noun&.strip
+                      dr_creature = Lich::DragonRealms::Creature.register(dr_name, @obj_exist, dr_noun)
+                      dr_creature&.apply_room_name(dr_name, dr_noun)
                     end
-                  elsif XMLData.current_target_ids.include?(@obj_exist) || @pending_crtr_status.key?(@obj_exist)
-                    creature = Creature.register(text_string, @obj_exist, @obj_noun)
-                    if creature && (pending_flags = @pending_crtr_status.delete(@obj_exist))
-                      creature.sync_crtr_status(pending_flags)
+                    @dr_link_article = nil
+                  else
+                    creature = nil
+                    # GemStone's Creature is loaded by GameLoader (via the combat
+                    # tracker) only once the game is known; before that, skip it
+                    # rather than raise and reset the parser mid-fragment.
+                    if defined?(Lich::Gemstone::Creature) &&
+                       (XMLData.current_target_ids.include?(@obj_exist) || @pending_crtr_status.key?(@obj_exist) || @mount_rider)
+                      creature = Lich::Gemstone::Creature.register(text_string, @obj_exist, @obj_noun)
+                      if creature && (pending_flags = @pending_crtr_status.delete(@obj_exist))
+                        creature.sync_crtr_status(pending_flags)
+                      end
                     end
+                    # A ridden mount sends no <crtrStatus> until first harmed,
+                    # so stand in its flags from the rider's tag until it does.
+                    # Hostility is left to the target dropdown (see
+                    # Creature.targets). Re-inferred on every refresh, so a
+                    # mount whose rider has left loses the flag.
+                    creature&.infer_crtr_flags(@mount_rider ? { mount: true } : {})
+                    @mount_rider = nil
+                    @last_room_creature = creature
                   end
                 else
                   GameObj.new_loot(@obj_exist, @obj_noun, text_string)
+                  # The mount link always directly follows "who is riding";
+                  # a non-bold one must not arm the next bold creature.
+                  @mount_rider = nil
                 end
               elsif @bold && XMLData.game =~ /^DR/
-                # DragonRealms room-objs bold NPC names carry no <a> tag. Capture
-                # them in stream order so the <crtrStatus> batch that follows can
-                # pair the Nth name to the Nth id (see the crtrStatus handler).
-                # Only bold runs are names; the non-bold "(dead)"/"(immobile)"
-                # status runs fall through to the annotation branch below.
-                @dr_room_npc_names << text_string
-              elsif (text_string =~ /that (?:is|appears) ([\w\s]+)(?:,| and|\.)/) or (text_string =~ / \(([^\(]+)\)/)
-                # @last_npc is nil in DragonRealms here (DR room-objs bold names
-                # carry no <a> tag, so the new_npc branch above never runs and
-                # never sets it), so the &. keeps this a safe no-op in DR while
-                # still annotating the last GemStone npc.
+                if text_string.match?(DR_LINKED_CREATURE_ARTICLE)
+                  # Saga dialect: the bold text outside a link is the article
+                  # before a linked creature; keep it for that creature's name.
+                  # Decided by shape, not the session flag, so the very first
+                  # linked line of a session is handled too (legacy bold runs are
+                  # whole names, never a bare article).
+                  @dr_link_article = text_string
+                elsif !stream_feature?(:links)
+                  # Legacy dialect: bold NPC names carry no <a> tag. Capture
+                  # them in stream order so the <crtrStatus> batch that follows
+                  # can pair the Nth name to the Nth id (see the crtrStatus
+                  # handler). Only bold runs are names; the non-bold
+                  # "(dead)"/"(immobile)" status runs fall through to the
+                  # annotation branch below.
+                  @dr_room_npc_names << text_string
+                end
+              elsif (text_string =~ /(?:that|which) (?:is|appears) ([\w\s]+?)(?:,| and|\.)/) or (text_string =~ / \(([^\(]+)\)/)
+                # @last_npc is nil in a legacy-dialect DR session (bold names
+                # carry no <a> tag, so the new_npc branch above never runs), so
+                # the &. keeps this a no-op there while annotating the last
+                # GemStone or Saga-dialect DR npc. GemStone words it "that
+                # is/appears ..."; DragonRealms uses "(dead)" and "which appears
+                # dead". The lazy capture stops at the first separator, so DR's
+                # one-run tail " which appears dead and some junk." gives "dead".
                 @last_npc&.status = $1
+              end
+              # GemStone: "<rider> who is riding <mount>". Its own check, not a
+              # link in the chain above, so a rider's "(dead)"/"(stunned)"
+              # annotation in the same text run still reaches @last_npc. Only
+              # trusted when the game itself flagged the rider rider="1".
+              if !@active_tags.include?('a') && text_string =~ /\bwho is riding\b/ && @last_room_creature&.crtr_flag?(:rider)
+                @mount_rider = @last_room_creature
               end
             elsif @active_ids.include?('room players')
               if @active_tags.include?('a')
@@ -1307,7 +1633,16 @@ module Lich
                 @player_status = nil
                 @player_title = nil
               else
-                if @game =~ /^DR/
+                if @game =~ /^DR/ && text_string.match?(DR_LEGACY_PLAYERS_RUN)
+                  # Legacy dialect: players carry no <a> tag and arrive as one
+                  # complete text run, so split the plain text. The Saga dialect
+                  # links every player, so its runs are fragments between links
+                  # ("Also here: Monster ", ", Druid ", ".") and take the shared
+                  # title/status path below; splitting them would commit junk
+                  # entries and wipe the linked players. Decided by the run's
+                  # shape alone: no fragment of a linked list can match, and the
+                  # session-long :links flag would let one stray link anywhere
+                  # stop every later link-free list from splitting.
                   GameObj.begin_room_players
                   text_string.sub(/^Also here\: /, '').sub(/ and ([^,]+)\./) { ", #{$1}" }.split(', ').each { |player|
                     if player =~ / who is (.+)/
@@ -1428,24 +1763,23 @@ module Lich
         end
       end
 
-      # Routes a closing XML tag to final object creation and stream commitment.
+      # Handles the close of an XML element from the server stream.
       #
-      # Called once per element close by the Ox SAX parser (via end_element). Pops the
-      # tag name from the stack and handles closing logic: committing staged room
-      # components (room objs, players, description) when their container closes,
-      # finalizing inventory items with stored location and surrounding text, and
-      # incrementing room counters on compass close.
+      # Finalizes element state, commits {GameObj} refreshes, and updates room/stream
+      # accounting. Ignores synthetic closes (mismatched closing tags that Ox auto-balances).
       #
-      # Prevents spurious handler invocation on synthetic closes (Ox-synthesized ends
-      # for desynced orphan tags) by checking that the closing tag name matches the
-      # top of the active stack; mismatches are silently ignored.
+      # Core responsibilities:
+      # - Pops the element name from the active tag stack (no-op if mismatched)
+      # - On inv close: commits any stowed item or container item to GameObj
+      # - On compass close: increments room count, handles DR compass / room window state
+      # - On component/compDef close: commits staged GameObj refreshes (room objs, players, desc)
+      # - On popStream close for assess: parses and stores the buffered assess line
+      # - Syncs Wizard FE GSL room exits on stream close
       #
-      # If an exception is raised, logs the error, sleeps briefly, and calls reset() to
-      # discard in-flight state.
+      # All exceptions are caught, logged, and trigger a {#reset}.
       #
-      # @param name [String] the element tag name being closed (lowercase)
+      # @param name [String] the element name being closed
       # @return [void]
-      #
       # @api private
       def tag_end(name)
         # Called once per element close. Ox synthesizes an end for a stray closing

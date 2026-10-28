@@ -1,23 +1,27 @@
 # frozen_string_literal: true
 
-Lich::Util.install_gem_requirements({ 'ffi' => true })
-
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Provides common utilities for the Lich framework.
-  #
-  # @see Lich::Util
+  # Namespace for shared utilities across Lich.
   module Common
+    # Namespace for GUI-related functionality.
     module GUI
-      # Provides access to the Windows Credential Manager.
+      # Windows Credential Manager integration via FFI
+      # REQUIRES: ffi gem (>= 1.15) must be available in Lich environment
+      # Provides direct access to Windows Credential Manager API for secure credential storage
+      # Supports generic credentials (passwords) and certificate credentials (SSH keys)
       #
-      # This module allows for storing, retrieving, and deleting credentials in the Windows Credential Manager.
-      #
-      # @see Lich::Common::GUI
+      # Uses DPAPI (Data Protection API) via Credential Manager for encryption
+      # No PowerShell subprocess calls - direct Win32 API access
       module WindowsCredentialManager
-        extend FFI::Library
-
-        # Load advapi32.dll and kernel32.dll for Credential Manager functions (Windows only)
+        # Everything FFI-related is Windows-only, so it's guarded together: this keeps
+        # the module inert (no ffi requires, no FFI constant references) on load for
+        # every other platform instead of depending on ffi already being loaded by
+        # whatever required this file first. OS itself must still be defined by the
+        # requirer - master_password_manager.rb requires 'os' before requiring this.
         if OS.windows?
+          Lich::Util.install_gem_requirements({ 'ffi' => true })
+          extend FFI::Library
           ffi_lib 'advapi32', 'kernel32'
         end
 
@@ -37,25 +41,31 @@ module Lich
         # Max credential size (512KB)
         CRED_MAX_CREDENTIAL_BLOB_SIZE = 512 * 1024
 
-        class CredentialStruct < FFI::Struct
-          layout(
-            :flags, :uint32,
-            :type, :uint32,
-            :target_name, :pointer,
-            :comment, :pointer,
-            :last_written, :uint64,
-            :credential_blob_size, :uint32,
-            :credential_blob, :pointer,
-            :persist, :uint32,
-            :attribute_count, :uint32,
-            :attributes, :pointer,
-            :target_alias, :pointer,
-            :user_name, :pointer
-          )
-        end
-
-        # FFI function definitions (Windows only)
+        # Credential structure and FFI function definitions (Windows only)
         if OS.windows?
+          # FFI structure mapping the Windows CREDENTIAL type for direct Credential Manager API access.
+          #
+          # Represents a credential record with fields for type, target name, username, password blob,
+          # persistence scope, and metadata. Used internally by store_credential and retrieve_credential.
+          #
+          # @api private
+          class CredentialStruct < FFI::Struct
+            layout(
+              :flags, :uint32,
+              :type, :uint32,
+              :target_name, :pointer,
+              :comment, :pointer,
+              :last_written, :uint64,
+              :credential_blob_size, :uint32,
+              :credential_blob, :pointer,
+              :persist, :uint32,
+              :attribute_count, :uint32,
+              :attributes, :pointer,
+              :target_alias, :pointer,
+              :user_name, :pointer
+            )
+          end
+
           attach_function :CredReadW, [:pointer, :uint32, :uint32, :pointer], :bool
           attach_function :CredWriteW, [:pointer, :uint32], :bool
           attach_function :CredDeleteW, [:pointer, :uint32, :uint32], :bool
@@ -64,6 +74,8 @@ module Lich
         end
 
         class << self
+          # Check if Credential Manager is available
+          # @return [Boolean] true if Credential Manager is accessible
           def available?
             return false unless OS.windows?
 
@@ -76,16 +88,13 @@ module Lich
             end
           end
 
-          # Stores a credential in the Windows Credential Manager.
-          #
-          # @param target_name [String] the target name for the credential
-          # @param username [String] the username associated with the credential
-          # @param password [String] the password for the credential
-          # @param comment [String, nil] an optional comment for the credential
-          # @param persist [Integer] the persistence type for the credential (default: CRED_PERSIST_LOCAL_MACHINE)
-          # @return [Boolean] true if the credential was stored successfully, false otherwise
-          # @example Store a credential
-          #   store_credential("example.com", "user", "password123")
+          # Store a generic credential (password) in Credential Manager
+          # @param target_name [String] Target/service name (e.g., 'lich5.master_password')
+          # @param username [String] Username associated with credential
+          # @param password [String] Password/secret to store
+          # @param comment [String, nil] Optional comment/description
+          # @param persist [Integer] Persistence level (1=session, 2=local_machine, 3=enterprise)
+          # @return [Boolean] true if credential stored successfully
           def store_credential(target_name, username, password, comment = nil, persist = CRED_PERSIST_LOCAL_MACHINE)
             return false unless available?
 
@@ -125,7 +134,7 @@ module Lich
                 Lich.log "debug: Credential stored successfully"
                 true
               else
-                error_code = GetLastError
+                error_code = FFI::LastError.winapi_error
                 Lich.log "error: CredWriteW failed with error code #{error_code}"
                 false
               end
@@ -135,14 +144,15 @@ module Lich
             end
           end
 
-          # Retrieves a credential from the Windows Credential Manager.
-          #
-          # @param target_name [String] the target name for the credential
-          # @return [String, nil] the password if found, nil if not found
-          # @example Retrieve a credential
-          #   password = retrieve_credential("example.com")
-          def retrieve_credential(target_name)
-            return nil unless available?
+          # Retrieve a generic credential from Credential Manager
+          # @param target_name [String] Target/service name to retrieve
+          # @return [String, nil] Retrieved password/secret, or nil if not found
+          # @param strict [Boolean] raise for failures other than confirmed absence
+          def retrieve_credential(target_name, strict: false)
+            unless available?
+              raise IOError, "Windows Credential Manager unavailable" if strict
+              return nil
+            end
 
             begin
               target_name_wide = string_to_wide(target_name)
@@ -167,24 +177,24 @@ module Lich
 
                 password
               else
-                error_code = GetLastError
+                error_code = FFI::LastError.winapi_error
+                raise IOError, "CredReadW failed with error code #{error_code}" if strict && error_code != 1168
                 # ERROR_NOT_FOUND = 1168, so only log unexpected errors
                 Lich.log "error: CredReadW failed with error code #{error_code}" unless error_code == 1168
                 nil
               end
             rescue StandardError
+              raise if strict
+
               # Don't log as error for "not found" - it's expected on first run
               # Only actual failures (encoding, access, API errors) should log
               nil
             end
           end
 
-          # Deletes a credential from the Windows Credential Manager.
-          #
-          # @param target_name [String] the target name for the credential
-          # @return [Boolean] true if the credential was deleted successfully, false otherwise
-          # @example Delete a credential
-          #   delete_credential("example.com")
+          # Delete a credential from Credential Manager
+          # @param target_name [String] Target/service name to delete
+          # @return [Boolean] true if credential deleted successfully
           def delete_credential(target_name)
             return false unless available?
 
@@ -197,7 +207,7 @@ module Lich
               if result
                 true
               else
-                error_code = GetLastError
+                error_code = FFI::LastError.winapi_error
                 Lich.log "error: CredDeleteW failed with error code #{error_code}"
                 false
               end
@@ -209,10 +219,9 @@ module Lich
 
           private
 
-          # Converts a string to a wide character string (UTF-16LE).
-          #
-          # @param str [String] the string to convert
-          # @return [FFI::MemoryPointer] pointer to the wide character string
+          # Convert Ruby string to UTF-16LE wide character string pointer
+          # @param str [String] String to convert
+          # @return [FFI::MemoryPointer] Pointer to wide character string
           def string_to_wide(str)
             wide_str = str.encode('UTF-16LE')
             # Add UTF-16LE null terminator
@@ -223,10 +232,9 @@ module Lich
             ptr
           end
 
-          # Converts a wide character string (UTF-16LE) back to a regular string.
-          #
-          # @param ptr [FFI::MemoryPointer] pointer to the wide character string
-          # @return [String, nil] the converted string, or nil if the pointer is null
+          # Convert UTF-16LE wide character pointer to Ruby string
+          # @param ptr [FFI::Pointer] Pointer to wide character string
+          # @return [String] Decoded Ruby string
           def wide_to_string(ptr)
             return nil if ptr.null?
 

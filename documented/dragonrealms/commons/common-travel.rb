@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
-# Namespace for Lich 5, the Ruby scripting engine for GemStone IV and DragonRealms.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for DragonRealms-specific scripting features.
+  # Namespace for DragonRealms-specific functionality.
   module DragonRealms
-    # DragonRealms Common Travel: utilities for navigation, merchant interactions, and room finding.
+    # Common travel utilities for DragonRealms scripts.
     #
-    # Provides methods for walking between rooms, buying/selling/asking merchants, disposing items,
-    # and locating empty rooms suitable for spellcasting or hunting.
+    # Provides methods to navigate between rooms, visit merchants to buy and sell
+    # items, and search for empty rooms. All navigation is performed via the go2
+    # script using the map.
+    #
+    # @see walk_to
+    # @see buy_item
+    # @see sell_item
     module DRCT
       module_function
 
@@ -39,15 +44,15 @@ module Lich
         /There's folk around here that'd slit a throat for this/
       ].freeze unless defined?(SELL_FAILURE_PATTERNS)
 
-      # Patterns matching merchant price quotes in response to a BUY request.
+      # Patterns that match merchant responses containing the price for a buy offer.
       #
-      # Extracted named capture group 'amount' contains the numeric price in kronars, lirums, or dokoras.
-      # Each pattern accounts for merchant personality variation across GemStone and DragonRealms towns.
+      # Each pattern includes a named capture group `amount` that extracts the price
+      # in the merchant's text. The amount may be numeric or spelled out (e.g.,
+      # "100" or "one hundred").
       #
-      # @see #buy_item
-      # @example Merchant quote matching
-      #   "prepared to offer it to you for 500 kronars" #=> captures amount: "500"
-      #   "Cost you just 250 lirums?, okie dokie?" #=> captures amount: "250"
+      # @see buy_item
+      # @example
+      #   "I'll give that to you for 1000 kronars" matches, captures amount: "1000"
       BUY_PRICE_PATTERNS = [
         /prepared to offer it to you for (?<amount>.*) (?:kronar|lirum|dokora)s?/,
         /Let me but ask the humble sum of (?<amount>.*) coins/,
@@ -94,12 +99,17 @@ module Lich
 
       # Visit a merchant and sell an item.
       # Usually to sell junk at pawn shops.
+      #
+      # The item is referenced through {DRCI.item_ref}, like the DRCI verbs: a
+      # noun gets "my ", while "my sword" and "#<id>" are sent unchanged.
+      #
+      # Returns false without selling when the item is not in hand or the
+      # walk to +room+ fails, so the item is never offered in another room.
       def sell_item(room, item)
         return false unless DRCI.in_hands?(item)
+        return false unless walk_to_merchant(room, "selling #{item}")
 
-        walk_to(room)
-
-        case DRC.bput("sell my #{item}", *SELL_SUCCESS_PATTERNS, *SELL_FAILURE_PATTERNS)
+        case DRC.bput("sell #{DRCI.item_ref(item)}", *SELL_SUCCESS_PATTERNS, *SELL_FAILURE_PATTERNS)
         when *SELL_SUCCESS_PATTERNS
           true
         when *SELL_FAILURE_PATTERNS
@@ -109,8 +119,11 @@ module Lich
 
       # Visit a merchant and buy an item by offering their asking price.
       # Usually for restocking ammunition or other misc items.
+      #
+      # Returns nil without buying when the walk to +room+ fails, so nothing
+      # is bought from whichever merchant stands in another room.
       def buy_item(room, item)
-        walk_to(room)
+        return unless walk_to_merchant(room, "buying #{item}")
 
         all_patterns = BUY_PRICE_PATTERNS + BUY_NON_PRICE_PATTERNS
         result = DRC.bput("buy #{item}", *all_patterns)
@@ -123,8 +136,10 @@ module Lich
 
       # Visit a merchant and ask for an item.
       # Usually this is for bundling ropes or gem pouches.
+      #
+      # Returns false without asking when the walk to +room+ fails.
       def ask_for_item?(room, name, item)
-        walk_to(room)
+        return false unless walk_to_merchant(room, "asking #{name} for #{item}")
 
         case DRC.bput("ask #{name} for #{item}", *ASK_SUCCESS_PATTERNS, *ASK_FAILURE_PATTERNS)
         when *ASK_SUCCESS_PATTERNS
@@ -135,27 +150,66 @@ module Lich
       end
 
       # Visit a merchant and order from a menu.
+      #
+      # Returns nil without ordering when the walk to +room+ fails: ORDER takes
+      # a menu number, so the same ORDER in another shop could buy another item.
       def order_item(room, item_number)
-        walk_to(room)
+        return unless walk_to_merchant(room, "ordering #{item_number}")
 
         return if DRC.bput("order #{item_number}", 'Just order it again', 'you don\'t have enough coins') == 'you don\'t have enough coins'
 
         DRC.bput("order #{item_number}", 'takes some coins from you')
       end
 
-      # Discards an item by walking to a trash room and disposing of it in a trashcan.
+      # Internal to the merchant helpers above; not meant for scripts.
+      # Walks to the merchant's +room+ (a room id or map tag; this can take
+      # minutes, like walk_to) and returns walk_to's result. When the walk
+      # fails it says which purchase or sale was skipped, because walk_to is
+      # silent on some failures, e.g. a nil room or a locked shop door.
+      # A map tag with no rooms gets one line here instead of walk_to's own
+      # "No go2 targets" line followed by this one.
+      # @api private
+      def walk_to_merchant(room, action)
+        if map_tag?(room) && Map.rooms_by_tag(room).empty?
+          Lich::Messaging.msg('bold', "DRCT: No go2 targets matching '#{room}' found, so not #{action}.")
+          return false
+        end
+
+        return true if walk_to(room)
+
+        where = if room.nil?
+                  'the shop (no room given)'
+                elsif map_tag?(room)
+                  "a room tagged #{room}"
+                else
+                  "room #{room}"
+                end
+        Lich::Messaging.msg('bold', "DRCT: Could not reach #{where}, so not #{action}.")
+        false
+      end
+
+      # Internal: true when walk_to reads +room+ as a map tag (a String with
+      # a letter in it) rather than a room id. Shared by walk_to and
+      # walk_to_merchant so the failure message names the room the same way
+      # walk_to looked it up.
+      # @api private
+      def map_tag?(room)
+        room.is_a?(String) && room.count('a-zA-Z') > 0
+      end
+
+      private_class_method :walk_to_merchant, :map_tag?
+
+      # Discards an item in a trash room or worn container.
       #
-      # If no trash room is provided, disposes in the current room. If a worn trashcan
-      # (e.g., a backpack or sack) is specified, deposits the item there instead.
+      # Walks to the trash room if provided, then calls DRCI.dispose_trash to drop or
+      # remove the item from a worn container. If trash_room is nil, only attempts to
+      # dispose via the worn container.
       #
-      # @param item [String] the item name or pronoun (e.g. "my lockpick", "junk")
-      # @param trash_room [Integer, nil] room id to walk to before disposing; if nil, disposes in place
-      # @param worn_trashcan [String, nil] worn container to put item into (e.g. "my backpack")
-      # @param worn_trashcan_verb [String, nil] preposition for inserting into the container (e.g. "on", "in")
+      # @param item [String, nil] the item noun or "my <item>"; if nil, does nothing
+      # @param trash_room [Integer, String, nil] room id or map tag for the trash location
+      # @param worn_trashcan [String, nil] worn container noun, e.g. "my trash bag"
+      # @param worn_trashcan_verb [String, nil] verb to remove from container, e.g. "remove" or "open"
       # @return [void]
-      # @example
-      #   DRCT.dispose("my junk", 4711)
-      #   DRCT.dispose("my lockpick", 5000, "my lockpick container", "on")
       def dispose(item, trash_room = nil, worn_trashcan = nil, worn_trashcan_verb = nil)
         return unless item
 
@@ -163,23 +217,18 @@ module Lich
         DRCI.dispose_trash(item, worn_trashcan, worn_trashcan_verb)
       end
 
-      # Buys lockpicks from the locksmith in a hometown and stores them in a container.
+      # Buys lockpicks and stores them in a container at the locksmith.
       #
-      # Walks to the locksmith location (looked up from town data), buys the specified number
-      # of lockpicks of a given type, and places each into a worn container. Stops early if
-      # a put-away fails (e.g., due to container type mismatch). Fixes standing and exits
-      # the locksmith room afterward to be polite to thieves.
+      # Walks to the locksmith location for the hometown, buys the specified number
+      # of lockpicks, and puts them on the given container. If the locksmith location
+      # is not found, the walk fails, or putting away fails, logs a message and stops.
+      # Exits the shop when done (if an "out" exit exists) to keep the room clear.
       #
-      # Returns silently if count < 1 or if no locksmith location is found for the hometown.
-      #
-      # @param lockpick_type [String] lockpick type (e.g. "iron", "silver")
-      # @param hometown [String] the character's hometown (used to look up locksmith location)
-      # @param container [String] worn container name for storage (e.g. "my lockpick container")
-      # @param count [Integer] number of lockpicks to buy; skipped if < 1
+      # @param lockpick_type [String] the lockpick type, e.g. "steel" or "veniom"
+      # @param hometown [String] the hometown key in the town data, e.g. "Wehnimer's Landing"
+      # @param container [String] the container noun, e.g. "my lockpick pouch"
+      # @param count [Integer] how many lockpicks to buy and store
       # @return [void]
-      # @note Logs messages if locksmith location is not found or if put-away fails.
-      # @example
-      #   DRCT.refill_lockpick_container("iron", "Wehnimer's Landing", "my lockpick container", 10)
       def refill_lockpick_container(lockpick_type, hometown, container, count)
         return if count < 1
 
@@ -214,51 +263,36 @@ module Lich
       # game server connection is lost or go2 repeatedly fails.
       MAX_WALK_TO_RETRIES = 3
 
+      # Seconds walk_to waits for Room.current to resolve a room it could not
+      # resolve at first, before treating the room as unresolved. This also
+      # bounds how fast a caller that loops on walk_to without checking the
+      # result retries from such a room.
+      WALK_TO_UNRESOLVED_WAIT = 1
+
       # Navigate to +target_room+ using the go2 script.
+      #
+      # Room.current (the map's resolver, Map.current) is the only rule for
+      # where the character is, both for the start room and for arrival, so
+      # walk_to is exactly as strict as that resolver and no stricter. From a
+      # room it cannot resolve, even after waiting WALK_TO_UNRESOLVED_WAIT
+      # seconds, walk_to sends nothing and returns false; this holds for tag
+      # targets too (see tag_to_id).
       #
       # @param target_room [Integer, String] room id or map tag (e.g. 'bank')
       # @param restart_on_fail [Boolean] retry navigation on failure
       # @param retry_depth [Integer] internal counter -- callers should not set this
       # @return [Boolean] true if the character is now in the target room
       def walk_to(target_room, restart_on_fail = true, retry_depth: 0)
-        target_room = tag_to_id(target_room) if target_room.is_a?(String) && target_room.count("a-zA-Z") > 0
+        target_room = tag_to_id(target_room) if map_tag?(target_room)
 
         return false if target_room.nil?
 
         room_num = target_room.to_i
-        # Room.current is nil when the room could not be resolved. Under Lich's
-        # NilClass patch nil.id yielded nil, so the comparison simply failed.
-        return true if room_num == Room.current&.id
+        current_id = walk_to_current_room_id
+        return true if room_num == current_id
+        return walk_to_unresolved_failure(room_num) if current_id.nil?
 
         DRC.fix_standing
-
-        if Room.current&.id.nil?
-          Lich::Messaging.msg('plain', "DRCT: In an unknown room, manually attempting to navigate to #{room_num}")
-          rooms = Map.list.compact.select { |room| room.description.include?(XMLData.room_description.strip) && room.title.include?(XMLData.room_title) }
-          if rooms.empty? || rooms.length > 1
-            Lich::Messaging.msg('bold', 'DRCT: Failed to find a matching room from unknown location.')
-            return false
-          end
-          room = rooms.first
-          return true if room_num == room.id
-
-          if room.wayto[room_num.to_s]
-            move room.wayto[room_num.to_s]
-            return room_num == room.id
-          end
-          path = Map.findpath(room, Map[room_num])
-          way = room.wayto[path.first.to_s]
-          if way.is_a?(StringProc)
-            way.call
-          else
-            move way
-          end
-          if retry_depth >= MAX_WALK_TO_RETRIES
-            Lich::Messaging.msg('bold', "DRCT: Failed to navigate from unknown room after #{MAX_WALK_TO_RETRIES} retries, giving up.")
-            return false
-          end
-          return walk_to(room_num, true, retry_depth: retry_depth + 1)
-        end
 
         script_handle = start_script('go2', [room_num.to_s], force: true)
 
@@ -306,7 +340,11 @@ module Lich
           Flags.delete('travel-engaged')
         end
 
-        if room_num != Room.current.id && restart_on_fail
+        current_id = walk_to_current_room_id
+        arrived = current_id == room_num
+        if !arrived && restart_on_fail
+          return walk_to_unresolved_failure(room_num) if current_id.nil?
+
           if retry_depth >= MAX_WALK_TO_RETRIES
             Lich::Messaging.msg('bold', "DRCT: Failed to navigate to room #{room_num} after #{MAX_WALK_TO_RETRIES} retries, giving up.")
             return false
@@ -314,22 +352,50 @@ module Lich
           Lich::Messaging.msg('bold', "DRCT: Failed to navigate to room #{room_num}, attempting again (#{retry_depth + 1}/#{MAX_WALK_TO_RETRIES}).")
           return walk_to(room_num, true, retry_depth: retry_depth + 1)
         end
-        room_num == Room.current.id
+        arrived
       end
 
-      # Converts a map tag (e.g. "bank", "healer") to the room id of the closest reachable room with that tag.
+      # The room Room.current resolves, or nil when it still cannot resolve
+      # the room after waiting WALK_TO_UNRESOLVED_WAIT seconds. Room.current
+      # is nil for an unresolved room, and nil is falsy with or without Lich's
+      # NilClass patch, so this reads the same either way.
+      def walk_to_current_room
+        room = Room.current
+        return room if room
+
+        pause WALK_TO_UNRESOLVED_WAIT
+        Room.current
+      end
+
+      # The id of walk_to_current_room, or nil when it is unresolved.
+      def walk_to_current_room_id
+        walk_to_current_room&.id
+      end
+
+      # @api private
+      # Logs that walk_to could not confirm arrival at a room because the current
+      # room could not be resolved, then returns false.
       #
-      # Uses Dijkstra pathfinding to find the shortest path from the current room to any room
-      # tagged with the target. If already in a room with the target tag, returns the current room.
-      # Returns nil if no rooms match, no path exists, or pathfinding fails.
-      #
-      # @param target [String] a map tag such as "bank", "healer", "council"
-      # @return [Integer, nil] the room id of the closest tagged room, or nil if not found
-      # @note Messages are logged (at 'bold' level) on failure.
-      # @example
-      #   DRCT.tag_to_id("bank") #=> 5000
+      # @param room_num [Integer] the target room id
+      # @return [Boolean] false
+      def walk_to_unresolved_failure(room_num)
+        walk_to_unresolved_message("cannot walk to room #{room_num}")
+        false
+      end
+
+      # Logs that the current room is unresolved, followed by +consequence+
+      # (what the caller could not do because of it).
+      def walk_to_unresolved_message(consequence)
+        Lich::Messaging.msg('bold', "DRCT: Unable to resolve the current room, #{consequence}.")
+      end
+
+      private_class_method :walk_to_current_room, :walk_to_current_room_id,
+                           :walk_to_unresolved_failure, :walk_to_unresolved_message
+
+      # The id of the nearest room tagged +target+, measured from the room
+      # Room.current resolves, or nil (with a message) when there is none or
+      # the current room is still unresolved after walk_to_current_room's wait.
       def tag_to_id(target)
-        start_room = Room.current.id
         target_list = Map.rooms_by_tag(target)
 
         if target_list.empty?
@@ -337,11 +403,18 @@ module Lich
           return nil
         end
 
+        start = walk_to_current_room
+        if start.nil?
+          walk_to_unresolved_message("cannot find the nearest room tagged '#{target}'")
+          return nil
+        end
+
+        start_room = start.id
         if target_list.include?(start_room)
           Lich::Messaging.msg('plain', "DRCT: You're already here.")
           return start_room
         end
-        _previous, shortest_distances = Room.current.dijkstra(target_list)
+        _previous, shortest_distances = start.dijkstra(target_list)
         if shortest_distances.nil?
           Lich::Messaging.msg('bold', "DRCT: Pathfinding failed while looking for a '#{target}' tag.")
           return nil
@@ -361,74 +434,144 @@ module Lich
         target_id
       end
 
-      # Retreats from combat if there are non-ignored NPCs in the room.
+      # Calls DRC.retreat if there are unignored NPCs in the current room.
       #
-      # Checks if the room contains any NPCs other than those in ignored_npcs.
-      # If so, calls DRC.retreat. Otherwise does nothing.
+      # Filters the NPCs in the room by the ignored_npcs list and only retreats
+      # if at least one NPC remains after filtering.
       #
-      # @param ignored_npcs [Array] NPC names to exclude from retreat logic
+      # @param ignored_npcs [Array<String>] NPC names to ignore, default empty
       # @return [void]
-      # @example
-      #   DRCT.retreat(["Grukk"])
       def retreat(ignored_npcs = [])
-        return if (DRRoom.npcs - ignored_npcs).empty?
+        return if DRRoom.unignored_npcs(ignored_npcs).empty?
 
         DRC.retreat(ignored_npcs)
       end
 
-      # Searches for a suitable room (empty or matching a condition) across multiple locations.
+      # find_empty_room gives up after this many searches in a row in which
+      # walk_to reached none of the search rooms. Searches that reach a room
+      # but find it occupied are not counted: those wait for max_search_attempts.
+      MAX_UNREACHABLE_SEARCHES = 3
+
+      # Finds and navigates to an empty room suitable for casting or resting.
       #
-      # Walks through search_rooms and applies a suitability check. On each attempt, evaluates
-      # each room using a predicate (or the default: room is empty and contains no non-grouped PCs).
-      # If min_mana > 0 and not a Moon Mage or Trader, also checks mana percentage.
+      # Searches a list of rooms for one that is empty (no non-grouped players),
+      # optionally meets a custom predicate, and has sufficient mana if required.
+      # If no suitable room is found, waits at the idle room and retries. Stops after
+      # MAX_UNREACHABLE_SEARCHES consecutive unreachable searches or when max_search_attempts
+      # is reached.
       #
-      # If no suitable room is found on an attempt, walks to idle_room (or a random one if it's
-      # an Array), pauses 20-40 seconds, and retries up to max_search_attempts times.
+      # With prioritize_buddies true, first looks for a room with a friend and no
+      # nemesis, running the predicate only in such rooms. On reaching the last room
+      # without finding a suitable buddy room, retries without the buddy pass.
       #
-      # With prioritize_buddies=true, prefers rooms containing friends (UserVars.friends) over
-      # empty rooms on the first pass.
+      # Mana is checked if min_mana > 0 and the character is not a Moon Mage or Trader.
+      # If strict_mana is false (default), relaxes the mana requirement if empty rooms
+      # are found but none meet the mana threshold.
       #
-      # Returns true immediately when a suitable room is found. Returns false if all attempts exhaust.
-      #
-      # @param search_rooms [Array<Integer>] room ids to check in order
-      # @param idle_room [Integer, Array<Integer>, nil] room(s) to idle in between attempts; no idle if nil
-      # @param predicate [Proc, nil] custom suitability check: receives search_attempt (1-indexed) and returns Boolean
-      # @param min_mana [Integer] minimum mana percentage required if mana checking is enabled (0 disables)
-      # @param strict_mana [Boolean] if false, allows empty rooms without mana after first pass
-      # @param max_search_attempts [Integer] maximum search attempts before giving up
-      # @param prioritize_buddies [Boolean] on first pass, prefer rooms with friends over empty rooms
-      # @return [Boolean] true if a suitable room was found, false otherwise
-      # @note Messages are logged to indicate search attempts and outcomes.
+      # @param search_rooms [Array<Integer>] room ids to search
+      # @param idle_room [Integer, String, Array<Integer>, nil] where to wait between searches; if an Array, one is chosen randomly
+      # @param predicate [Proc, nil] callable that returns truthy if the current room (and search attempt) is suitable; called with the search attempt number
+      # @param min_mana [Integer] minimum mana percentage required, default 0 (no check)
+      # @param strict_mana [Boolean] if true, reject all empty rooms that don't meet min_mana; if false, relax mana when no strict rooms are found
+      # @param max_search_attempts [Integer, Float] maximum number of search attempts before giving up, default infinite
+      # @param prioritize_buddies [Boolean] if true, prioritize rooms with friends on the buddy pass
+      # @return [Boolean] true if a suitable room was found and occupied, false if search was abandoned
       # @example
-      #   DRCT.find_empty_room([5000, 5001, 5002], 5010, nil, 50, true, 5)
+      #   # Search three rooms, idle at the bank, need at least 50 mana
+      #   DRCT.find_empty_room([1234, 1235, 1236], 'bank', min_mana: 50) #=> true or false
       def find_empty_room(search_rooms, idle_room, predicate = nil, min_mana = 0, strict_mana = false, max_search_attempts = Float::INFINITY, prioritize_buddies = false)
+        find_empty_room_search(search_rooms, idle_room, predicate, min_mana, strict_mana, max_search_attempts, prioritize_buddies, [])
+      end
+
+      # The search behind find_empty_room. rejected_by_predicate holds the
+      # positions (indexes into search_rooms, so a room id listed twice is
+      # judged per visit) the buddy pass's predicate just rejected; the
+      # empty-room search skips them until it idles, instead of running the
+      # predicate (and its side effects) in those rooms again straight away.
+      def find_empty_room_search(search_rooms, idle_room, predicate, min_mana, strict_mana, max_search_attempts, prioritize_buddies, rejected_by_predicate)
+        # With an idle room and no max_search_attempts, an empty list would
+        # idle forever without searching anything.
+        if search_rooms.nil? || search_rooms.empty?
+          Lich::Messaging.msg('bold', 'DRCT: No rooms to search, stopping the search.')
+          return false
+        end
+
         search_attempt = 0
+        unreachable_searches = 0
+        buddy_pass_rejected = []
         check_mana = min_mana > 0
-        rooms_searched = 0
         loop do
           search_attempt += 1
           Lich::Messaging.msg('plain', "DRCT: Search attempt #{search_attempt} of #{max_search_attempts} to find a suitable room.")
           found_empty = false
-          search_rooms.each do |room_id|
-            walk_to(room_id)
-            pause 0.1 until room_id == Room.current.id
+          reached_any = false
+          search_rooms.each_with_index do |room_id, index|
+            if rejected_by_predicate.include?(index)
+              # Reached and judged by the buddy pass a moment ago.
+              reached_any = true
+              next
+            end
 
-            rooms_searched += 1
+            # walk_to returns true when it believes it reached the target and
+            # false when it could not confirm arrival (see walk_to); such a room
+            # is skipped for this pass rather than waiting for Room.current to
+            # change.
+            reached = walk_to(room_id)
+            reached_any ||= reached
 
-            if prioritize_buddies && (rooms_searched <= search_rooms.size)
-              suitable_room = ((DRRoom.pcs & UserVars.friends).any? && (DRRoom.pcs & UserVars.hunting_nemesis).none?)
-              if rooms_searched == search_rooms.size && (DRRoom.pcs & UserVars.friends).empty? && (DRRoom.pcs & UserVars.hunting_nemesis).empty?
-                Lich::Messaging.msg('plain', 'DRCT: Reached last room in list, and found no buddies. Retrying for empty room.')
-                return find_empty_room(search_rooms, idle_room, predicate, min_mana, strict_mana, max_search_attempts, false)
+            last_buddy_room = false
+            nemesis_with_buddy = false
+            predicate_rejected = false
+            if prioritize_buddies
+              # The buddy pass is the first pass over the rooms, and it never
+              # runs past its last room: it returns at a buddy room or, at the
+              # last room, through the fallback below. A room is a buddy room
+              # if it has a friend and no nemesis, and the caller's predicate
+              # (if any) accepts it -- the predicate is only asked in rooms
+              # with a friend, so the buddy pass doesn't run the caller's
+              # checks (which may search or speak) in other rooms. An
+              # unreachable room is skipped.
+              buddy_here = reached && (DRRoom.pcs & UserVars.friends).any?
+              nemesis_with_buddy = buddy_here && (DRRoom.pcs & UserVars.hunting_nemesis).any?
+              suitable_room = buddy_here && !nemesis_with_buddy
+              if suitable_room && predicate
+                suitable_room = predicate.call(search_attempt)
+                predicate_rejected = !suitable_room
+                buddy_pass_rejected << index if predicate_rejected
               end
+              last_buddy_room = index == search_rooms.size - 1
             else
+              # walk_to returned false: skip the room for this pass.
+              next unless reached
+
               suitable_room = predicate ? predicate.call(search_attempt) : (DRRoom.pcs - DRRoom.group_members).empty?
             end
+            mana_short = false
             if suitable_room && check_mana && !(DRStats.moon_mage? || DRStats.trader?)
               found_empty = true
               suitable_room = (DRCA.perc_mana >= min_mana)
+              mana_short = !suitable_room
             end
             return true if suitable_room
+            next unless last_buddy_room
+
+            # The buddy pass ended without a buddy room. Start the empty-room
+            # search now instead of idling for another attempt. It checks mana
+            # first and relaxes it (without strict_mana) only if no room has
+            # enough.
+            outcome = if !reached
+                        'Could not reach last room in list, and found no buddies.'
+                      elsif mana_short
+                        'Reached last room in list, and found buddies but not the right mana.'
+                      elsif nemesis_with_buddy
+                        'Reached last room in list, and found buddies but also a nemesis.'
+                      elsif predicate_rejected
+                        'Reached last room in list, and found buddies but the room did not suit.'
+                      else
+                        'Reached last room in list, and found no buddies.'
+                      end
+            Lich::Messaging.msg('plain', "DRCT: #{outcome} Retrying for empty room.")
+            return find_empty_room_search(search_rooms, idle_room, predicate, min_mana, strict_mana, max_search_attempts, false, buddy_pass_rejected)
           end
 
           if found_empty && check_mana && !strict_mana
@@ -439,7 +582,19 @@ module Lich
 
           check_mana = min_mana > 0
 
+          # Waiting at the idle room cannot help if no search room can be
+          # reached, so a run of such searches ends the search even when
+          # max_search_attempts is unbounded.
+          unreachable_searches = reached_any ? 0 : unreachable_searches + 1
+          if unreachable_searches >= MAX_UNREACHABLE_SEARCHES
+            rooms = search_rooms.size == 1 ? 'the search room' : "any of the #{search_rooms.size} search rooms"
+            Lich::Messaging.msg('bold', "DRCT: Could not reach #{rooms} in #{unreachable_searches} searches, stopping the search.")
+            return false
+          end
+
           if idle_room && search_attempt < max_search_attempts
+            # After waiting, rooms the buddy pass rejected are worth asking again.
+            rejected_by_predicate = []
             idle_room = idle_room.sample if idle_room.is_a?(Array)
             walk_to(idle_room)
             wait_time = rand(20..40)
@@ -452,19 +607,17 @@ module Lich
         end
       end
 
-      # Sorts a list of destination room ids by shortest path distance from the current room.
+      private_class_method :find_empty_room_search
+
+      # Sorts a list of room ids by shortest path distance from the current room.
       #
-      # Uses Dijkstra pathfinding to compute shortest distances from the current room to all
-      # destinations. Unreachable rooms are filtered out. Returns the sorted list in ascending
-      # order of distance.
+      # Uses dijkstra pathfinding from the current room to order the targets from
+      # nearest to farthest. If a room has no path or pathfinding fails, it is
+      # removed (except the current room itself, which is always kept). Returns the
+      # input list if pathfinding fails entirely.
       #
-      # If pathfinding fails or a room is unreachable, it is removed (except the current room itself,
-      # which is preserved even without a distance).
-      #
-      # @param target_list [Array<Integer, String>] room ids to sort (converted to Integer)
-      # @return [Array<Integer>] target_list sorted by distance from current room (nearest first)
-      # @example
-      #   DRCT.sort_destinations([5000, 5001, 4999]) #=> [4999, 5000, 5001] (assuming those distances)
+      # @param target_list [Array<Integer, String>] room ids (converted to integers)
+      # @return [Array<Integer>] sorted room ids, nearest first
       def sort_destinations(target_list)
         target_list = target_list.collect(&:to_i)
         _previous, shortest_distances = Map.dijkstra(Room.current.id)
@@ -478,32 +631,28 @@ module Lich
         target_list.sort_by { |room_num| shortest_distances[room_num] || Float::INFINITY }
       end
 
-      # Finds an empty room by searching destinations sorted by shortest path distance.
+      # Finds an empty room after sorting the search list by distance from the current room.
       #
-      # Sorts search_rooms by distance from the current room using #sort_destinations,
-      # then searches them in that order using #find_empty_room with default parameters.
+      # Sorts the search rooms using sort_destinations, then calls find_empty_room
+      # to search them in order from nearest to farthest.
       #
-      # @param search_rooms [Array<Integer>] room ids to search
-      # @param idle_room [Integer, Array<Integer>, nil] room(s) to idle in between search attempts
-      # @param predicate [Proc, nil] optional custom suitability check
-      # @return [Boolean] true if an empty room was found, false otherwise
-      # @example
-      #   DRCT.find_sorted_empty_room([5000, 5001, 5002], 5010)
+      # @param search_rooms [Array<Integer, String>] room ids to search
+      # @param idle_room [Integer, String, Array<Integer>, nil] where to wait between searches
+      # @param predicate [Proc, nil] callable that returns truthy if the current room is suitable
+      # @return [Boolean] true if a suitable empty room was found, false otherwise
       def find_sorted_empty_room(search_rooms, idle_room, predicate = nil)
         sorted_rooms = sort_destinations(search_rooms)
         find_empty_room(sorted_rooms, idle_room, predicate)
       end
 
-      # Computes the shortest number of moves required to travel between two rooms.
+      # Returns the shortest path distance in moves from origin to destination.
       #
-      # Uses Dijkstra pathfinding from origin to destination. Returns the distance (number of moves),
-      # or nil if no path exists or pathfinding fails.
+      # Uses dijkstra pathfinding to compute the minimum number of moves. Returns nil
+      # if pathfinding fails or no path exists.
       #
       # @param origin [Integer] starting room id
-      # @param destination [Integer] target room id
-      # @return [Integer, nil] minimum number of moves to reach destination, or nil if unreachable
-      # @example
-      #   DRCT.time_to_room(5000, 5001) #=> 2
+      # @param destination [Integer, String] target room id (converted to integer)
+      # @return [Integer, nil] the distance in moves, or nil if unreachable or pathfinding failed
       def time_to_room(origin, destination)
         # Results are keyed by Integer room id, and dijkstra only terminates
         # early when the destination compares as an Integer.
@@ -514,18 +663,18 @@ module Lich
         shortest_paths[destination]
       end
 
-      # Reverses a path of compass directions into the opposite sequence.
+      # Reverses a path to travel backwards along the same route.
       #
-      # Takes an array of full direction names (e.g. ["north", "east", "northeast"])
-      # and returns an array of reversed directions in reverse order (e.g. ["southwest", "west", "south"]).
-      # Unknown directions cause a message to be logged and nil to be returned.
+      # Takes an array of directions and returns them in reverse order with each
+      # direction reversed using DIRECTION_REVERSE. Returns nil and logs an error
+      # if a direction has no reverse mapping (e.g. abbreviations like 'ne' instead
+      # of 'northeast').
       #
-      # @param path [Array<String>] array of full direction names (e.g. "northeast", "up", "south")
-      # @return [Array<String>, nil] reversed path, or nil if an unknown direction is encountered
-      # @note Direction names must be spelled out in full (e.g. "northeast" not "ne").
+      # @param path [Array<String>] direction names, e.g. ["north", "east", "up"]
+      # @return [Array<String>, nil] the reversed directions, or nil if any direction lacks a reverse mapping
       # @example
-      #   DRCT.reverse_path(["north", "east"]) #=> ["west", "south"]
-      #   DRCT.reverse_path(["up"]) #=> ["down"]
+      #   DRCT.reverse_path(["north", "east", "up"]) #=> ["down", "west", "south"]
+      # @see DIRECTION_REVERSE
       def reverse_path(path)
         path.reverse.map do |dir|
           reversed = DIRECTION_REVERSE[dir]
@@ -537,18 +686,17 @@ module Lich
         end
       end
 
-      # Retrieves the room id of a target location (e.g. "bank", "healer") in a specific hometown.
+      # Looks up a room id for a location within a hometown.
       #
-      # Looks up the target in town data for the hometown. If not found on first attempt,
-      # pauses 2 seconds and retries. Logs debug messages (if $common_travel_debug is true)
-      # on first failure, second success, and final result.
+      # Retrieves the id for a named target (e.g. 'bank', 'locksmithing') within a
+      # hometown from the town data. On first failure, waits 2 seconds and retries
+      # (to handle potential data loading delays). Logs debug messages if
+      # $common_travel_debug is truthy.
       #
-      # @param hometown [String] the hometown key in town data (e.g. "Wehnimer's Landing", "River's Rest")
-      # @param target [String] the location key (e.g. "bank", "healer", "council")
-      # @return [Integer, nil] the room id, or nil if not found after two attempts
-      # @note Debug logging is controlled by the global $common_travel_debug flag.
-      # @example
-      #   DRCT.get_hometown_target_id("Wehnimer's Landing", "bank") #=> 5000
+      # @param hometown [String] the hometown key, e.g. "Wehnimer's Landing"
+      # @param target [String] the target name, e.g. "bank" or "locksmithing"
+      # @return [Integer, nil] the room id, or nil if not found after retry
+      # @note Mutates $common_travel_debug by reading it; consider it advisory only
       def get_hometown_target_id(hometown, target)
         hometown_data = get_data('town')[hometown]
         target_id = hometown_data[target] && hometown_data[target]['id']

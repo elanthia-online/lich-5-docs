@@ -1,30 +1,52 @@
+# frozen_string_literal: true
 
+# Namespace for Lich 5, a Ruby scripting engine for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV game logic and character state.
   module Gemstone
-    # Represents the status of an injured character in the game.
-    #
-    # @see Gemstone::CharacterStatus
+    # Injured class for checking ability to perform actions based on wounds and scars
     class Injured < Gemstone::CharacterStatus
+      # Maps injury group names to their constituent body parts as symbols.
+      #
+      # Used to check multiple related body parts at once when evaluating injury effects
+      # on character abilities (e.g., both eyes as a group, both arms and hands per side).
+      #
+      # @return [Hash{Symbol => Array<Symbol>}] groups of related body part symbols
+      # @example
+      #   Injured::BODY_PART_GROUPS[:eyes]  #=> [:leftEye, :rightEye]
+      #   Injured::BODY_PART_GROUPS[:arms]  #=> [:leftArm, :rightArm]
+      BODY_PART_GROUPS = {
+        eyes: %i[leftEye rightEye],
+        arms: %i[leftArm rightArm],
+        hands: %i[leftHand rightHand],
+        legs: %i[leftLeg rightLeg],
+        feet: %i[leftFoot rightFoot],
+        head_and_nerves: %i[head nsys]
+      }.freeze
+
+      # Cache variables. These must live on Injured itself (the class body),
+      # not inside `class << self`, where they would land on the singleton
+      # class and the methods below would read nil.
+      @injury_cache_key = nil
+      @wounds_cache = nil
+      @scars_cache = nil
+      @cache_mutex = Mutex.new
+
       class << self
-        BODY_PART_GROUPS = {
-          eyes: %i[leftEye rightEye],
-          arms: %i[leftArm rightArm],
-          hands: %i[leftHand rightHand],
-          legs: %i[leftLeg rightLeg],
-          feet: %i[leftFoot rightFoot],
-          head_and_nerves: %i[head nsys]
-        }.freeze
+        # Build an immutable fingerprint of the current injury state.
+        # XMLData.injuries is mutated in place by the parser, so the hash itself
+        # cannot serve as a cache key: it would always compare equal to itself.
+        # Note: this runs in injury mode 2 ('both'), where a scar underneath an
+        # active wound is not visible, so such a scar changing will not invalidate
+        # the cache. That is a narrow case and acceptable given each cache miss
+        # costs two _injury round trips in Scars.all_scars.
+        def injury_fingerprint
+          XMLData.injuries.map { |part, v| [part, v['wound'], v['scar']] }.freeze
+        end
 
-        # Cache variables
-        @injury_cache_key = nil
-        @wounds_cache = nil
-        @scars_cache = nil
-        @cache_mutex = Mutex.new
-
-        # Retrieves injury data, utilizing caching for efficiency.
-        # @return [[Array<Wound>, Array<Scar>]] cached wounds and scars data
+        # Get cached or fresh injury data
         def get_injury_data
-          current_key = XMLData.injuries
+          current_key = injury_fingerprint
 
           # Fast path: return cached data if key hasn't changed
           if @injury_cache_key == current_key && @wounds_cache && @scars_cache
@@ -51,11 +73,8 @@ module Lich
           end
         end
 
-        # Calculates the effective injury from wounds and scars for a given body part.
-        # @param body_part [Symbol] the body part to check (e.g., :leftArm)
-        # @param wounds_hash [Hash] a hash mapping body parts to wound counts
-        # @param scars_hash [Hash] a hash mapping body parts to scar counts
-        # @return [Integer] the effective injury value
+        # Helper method to calculate effective injury level from hash data
+        # Rank 1 scars are ignored, and wounds take precedence over scars
         def effective_injury_from_hashes(body_part, wounds_hash, scars_hash)
           scar = scars_hash[body_part.to_s] || 0
           wound = wounds_hash[body_part.to_s] || 0
@@ -64,38 +83,33 @@ module Lich
           [wound, effective_scar].max
         end
 
-        # Checks if there are injuries at a specific rank for the given body parts.
-        # @param rank [Integer] the injury rank to check
-        # @param wounds_hash [Hash] a hash mapping body parts to wound counts
-        # @param scars_hash [Hash] a hash mapping body parts to scar counts
-        # @param parts [Array<Symbol>] the body parts to check
-        # @return [Boolean] true if any specified body part has an injury at the given rank
+        # Check if any of the given body parts have an injury at exactly a specific rank
         def injuries_at_rank?(rank, wounds_hash, scars_hash, *parts)
           parts.flatten.any? do |part|
             effective_injury_from_hashes(part, wounds_hash, scars_hash) == rank
           end
         end
 
-        # Checks if there are injuries at or above a specific rank for the given body parts.
-        # @param rank [Integer] the minimum injury rank to check
-        # @param wounds_hash [Hash] a hash mapping body parts to wound counts
-        # @param scars_hash [Hash] a hash mapping body parts to scar counts
-        # @param parts [Array<Symbol>] the body parts to check
-        # @return [Boolean] true if any specified body part has an injury at or above the given rank
+        # Check if any of the given body parts have an injury of a specific rank or higher
         def injuries_at_or_above_rank?(rank, wounds_hash, scars_hash, *parts)
           parts.flatten.any? do |part|
             effective_injury_from_hashes(part, wounds_hash, scars_hash) >= rank
           end
         end
 
-        # Determines if the character can bypass injuries based on active effects.
-        # @return [Boolean] true if the character can bypass injuries
+        # Check for the presence of a buff that bypasses rank 2 or lower injuries
         def bypasses_injuries?
           Effects::Buffs.active?("Sigil of Determination")
         end
 
-        # Checks if the character is able to cast spells based on their injury status.
-        # @return [Boolean] true if the character can cast spells
+        # NOTE: every able_to_*? predicate calls fix_injury_mode('both') and, on a
+        # cache miss, Scars.all_scars toggles the injury mode to 'scar' and back.
+        # Each of those sends an _injury command and waits up to 7.5 seconds for the
+        # game to answer, so one cache miss can block for roughly 15 seconds if the
+        # round trips time out. These are not instantaneous checks; avoid calling
+        # them in tight loops.
+
+        # Check if character is able to cast spells
         def able_to_cast?
           fix_injury_mode("both")
 
@@ -132,8 +146,7 @@ module Lich
           true
         end
 
-        # Checks if the character is able to sneak based on their injury status.
-        # @return [Boolean] true if the character can sneak
+        # Check if character is able to sneak
         def able_to_sneak?
           fix_injury_mode("both")
 
@@ -152,8 +165,7 @@ module Lich
           true
         end
 
-        # Checks if the character is able to search based on their injury status.
-        # @return [Boolean] true if the character can search
+        # Check if character is able to search
         def able_to_search?
           fix_injury_mode("both")
 
@@ -171,8 +183,7 @@ module Lich
           true
         end
 
-        # Checks if the character is able to use ranged weapons based on their injury status.
-        # @return [Boolean] true if the character can use ranged weapons
+        # Check if character is able to use ranged weapons
         def able_to_use_ranged?
           fix_injury_mode("both")
 

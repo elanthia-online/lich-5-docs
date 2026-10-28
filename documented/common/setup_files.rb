@@ -8,113 +8,135 @@
   - Base YAML files (base.yaml, base-empty.yaml)
   - Character-specific YAML files ({character}-setup.yaml)
   - Include files with recursive resolution and circular dependency protection
-  - Automatic caching with modification-time checking
+  - Automatic caching with content-hash freshness checking
   - Deep-clone protection against in-memory mutation
 
   @see https://elanthipedia.play.net/Lich_script_development#dependency
 =end
 
+require 'digest'
 require 'monitor'
 require 'ostruct'
 require 'set' # rubocop:disable Lint/RedundantRequireStatement -- needed for Ruby < 3.2
 require 'yaml'
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for Lich 5, the Ruby scripting engine for GemStone IV and DragonRealms.
 module Lich
-  # Namespace for common Lich functionality shared across games.
+  # Namespace for common utilities shared across Lich scripts and game instances.
   module Common
     CORE_SETUPFILES = true
 
-    # Loads, caches, and merges YAML configuration files for Lich scripts.
+    # Manages YAML configuration file loading, caching, and cascading merge for Lich scripts.
     #
-    # SetupFiles manages a cascading merge of base, character-specific, and included
-    # configuration files. It handles recursive include resolution with circular
-    # dependency protection, automatic caching with modification-time checking, and
-    # deep-clone protection to prevent in-memory mutations from affecting cached data.
+    # Supports:
+    # - Base YAML files (base.yaml, base-empty.yaml)
+    # - Character-specific YAML files ({character}-setup.yaml)
+    # - Include files with recursive resolution and circular dependency protection
+    # - Automatic caching with content-hash (SHA256) freshness checking
+    # - Deep-clone protection against in-memory mutation
     #
-    # Files are merged in this order: base.yaml, base-empty.yaml, resolved includes,
-    # then character-specific profiles. Keys listed in a file's `union_keys` property
-    # are merged as array unions instead of overwrites, allowing multiple files to
-    # contribute to shared lists.
-    #
-    # @example Load character settings with a custom profile suffix
-    #   setup = SetupFiles.new
-    #   settings = setup.get_settings(['custom_suffix'])
-    #   puts settings.some_key
-    #
-    # @example Load game data
-    #   setup = SetupFiles.new
-    #   spells = setup.get_data('spells')
+    # Caching decisions are based on file content digest, not mtime, to handle rapid
+    # rewrites and source-path changes correctly. Files are deep-cloned on access to
+    # prevent scripts from mutating cached settings.
     #
     # @see https://elanthipedia.play.net/Lich_script_development#dependency
     class SetupFiles
       include MonitorMixin
 
-      # Cached metadata and content for a single YAML configuration file.
+      # Holds parsed YAML file content with metadata for cache validation.
       #
-      # Stores the file path, name, modification time, and parsed YAML data.
-      # Provides deep-clone access to prevent scripts from mutating cached data.
+      # Provides deep-cloned data access to prevent external mutation of cached settings,
+      # with automatic retry on transient Ruby iteration errors.
       class FileInfo
-        attr_reader :path, :name, :mtime
+        # Attempts at a deep clone before a transient iteration error propagates.
+        DEEP_COPY_ATTEMPTS = 3
 
-        # Initializes a FileInfo cache entry.
+        attr_reader :path, :name, :mtime, :digest
+
+        # Creates a FileInfo instance with parsed YAML content and metadata.
         #
-        # @param path [String] directory path containing the file
-        # @param name [String] filename (basename)
-        # @param data [Hash] parsed YAML data
-        # @param mtime [Time] file modification time
-        # @return [FileInfo]
-        def initialize(path:, name:, data:, mtime:)
+        # @param path [String] directory path where the file was loaded from
+        # @param name [String] filename (basename without directory)
+        # @param data [Hash] parsed YAML content
+        # @param mtime [Time] file modification time from disk
+        # @param digest [String, nil] SHA256 hexdigest for freshness validation; computed if not provided
+        # @return [void]
+        def initialize(path:, name:, data:, mtime:, digest: nil)
           @path = path
           @name = name
           @data = data
           @mtime = mtime
+          @digest = digest
         end
 
         # Deep clone of data to prevent scripts from mutating cached settings.
         def data
-          Marshal.load(Marshal.dump(@data))
+          deep_copy(@data)
         end
 
         # Efficient deep clone of a single property.
         def peek(property)
-          Marshal.load(Marshal.dump(@data[property.to_sym]))
+          deep_copy(@data[property.to_sym])
         end
 
-        # Returns the full filepath as a string.
+        # Returns the full path to the cached file.
         #
-        # @return [String] joined path and filename
+        # @return [String] path joined from directory and filename
         def to_s
           File.join(@path, @name)
         end
 
-        # Returns a string representation of the cached file metadata.
+        # Returns a string representation of this FileInfo for debugging.
         #
-        # @return [String] formatted inspection output
+        # @return [String] formatted as #<SetupFiles::FileInfo @name=..., @path=..., @mtime=..., @digest=...>
         def inspect
-          "#<SetupFiles::FileInfo @name=#{@name}, @path=#{@path}, @mtime=#{@mtime}>"
+          "#<SetupFiles::FileInfo @name=#{@name}, @path=#{@path}, @mtime=#{@mtime}, @digest=#{@digest}>"
+        end
+
+        private
+
+        # Marshal.dump walks every Hash it serializes. Ruby raises RuntimeError
+        # ("... during iteration") if a Hash changes mid-walk. A user hit
+        # "hash representation was changed during iteration" here on Ruby 4.0.0;
+        # what changed the Hash is unknown, as nothing writes @data after load.
+        # This is a permanent defense, not tied to a Ruby version. The copy only
+        # reads @data, so retrying is safe; unrelated errors propagate unchanged.
+        def deep_copy(obj)
+          attempts = 0
+          begin
+            Marshal.load(Marshal.dump(obj))
+          rescue RuntimeError => e
+            raise unless e.message.include?('during iteration')
+
+            attempts += 1
+            raise if attempts >= DEEP_COPY_ATTEMPTS
+
+            SetupFiles.safe_log("SetupFiles: retrying deep copy of #{self} (attempt #{attempts}): #{e.message}")
+            # Let any thread mid-operation on the Hash finish before retrying.
+            Thread.pass
+            retry
+          end
         end
       end
 
-      # Initializes a SetupFiles instance.
+      # Creates a SetupFiles instance with optional debug logging.
       #
-      # @param debug [Boolean] if true, logs detailed cache operations to the debug stream; defaults to false
-      # @return [SetupFiles]
+      # @param debug [Boolean] enable debug logging to track file loads and cache operations; defaults to false
+      # @return [void]
       def initialize(debug = false)
         super()
         @files_cache = {}
         @debug = debug
       end
 
-      # Loads a YAML file safely, converting it to a Hash via OpenStruct.
+      # Loads a YAML file and returns its content as a Hash, with error recovery.
       #
-      # Silently catches and logs parsing errors, returning an empty Hash on failure.
-      # This method is tolerant of YAML errors that occur during script initialization,
-      # before full error reporting is available.
+      # Uses unsafe_load to support Ruby objects, game-specific classes, and symbols in YAML.
+      # Logs parsing errors and returns an empty Hash on failure rather than raising.
       #
-      # @param filepath [String] path to the YAML file
-      # @return [Hash] parsed YAML as a Hash, or {} on parse error
-      # @api private
+      # @param filepath [String] path to the YAML file to load
+      # @return [Hash] parsed YAML content as a Hash, or {} on parse error
+      # @note Errors are logged but do not interrupt processing
       def safe_load_yaml(filepath)
         OpenStruct.new(YAML.unsafe_load_file(filepath)).to_h
       rescue => e
@@ -178,6 +200,19 @@ module Lich
       def reload
         reload_profiles(character_suffixes_to_filenames(['setup']))
         reload_data
+      end
+
+      # Guarded logging -- safe to call before Lich.log is defined. Public and
+      # class-level so FileInfo can share it.
+      #
+      # @param text [String] log message
+      # @return [void]
+      def self.safe_log(text)
+        if defined?(Lich) && Lich.respond_to?(:log)
+          Lich.log(text)
+        else
+          $stderr.puts(text)
+        end
       end
 
       private
@@ -308,26 +343,47 @@ module Lich
           end
 
           current_files.each do |filename, filepath|
-            last_modified_date = File.mtime(filepath)
+            # Freshness is decided by file content (SHA256), not mtime. mtime is
+            # unreliable: two writes within one filesystem timestamp tick share
+            # an mtime, so an mtime-only check serves stale data after a fast
+            # rewrite (see issue #1596). We also reload when the winning source
+            # path changes (e.g. a scripts/data/custom override is removed and
+            # the same basename now resolves to scripts/data), which an
+            # mtime-only check masks when the two files share an mtime.
+            current_digest = file_digest(filepath)
             cached_file = cache_get_by_filename(filename)
-            safe_log "#{self.class}::#{__callee__} filepath=#{filepath}, last_modified_date=#{last_modified_date}, cached_file=#{cached_file.inspect}" if @debug
-            if cached_file.nil? || cached_file.mtime != last_modified_date
-              cache_put_by_filepath(filepath)
+            safe_log "#{self.class}::#{__callee__} filepath=#{filepath}, current_digest=#{current_digest}, cached_file=#{cached_file.inspect}" if @debug
+            if cached_file.nil? ||
+               cached_file.path != File.dirname(filepath) ||
+               cached_file.digest != current_digest
+              cache_put_by_filepath(filepath, digest: current_digest)
             end
           end
         end
       end
 
-      def cache_put_by_filepath(filepath)
+      def cache_put_by_filepath(filepath, digest: nil)
         synchronize do
           safe_log "#{self.class}::#{__callee__} filepath=#{filepath}" if @debug
           @files_cache[File.basename(filepath)] = FileInfo.new(
             path: File.dirname(filepath),
             name: File.basename(filepath),
             mtime: File.mtime(filepath),
+            digest: digest || file_digest(filepath),
             data: safe_load_yaml(filepath)
           )
         end
+      end
+
+      # Content hash used as the cache freshness signal. Returns nil when the
+      # file cannot be read (e.g. it vanished between the glob and here); a nil
+      # digest never equals a stored digest, so the entry is treated as changed
+      # and reloaded on the next pass.
+      def file_digest(filepath)
+        Digest::SHA256.file(filepath).hexdigest
+      rescue => e
+        safe_log "#{self.class}::#{__callee__} could not hash #{filepath}: #{e.message}" if @debug
+        nil
       end
 
       def cache_get_by_filename(filename)
@@ -374,12 +430,9 @@ module Lich
       #
       # @param text [String] log message
       # @return [void]
+      # @see SetupFiles.safe_log
       def safe_log(text)
-        if defined?(Lich) && Lich.respond_to?(:log)
-          Lich.log(text)
-        else
-          $stderr.puts(text)
-        end
+        self.class.safe_log(text)
       end
     end
   end

@@ -15,29 +15,39 @@ require_relative '../util/deep_freeze'
 # the main Frontend implementation continues in the module reopening below.
 module Lich
   module Common
+    # Catalog and capabilities interface for game frontends.
+    #
+    # Manages frontend definitions and capabilities (xml, gsl, streams, mono, etc.),
+    # maintaining both built-in defaults (wrayth, stormfront, genie, etc.) and
+    # user-defined custom frontends from settings. The registry is thread-safe and
+    # snapshot-backed for atomic reloads.
+    #
+    # Script authors query capabilities via {.supports_xml?}, {.supports_streams?},
+    # {.has_capability?}, and retrieval via {.definition_for}. Frontend detection and
+    # launch fall to the bootstrapping layer.
     module Frontend
-      # Canonical platform keys used by frontend discovery and launch-plan metadata.
-      #
-      # @return [Array<Symbol>] `:darwin` (macOS), `:linux`, `:windows`, or `:unsupported`
-      PLATFORM_KEYS = %i[darwin linux windows unsupported].freeze
-      # Valid capability symbols that frontends may declare.
-      #
-      # - `:xml` – frontend supports the XML stream protocol
-      # - `:gsl` – frontend supports GSL (Gemstone Scripting Language)
-      # - `:streams` – frontend supports streaming data (Avalon, Stormfront)
-      # - `:mono` – frontend supports monospace text rendering
-      # - `:room_window` – frontend can display the room window independently
-      # - `:sentinel` – frontend is the Sentinel client
+      # Canonical platform identifiers recognized by frontend discovery and launch plans.
       #
       # @return [Array<Symbol>]
-      CAPABILITY_VOCABULARY = %i[xml gsl streams mono room_window sentinel].freeze
-      # Manifest of built-in frontend definitions.
+      # @see .platform_key
+      PLATFORM_KEYS = %i[darwin linux windows unsupported].freeze
+      # Capabilities that may be declared by custom frontends.
       #
-      # Each tuple is [frontend_id, filename] where frontend_id is the stable catalog
-      # identifier and filename is the relative path (without .rb) in the frontend/ directory.
-      # Order is preserved for the GTK launcher UI and legacy capability constants.
+      # Runtime-only implementation details (e.g., negotiated during login) are
+      # deliberately excluded from this public vocabulary.
+      #
+      # @return [Array<Symbol>]
+      # @see .capability_vocabulary
+      CAPABILITY_VOCABULARY = %i[xml gsl streams mono room_window sentinel room_element game_links double_bold].freeze
+      # Manifest of shipped frontend definitions paired with their file paths.
+      #
+      # Each entry is [canonical_id, file_name]: the id is lowercased and used for
+      # canonical lookup and to validate each definition file's :id field; the file_name
+      # is loaded from the frontend/ subdirectory. Order is preserved in GTK selectors
+      # and legacy capability constants.
       #
       # @return [Array<Array<String>>]
+      # @see BUILT_IN_FRONTEND_IDS
       BUILT_IN_DEFINITION_FILES = [
         %w[stormfront wrayth],
         %w[profanity profanity],
@@ -48,13 +58,10 @@ module Lich
         %w[avalon avalon],
         %w[saga saga]
       ].freeze
-      # Canonical identifiers for Lich's built-in frontend catalog.
-      #
-      # These identifiers are reserved and cannot be overridden by user-defined frontends.
-      # User configuration may only supply launch-field overrides for built-ins, not replace
-      # identity or protocol capabilities.
+      # Stable canonical identifiers for built-in frontends, in registration order.
       #
       # @return [Array<String>]
+      # @see .built_in_frontends
       BUILT_IN_FRONTEND_IDS = BUILT_IN_DEFINITION_FILES.map(&:first).freeze
 
       # Native user32 bindings require a Windows MRI ABI, not merely a Windows host.
@@ -93,16 +100,8 @@ if Lich::Common::Frontend.native_windows_runtime?
   end
 end
 
-# Lich namespace: the root of the Lich5 scripting engine.
 module Lich
-  # Namespace for Lich's public API and utilities.
   module Common
-    # The main Frontend module (continued from earlier namespace definition).
-    #
-    # This reopening contains the runtime registry implementation, user configuration
-    # management, capability queries, and platform-specific window focus logic.
-    #
-    # @api private
     module Frontend
       @session_file = nil
       @tmp_session_dir = File.join Dir.tmpdir, "simutronics", "sessions"
@@ -110,13 +109,13 @@ module Lich
       @pid_mutex = Mutex.new
       ORIGIN_SENTINEL = "\x1f"
 
-      # Recursively deep-copies Hashes, Arrays, and other values.
+      # Recursively duplicates Hashes and Arrays; non-collections are shallow-copied.
       #
-      # Used to isolate registry entries from external mutation. Hashes and Arrays are
-      # recursively copied; all other types return a shallow duplicate.
+      # Used internally when storing copies of user configuration to ensure registry
+      # isolation from caller mutations. Always returns a new object.
       #
-      # @param value [Object] the value to copy
-      # @return [Object] a deep copy of the input
+      # @param value [Hash, Array, Object] the value to copy
+      # @return [Hash, Array, Object] a duplicate
       # @api private
       def self.deep_copy(value)
         case value
@@ -550,19 +549,18 @@ module Lich
 
       seal_built_in_catalog!
 
-      # Environment variables for the Saga launcher on Linux.
+      # Launch environment variables for the Saga frontend on Linux.
       #
-      # Extracted from the built-in Saga definition at module load time. Set when
-      # launching Saga to ensure proper library paths and runtime configuration.
+      # Cached from the sealed built-in Saga definition; initialized at module load time.
       #
-      # @return [Hash, nil] the `launch_plans.linux.environment` hash from the Saga definition,
-      #   or nil if Saga is not in the catalog
+      # @return [Hash, nil]
+      # @see .definition_for
       SAGA_LICH_LAUNCH_ENVIRONMENT = definition_for(:saga)
                                      .dig(:metadata, :launch_plans, :linux, :environment)
 
       # --- Client String -----------------------------------------
-      # Default client string (Wrayth identity) sent during handshake
-      CLIENT_STRING = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML"
+      # Default client string (Saga identity) sent during handshake
+      CLIENT_STRING = "/FE:WRAYTH /VERSION:1.0.1.28 /P:SAGA /XML"
 
       # --- Backward-Compatible Constants -------------------------
       # These frozen arrays preserve the built-in capability membership exposed
@@ -570,91 +568,138 @@ module Lich
       # frontends are loaded. Runtime callers that need current custom frontend
       # membership must use frontends_with_capability or supports_*? instead.
       XML_FRONTENDS      = frontends_with_capability(:xml).freeze
-      # Cached list of frontends that support GSL (Gemstone Scripting Language).
+      # Frozen list of frontends claiming GSL capability, in registry order.
       #
-      # This list is frozen at module load and does not update when user-defined frontends
-      # are loaded. Scripts requiring current custom frontend membership must use
-      # .frontends_with_capability(:gsl) instead.
+      # Preserves the membership exposed by older Lich versions; not updated when
+      # user-defined frontends are loaded. For current capability membership, use
+      # {.frontends_with_capability} or {.supports_gsl?} instead.
       #
-      # @return [Array<String>] frontend identifiers and aliases with GSL capability
+      # @return [Array<String>]
       GSL_FRONTENDS      = frontends_with_capability(:gsl).freeze
-      # Cached list of frontends that support streaming data.
+      # Frozen list of frontends claiming streams capability, in registry order.
       #
-      # This list is frozen at module load and does not update when user-defined frontends
-      # are loaded. Scripts requiring current custom frontend membership must use
-      # .frontends_with_capability(:streams) instead.
+      # Preserves the membership exposed by older Lich versions; not updated when
+      # user-defined frontends are loaded. For current capability membership, use
+      # {.frontends_with_capability} or {.supports_streams?} instead.
       #
-      # @return [Array<String>] frontend identifiers and aliases with streams capability
+      # @return [Array<String>]
       STREAM_FRONTENDS   = frontends_with_capability(:streams).freeze
-      # Cached list of frontends that support monospace text rendering.
+      # Frozen list of frontends claiming mono capability, in registry order.
       #
-      # This list is frozen at module load and does not update when user-defined frontends
-      # are loaded. Scripts requiring current custom frontend membership must use
-      # .frontends_with_capability(:mono) instead.
+      # Preserves the membership exposed by older Lich versions; not updated when
+      # user-defined frontends are loaded. For current capability membership, use
+      # {.frontends_with_capability} or {.supports_mono?} instead.
       #
-      # @return [Array<String>] frontend identifiers and aliases with mono capability
+      # @return [Array<String>]
       MONO_FRONTENDS     = frontends_with_capability(:mono).freeze
-      # Cached list of frontends that are the Sentinel client.
+      # Frozen list of frontends claiming sentinel capability, in registry order.
       #
-      # This list is frozen at module load and does not update when user-defined frontends
-      # are loaded. Scripts requiring current custom frontend membership must use
-      # .frontends_with_capability(:sentinel) instead.
+      # Preserves the membership exposed by older Lich versions; not updated when
+      # user-defined frontends are loaded. For current capability membership, use
+      # {.frontends_with_capability} or {.supports_sentinel?} instead.
       #
-      # @return [Array<String>] frontend identifiers and aliases with sentinel capability
+      # @return [Array<String>]
       SENTINEL_FRONTENDS = frontends_with_capability(:sentinel).freeze
 
       # --- Predicate Methods -------------------------------------
       # These now delegate to has_capability? for consistency.
 
-      # Checks whether a frontend supports the XML stream protocol.
+      # Checks if a frontend supports XML output.
       #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :xml capability
+      # @param fe [String, nil] the frontend name (defaults to current $frontend)
+      # @return [Boolean] true if the frontend has :xml capability
       # @example
       #   Frontend.supports_xml?("wrayth") #=> true
-      #   Frontend.supports_xml? #=> true if current frontend supports XML
+      # @see .has_capability?
       def self.supports_xml?(fe = $frontend)
         has_capability?(fe, :xml)
       end
 
-      # Checks whether a frontend supports GSL (Gemstone Scripting Language).
+      # Checks if a frontend supports GSL (GemStone Scripting Language) output.
       #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :gsl capability
+      # @param fe [String, nil] the frontend name (defaults to current $frontend)
+      # @return [Boolean] true if the frontend has :gsl capability
+      # @example
+      #   Frontend.supports_gsl?("wrayth") #=> true
+      # @see .has_capability?
       def self.supports_gsl?(fe = $frontend)
         has_capability?(fe, :gsl)
       end
 
-      # Checks whether a frontend supports streaming data.
+      # Checks if a frontend supports game streams (segmented XML).
       #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :streams capability
+      # @param fe [String, nil] the frontend name (defaults to current $frontend)
+      # @return [Boolean] true if the frontend has :streams capability
+      # @example
+      #   Frontend.supports_streams?("genie") #=> true
+      # @see .has_capability?
       def self.supports_streams?(fe = $frontend)
         has_capability?(fe, :streams)
       end
 
-      # Checks whether a frontend supports monospace text rendering.
+      # Checks if a frontend supports monospace output.
       #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :mono capability
+      # @param fe [String, nil] the frontend name (defaults to current $frontend)
+      # @return [Boolean] true if the frontend has :mono capability
+      # @example
+      #   Frontend.supports_mono?("avalon") #=> true
+      # @see .has_capability?
       def self.supports_mono?(fe = $frontend)
         has_capability?(fe, :mono)
       end
 
-      # Checks whether a frontend can display the room window independently.
+      # Checks if a frontend supports a dedicated room window pane.
       #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :room_window capability
+      # @param fe [String, nil] the frontend name (defaults to current $frontend)
+      # @return [Boolean] true if the frontend has :room_window capability
+      # @see .has_capability?
       def self.supports_room_window?(fe = $frontend)
         has_capability?(fe, :room_window)
       end
 
-      # Checks whether a frontend is the Sentinel client.
-      #
-      # @param fe [String, nil] the frontend name (defaults to the current $frontend global)
-      # @return [Boolean] true if the frontend has the :sentinel capability
+      # Whether the front end renders the Saga-identity stream's inline <room>
+      # block itself. Others get it rewritten to the legacy roomName/roomDesc
+      # layout (see Lich::Common::RoomBlock).
+      # Reads the front end's table only; each client's set comes from ClientCapabilities.
+      def self.supports_room_element?(fe = $frontend)
+        has_capability?(fe, :room_element)
+      end
+
+      # Whether the front end handles DragonRealms' <a exist> object links.
+      # Others get them stripped to the legacy text (Markup.strip_game_links).
+      # Reads the front end's table only; each client's set comes from ClientCapabilities.
+      def self.supports_game_links?(fe = $frontend)
+        has_capability?(fe, :game_links)
+      end
+
+      # Whether the front end handles DragonRealms' creature bold: the doubled
+      # <pushBold/><pushBold/> around linked creatures in room-object listings
+      # and the single pair around them in action and assess lines. Others get
+      # the legacy line: one pair in the listings (Markup.collapse_double_bold)
+      # and none elsewhere (Markup.strip_link_bold).
+      # Reads the front end's table only; each client's set comes from ClientCapabilities.
+      def self.supports_double_bold?(fe = $frontend)
+        has_capability?(fe, :double_bold)
+      end
+
+      # The running session also gets the sentinel when --sentinel asked for
+      # it, so a client can identify as another frontend (stormfront, for the
+      # scripts that test for it) and still receive the origin marker.
       def self.supports_sentinel?(fe = $frontend)
+        return true if sentinel_requested? && canonical_name(fe) == canonical_name($frontend)
+
         has_capability?(fe, :sentinel)
+      end
+
+      # Whether --sentinel was passed for this session.
+      # @return [Boolean]
+      def self.sentinel_requested?
+        @sentinel_requested == true
+      end
+
+      # @param value [Boolean]
+      def self.sentinel_requested=(value)
+        @sentinel_requested = value == true
       end
 
       # Build the <playerID> re-emit tag for a detachable client (e.g. Saga).
@@ -684,9 +729,127 @@ module Lich
         $frontend = value
       end
 
+      # Handshake client string for a frontend: its registry :client_string,
+      # else CLIENT_STRING, with the /VERSION: value replaced by version
+      # (--fe-version) when one is given.
+      def self.client_string(version = nil, frontend: client)
+        base = metadata_for(frontend, :client_string) || CLIENT_STRING
+        return base if version.nil?
+
+        base.sub(%r{/VERSION:\S+}) { "/VERSION:#{version}" }
+      end
+
+      # A front end's own handshake line, as it reaches Lich's proxy: an
+      # optional <c> prefix (Frostbite), an optional leading slash (Genie sends
+      # "FE:WRAYTH ..."), FE:<name>, and a /XML token. The line ending is kept.
+      PROXY_HANDSHAKE_LINE = %r{\A(?<prefix>(?:<c>)?)/?FE:\S+[^\r\n]*?[ \t]/XML(?=[ \t\r\n]|\z)[^\r\n]*(?<eol>\r?\n)?\z}i
+
+      # The handshake to forward for the line a proxied front end sent (the line
+      # after the login key). A front end's own handshake is replaced with
+      # client_string(version, frontend:), Saga's own /P:SAGA line included
+      # (DragonRealms needs Lich's /VERSION:), so every proxied session asks the game
+      # for the stream Lich sends Wizard, Frostbite and --without-frontend, and
+      # Lich's adapters (RoomBlock, Markup) reshape it for the front end. $frontend
+      # is not touched: it comes from the launch arguments, so capability
+      # lookups still answer for the real front end.
+      #
+      # Forwarded unchanged:
+      # - a line that is not an /XML handshake (a key, a command, a plain-text client);
+      # - any handshake when keep is true (--keep-fe-string or Lich.keep_fe_string).
+      #
+      # Logs the line received and the line forwarded, with the reason
+      # (log_client_string).
+      #
+      # @param line [String, nil] the line as read from the front end
+      # @param version [String, nil] the --fe-version value
+      # @param keep [Boolean] forward the front end's own handshake
+      # @param frontend [String, nil] the front end, for its registry :client_string
+      # @return [String, nil] the line to forward
+      def self.proxy_handshake(line, version: nil, keep: false, frontend: client)
+        log_client_string(:frontend, line)
+        forwarded, note = proxy_handshake_decision(line, version, keep, frontend)
+        log_client_string(:game, forwarded, note: note)
+        forwarded
+      end
+
+      # The line proxy_handshake forwards, and why, for its log line.
+      # @return [Array(String, String)] the line to forward and the reason
+      def self.proxy_handshake_decision(line, version, keep, frontend)
+        match = PROXY_HANDSHAKE_LINE.match(line.to_s)
+        return [line, 'forwarded unchanged: not a client string'] unless match
+        return [line, "the front end's own: --keep-fe-string or Lich.keep_fe_string"] if keep
+
+        ["#{match[:prefix]}#{client_string(version, frontend: frontend)}#{match[:eol]}", CLIENT_STRING_REPLACED_NOTE]
+      end
+      private_class_method :proxy_handshake_decision
+
+      # --- Client String Logging ---------------------------------
+      # Longest client string log_client_string echoes; the rest is elided.
+      CLIENT_STRING_LOG_LIMIT = 160
+
+      # The shape of a front end's handshake line (optional <c>, optional
+      # slash, FE:), the only kind of line log_client_string echoes.
+      LOGGABLE_CLIENT_STRING = %r{\A(?:<c>)?/?FE:}i
+
+      # Labels for client string logging, keyed by source symbol.
+      #
+      # @return [Hash{Symbol => String}]
+      # @see .log_client_string
+      CLIENT_STRING_LOG_LABELS = { frontend: 'from front end', game: 'sent to game' }.freeze
+
+      # log_client_string's note when Lich sent its client string in place of
+      # the front end's (proxy_handshake, send_handshake).
+      CLIENT_STRING_REPLACED_NOTE = "Lich's, in place of the front end's"
+
+      # Log one side of the login handshake: the client string the front end
+      # sent Lich (:frontend) or the one Lich sent the game (:game).
+      #
+      # Every login path logs through here, and only the version/handshake line
+      # is ever passed in, never the login key that precedes it. A line that is
+      # not shaped like a handshake is still withheld (only its length is
+      # logged): proxy_handshake forwards whatever a front end sent in that
+      # slot, and that could be a key.
+      #
+      # @param source [Symbol] :frontend or :game
+      # @param line [String, nil] the line as read or sent
+      # @param note [String, nil] why this string, appended in parentheses
+      # @return [void]
+      def self.log_client_string(source, line, note: nil)
+        message = "info: client string #{CLIENT_STRING_LOG_LABELS.fetch(source)}: #{loggable_client_string(line)}"
+        message += " (#{note})" if note
+        Lich.log message
+      end
+
+      # A client string as log_client_string writes it: the first line only,
+      # without its line ending, control characters and invalid UTF-8 shown
+      # as ?, capped at CLIENT_STRING_LOG_LIMIT characters; "(none)" for nil,
+      # and only the length of a line that is not shaped like a handshake.
+      # @param line [String, nil]
+      # @return [String]
+      def self.loggable_client_string(line)
+        return '(none)' if line.nil?
+
+        # Sockets read BINARY, where scrub is a no-op; read the bytes as UTF-8.
+        text = line.to_s.dup.force_encoding(Encoding::UTF_8).scrub('?')
+        first = text[/\A[^\r\n]*/]
+        after = text[first.length..].delete("\r\n").length
+        return "(withheld: not a client string, #{first.length + after} characters)" unless first.match?(LOGGABLE_CLIENT_STRING)
+
+        first = first.gsub(/[[:cntrl:]]/, '?')
+        if first.length > CLIENT_STRING_LOG_LIMIT
+          first = "#{first[0, CLIENT_STRING_LOG_LIMIT]}... (#{first.length - CLIENT_STRING_LOG_LIMIT} more characters)"
+        end
+        first += " (#{after} characters after a line break withheld)" if after.positive?
+        first
+      end
+      private_class_method :loggable_client_string
+
       # Send version string, ready signals, and setup commands to the game server.
-      # Used during login handshake for wizard/avalon/frostbite frontends.
+      # Used during login handshake for wizard/avalon/frostbite frontends, whose
+      # own version line is discarded. Logs the version string as sent in place
+      # of the front end's (log_client_string).
       def self.send_handshake(version_string)
+        log_client_string(:game, version_string, note: CLIENT_STRING_REPLACED_NOTE)
         $_CLIENTBUFFER_.push(version_string.dup)
         Game._puts(version_string)
         2.times do
@@ -702,42 +865,45 @@ module Lich
         end
       end
 
-      # Writes a session descriptor file for detachable clients (e.g., Saga).
+      # Writes a temporary session descriptor for the frontend to detect.
       #
-      # Creates the file at %TEMP%/simutronics/sessions/{Name}.session on Windows or
-      # /tmp/simutronics/sessions/{Name}.session on Unix, containing a JSON object with
-      # `name`, `host`, and `port`. Stores the path internally for later cleanup.
+      # Creates the descriptor as JSON in the system temp directory
+      # (Simutronics/sessions), containing name, host, and port. The file path is
+      # stored for later cleanup. Nil name skips creation silently.
       #
-      # @param name [String, nil] the session name (e.g., "Dragonrealms"); nil skips file creation
-      # @param host [String] the game server hostname
+      # @param name [String, nil] the session/account name
+      # @param host [String] the game server hostname or IP
       # @param port [Integer] the game server port
-      # @param display_session [Boolean] if true, prints the file path and contents to stdout
+      # @param display_session [Boolean] whether to log the descriptor (default true)
       # @return [void]
-      # @example
-      #   Frontend.create_session_file("Dragonrealms", "dr.simutronics.net", 4901)
+      # @see .session_file_location
+      # @see .cleanup_session_file
       def self.create_session_file(name, host, port, display_session: true)
         return if name.nil?
         FileUtils.mkdir_p @tmp_session_dir
         @session_file = File.join(@tmp_session_dir, "%s.session" % name.downcase.capitalize)
         session_descriptor = { name: name, host: host, port: port }.to_json
-        puts "writing session descriptor to %s\n%s" % [@session_file, session_descriptor] if display_session
+        Lich.log "writing session descriptor to %s\n%s" % [@session_file, session_descriptor] if display_session
         File.open(@session_file, "w") do |fd|
           fd << session_descriptor
         end
       end
 
-      # Returns the path to the most recently created session descriptor file.
+      # Returns the path to the current session descriptor file, if created.
       #
-      # @return [String, nil] the session file path, or nil if no session file has been created
+      # @return [String, nil] the file path, or nil if no session file was created
+      # @see .create_session_file
       def self.session_file_location
         @session_file
       end
 
-      # Deletes the session descriptor file created by .create_session_file.
+      # Deletes the temporary session descriptor file, if it exists.
       #
-      # Safe to call multiple times or when no session file exists.
+      # Called during shutdown to clean up the file created by {.create_session_file}.
+      # Silently succeeds if no file was created or it has already been deleted.
       #
       # @return [void]
+      # @see .create_session_file
       def self.cleanup_session_file
         return if @session_file.nil?
         File.delete(@session_file) if File.exist? @session_file

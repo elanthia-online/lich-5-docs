@@ -1,6 +1,15 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich 5 scripting engine.
+#
+# Lich 5 is a Ruby scripting system for GemStone IV and DragonRealms.
 module Lich
+  # Namespace for DragonRealms-specific scripting functionality.
   module DragonRealms
+    # Namespace for Dragon Realms Common Healing data constants.
+    #
+    # Contains wound severity mappings, bleeding rate classifications, and regex patterns
+    # used to parse health status and classify injuries from the `health` and `perceive health` commands.
     module DRCH
       # Maps bleed rates from `health` command to severity number.
       # A partially tended wound is considered more severe than
@@ -10,14 +19,6 @@ module Lich
       #
       # Skill to tend based on https://elanthipedia.play.net/First_Aid_skill#Skill_to_Tend
       # A 'nil' value means that can't be tended because already is tended or isn't bleeding.
-      # Maps bleed rates from `health` command to severity number.
-      #
-      # A partially tended wound is considered more severe than
-      # its non-tended counterpart because once the bandages come off
-      # then the wound is much worse so they should be triaged first.
-      #
-      # @see Lich::DragonRealms::WOUND_SEVERITY
-      # @see Lich::DragonRealms::LODGED_SEVERITY
       BLEED_RATE_TO_SEVERITY = {
         'tended'                   => { severity: 1, bleeding: false, skill_to_tend: nil, skill_to_tend_internal: nil }.freeze,
         '(tended)'                 => { severity: 1, bleeding: false, skill_to_tend: nil, skill_to_tend_internal: nil }.freeze,
@@ -65,12 +66,6 @@ module Lich
       }.freeze
 
       # https://elanthipedia.play.net/Damage#Lodged_Items
-      # Maps lodged item descriptions to severity levels.
-      #
-      # @example
-      #   LODGED_SEVERITY["loosely hanging"] # => 1
-      #   LODGED_SEVERITY["deeply"] # => 4
-      # @see Lich::DragonRealms::BLEED_RATE_TO_SEVERITY
       LODGED_SEVERITY = {
         'loosely hanging' => 1,
         'shallowly'       => 2,
@@ -80,12 +75,6 @@ module Lich
       }.freeze
 
       # https://elanthipedia.play.net/Damage#Wound_Severity_Levels
-      # Maps wound descriptions to severity levels.
-      #
-      # @example
-      #   WOUND_SEVERITY["insignificant"] # => 1
-      #   WOUND_SEVERITY["devastating"] # => 11
-      # @see Lich::DragonRealms::BLEED_RATE_TO_SEVERITY
       WOUND_SEVERITY = {
         'insignificant'    => 1,
         'negligible'       => 2,
@@ -103,11 +92,6 @@ module Lich
       }.freeze
 
       # https://elanthipedia.play.net/Damage#Parasites
-      # Regular expressions to match parasite descriptions.
-      #
-      # @example
-      #   PARASITES_REGEX[0].match("small black blood mite") # => #<MatchData>
-      # @see Lich::DragonRealms::WOUND_SEVERITY
       PARASITES_REGEX = [
         /(?:small|large) (?:black|red) blood mite/,
         /(?:black|red|albino) (sand|forest) leech/,
@@ -117,13 +101,19 @@ module Lich
 
       # Parses the severity number out of the wound line from 'perceive health self'.
       # For example, the 'negligible' in "Fresh External:  light scratches -- negligible"
-      # Parses the severity number out of the wound line from 'perceive health self'.
-      #
-      # @example
-      #   "Fresh External:  light scratches -- negligible".match(PERCEIVE_HEALTH_SEVERITY_REGEX)
-      # @return [MatchData, nil] returns MatchData if matched, nil otherwise
       PERCEIVE_HEALTH_SEVERITY_REGEX = /(?<freshness>Fresh|Scars) (?<location>External|Internal).+--\s+(?<severity>insignificant|negligible|minor|more than minor|harmful|very harmful|damaging|very damaging|severe|very severe|devastating|very devastating|useless)\b/
 
+      # Regex pattern that captures a body part name, with optional left/right designation.
+      #
+      # The captured group `part` contains the normalized body part string, which may include
+      # abbreviations (l., r.) or full directional keywords (left, right).
+      #
+      # @return [Regexp] pattern with a named capture group `part`
+      # @example
+      #   "left arm".match(BODY_PART_REGEX)[:part] #=> "left arm"
+      # @example
+      #   "l. hand".match(BODY_PART_REGEX)[:part] #=> "l. hand"
+      # @see WOUND_BODY_PART_REGEX LODGED_BODY_PART_REGEX PARASITE_BODY_PART_REGEX
       BODY_PART_REGEX = /(?<part>(?:l\.|r\.|left|right)?\s?(?:\w+))/
 
       # Matches body parts in the `health` line for wounds and bleeders.
@@ -139,11 +129,6 @@ module Lich
       BLEEDER_LINE_REGEX = /^\b(inside\s+)?((l\.|r\.|left|right)\s+)?(head|eye|neck|chest|abdomen|back|arm|hand|leg|tail|skin)\b/
 
       # https://elanthipedia.play.net/Damage#Wounds
-      # Maps wound descriptions to severity levels using regular expressions.
-      #
-      # @example
-      #   WOUND_SEVERITY_REGEX_MAP[/minor abrasions to the head/] # => { severity: 1, internal: false, scar: false }
-      # @see Lich::DragonRealms::WOUND_SEVERITY
       WOUND_SEVERITY_REGEX_MAP = {
         # insignificant
         /minor abrasions to the #{WOUND_BODY_PART_REGEX}/                                                                    => { severity: 1, internal: false, scar: false }.freeze,
@@ -277,23 +262,40 @@ module Lich
         /You work carefully at tending/,
         /You work carefully at binding/,
         /That area has already been tended to/,
-        /That area is not bleeding/
+        /That area is not bleeding/,
+        /slips free/
       ].freeze
 
+      # Array of regex patterns that match failure or error responses from the TEND command.
+      #
+      # Used to detect when a tending attempt has failed due to fumble, insufficient skill,
+      # invalid syntax, missing free hand, or careless/foolish execution.
+      #
+      # @return [Array<Regexp>] patterns indicating TEND command failure
+      # @see TEND_SUCCESS_PATTERNS TEND_DISLODGE_PATTERNS
       TEND_FAILURE_PATTERNS = [
         /You fumble/,
         /too injured for you to do that/,
         /TEND allows for the tending of wounds/,
-        /^You must have a hand free/
+        /^You must have a hand free/,
+        /^You carelessly attempt/,
+        /^You foolishly attempt/
       ].freeze
 
+      # Array of regex patterns that match successful dislodging of lodged items during TEND.
+      #
+      # Matches when a tending action causes a lodged item (e.g., a projectile, bone fragment)
+      # to slip free from a wound as a side effect of treatment.
+      #
+      # @return [Array<Regexp>] patterns indicating successful item dislodging during tending
+      # @see TEND_SUCCESS_PATTERNS TEND_FAILURE_PATTERNS
       TEND_DISLODGE_PATTERNS = [
         /^You \w+ remove (a|the|some) (.*) from/,
         /^As you reach for the clay fragment/
       ].freeze
     end
 
-    # Backward compatibility — global variable aliases for third-party scripts
+    # Backward compatibility - global variable aliases for third-party scripts
     $DRCH_BLEED_RATE_TO_SEVERITY_MAP = DRCH::BLEED_RATE_TO_SEVERITY
     $DRCH_LODGED_TO_SEVERITY_MAP = DRCH::LODGED_SEVERITY
     $DRCH_WOUND_TO_SEVERITY_MAP = DRCH::WOUND_SEVERITY

@@ -22,42 +22,34 @@
 #
 
 require_relative 'pattern_gate'
+require_relative 'supplements'
 
-# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for GemStone IV and DragonRealms game-specific functionality.
   module Gemstone
-    # Namespace for combat-related parsing and definitions.
     module Combat
-      # Namespace for constant definitions used by combat parsers.
       module Definitions
-        # Namespace for flare pattern definitions and parsing.
-        #
-        # A flare is a proc that rides on an attack: weapon scripts, enchants, gloves,
-        # GEFs, flourishes. Each flare definition carries metadata about whether a damage
-        # line is expected, whether it targets a single creature or multiple, and whether
-        # it spawns an embedded spell as a separate attack.
-        #
-        # Timing (pre-flare vs. post-flare) is determined positionally by the parser
-        # based on the order flare announces appear in the log relative to attack events.
         module Flares
           FlareDef = Struct.new(:name, :patterns, :damaging, :aoe, :spawns)
 
-          # List of flare pattern definitions.
+          # Array of flare pattern definitions indexed by flare name.
           #
-          # Each entry is a FlareDef struct containing a flare name, array of regex patterns
-          # to match its announce line(s), and three boolean flags:
-          #   - damaging: whether a damage line is expected to follow (false for utility
-          #     flares like acuity or tailwind)
-          #   - aoe: whether the flare can hit multiple targets; false for single-target
-          #     flares even when their parent attack is AoE
-          #   - spawns: whether the flare casts an embedded spell as a separate attack
-          #     (e.g., Blink, sigil_cast), causing subsequent attack events in the same
-          #     chunk to be children rather than independent casts
+          # Each entry is a {FlareDef} struct carrying the flare's name, regex patterns
+          # that match its announce lines in the combat log, and three boolean flags:
           #
-          # @return [Array<FlareDef>] frozen array of flare definitions
+          # - **damaging**: true if a damage line is expected to follow (buff/utility
+          #   flares like acuity or tailwind return false)
+          # - **aoe**: false when the flare is explicitly single-target even if its
+          #   parent attack is not; most flares return true
+          # - **spawns**: true if the flare casts an embedded spell as a separate attack
+          #   (e.g. Blink or Sigil Cast), causing subsequent attack events in the same
+          #   chunk to become its children rather than independent casts
+          #
+          # Timing (pre-flare vs post-flare resolution) is NOT declared here; the parser
+          # determines it positionally by whether a flare is seen with an open attack event.
+          # Position in the log is the ground truth.
+          #
+          # @see #FLARE_LOOKUP
           # @see .parse
-          # @api private
           FLARE_DEFS = [
             FlareDef.new(:acid, [
               /\*\* Your .+? releases? a spray of acid! \*\*/,
@@ -182,8 +174,8 @@ module Lich
             FlareDef.new(:parasite, [/A slender .+? and black tendril lashes out from .+? and slashes (?<target>.+?) .+?!/].freeze, true, true, false),
             FlareDef.new(:physical_prowess, [/The vitality of nature bestows you with a burst of strength!/].freeze, false, true, false),
             FlareDef.new(:plasma, [
-              /\*\* Your .+? pulses with a burst of plasma energy! \*\*/,
-              /\*\* (?<attacker>.+?)'s#{MK_POST} .+? pulses with a burst of plasma energy! \*\*/
+              /\*\* Your .+? pulses with a burst of plasma energy(?: at (?<target>[^!]+))?! \*\*/,
+              /\*\* (?<attacker>.+?)'s#{MK_POST} .+? pulses with a burst of plasma energy(?: at (?<target>[^!]+))?! \*\*/
             ].freeze, true, true, false),
             # Glowbark / plasma weapon flare. Three lines, three roles (owner
             # breakdown 2026-09-06):
@@ -231,6 +223,22 @@ module Lich
               # the sigils, then the tendrils lash out in the same line
               /\*\* A bolt of energy leaps from (?<attacker>.+?)'s#{MK_POST} .+? and sets the sigils along .+? ablaze\.  Tendrils of .+? lash out at (?<target>.+?) and cage .+? within bands of concentric geometry/
             ].freeze, true, false, false),
+            # Holy Weapon (1625) infusion release: a paladin BESEECHes a
+            # bonded weapon to invoke its infused spell at the START of the
+            # next attack, so this line precedes the swing's roll (and, for a
+            # bare swing, the swing line itself - a pre-flare claimed by
+            # weapon). The spell it releases prints its own cast line and is
+            # its own attack; see SPELL_RELEASING_FLARES in the processor.
+            # Was an AttackDef: it then opened an event that swallowed BOTH
+            # the spell's CS/TD and the swing's AS/DS (Dreadt log 2026-09-11:
+            # 13 rows carrying cs_td, 10 of them also as_ds). Not damaging -
+            # the damage belongs to the spell. The wiki prints this in flare
+            # syntax (** ... **); the live feed omits the asterisks.
+            # Second pattern: the FAILED release - nothing follows it.
+            FlareDef.new(:weapon_cast, [
+              /(?:\*\* )?As (?:you attempt to strike with your|your) (?<weapon>.+?)(?: hits)?, it sends a surge of power through you that quickly leaps out at (?:the )?(?<target>[^!]+)!/,
+              /(?:\*\* )?As you attempt to strike with your (?<weapon>.+?), you briefly feel a surge of power, but it dissipates before reaching (?:the )?(?<target>[^!.]+)/
+            ].freeze, false, false, false),
             FlareDef.new(:sigil_cast, [
               /\*\* Numerous sigils along your .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of your last spell\.\.\. \*\*/,
               /\*\* Numerous sigils along (?<attacker>.+?)'s#{MK_POST} .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of .+? last spell\.\.\. \*\*/,
@@ -404,11 +412,21 @@ module Lich
           ].freeze
 
           # [pattern, name, damaging, aoe, spawns] rows, one per pattern
-          FLARE_LOOKUP = FLARE_DEFS.flat_map { |d|
+          # Shipped defs first, then player supplements (defs/supplements.rb);
+          # a supplement reusing a shipped name carries the shipped flags.
+          FLARE_LOOKUP = (FLARE_DEFS + Supplements.flares).flat_map { |d|
             d.patterns.map { |rx| [rx, d.name, d.damaging, d.aoe, d.spawns] }
           }.freeze
 
           GATE, ALWAYS_SCAN = PatternGate.build(FLARE_LOOKUP.map(&:first))
+
+          # Lookup and gate as one frozen table, bound last in a single
+          # assignment; parse reads it once per call (see Definitions::Table).
+          TABLE = Table.new(FLARE_LOOKUP, GATE, ALWAYS_SCAN).freeze
+
+          # The table now reflects this file; stale? answers for it, not for
+          # the document cache (see Supplements.assembled!).
+          Supplements.assembled!(:flares)
 
           # Flare announce lines name the flaring weapon as a link:
           #   Your <a exist="393573117" noun="sword">slim short sword</a> ...
@@ -421,13 +439,21 @@ module Lich
           #   target is the named capture when the pattern has one (may be nil);
           #   weapon is { id:, name: } when the line links the flaring weapon.
           def self.parse(line)
-            return nil unless GATE.match?(line) || ALWAYS_SCAN.any? { |rx| rx.match?(line) }
+            table = TABLE
+            return nil if table.rejects?(line)
 
-            FLARE_LOOKUP.each do |pattern, name, damaging, aoe, spawns|
-              next unless (match = pattern.match(line))
+            table.lookup.each do |pattern, name, damaging, aoe, spawns|
+              next unless (match = PatternGate.safe_match(pattern, line))
 
               result = { name: name, damaging: damaging, aoe: aoe, spawns: spawns }
               result[:target] = match[:target] if match.names.include?('target') && match[:target]
+              # 3p forms name whose item flared; a 2p flare ("Your ...") has
+              # no attacker and is ours - the recorder writes flares.ours off it
+              if match.names.include?('attacker') && (who = match[:attacker])
+                # a lazy capture can land on the FIRST-PERSON form ("from your
+                # hands" - boil_blood): that is ours, not an attacker
+                result[:attacker] = who unless who.gsub(/<[^>]*>/, '').strip =~ /\A(?:your?|yourself)\z/i
+              end
               if (weapon = WEAPON_LINK.match(line))
                 result[:weapon] = { id: weapon[:id].to_i, name: weapon[:name] }
               end

@@ -11,14 +11,11 @@ require_relative '../authentication/web_login'
 require_relative '../gui/game_selection'
 require_relative 'cli_option_validator'
 
-# @api private
-# Namespace for Lich 5, a Ruby scripting engine for text-based games
+# Top-level namespace for the Lich 5 scripting engine.
 module Lich
-  # @api private
-  # Namespace for common Lich 5 utilities
+  # Namespace for common, shared Lich functionality.
   module Common
-    # @api private
-    # Namespace for CLI-related utilities
+    # Namespace for command-line interface operations.
     module CLI
       # Orchestrates CLI operations: early-exit handlers for password management,
       # data conversion, and login flow. Uses CliOptionsRegistry for declarative
@@ -60,14 +57,12 @@ module Lich
           end
         end
 
-        # Checks if legacy data conversion is required before a login attempt.
+        # Checks whether the legacy entry.dat format requires conversion before login is attempted.
         #
-        # If conversion is needed, prints a conversion help message and exits with
-        # status code 1. This prevents login attempts when the entry store requires
-        # migration from legacy DAT format to YAML.
+        # If conversion is needed, prints a help message and exits with status 1.
         #
-        # @return [void] exits the process if conversion is needed; otherwise returns normally
-        # @see Lich::Common::CLI::CLIConversion.conversion_needed?
+        # @return [void]
+        # @api private
         def self.check_conversion_needed_for_login
           # Check if conversion is required
           if Lich::Common::CLI::CLIConversion.conversion_needed?(DATA_DIR)
@@ -76,15 +71,14 @@ module Lich
           end
         end
 
-        # Changes the password for an existing account in the entry store.
+        # Changes the password for an existing account.
         #
-        # Reads account name and new password from ARGV (--change-account-password or -cap
-        # followed by account and password arguments). Validates both arguments are present
-        # and exits with status 1 if either is missing. On success or error, exits the
-        # process via CLIPassword.change_account_password.
+        # Reads ACCOUNT and NEWPASSWORD from ARGV following the --change-account-password
+        # or -cap flag. Validates both arguments are present, prints usage and exits
+        # with status 1 on error, or exits with the result code from CLIPassword.change_account_password.
         #
-        # @return [void] exits the process; never returns normally
-        # @raise [SystemExit] with status 1 if account or password argument is missing
+        # @return [void]
+        # @api private
         def self.handle_change_account_password
           idx = ARGV.index { |a| a =~ /^--change-account-password$|^-cap$/ }
           account = ARGV[idx + 1]
@@ -101,28 +95,44 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.change_account_password(account, new_password)
         end
 
-        # Adds a new account to the entry store, with optional frontend preference.
+        # Adds a new account with an optional frontend preference.
         #
-        # Reads account name, password, and optional --frontend flag from ARGV.
-        # If no YAML entry file exists but legacy DAT format data is present,
-        # automatically converts to plaintext YAML (with warnings) before proceeding.
-        # Exits with status 1 if required account or password arguments are missing,
-        # or if YAML creation fails. Otherwise exits via CLIPassword.add_account.
+        # Reads ACCOUNT and PASSWORD from ARGV following the --add-account or -aa flag,
+        # and an optional --frontend flag. If the entry.yaml file does not exist but
+        # legacy entry.dat is present, automatically converts to plaintext YAML with a
+        # security warning. Validates ACCOUNT (rejects option-shaped values) and PASSWORD
+        # (presence only). Exits with the result code from CLIPassword.add_account or
+        # with status 1 on validation failure.
         #
-        # @return [void] exits the process; never returns normally
-        # @raise [SystemExit] with status 1 if account/password missing or YAML creation fails
+        # @return [void]
+        # @api private
         def self.handle_add_account
           idx = ARGV.index { |a| a =~ /^--add-account$|^-aa$/ }
           account = ARGV[idx + 1]
           password = ARGV[idx + 2]
 
-          if account.nil? || password.nil?
-            lich_script = File.join(LICH_DIR, 'lich.rbw')
+          lich_script = File.join(LICH_DIR, 'lich.rbw')
+          usage = "Usage: ruby #{lich_script} --add-account ACCOUNT PASSWORD [--frontend FRONTEND]\n" \
+                  "   or: ruby #{lich_script} -aa ACCOUNT PASSWORD [--frontend FRONTEND]"
+
+          account = CliOptionValidator.require_positional(account, name: 'ACCOUNT', usage: usage)
+          # PASSWORD is only checked for presence: rejecting option-shaped values
+          # would also refuse any password that starts with '-'.
+          if password.nil?
             $stdout.puts 'error: Missing required arguments'
-            $stdout.puts "Usage: ruby #{lich_script} --add-account ACCOUNT PASSWORD [--frontend FRONTEND]"
-            $stdout.puts "   or: ruby #{lich_script} -aa ACCOUNT PASSWORD [--frontend FRONTEND]"
+            $stdout.puts usage
             exit 1
           end
+
+          # Validated before the legacy conversion below, so a malformed command
+          # exits without writing entry.yaml. ACCOUNT and PASSWORD are left out of
+          # the search so a password of literally '--frontend' isn't read as the flag.
+          frontend = CliOptionValidator.extract_flag_value(
+            '--frontend',
+            usage: usage,
+            valid_values: Lich::Common::Authentication::LoginHelpers::VALID_FRONTENDS,
+            argv: ARGV[0..idx] + ARGV.drop(idx + 3)
+          )
 
           # Check if YAML file exists; if not, check for DAT and auto-convert to plaintext
           yaml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(DATA_DIR)
@@ -154,17 +164,18 @@ module Lich
             # No DAT file either - CLIPassword.add_account will create new YAML
           end
 
-          frontend = ARGV[ARGV.index('--frontend') + 1] if ARGV.include?('--frontend')
           exit Lich::Common::Authentication::CLIPassword.add_account(account, password, frontend)
         end
 
-        # Refreshes the character list for an account from the game server.
+        # Refreshes the character list for an account from the authentication service.
         #
-        # Reads account name and optional --frontend flag from ARGV. Validates account
-        # name is provided; exits with validation error if missing. Validates frontend
-        # (if supplied) against known frontends. Exits via CLIPassword.refresh_characters.
+        # Reads ACCOUNT from ARGV following the --refresh-characters or -rc flag,
+        # and an optional --frontend flag. Validates ACCOUNT (rejects option-shaped values).
+        # Exits with the result code from CLIPassword.refresh_characters or with status 1
+        # on validation failure.
         #
-        # @return [void] exits the process; never returns normally
+        # @return [void]
+        # @api private
         def self.handle_refresh_characters
           idx = ARGV.index { |a| a =~ /^--refresh-characters$|^-rc$/ }
           account = ARGV[idx + 1]
@@ -183,14 +194,16 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.refresh_characters(account, frontend)
         end
 
-        # Adds a new character to an account in the entry store.
+        # Adds a new character to an account.
         #
-        # Reads account name, character name, and required --game-code flag from ARGV.
-        # Optional --frontend flag may also be provided. Validates all positional arguments
-        # and --game-code (which must be a valid game code). Exits via CLIPassword.add_character
-        # on success or validation error.
+        # Reads ACCOUNT and CHAR_NAME from ARGV following the --add-character or -ac flag,
+        # --game-code CODE (required), and an optional --frontend flag. Validates all
+        # positional arguments (rejects option-shaped values) and game code against
+        # VALID_GAME_CODES. Exits with the result code from CLIPassword.add_character or
+        # with status 1 on validation failure.
         #
-        # @return [void] exits the process; never returns normally
+        # @return [void]
+        # @api private
         def self.handle_add_character
           idx = ARGV.index { |a| a =~ /^--add-character$|^-ac$/ }
           account = ARGV[idx + 1]
@@ -233,15 +246,16 @@ module Lich
           )
         end
 
-        # Changes the master password for the entry store.
+        # Changes the master password protecting encrypted entries.
         #
-        # Reads old password (required) and new password (optional) from ARGV.
-        # If new password is not provided on command line, the user will be prompted
-        # for confirmation. Exits with status 1 if old password is missing. Otherwise
-        # exits via CLIPassword.change_master_password.
+        # Reads OLDPASSWORD and optional NEWPASSWORD from ARGV following the
+        # --change-master-password or -cmp flag. OLDPASSWORD is required; if NEWPASSWORD
+        # is not provided, the user will be prompted interactively for confirmation.
+        # Exits with the result code from CLIPassword.change_master_password or with
+        # status 1 if OLDPASSWORD is missing.
         #
-        # @return [void] exits the process; never returns normally
-        # @raise [SystemExit] with status 1 if old password argument is missing
+        # @return [void]
+        # @api private
         def self.handle_change_master_password
           idx = ARGV.index { |a| a =~ /^--change-master-password$|^-cmp$/ }
           old_password = ARGV[idx + 1]
@@ -259,13 +273,14 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.change_master_password(old_password, new_password)
         end
 
-        # Recovers access to the entry store by setting a new master password.
+        # Recovers the master password by setting a new one.
         #
-        # Reads optional new password from ARGV. If new password is not provided on
-        # command line, the user will be prompted interactively. Exits via
-        # CLIPassword.recover_master_password.
+        # Reads optional NEWPASSWORD from ARGV following the --recover-master-password
+        # or -rmp flag. If NEWPASSWORD is not provided, the user will be prompted
+        # interactively. Exits with the result code from CLIPassword.recover_master_password.
         #
-        # @return [void] exits the process; never returns normally
+        # @return [void]
+        # @api private
         def self.handle_recover_master_password
           idx = ARGV.index { |a| a =~ /^--recover-master-password$|^-rmp$/ }
           new_password = ARGV[idx + 1]
@@ -274,16 +289,16 @@ module Lich
           exit Lich::Common::Authentication::CLIPassword.recover_master_password(new_password)
         end
 
-        # Converts the entry store to a new encryption mode (plaintext, standard, or enhanced).
+        # Converts entries to a new encryption mode.
         #
-        # Reads encryption mode from ARGV (required: plaintext, standard, or enhanced).
-        # For enhanced mode, prompts for a new master password and stores it in the keychain
-        # before conversion. Exits with status 1 if encryption mode is missing or invalid,
-        # or if enhanced-mode master password creation or keychain storage fails. On success,
-        # exits with status 0 after printing confirmation.
+        # Reads ENCRYPTION_MODE from ARGV following the --convert-entries flag.
+        # ENCRYPTION_MODE must be one of: plaintext, standard, or enhanced. For enhanced
+        # mode, prompts for and stores a new master password in the keychain before
+        # conversion. Exits with status 0 on success or status 1 on validation failure,
+        # password creation cancellation, or conversion failure.
         #
-        # @return [void] exits the process; never returns normally
-        # @raise [SystemExit] with status 1 if mode is missing/invalid or master password setup fails
+        # @return [void]
+        # @api private
         def self.handle_convert_entries
           idx = ARGV.index('--convert-entries')
           encryption_mode_str = ARGV[idx + 1]
@@ -334,14 +349,16 @@ module Lich
           end
         end
 
-        # Changes the encryption mode of the entry store and optionally updates the master password.
+        # Changes the encryption mode for stored entries.
         #
-        # Reads encryption mode (required: plaintext, standard, or enhanced) and optional
-        # --master-password or -mp flag from ARGV. Exits with status 1 if encryption mode
-        # is missing. Otherwise exits via EncryptionModeChange.change_mode.
+        # Reads MODE from ARGV following the --change-encryption-mode or -cem flag,
+        # and an optional --master-password or -mp flag for providing a master password
+        # (used when automating enhanced mode). MODE must be one of: plaintext, standard,
+        # or enhanced. Exits with the result code from EncryptionModeChange.change_mode
+        # or with status 1 if MODE is missing.
         #
-        # @return [void] exits the process; never returns normally
-        # @raise [SystemExit] with status 1 if encryption mode argument is missing
+        # @return [void]
+        # @api private
         def self.handle_change_encryption_mode
           idx = ARGV.index { |a| a =~ /^--change-encryption-mode$|^-cem$/ }
           mode_arg = ARGV[idx + 1]
@@ -365,7 +382,7 @@ module Lich
         end
 
         # Standalone probe of the HTTPS web-login fallback path (see
-        # docs/web-login-protocol-analysis.md). Exercises
+        # docs/connection/web-login-protocol-analysis.md). Exercises
         # WebLogin.auth_with_timeout directly against play.net -- independent
         # of the real login path (Authenticator.authenticate), which also
         # uses WebLogin, either forced via --auth-provider=web or

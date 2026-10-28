@@ -15,12 +15,22 @@ require_relative 'defs/spell_losses'
 require_relative 'defs/statuses'
 require_relative 'defs/ucs'
 
+# Root namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for Gemstone IV and DragonRealms integration.
   module Gemstone
+    # Namespace for combat event parsing and analysis.
     module Combat
+      # Core parsing methods for combat events from the XML game feed.
+      #
+      # Extracts attacks, damage, outcomes, weapon states, and status effects from
+      # hunt log lines with performance-optimized pattern matching.
       module Parser
         # Target link pattern - extract creatures/players from XML
         TARGET_LINK_PATTERN = /<a exist="(?<id>[^"]+)" noun="(?<noun>[^"]+)">(?<name>[^<]+)<\/a>/i.freeze
+        # A link whose closing tag lies beyond the captured text (see
+        # extract_attacker_from_match)
+        OPEN_LINK_TAIL_PATTERN = /<a exist="(?<id>[^"]+)" noun="(?<noun>[^"]+)">(?<name>[^<]+)\z/i.freeze
 
         # Bold tag pattern - creatures are wrapped in bold tags
         # Non-greedy match to avoid spanning multiple creatures
@@ -39,27 +49,36 @@ module Lich
         class << self
           # Parse attack initiation
           def parse_attack(line)
-            return nil if Definitions::Attacks.rejects?(line)
+            # One table read per call: lookup and gate from the same build
+            # even if the defs are hot-reloaded mid-chunk.
+            table = Definitions::Attacks.table
+            return nil if table.rejects?(line)
 
-            Definitions::Attacks::ATTACK_LOOKUP.each do |pattern, name|
-              if (match = pattern.match(line))
+            table.lookup.each do |pattern, name|
+              if (match = Definitions::PatternGate.safe_match(pattern, line))
                 # An inbound attack (creature -> us) names US as its target.
                 # Its only creature link is the ATTACKER, so the line-scan
                 # fallback below would install the attacker as its own
                 # target and apply its damage/crits to itself. Resolve the
                 # target as us and stop - never fall through.
-                # Environmental / self-inflicted defs (SELF_INFLICTED) are
+                # Environmental / self-inflicted defs (ATTACKERLESS) are
                 # damage to us by construction - no attacker, no "you"
                 # capture - unless this particular pattern named someone
-                # else (a nearby player taking the same tick).
-                self_inflicted = Definitions::Attacks::SELF_INFLICTED.include?(name) &&
-                                 !(match.names.include?('target') && match[:target])
-                if self_target?(match) || self_inflicted
+                # else (a nearby player taking the same tick). They name
+                # their source for the ledger: 'environment' (weather) or
+                # 'self' (our own gear), so reports can tell them apart.
+                attackerless = Definitions::Attacks::ATTACKERLESS.include?(name) &&
+                               !(match.names.include?('target') && match[:target])
+                if self_target?(match) || attackerless || Definitions::Attacks::ROOM_TARGETED.include?(name)
+                  attacker = extract_attacker_from_match(match)
+                  if attackerless
+                    attacker ||= { name: Definitions::Attacks::ENVIRONMENTAL.include?(name) ? 'environment' : 'self' }
+                  end
                   return {
                     name: name,
                     target: {},
                     inbound: true,
-                    attacker: extract_attacker_from_match(match),
+                    attacker: attacker,
                     damaging: true
                   }
                 end
@@ -144,15 +163,16 @@ module Lich
           # is aimed at us by construction.
           SELF_IN_PATTERN = /\b(?:at|towards?|upon|around|near|on)\s+your?\b/i.freeze
 
-          # Determines whether a regex match names the player as its target.
+          # Tests whether a regex match captures an attack aimed at the player.
           #
-          # Handles two patterns: explicit target captures like "you" or "your <bodypart>",
-          # and inbound defs without target captures that reference the player literally
-          # (e.g., "at you", "towards your leg"). Used to classify inbound attacks.
+          # Handles two cases: (1) an explicit target capture matching "you"/"your",
+          # and (2) inbound-only defs with no target capture but an attacker capture
+          # and literal "you"/"your" in the pattern source itself.
           #
-          # @param match [MatchData] a Regexp match from an attack pattern, with named captures
-          # @return [Boolean] true if the match identifies the player as target; false otherwise
-          # @note Returns false if the match includes a target capture but it is empty or nil.
+          # @param match [MatchData] the result of pattern matching an attack line
+          # @return [Boolean] true if the attack targets the player
+          # @see #parse_attack
+          # @api private
           def self_target?(match)
             if match.names.include?('target')
               text = match[:target]
@@ -171,11 +191,12 @@ module Lich
           # processor to keep the attacker's own link out of the
           # target-switcher (see the inbound_line note there).
           def inbound_attack?(line)
-            return false if Definitions::Attacks.rejects?(line)
+            table = Definitions::Attacks.table
+            return false if table.rejects?(line)
 
-            Definitions::Attacks::ATTACK_LOOKUP.each do |pattern, _name|
-              if (match = pattern.match(line))
-                return self_target?(match)
+            table.lookup.each do |pattern, name|
+              if (match = Definitions::PatternGate.safe_match(pattern, line))
+                return self_target?(match) || Definitions::Attacks::ROOM_TARGETED.include?(name)
               end
             end
             false
@@ -190,8 +211,17 @@ module Lich
             text = match[:attacker]
             return nil if text.nil? || text.strip.empty?
 
-            if (link = TARGET_LINK_PATTERN.match(text))
-              { id: link[:id].to_i, noun: link[:noun], name: link[:name] }
+            # The LAST link: a flavor prefix can carry the attacker's own
+            # pronoun link first ("Froth bubbling on <his> lips, <a tattooed
+            # gigas berserker> swings..." - hunt log 2026-09-07 recorded the
+            # attacker as "his").
+            links = text.to_enum(:scan, TARGET_LINK_PATTERN).map { Regexp.last_match }
+            # A possessive INSIDE the link ("<a>flayed gigas disciple's</a>
+            # power warps the air") leaves the capture ending mid-link: the
+            # def's 's sits inside the <a>. Take the unterminated link too.
+            links << Regexp.last_match if links.empty? && OPEN_LINK_TAIL_PATTERN.match(text)
+            if (link = links.last)
+              { id: link[:id].to_i, noun: link[:noun], name: link_name(link) }
             else
               { name: strip_links(text).strip }
             end
@@ -200,6 +230,16 @@ module Lich
           # Drop XML link/bold markup from a captured fragment
           def strip_links(text)
             text.gsub(/<[^>]+>/, '')
+          end
+
+          # A creature's display name from its link. The game sometimes puts
+          # the possessive INSIDE the link ("<a>grim gigas skald's</a> mastery
+          # of music"), which registered a second creature named "grim gigas
+          # skald's" (hunt log 2026-09-07). Same id, same creature: strip it.
+          # A hidden adjective leaves a doubled space ("halfling  cannibal"),
+          # squeezed for the same reason.
+          def link_name(link)
+            link[:name].sub(/'s\z/, '').squeeze(' ').strip
           end
 
           # Parse damage amounts using damage definitions
@@ -232,14 +272,16 @@ module Lich
             Definitions::Sequences.parse_start(line)
           end
 
-          # Parses a multi-target sequence bracket closing line.
+          # Detects the closing line of a multi-target action bracket.
           #
-          # Identifies the end of action sequences (mstrike, volley, spawned casts)
-          # that span multiple targets.
+          # Matches lines that end sequences like mstrike volleys, spawned AoE casts,
+          # and other damage events that target multiple creatures across consecutive
+          # log lines.
           #
-          # @param line [String] a combat output line
-          # @return [Hash, nil] a hash with sequence metadata if the line closes a sequence; nil otherwise
-          # @see .parse_sequence_start
+          # @param line [String] a line from the game feed (may contain XML markup)
+          # @return [Hash, nil] parsed sequence end event or nil if the line does not match
+          # @see #parse_sequence_start
+          # @api private
           def parse_sequence_end(line)
             Definitions::Sequences.parse_end(line)
           end
@@ -250,14 +292,15 @@ module Lich
             Definitions::Assaults.parse_start(line)
           end
 
-          # Parses a single-target multi-round assault bracket closing line.
+          # Detects the closing line of a single-target multi-round assault bracket.
           #
-          # Identifies the end of assault sequences (flurry, barrage, pummel, guardant
-          # thrusts, thrash) that span multiple rounds against one target.
+          # Matches lines that end sustained attacks on one target: flurry, barrage,
+          # pummel, guardant thrusts, and thrash.
           #
-          # @param line [String] a combat output line
-          # @return [Hash, nil] a hash with assault metadata if the line closes an assault; nil otherwise
-          # @see .parse_assault_start
+          # @param line [String] a line from the game feed (may contain XML markup)
+          # @return [Hash, nil] parsed assault end event or nil if the line does not match
+          # @see #parse_assault_start
+          # @api private
           def parse_assault_end(line)
             Definitions::Assaults.parse_end(line)
           end
@@ -265,21 +308,25 @@ module Lich
           # The weapon a swing line names, in plain text (swing lines do
           # not link the weapon):  "You swing a kelyn-edged slim short
           # sword at <pushBold/>..." - used to claim pre-flares by weapon.
-          SWING_WEAPON_PATTERN = /You(?: take aim and)? (?:swing|fire) (?:an? |your |some )?(?<weapon>[^<]+?) at </.freeze
+          # The weapon itself may be linked ("You swing a perfect <a ...>mithril
+          # mace</a> at ..."), so anchor tags are dropped before matching and
+          # the capture ends at the " at " that precedes the target (linked or
+          # plain) rather than at a literal "<".
+          SWING_WEAPON_PATTERN = /You(?: take aim and)? (?:swing|fire) (?:an? |your |some )?(?<weapon>[^<]+?) at (?=<|\S)/.freeze
 
-          # Extracts the weapon name from a swing or ranged attack line.
+          # Extracts the weapon name from a swing line.
           #
-          # Swing lines name the weapon in plain text (not as a link): "You swing a
-          # kelyn-edged slim short sword at <pushBold/>..." or "You take aim and fire
-          # a flaming arrow at ...". Used to claim pre-flares by the weapon that
-          # triggered them.
+          # Parses "You swing a [weapon] at..." and "You take aim and fire..." lines
+          # to retrieve the weapon in plain text (XML links are stripped). Used to
+          # claim pre-swing flares by weapon name.
           #
-          # @param line [String] a combat output line
+          # @param line [String] a swing line from the game feed
           # @return [String, nil] the weapon name, or nil if the line is not a swing
           # @example
-          #   parse_swing_weapon("You swing a bastard sword at <pushBold/>...") #=> "bastard sword"
+          #   parse_swing_weapon("You swing a sharp kelyn blade at a goblin") #=> "sharp kelyn blade"
+          # @api private
           def parse_swing_weapon(line)
-            SWING_WEAPON_PATTERN.match(line)&.[](:weapon)
+            SWING_WEAPON_PATTERN.match(line.gsub(%r{</?a\b[^>]*>}, ''))&.[](:weapon)
           end
 
           # Parse status effects (optional - performance setting)
@@ -339,7 +386,7 @@ module Lich
             {
               id: id,
               noun: link_match[:noun],
-              name: link_match[:name]
+              name: link_name(link_match)
             }
           end
 
@@ -349,28 +396,39 @@ module Lich
             target_text = match[:target]
             return nil if target_text.nil? || target_text.strip.empty?
 
-            # Look for creature in target text
-            if (target_match = TARGET_LINK_PATTERN.match(target_text))
+            # Look for creature in target text. A possessive capture ends at
+            # the apostrophe INSIDE the link text ("<a ...>human robber" + "'s"
+            # outside), so the closing tag falls beyond the capture and
+            # TARGET_LINK_PATTERN cannot match - bleed/trickle ticks were
+            # resolving to no target and recording as foreign (Rysk logs
+            # 2026-09-11: 10 bleed ticks on named creatures, all unattributed).
+            # Fall back to the open-tail form, as the attacker path does.
+            if (target_match = TARGET_LINK_PATTERN.match(target_text) ||
+                               OPEN_LINK_TAIL_PATTERN.match(target_text))
               id = target_match[:id].to_i
               return nil if id < 0
 
               return {
                 id: id,
                 noun: target_match[:noun],
-                name: target_match[:name]
+                name: link_name(target_match)
               }
             end
 
             nil
           end
 
-          # Extracts a creature target from a combat line by looking for a bolded link.
+          # Extracts a creature target from an attack line by scanning for bolded links.
           #
-          # Only creature links wrapped in <pushBold/> tags are accepted as valid targets.
-          # Non-bolded links (equipment, objects, or other non-combatants) are rejected.
+          # Only creatures wrapped in bold tags are accepted as valid targets; non-bolded
+          # links (equipment, items, or other non-combatants) are ignored. Returns nil if
+          # no bolded creature link is found or the link ID is invalid (zero or negative).
           #
-          # @param line [String] a combat output line
-          # @return [Hash, nil] a hash with keys :id (Integer), :noun (String), and :name (String) if a bolded creature link is found; nil otherwise
+          # @param line [String] a line from the game feed (may contain XML markup)
+          # @return [Hash, nil] a hash with :id (Integer), :noun (String), :name (String),
+          #   or nil if no valid bolded creature target exists
+          # @see #extract_creature_target
+          # @api private
           def extract_target_from_line(line)
             # ONLY accept bolded creatures as targets
             # Non-bolded links are equipment, objects, or other non-combatants

@@ -25,10 +25,20 @@
 =end
 
 module Lich
-  # Provides functionality for monitoring experience gains in DragonRealms.
-  #
-  # @see Lich::DragonRealms::DRExpMonitor
   module DragonRealms
+    # Real-time experience gain tracking and reporting for DragonRealms.
+    #
+    # Provides background thread-based monitoring of skill experience gains with optional
+    # inline display of cumulative gains in BRIEFEXP output. Thread-safe with mutex protection.
+    #
+    # The reporter thread loop checks generation counter to gracefully retire when replaced
+    # or stopped; this prevents orphaned threads and avoids deadlock during reload via
+    # `;hmr drinfomon`.
+    #
+    # @note Cannot run simultaneously with exp-monitor.lic script. Use
+    #   `;kill exp-monitor` first if needed.
+    # @see Lich::DragonRealms::DRSkill.gained_skills
+    # @see Lich::DragonRealms::DRSkill.gained_exp
     module DRExpMonitor
       # Maximum SQLite retry attempts before giving up (prevents infinite loops)
       MAX_SQLITE_RETRIES = 10
@@ -36,15 +46,22 @@ module Lich
       # Stricter boolean matching pattern - anchored to avoid partial matches
       BOOLEAN_TRUE_PATTERN = /\A(on|true|yes)\z/i.freeze
 
-      @@reporter_thread = nil
-      @@running = false
+      # Reporter state. `;hmr drinfomon` re-runs this file, so these keep
+      # their values across a reload: resetting them would orphan a running
+      # reporter, and the autostart that follows would add a second one.
+      @@reporter_thread = nil unless defined?(@@reporter_thread)
+      @@running = false unless defined?(@@running)
+      # Bumped whenever start launches a reporter, stop retires one, or
+      # reset! runs. A reporter thread only acts while the generation it was
+      # started with is still current, so a stopped thread cannot clear or
+      # outlive the state of its replacement.
+      @@generation = 0 unless defined?(@@generation)
+      @@mutex = Mutex.new unless defined?(@@mutex) # Thread safety for start/stop operations
       @@report_interval = 1 # Hard-coded 1 second for real-time reporting
-      @@inline_display = nil # Lazy-loaded from DB, defaults to true
-      @@mutex = Mutex.new # Thread safety for start/stop operations
+      @@inline_display = nil # Lazy-loaded from DB, defaults to false
 
-      # Starts the background experience gain reporter.
-      # @return [void]
-      # @note This method will not start if the exp-monitor.lic script is running.
+      # Start the background reporter thread
+      # Thread-safe: uses mutex to prevent race conditions
       def self.start
         @@mutex.synchronize do
           if @@running
@@ -59,32 +76,18 @@ module Lich
             return
           end
 
+          generation = (@@generation += 1)
           @@running = true
-
-          @@reporter_thread = Thread.new do
-            begin
-              loop do
-                break unless @@running
-
-                begin
-                  report_skill_gains
-                  sleep @@report_interval
-                rescue StandardError => e
-                  Lich::Messaging.msg('error', "DRExpMonitor: Error: #{e.message}") if $DREXPMONITOR_DEBUG
-                  Lich.log "DRExpMonitor error: #{e.message}\n\t#{e.backtrace.join("\n\t")}"
-                  sleep @@report_interval
-                end
-              end
-            ensure
-              @@running = false
-            end
-          end
+          @@reporter_thread = Thread.new(generation) { |owned| run_reporter(owned) }
         end
       end
 
-      # Stops the background experience gain reporter.
-      # @return [void]
-      # @note This method will do nothing if the reporter is already inactive.
+      # Stop the background reporter thread
+      # Thread-safe: uses mutex to prevent race conditions
+      #
+      # Does not wait for the thread to finish. The thread's ensure takes
+      # @@mutex, so joining here would deadlock; the generation bump already
+      # keeps the dying thread from touching a later start's state.
       def self.stop
         @@mutex.synchronize do
           unless @@running
@@ -92,30 +95,66 @@ module Lich
             return
           end
 
-          @@running = false
-          @@reporter_thread&.kill
-          @@reporter_thread = nil
+          retire_reporter
         end
       end
 
-      # Checks if the experience gain reporter is currently running.
-      # @return [Boolean] true if the reporter is active, false otherwise.
+      # Check if reporter is running
       def self.active?
         @@running
       end
 
-      # Resets the state of the experience monitor.
-      # @return [void]
+      # Reset state (for testing)
+      # Thread-safe: uses mutex to prevent race conditions
       def self.reset!
         @@mutex.synchronize do
           @@inline_display = nil
-          @@running = false
-          @@reporter_thread = nil
+          retire_reporter
         end
       end
 
-      # Checks if inline experience display is enabled.
-      # @return [Boolean] true if inline display is enabled, false otherwise.
+      # Body of the reporter thread. Loops while +generation+ is current and
+      # reporting is on, and gives up ownership on the way out, whatever ends
+      # it. Checking @@running too keeps active? truthful if the flag is
+      # cleared without a generation bump, as the ensure of a reporter started
+      # by an older copy of this file does after an in-session update.
+      # @param generation [Integer] the generation start assigned this thread
+      # @return [void]
+      def self.run_reporter(generation)
+        while @@generation == generation && @@running
+          begin
+            report_skill_gains
+          rescue StandardError => e
+            Lich::Messaging.msg('error', "DRExpMonitor: Error: #{e.message}") if $DREXPMONITOR_DEBUG
+            Lich.log "DRExpMonitor error: #{e.message}\n\t#{e.backtrace.join("\n\t")}"
+          end
+          sleep @@report_interval
+        end
+      ensure
+        # A thread that dies on its own (a non-StandardError exception) is
+        # still current and marks reporting off. A stopped or replaced thread
+        # is not, and must leave the newer state alone.
+        @@mutex.synchronize do
+          if @@generation == generation
+            @@running = false
+            @@reporter_thread = nil
+          end
+        end
+      end
+
+      # Ends the current generation and kills its thread without waiting.
+      # Caller must hold @@mutex.
+      # @return [void]
+      def self.retire_reporter
+        @@generation += 1
+        @@running = false
+        @@reporter_thread&.kill
+        @@reporter_thread = nil
+      end
+      private_class_method :run_reporter, :retire_reporter
+
+      # Check if inline display is enabled (lazy-loaded from DB, defaults to false)
+      # BUG FIX: Added max retry count to prevent infinite loop on persistent SQLite lock
       def self.inline_display?
         if @@inline_display.nil?
           retries = 0
@@ -139,9 +178,8 @@ module Lich
         @@inline_display
       end
 
-      # Enables or disables inline experience display.
-      # @param value [Boolean] true to enable, false to disable.
-      # @return [void]
+      # Enable/disable inline display (persisted to DB)
+      # BUG FIX: Added max retry count to prevent infinite loop on persistent SQLite lock
       def self.inline_display=(value)
         @@inline_display = BOOLEAN_TRUE_PATTERN.match?(value.to_s)
         retries = 0
@@ -158,10 +196,9 @@ module Lich
         end
       end
 
-      # Formats the BRIEFEXP ON line with gained experience.
-      # @param line [String] the line to format.
-      # @param skill [String] the skill for which experience is gained.
-      # @return [String] the formatted line.
+      # Format BRIEFEXP ON line to include cumulative gained experience
+      # Original format: "     Aug:  565 39%  [ 2/34]"
+      # Modified format: "     Aug:  565 39%  [ 2/34] 0.12"
       def self.format_briefexp_on(line, skill)
         return line unless @@inline_display
 
@@ -169,11 +206,9 @@ module Lich
         line.sub(%r{(/34\])}, "\\1 #{format('%0.2f', gained)}")
       end
 
-      # Formats the BRIEFEXP OFF line with gained experience.
-      # @param line [String] the line to format.
-      # @param skill [String] the skill for which experience is gained.
-      # @param rate_word [String] the word representing the rate of experience.
-      # @return [String] the formatted line.
+      # Format BRIEFEXP OFF line to include cumulative gained experience
+      # Original format: "    Augmentation:  565 39% learning     "
+      # Modified format: "    Augmentation:  565 39% learning      0.12"
       def self.format_briefexp_off(line, skill, rate_word)
         return line unless @@inline_display
 
@@ -182,9 +217,10 @@ module Lich
         line.sub(/(%\s+)(#{Regexp.escape(rate_word)})/, "\\1#{padded_rate} #{format('%0.2f', gained)}")
       end
 
-      # Formats an array of skill gains into a readable string.
-      # @param gains_array [Array<Hash>] an array of hashes containing skill gain information.
-      # @return [Array<String>] an array of formatted skill gain strings.
+      # Aggregates and formats skill gains for display.
+      # Combines multiple pulses of the same skill into single entries.
+      # @param gains_array [Array<Hash>] Array of { skill:, change: } hashes
+      # @return [Array<String>] Array of "Skill(+N)" formatted strings
       def self.format_gains(gains_array)
         # Aggregate multiple pulses of same skill
         aggregated = gains_array.reduce(Hash.new(0)) do |result, gain|
@@ -196,7 +232,8 @@ module Lich
         aggregated.keys.sort.map { |skill| "#{skill}(+#{aggregated[skill]})" }
       end
 
-      # Reports the skill gains to the messaging system.
+      # Reports aggregated skill gains to the user.
+      # Drains the DRSkill.gained_skills array and displays formatted gains.
       # @return [void]
       def self.report_skill_gains
         # Drain the gained_skills array
@@ -207,11 +244,15 @@ module Lich
         formatted_gains = format_gains(new_skills)
         Lich::Messaging.msg('info', "DRExpMonitor: #{formatted_gains.join(', ')}")
       end
+
+      # Stop the reporter on exit (handles disconnect and normal exit).
+      # Registered once: `;hmr drinfomon` re-runs this file, and each run
+      # would otherwise add another hook. Only stops a running reporter, so
+      # exiting with reporting off prints no "already inactive".
+      unless defined?(@@exit_hook_registered)
+        @@exit_hook_registered = true
+        at_exit { DRExpMonitor.stop if DRExpMonitor.active? }
+      end
     end
   end
-end
-
-# Register cleanup on exit (handles disconnect and normal exit)
-at_exit do
-  Lich::DragonRealms::DRExpMonitor.stop if defined?(Lich::DragonRealms::DRExpMonitor)
 end

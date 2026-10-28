@@ -1,56 +1,80 @@
 module Lich
   module Gemstone
+    # Namespace for tracking active spell effects, buffs, debuffs, and cooldowns
+    # from the game server's XML feed. Provides registries for querying effect state
+    # and expiration times.
     module Effects
-      # Manages a collection of effects for the Lich project.
-      #
-      # This class includes methods to handle the registration and
-      # retrieval of effects, including spells, buffs, and debuffs.
-      #
-      # @see Lich::Gemstone::Effects
+      # Enumerable registry of active effects. Wraps the game server's XML dialog
+      # data (effects by name or numeric ID and their expiration time) and provides
+      # thread-safe iteration and lookup.
       class Registry
         include Enumerable
 
-        # Initializes a new Registry instance.
-        # @param dialog [String] the name of the dialog associated with this registry
-        # @return [void]
+        # Creates a Registry for effects in the named dialog window.
+        #
+        # @param dialog [String] the XML dialog window name, e.g. "Active Spells"
+        # @api private
         def initialize(dialog)
           @dialog = dialog
         end
 
-        # Converts the registry to a hash representation.
-        # @return [Hash] a hash containing the effects associated with the dialog
+        # A snapshot of the dialog's effects. The XML parser thread writes the
+        # live Hash, and adding a key to a Hash while another thread iterates
+        # it raises in the thread doing the adding: the parser, not the script.
+        # Iterating a copy keeps a script's scan from breaking the parser.
+        #
+        # @return [Hash{String, Integer => Time}] effect name or id => expiry
         def to_h
-          XMLData.dialogs.fetch(@dialog, {})
+          live.dup
         end
 
-        # Iterates over each effect in the registry.
-        # @yield [key, value] each key-value pair in the effects hash
-        # @return [void]
+        # Iterates over a snapshot of active effects in this registry.
+        #
+        # @yield [name, expiry] yields each effect
+        # @yieldparam name [String, Integer] the effect name or numeric ID
+        # @yieldparam expiry [Time] the time the effect expires, or 0 if inactive
+        # @return [Hash{String, Integer => Time}] the effects hash
+        # @example
+        #   Effects::Spells.each { |name, expiry| puts "#{name} expires at #{expiry}" }
         def each()
           to_h.each { |k, v| yield(k, v) }
         end
 
-        # Retrieves the expiration time for a given effect.
-        # @param effect [String, Regexp] the effect to check for expiration
-        # @return [Integer] the expiration time in seconds since epoch, or 0 if not found
+        # Returns the expiration time of an effect by name, ID, or pattern.
+        #
+        # @param effect [String, Integer, Regexp] the effect name, numeric ID, or regex pattern to match
+        # @return [Time, Integer] the expiration time as a Time object, or 0 if the effect is not active
+        # @example Look up effect by name
+        #   Effects::Spells.expiration("Magic Missile") #=> 2024-01-15 14:32:10 +0000
+        # @example Look up effect by ID
+        #   Effects::Spells.expiration(510) #=> 2024-01-15 14:32:10 +0000
+        # @example Match effect name by pattern
+        #   Effects::Buffs.expiration(/Protect/) #=> 2024-01-15 14:35:22 +0000
         def expiration(effect)
           if effect.is_a?(Regexp)
-            to_h.find { |k, _v| k.to_s =~ effect }[1] || 0
+            (to_h.find { |k, _v| k.to_s =~ effect } || [nil, 0])[1]
           else
-            to_h.fetch(effect, 0)
+            # a single lookup does not iterate, so it can read the live Hash
+            live.fetch(effect, 0)
           end
         end
 
-        # Checks if a given effect is currently active.
-        # @param effect [String, Regexp] the effect to check
-        # @return [Boolean] true if the effect is active, false otherwise
+        # Checks whether an effect is currently active (not expired).
+        #
+        # @param effect [String, Integer, Regexp] the effect name, numeric ID, or regex pattern to match
+        # @return [Boolean] true if the effect's expiration time is in the future, false otherwise
+        # @example
+        #   Effects::Spells.active?("Magic Missile") #=> true
         def active?(effect)
           expiration(effect).to_f > Time.now.to_f
         end
 
-        # Calculates the time left for a given effect.
-        # @param effect [String, Regexp] the effect to check
-        # @return [Integer] the time left in minutes, or the expiration time if not active
+        # Returns the remaining duration of an effect in minutes.
+        #
+        # @param effect [String, Integer, Regexp] the effect name, numeric ID, or regex pattern to match
+        # @return [Float, Integer] the minutes remaining (as a decimal), or 0 if the effect is not active
+        # @example
+        #   Effects::Spells.time_left("Magic Missile") #=> 4.2
         def time_left(effect)
           if expiration(effect) != 0
             ((expiration(effect) - Time.now) / 60.to_f)
@@ -58,23 +82,25 @@ module Lich
             expiration(effect)
           end
         end
+
+        private
+
+        # The parser's own Hash for this dialog. Never iterate it; see {#to_h}.
+        def live
+          XMLData.dialogs.fetch(@dialog, {})
+        end
       end
 
-      # A registry for active spells.
-      # @see Lich::Gemstone::Effects::Registry
       Spells    = Registry.new("Active Spells")
-      # A registry for buffs.
-      # @see Lich::Gemstone::Effects::Registry
       Buffs     = Registry.new("Buffs")
-      # A registry for debuffs.
-      # @see Lich::Gemstone::Effects::Registry
       Debuffs   = Registry.new("Debuffs")
-      # A registry for cooldowns.
-      # @see Lich::Gemstone::Effects::Registry
       Cooldowns = Registry.new("Cooldowns")
 
-      # Displays the current effects in a formatted table.
+      # Displays a formatted table of all active effects (spells, cooldowns, buffs, debuffs)
+      # and any known spells not yet cast. Sends output to the terminal.
+      #
       # @return [void]
+      # @api private
       def self.display
         effect_out = Terminal::Table.new :headings => ["ID", "Type", "Name", "Duration"]
         titles = ["Spells", "Cooldowns", "Buffs", "Debuffs"]

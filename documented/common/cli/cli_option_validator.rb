@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich scripting engine and its subsystems.
 module Lich
-  # Namespace for common utilities shared across Lich 5.
+  # Namespace for common utilities shared across Lich subsystems.
   module Common
     # Namespace for command-line interface utilities.
     module CLI
@@ -14,11 +14,13 @@ module Lich
         # @param flag [String] flag name including leading dashes, e.g. '--frontend'
         # @param usage [String] usage line printed alongside any error message
         # @param valid_values [Array<String>, nil] allowed values; nil skips content validation
+        # @param argv [Array<String>] arguments to search; callers whose positionals may
+        #   legitimately equal the flag name pass ARGV without those slots
         # @return [String, nil] the flag's value, or nil if the flag was not supplied
-        def self.extract_flag_value(flag, usage:, valid_values: nil)
-          return nil unless ARGV.include?(flag)
+        def self.extract_flag_value(flag, usage:, valid_values: nil, argv: ARGV)
+          return nil unless argv.include?(flag)
 
-          value = ARGV[ARGV.index(flag) + 1]
+          value = argv[argv.index(flag) + 1]
 
           if value.nil? || value.start_with?('-')
             $stdout.puts "error: #{flag} requires a value"

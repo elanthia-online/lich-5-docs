@@ -13,81 +13,111 @@
 # Usage:
 #   # Character-scoped access (like CharSettings)
 #   InstanceSettings['my_key'] = 'value'
+#   value = InstanceSettings['my_key']
+#
+#   # Game-scoped access (one row shared by every character's session)
+#   InstanceSettings.game['key'] = { ... }
+#   all_data = InstanceSettings.game['key']
+#
+#   NOTE: every session of the game, each its own Lich process, shares this
+#   row. Before keeping data here that several sessions update, check how
+#   Settings caches rows and what a write through this proxy saves (see
+#   lib/common/settings.rb). DRBanking keeps one row per character instead,
+#   read and written in one database transaction.
+#
+#   # Direct proxy access for complex operations
+#   proxy = InstanceSettings.character_proxy
+#   proxy['nested']['data'] = 'value'
+#
 module Lich
-  # Provides settings-like access for core Lich functionality.
-  #
-  # This module supports two scoping modes:
-  # - Character-scoped: Data specific to current character (game:name)
-  # - Game-scoped: Data shared across all characters in the game (game only)
-  #
-  # @see Lich::Common::CharSettings
-  # @see Lich::Common::GameSettings
+  # Namespace for Lich common utilities and settings infrastructure.
   module Common
+    # Settings accessor for core Lich functionality that runs outside Script context.
+    #
+    # Provides character-scoped and game-scoped settings access via a fixed 'core' script
+    # name, allowing data persistence in DRParser, command handlers, and other contexts
+    # where {Script.current} is unavailable.
+    #
+    # @example Character-scoped access
+    #   InstanceSettings['my_key'] = 'value'
+    #   value = InstanceSettings['my_key']
+    # @example Game-scoped access
+    #   InstanceSettings.game['key'] = { shared: 'data' }
+    #   all_data = InstanceSettings.game['key']
+    # @see Lich::Common::Settings
     module InstanceSettings
       # Script name used for core Lich functionality
       # This allows Settings API to work without Script.current context
       SCRIPT_NAME = 'core'
 
-      # Returns the character scope string for settings access.
-      #
-      # @return [String] the character scope in the format "game:name"
+      # Returns the character-specific scope string (game:name)
+      # @return [String] The scope identifier for character-specific data
       def self.character_scope
         "#{XMLData.game}:#{XMLData.name}"
       end
 
-      # Returns the game scope string for settings access.
-      #
-      # @return [String] the game scope
+      # Returns the game-wide scope string (game only)
+      # @return [String] The scope identifier for game-wide data
       def self.game_scope
         XMLData.game
       end
 
-      # Retrieves a setting value by name for the current character scope.
-      #
-      # @param name [String] the name of the setting
-      # @return [OpenStruct] the setting value
+      # Get a value from character-scoped settings
+      # @param name [String, Symbol] The key to retrieve
+      # @return [Object] The stored value, or nil if not found
       def self.[](name)
         Settings.get_scoped_setting(character_scope, name, script_name: SCRIPT_NAME)
       end
 
-      # Sets a setting value by name for the current character scope.
-      #
-      # @param name [String] the name of the setting
-      # @param value [OpenStruct] the value to set
+      # Set a value in character-scoped settings
+      # @param name [String, Symbol] The key to set
+      # @param value [Object] The value to store
       def self.[]=(name, value)
         Settings.set_script_settings(character_scope, name, value, script_name: SCRIPT_NAME)
       end
 
-      # Provides a proxy for accessing character-scoped settings.
-      #
-      # @return [OpenStruct] the character settings proxy
+      # Returns a root proxy for character-scoped settings
+      # Use this for complex nested operations that auto-persist
+      # @return [SettingsProxy] A proxy wrapping the character settings root
       def self.character_proxy
         Settings.root_proxy_for(character_scope, script_name: SCRIPT_NAME)
       end
 
-      # Provides a proxy for accessing game-scoped settings.
-      #
-      # @return [OpenStruct] the game settings proxy
+      # Returns a root proxy for game-scoped settings
+      # (see the note at the top of this file about several sessions)
+      # @return [SettingsProxy] A proxy wrapping the game settings root
       def self.game_proxy
         Settings.root_proxy_for(game_scope, script_name: SCRIPT_NAME)
       end
 
-      # Provides access to game-scoped settings.
-      #
-      # @return [OpenStruct] the game settings accessor
+      # Convenience accessor for game-scoped data
+      # Returns a module that provides [] and []= for game-scoped access
+      # @return [Module] A module providing game-scoped access
       def self.game
         @game_accessor ||= Module.new do
           extend self
 
+          # Retrieves a value from game-scoped settings.
+          #
+          # @param name [String, Symbol] the key to retrieve
+          # @return [Object, nil] the stored value, or nil if not found
           def self.[](name)
             InstanceSettings.game_proxy[name]
           end
 
+          # Stores a value in game-scoped settings.
+          #
+          # @param name [String, Symbol] the key to store
+          # @param value [Object] the value to persist
+          # @return [Object] the value stored
           def self.[]=(name, value)
             proxy = InstanceSettings.game_proxy
             proxy[name] = value
           end
 
+          # Returns a hash snapshot of all game-scoped settings.
+          #
+          # @return [Hash] a copy of the game settings; modifications won't auto-persist
           def self.to_hash
             Settings.current_script_settings(
               InstanceSettings.game_scope,
@@ -97,9 +127,9 @@ module Lich
         end
       end
 
-      # Converts the character-scoped settings to a hash.
-      #
-      # @return [Hash] the character settings as a hash
+      # Returns a hash snapshot of character-scoped settings
+      # Note: This returns a copy; modifications won't auto-persist
+      # @return [Hash] A copy of the character settings
       def self.to_hash
         Settings.wrap_value_if_container(
           Settings.current_script_settings(character_scope, script_name: SCRIPT_NAME),
@@ -109,19 +139,17 @@ module Lich
         )
       end
 
-      # Loads instance settings (deprecated).
-      #
-      # @return [nil] always returns nil
-      # @deprecated This method is not applicable.
+      # Deprecated no-op methods for compatibility
       def self.load
         Lich.deprecated('InstanceSettings.load', 'not using, not applicable,', caller[0], fe_log: true)
         nil
       end
 
-      # Saves instance settings (deprecated).
+      # Deprecated no-op method retained for compatibility.
       #
-      # @return [nil] always returns nil
-      # @deprecated This method is not applicable.
+      # @return [nil]
+      # @deprecated Settings are auto-persisted; explicit save is not applicable
+      # @api private
       def self.save
         Lich.deprecated('InstanceSettings.save', 'not using, not applicable,', caller[0], fe_log: true)
         nil

@@ -59,6 +59,7 @@ module Lich
           tracking_mode: :explicit,
           script_pattern: /^scripts\/[^\/]+\.lic$/,
           script_prefix: 'scripts',
+          check_lich_requirement: true,
           game_filter: nil,
           default_tracked: %w[
             alias.lic autostart.lic go2.lic jinx.lic log.lic
@@ -73,6 +74,7 @@ module Lich
           tracking_mode: :explicit,
           script_pattern: /^scripts\/[^\/]+\.lic$/,
           script_prefix: 'scripts',
+          check_lich_requirement: true,
           game_filter: /^GS/,
           default_tracked: %w[
             ewaggle.lic
@@ -89,6 +91,12 @@ module Lich
 
       # Routes update commands to appropriate handler classes.
       #
+      # An update or snapshot asked for while a revert, another snapshot or
+      # another update is running on this installation stops before
+      # changing anything. SnapshotManager#snapshot has already told the
+      # user why, so its RevertRunningError ends the command here instead of
+      # reaching the client thread as an error.
+      #
       # @param type [String] command flag (e.g. '--announce', '--update', '--sync')
       # @return [void]
       def self.request(type = '--announce')
@@ -97,6 +105,8 @@ module Lich
           release_installer.announce
         when /^--branch=(.+)$/
           branch_installer.download_branch_update($1)
+        when /^--(?:beta|test)\s+(?:--)?confirm\s*$/
+          release_installer.confirm_betatest
         when /^--(?:beta|test)(?: --(?:(script|library|data))=(.+))?\b/
           release_installer.prep_betatest($1&.dup, $2&.dup)
         when /^(?:--help|-h)\b/
@@ -144,6 +154,8 @@ module Lich
           respond "Command '#{type}' unknown, illegitimate and ignored.  Exiting . . ."
           respond
         end
+      rescue SnapshotManager::RevertRunningError
+        nil
       end
 
       # Syncs all script repositories for current game.
@@ -165,14 +177,13 @@ module Lich
       # Help and status display
       # ---------------------------------------------------------------
 
-      # Displays the lich5-update command reference.
+      # Displays the help text for all lich5-update commands.
       #
-      # Lists all available update commands, script repository operations, custom
-      # repository management, individual file updates, and example workflows.
-      # Output is sent to the game window.
+      # Prints a comprehensive guide covering core updates, snapshot/revert,
+      # script repository sync, custom repos, beta testing, and individual file updates.
       #
       # @return [void]
-      # @note Includes examples for branch-based development workflows and custom 3rd-party repositories
+      # @api private
       def self.help
         respond "
     --help                   Display this message
@@ -201,6 +212,11 @@ module Lich
     #{$clean_lich_char}lich5-update --sync=owner/repo                   Sync a custom repo
     Custom scripts install to #{$clean_lich_char}scripts/custom/<owner-repo>/ (name collisions rejected)
 
+  [Beta testing]
+    #{$clean_lich_char}lich5-update --beta                              Show the beta notice; confirm within #{ReleaseInstaller::BETA_CONFIRM_WINDOW} seconds
+    #{$clean_lich_char}lich5-update --beta --confirm                    Install the latest Lich beta after reading the notice
+    #{$clean_lich_char}lich5-update --beta --library=<name>             Update one library file from the beta channel
+
   [Individual file updates]
     #{$clean_lich_char}lich5-update --script=<name>                     Update script (auto-detects repo)
     #{$clean_lich_char}lich5-update --script=dr-scripts:<name>          Update script from specific repo
@@ -226,13 +242,14 @@ module Lich
     "
       end
 
-      # Displays the current Lich5 version and tracking information.
+      # Displays current Lich5 version and branch tracking information.
       #
-      # For release packages, shows the version number and suggests checking for updates.
-      # For development branches, displays the branch name, repository, and time since last update.
+      # If running a release package, shows the version number and suggests checking
+      # for updates with --announce. If running a development branch, also shows the
+      # branch name, repository, and time elapsed since the last update.
       #
       # @return [void]
-      # @note Output is sent to the game window
+      # @api private
       def self.show_status
         respond
         respond "Lich5 Version Information:"
@@ -316,102 +333,76 @@ module Lich
       # Lazy-initialized wiring (private)
       # ---------------------------------------------------------------
 
-      # Returns the GitHub API client, creating it on first access.
+      # Returns the lazy-initialized GitHub API client.
       #
-      # Lazy-initializes a shared GitHubClient instance used across all update operations.
-      #
-      # @return [GitHubClient] the GitHub API client
+      # @return [GitHubClient] singleton instance for GitHub API requests
       # @api private
       def self.client
         @client ||= GitHubClient.new
       end
 
-      # Returns the update channel resolver, creating it on first access.
+      # Returns the lazy-initialized channel resolver.
       #
-      # Lazy-initializes a shared ChannelResolver instance for resolving release channels
-      # and determining which version to download.
-      #
-      # @return [ChannelResolver] the channel resolver
+      # @return [ChannelResolver] singleton instance for resolving update channels
       # @api private
       def self.resolver
         @resolver ||= ChannelResolver.new(client)
       end
 
-      # Returns the snapshot manager, creating it on first access.
+      # Returns the lazy-initialized snapshot manager.
       #
-      # Lazy-initializes a shared SnapshotManager instance for creating and reverting
-      # backup snapshots of the Lich5 ecosystem.
-      #
-      # @return [SnapshotManager] the snapshot manager
+      # @return [SnapshotManager] singleton instance for backup and revert operations
       # @api private
       def self.snapshot_manager
         @snapshot_manager ||= SnapshotManager.new
       end
 
-      # Returns the release installer, creating it on first access.
+      # Returns the lazy-initialized release installer.
       #
-      # Lazy-initializes a shared ReleaseInstaller instance for downloading and installing
-      # release-based updates, including stable and beta channel updates.
-      #
-      # @return [ReleaseInstaller] the release installer
+      # @return [ReleaseInstaller] singleton instance for stable release updates
       # @api private
       def self.release_installer
         @release_installer ||= ReleaseInstaller.new(client, resolver, snapshot_manager)
       end
 
-      # Returns the branch installer, creating it on first access.
+      # Returns the lazy-initialized branch installer.
       #
-      # Lazy-initializes a shared BranchInstaller instance for downloading and installing
-      # development branch updates.
-      #
-      # @return [BranchInstaller] the branch installer
+      # @return [BranchInstaller] singleton instance for development branch updates
       # @api private
       def self.branch_installer
         @branch_installer ||= BranchInstaller.new(snapshot_manager, release_installer)
       end
 
-      # Returns the script sync manager, creating it on first access.
+      # Returns the lazy-initialized script sync manager.
       #
-      # Lazy-initializes a shared ScriptSync instance for synchronizing script repositories
-      # against their remote sources.
-      #
-      # @return [ScriptSync] the script sync manager
+      # @return [ScriptSync] singleton instance for syncing script repositories
       # @api private
       def self.script_sync
         @script_sync ||= ScriptSync.new(client)
       end
 
-      # Returns the tracked scripts manager, creating it on first access.
+      # Returns the lazy-initialized tracked scripts manager.
       #
-      # Lazy-initializes a shared TrackedScripts instance for managing the set of scripts
-      # to be synced from each repository.
-      #
-      # @return [TrackedScripts] the tracked scripts manager
+      # @return [TrackedScripts] singleton instance for managing tracked script lists
       # @api private
       def self.tracked_scripts_manager
         @tracked_scripts_manager ||= TrackedScripts.new
       end
 
-      # Returns the custom repositories manager, creating it on first access.
+      # Returns the lazy-initialized custom repository manager.
       #
-      # Lazy-initializes a shared CustomRepos instance for registering, unregistering,
-      # and tracking 3rd-party script repositories.
-      #
-      # @return [CustomRepos] the custom repositories manager
+      # @return [CustomRepos] singleton instance for managing third-party repos
       # @api private
       def self.custom_repos_manager
         @custom_repos_manager ||= CustomRepos.new
       end
 
-      # Returns the file updater, creating it on first access.
+      # Returns the lazy-initialized file updater.
       #
-      # Lazy-initializes a shared FileUpdater instance for updating individual scripts,
-      # libraries, and data files from any registered repository.
-      #
-      # @return [FileUpdater] the file updater
+      # @return [FileUpdater] singleton instance for updating individual files
       # @api private
       def self.file_updater
-        @file_updater ||= FileUpdater.new(client, resolver)
+        @file_updater ||= FileUpdater.new(client, resolver, snapshot_manager)
       end
 
       private_class_method :client, :resolver, :snapshot_manager,

@@ -1,20 +1,12 @@
 # frozen_string_literal: true
 
 # Namespace for the Lich scripting engine.
-#
-# Lich is a Ruby scripting runtime for text-based games including GemStone IV
-# and DragonRealms. This module contains the core engine and internal APIs.
+# @api private
 module Lich
-  # Namespace for internal APIs not intended for direct use by script authors.
-  #
+  # Namespace for Lich runtime internals not intended for script consumption.
   # @api private
   module InternalAPI
-    # Namespace for active-sessions reporting and lifecycle management.
-    #
-    # Coordinates registration and heartbeat updates with the active-sessions
-    # service to track live Lich processes and their connection state across
-    # the GemStone IV and DragonRealms game worlds.
-    #
+    # Namespace for active-sessions registry and lifecycle coordination.
     # @api private
     module ActiveSessions
       # Process-local lifecycle coordinator for active sessions registration.
@@ -76,8 +68,18 @@ module Lich
           elsif defined?(XMLData) && XMLData.respond_to?(:name) && !XMLData.name.to_s.empty?
             XMLData.name
           else
-            "pid-#{Process.pid}"
+            default_session_name
           end
+        end
+
+        # The placeholder resolve_session_name falls back to when none of
+        # --login, Account.character, or XMLData.name have an answer yet.
+        # Exposed so callers can tell a resolved name apart from this
+        # placeholder without duplicating its format.
+        #
+        # @return [String]
+        def self.default_session_name
+          "pid-#{Process.pid}"
         end
 
         # Resolves the logical runtime role for active sessions reporting.

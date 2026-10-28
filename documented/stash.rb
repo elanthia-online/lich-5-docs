@@ -4,29 +4,30 @@ stash.rb: Core lich file for extending free_hands, empty_hands functions in
   required to be maintained.
 =end
 
-# Namespace for Lich 5 scripting engine functionality.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for inventory container and equipment management.
+  # Container management and item manipulation for script inventory and hand control.
   #
-  # Provides methods to locate containers, move items between hands and storage,
-  # and manage the queuing of item stashing and equipping actions.
+  # Provides methods to stash items from hands, equip items into hands, find containers
+  # and items, and track bandolier weapons. Caches container and bandolier state to avoid
+  # redundant lookups.
   module Stash
     @weapon_displayer ||= []
     @bandolier_weapon ||= {}
     @worn_items ||= {}
 
-    # Finds a container in inventory by partial name match.
+    # Finds a container in inventory matching a name pattern.
     #
-    # Searches the player's inventory for a container whose name matches the given
-    # parameter using two regex patterns: literal substring match and flexible
-    # space-separated word match. Returns nil if not found and loud_fail is false.
+    # Searches inventory with substring matching and allows words to be non-adjacent
+    # ("vultite bag" matches "vultite leather sack"). Accepts GameObj or String.
     #
-    # @param param [String, GameObj] container name or a GameObj to extract the name from
-    # @param loud_fail [Boolean] if true, raises an error when container not found; if false, returns nil
-    # @return [GameObj, nil] the found container, or nil if not found and loud_fail is false
-    # @raise [RuntimeError] "could not find Container[name: ...]" when container not found and loud_fail is true
-    # @example Find a backpack
-    #   Lich::Stash.find_container("backpack", loud_fail: false)
+    # @param param [GameObj, String] a container name or GameObj with a name to match
+    # @param loud_fail [Boolean] raise RuntimeError if container not found (default true)
+    # @return [GameObj, nil] the container, or nil if loud_fail is false and not found
+    # @raise [RuntimeError] when loud_fail is true and the container cannot be found
+    # @example
+    #   Lich::Stash.find_container("lootsack") #=> #<GameObj ...>
+    #   Lich::Stash.find_container("vultite bag") #=> matches "vultite leather bag"
     def self.find_container(param, loud_fail: true)
       param = param.name if param.is_a?(GameObj) # (Lich::Gemstone::GameObj)
       found_container = GameObj.inv.find do |container|
@@ -39,16 +40,15 @@ module Lich
       end
     end
 
-    # Returns a container after ensuring it is open and its contents are visible.
+    # Gets a container and opens it if closed, caching it in @weapon_displayer.
     #
-    # Looks up the container using .find_container, opens it if closed, and updates
-    # the internal @weapon_displayer cache to track which containers have had their
-    # contents exposed. This is a setup method meant to be called before manipulating
-    # container contents.
+    # Calls find_container, opens it if needed via look-in and open commands, and tracks
+    # the container id in @weapon_displayer to avoid re-checking on future calls.
     #
-    # @param param [String, GameObj] container name or GameObj
-    # @return [GameObj] the container object
+    # @param param [GameObj, String] container name or GameObj
+    # @return [GameObj] the opened container
     # @raise [RuntimeError] if the container cannot be found
+    # @see .find_container
     def self.container(param)
       container_to_check = find_container(param)
       unless @weapon_displayer.include?(container_to_check.id)
@@ -59,19 +59,17 @@ module Lich
       return container_to_check
     end
 
-    # Executes a command and waits for a condition block to return true within a timeout.
+    # Issues a command and waits for a condition with a timeout.
     #
-    # Issues the command with .fput, then repeatedly yields the fput result to the
-    # caller's block until the block returns true or the timeout expires. Raises an
-    # error if the timeout is exceeded.
+    # Sends a command via fput, then polls the block until it returns true or the
+    # timeout expires. Raises if the timeout is exceeded.
     #
-    # @param seconds [Numeric] how long to wait (default: 2)
-    # @param command [String] the command to execute
-    # @yield [result] yields the fput result string to the block; block should return true when condition is met
+    # @param seconds [Integer] timeout in seconds (default 2)
+    # @param command [String] the command to send via fput
+    # @yield [String] the result of the command; block should return true when done
     # @return [void]
-    # @raise [RuntimeError] "Error[command: ..., seconds: ...]" if timeout exceeded
-    # @example Wait for a successful result
-    #   Lich::Stash.try_or_fail(seconds: 3, command: "get sword") { |result| !result.include?("You can't find that") }
+    # @raise [RuntimeError] when the block never returns true within the timeout
+    # @api private
     def self.try_or_fail(seconds: 2, command: nil)
       result = fput(command)
       expiry = Time.now + seconds
@@ -79,19 +77,16 @@ module Lich
       fail "Error[command: #{command}, seconds: #{seconds}]" if Time.now > expiry
     end
 
-    # Moves an item into a container using _drag.
+    # Drags an item into a bag using _drag, with special handling for bandolier weapons.
     #
-    # Drags the item into the bag and polls for confirmation that it arrived. Handles
-    # three special cases: bandolier weapons (which dissolve into vapor and are cached),
-    # ethereal weapons (checked by name pattern), and normal items. Retries for up to
-    # 2 seconds until the item is no longer in either hand and is present in the
-    # container or marked as stashed (for bandolier).
+    # Sends _drag command and waits for the item to leave both hands or arrive in the bag.
+    # If the item dissolves into vapor (bandolier), records it and returns true. Retries
+    # for up to 2 seconds, polling every 0.1 seconds.
     #
-    # @param bag [String, GameObj] container name or container GameObj
+    # @param bag [GameObj, String] the destination container name or GameObj
     # @param item [GameObj] the item to move
-    # @return [Boolean] true if item was successfully moved or cached as bandolier; false if timeout
-    # @example
-    #   Lich::Stash.add_to_bag("backpack", GameObj.right_hand)
+    # @return [Boolean] true if the item was placed, false if the operation timed out
+    # @see .container
     def self.add_to_bag(bag, item)
       bag = container(bag)
       try_or_fail(command: "_drag ##{item.id} ##{bag.id}") do |result|
@@ -112,15 +107,14 @@ module Lich
       end
     end
 
-    # Attempts to move an item from worn equipment to inventory via the wear command.
+    # Attempts to wear an item, moving it from inventory to worn slots.
     #
-    # Uses the wear command to toggle an item off, which places it in inventory.
-    # Polls for up to 2 seconds for the item to leave both hands and appear in
-    # inventory. Caches the result in @worn_items. If the item cannot be worn to
-    # inventory (e.g., due to wear slot limitations), records false in the cache.
+    # Sends wear command and waits for the item to leave both hands and appear in inventory.
+    # Returns false if the wear location is full ("You can only wear two items in that location.").
+    # Retries for up to 2 seconds, polling every 0.1 seconds. Records worn status in @worn_items.
     #
-    # @param item [GameObj] the equipped item to move to inventory
-    # @return [Boolean] false if the item could not be worn to inventory; true if successful
+    # @param item [GameObj] the item to wear
+    # @return [Boolean] true if successfully worn, false if the location is full or worn failed
     # @api private
     def self.wear_to_inv(item)
       try_or_fail(command: "wear ##{item.id}") do |result|
@@ -134,19 +128,16 @@ module Lich
       end
     end
 
-    # Locates which bandolier bag (if any) contains a bandolier weapon.
+    # Finds the bandolier bag containing an item, using the mist indicator.
     #
-    # Returns a cached container ID if valid and the container still exists in inventory.
-    # Otherwise queries inventory for all containers, then checks each one for the item's
-    # noun surrounded by swirling mist (the bandolier's display indicator). Caches the
-    # result as the container's ID or "unknown" if not found.
+    # Issues "inventory containers" and searches each container for the item by looking
+    # for the line "Surrounded by some swirling mist is <noun>". Caches the result in
+    # @bandolier_weapon[item.name]. Returns nil (stored as "unknown") if not found in any
+    # container. Waits for round time before each command.
     #
-    # @param item [GameObj] the weapon to search for
-    # @return [String, nil] the container ID if found; nil if not found in any bandolier
-    # @note Performs multiple server queries; may be slow when called for many items
-    # @example
-    #   bag_id = Lich::Stash.find_bandolier_bag(my_sword)
-    #   fput("rub ##{bag_id}") if bag_id
+    # @param item [GameObj] the item to find in a bandolier
+    # @return [String, nil] the cached container id, or nil if the item is in no bandolier
+    # @api private
     def self.find_bandolier_bag(item)
       # Return cached value if valid and item exists in inventory
       cached_id = @bandolier_weapon[item.name]
@@ -196,20 +187,19 @@ module Lich
       @bandolier_weapon[item.name] = found_container&.id || "unknown"
     end
 
-    # Queues actions to stash items from one or both hands into containers.
+    # Removes an item or items from hand(s) and stashes them, recording restore actions.
     #
-    # Constructs and caches a list of Procs that will move the current right hand,
-    # left hand, or both to appropriate containers based on ReadyList and StowList
-    # configuration. Prioritizes sheaths, then weaponsacks for weapons, then the
-    # lootsack, then any other available containers. Also handles ethereal weapons
-    # (rub tattoo) and bandolier weapons (rub bag). Call .equip_hands later to
-    # execute the queued actions.
+    # Removes items from one or both hands using remove/wear for worn items, or get for
+    # other locations. Consulted the ReadyList to decide whether to stow in a sheath or
+    # default stow container. Pushes a proc onto $fill_right_hand_actions, $fill_left_hand_actions,
+    # or $fill_hands_actions that will restore the item when equip_hands is called with
+    # the matching flag. Does nothing if the hand is already empty. Uses ReadyList and
+    # StowList for sheath and stow container configuration.
     #
-    # @param right [Boolean] if true, queue actions to stash the right hand item
-    # @param left [Boolean] if true, queue actions to stash the left hand item
-    # @param both [Boolean] if true, queue actions to stash both hands (takes precedence)
+    # @param right [Boolean] stash the right hand (default false)
+    # @param left [Boolean] stash the left hand (default false)
+    # @param both [Boolean] stash both hands; overrides right and left (default false)
     # @return [void]
-    # @note Requires ReadyList and StowList to be valid; checks and updates them automatically
     # @see .equip_hands
     def self.stash_hands(right: false, left: false, both: false)
       $fill_hands_actions ||= Array.new
@@ -352,16 +342,380 @@ module Lich
       $fill_right_hand_actions.push(actions) if right
     end
 
-    # Executes queued stashing actions for one or both hands.
+    # -------------------------------------------------------------------------
+    # Named items: find, wield, and reconcile both hands to a wanted state.
     #
-    # Pops and calls the Procs that were queued by a prior call to .stash_hands.
-    # If both are specified, executes the both-hands queue. If left or right are
-    # specified, executes their respective queues. If none are specified, executes
-    # the right-hand queue if available, otherwise the left-hand queue.
+    # stash_hands / equip_hands remember and restore whatever was held. The
+    # methods below are the other half: "put THIS item in my hand", where the
+    # item is named by a profile string, an id, a GameObj, or a ready-list slot.
+    # Every command is sent by id, so an ambiguous noun never reaches the game.
+    # -------------------------------------------------------------------------
+
+    # Symbol array of valid hand names.
     #
-    # @param both [Boolean] if true, execute queued both-hands actions
-    # @param left [Boolean] if true, execute queued left-hand actions
-    # @param right [Boolean] if true, execute queued right-hand actions
+    # @see .wield .hands .empty_hand?
+    HANDS = %i[right left].freeze
+
+    ITEM_CONFIRM_TRIES = 20
+    ITEM_CONFIRM_SLEEP = 0.1
+
+    # Resolve an item reference to a GameObj without sending anything.
+    #
+    # @param param [GameObj, Integer, String, Symbol] a GameObj; an id; a
+    #   ready-list slot (:weapon, :shield, ...); or a name matched the way
+    #   find_container matches, case-insensitive and with words allowed to be
+    #   non-adjacent ("vultite broadsword" matches "vultite hand-forged broadsword")
+    # @param loud_fail [Boolean] raise when nothing matches
+    # @return [GameObj, nil] the best candidate from find_items for a name
+    # @raise [RuntimeError] when loud_fail and the item is missing
+    def self.find_item(param, loud_fail: true)
+      return param if param.is_a?(GameObj)
+
+      found = case param
+              when Integer then GameObj[param.to_s]
+              when Symbol then find_ready_item(param)
+              when String
+                param =~ /\A\d+\z/ ? GameObj[param] : find_items(param).first
+              end
+      fail "could not find Item[#{param.inspect}]" if found.nil? && loud_fail
+      found
+    end
+
+    # Every distinct item a name could mean, best first, without sending
+    # anything. Ordered by how specific the match is (whole name, then part
+    # of the name, then noun only) and then by where the item is (hands,
+    # ready list, worn, containers), which is the order the game itself
+    # resolves a bare noun in. Items with identical names are interchangeable
+    # and collapse to the first.
+    #
+    # @param name [String]
+    # @return [Array<GameObj>] empty when nothing matches
+    def self.find_items(name)
+      ranked = known_items_ranked.select { |obj, _loc| name_matches?(obj, name) }
+      ranked = inventory_matches(name).map { |obj| [obj, 4] } if ranked.empty?
+      ranked.sort_by.with_index { |(obj, loc), i| [match_specificity(obj, name), loc, i] }
+            .map(&:first)
+            .uniq(&:id)
+            .uniq(&:name)
+    end
+
+    # The full inventory tree, refreshed on request through the game's
+    # inventory manager. This is what knows about items in containers Lich
+    # has never looked in, and whether each container is closed right now.
+    #
+    # @param refresh [Boolean] ask the game for a fresh tree (one command)
+    # @return [Lich::Common::Inventory::Snapshot, nil]
+    def self.inventory(refresh: true)
+      return nil unless defined?(Lich::Common::Inventory)
+      refresh ? Lich::Common::Inventory.refresh : Lich::Common::Inventory.current
+    rescue StandardError
+      nil
+    end
+
+    # Open every closed container between the item and the player, outermost
+    # first, confirming each. Locked containers are left alone.
+    #
+    # @param item [GameObj]
+    # @return [Boolean] false when a container on the way is locked or would not open
+    def self.open_path_to(item)
+      snapshot = inventory(refresh: false) || inventory
+      entry = snapshot && snapshot[item.id]
+      return true if entry.nil? # Inventory does not know it; nothing to open
+
+      chain = []
+      parent = entry.parent_item
+      while parent
+        chain.unshift(parent)
+        parent = parent.parent_item
+      end
+      chain.each do |container|
+        next unless container.closed?
+        return false if container.locked?
+        return false unless open_container(container.id)
+      end
+      true
+    end
+
+    # Pattern matching responses to open attempts.
+    #
+    # Matches success ("You open", already open), failure ("You can't", "locked"),
+    # and permission errors ("You don't seem", "You need").
+    #
+    # @example
+    #   "You open the bag." =~ OPEN_CONFIRM #=> 0
+    #   "That is locked." =~ OPEN_CONFIRM #=> 24
+    # @see .open_container
+    OPEN_CONFIRM = /^You open|^That is already open|^It is already open|^You can't|^You don't seem|^You need|is locked/.freeze
+
+    # @param id [String] container id
+    # @return [Boolean] whether the container is open afterwards
+    def self.open_container(id)
+      waitrt?
+      result = dothistimeout("open ##{id}", 3, OPEN_CONFIRM)
+      return true if result =~ /^You open|already open/
+      false
+    end
+
+    # @return [Symbol, nil] :right or :left when the item is in that hand
+    def self.hand_holding(item)
+      id = item.is_a?(GameObj) ? item.id : item.to_s
+      return nil if id.nil?
+      return :right if GameObj.right_hand&.id == id
+      return :left if GameObj.left_hand&.id == id
+      nil
+    end
+
+    # @return [Boolean]
+    def self.in_hand?(item)
+      !hand_holding(item).nil?
+    end
+
+    # Free a hand for an item we are about to put there.
+    #
+    # stash_hands is the public empty_hand/empty_right_hand API: it pushes a
+    # "put this back" action onto the process-wide $fill_*_hand_actions stacks
+    # that equip_hands / fill_hand pop. wield and hands displace an item on
+    # purpose and never restore it, so leaving an entry behind would corrupt
+    # the stack another script is using. Stash, then drop the entry we just
+    # added, leaving any pre-existing entries untouched.
+    #
+    # @param hand [Symbol] :right or :left
+    # @return [void]
+    def self.free_hand(hand)
+      return if empty_hand?(hand)
+      stack = hand == :right ? ($fill_right_hand_actions ||= []) : ($fill_left_hand_actions ||= [])
+      depth = stack.length
+      stash_hands(**{ hand => true })
+      stack.pop while stack.length > depth
+    end
+
+    # Get a named item into a hand.
+    #
+    # Worn items are removed, items in containers are fetched (opening the
+    # container first when Lich knows it is closed), and the target hand is
+    # emptied through stash_hands beforehand so nothing is dropped. When no
+    # hand is given the item goes wherever the game puts it.
+    #
+    # @param param [GameObj, Integer, String, Symbol] see find_item
+    # @param hand [Symbol, nil] :right, :left, or nil for either
+    # @return [GameObj] the item now in hand
+    # @raise [RuntimeError] when the item cannot be found or never arrives
+    def self.wield(param, hand: nil)
+      fail "wield: hand must be :right, :left or nil, got #{hand.inspect}" unless hand.nil? || HANDS.include?(hand)
+      if param.is_a?(String) && param !~ /\A\d+\z/
+        candidates = find_items(param)
+        fail "could not find Item[#{param.inspect}]" if candidates.empty?
+        item = candidates.first
+        echo "wield: #{param} -> #{item.name} (of #{candidates.size} kinds: #{candidates.map(&:name).join(', ')})" if candidates.size > 1
+      else
+        item = find_item(param)
+      end
+
+      holding = hand_holding(item)
+      if holding
+        return item if hand.nil? || holding == hand
+        waitrt?
+        dothistimeout 'swap', 3, /^You don't have anything to swap!|^You swap/
+        return item if hand_holding(item) == hand
+        fail "wield: could not move #{item.name} to the #{hand} hand"
+      end
+
+      waitrt?
+      if hand
+        free_hand(hand)
+      elsif !empty_hand?(:right) && !empty_hand?(:left)
+        free_hand(:right)
+      end
+
+      fail "wield: a container holding #{item.name} is locked or would not open" unless open_path_to(item)
+
+      fetch = worn?(item) ? "remove ##{item.id}" : "get ##{item.id}"
+      fput fetch
+      ITEM_CONFIRM_TRIES.times { break if in_hand?(item); sleep ITEM_CONFIRM_SLEEP }
+
+      # Did not arrive: the usual cause is a container closed since Lich last
+      # saw inside it. Ask the game for the current tree, open, try once more.
+      unless in_hand?(item)
+        inventory
+        fail "wield: a container holding #{item.name} is locked or would not open" unless open_path_to(item)
+        fput fetch
+        ITEM_CONFIRM_TRIES.times { break if in_hand?(item); sleep ITEM_CONFIRM_SLEEP }
+      end
+      fail "wield: #{item.name} did not arrive in hand" unless in_hand?(item)
+
+      if hand && hand_holding(item) != hand
+        dothistimeout 'swap', 3, /^You don't have anything to swap!|^You swap/
+        fail "wield: could not move #{item.name} to the #{hand} hand" unless hand_holding(item) == hand
+      end
+      item
+    end
+
+    # Reconcile both hands to a wanted state without dropping anything.
+    #
+    #   Stash.hands(right: 'broadsword', left: :shield)   # wield both
+    #   Stash.hands(right: nil)                           # empty the right hand, leave left alone
+    #   Stash.hands(left: :keep, right: 'runestaff')
+    #
+    # Each hand takes :keep (leave it, the default), nil (empty it), or any item
+    # reference find_item accepts. An item already in the other hand is swapped
+    # across rather than stashed and fetched.
+    #
+    # @return [Hash{Symbol => GameObj, nil}] what each hand holds afterwards
+    def self.hands(right: :keep, left: :keep)
+      wanted = { right: right, left: left }
+      resolved = wanted.transform_values { |want| want == :keep || want.nil? ? want : find_item(want) }
+      if resolved[:right].is_a?(GameObj) && resolved[:left].is_a?(GameObj) && resolved[:right].id == resolved[:left].id
+        raise ArgumentError, "hands: #{resolved[:right].name} was asked for in both hands"
+      end
+
+      # A wanted item sitting in the hand the caller asked to keep can only be
+      # moved by a swap, which would change that hand. Refuse before touching anything.
+      HANDS.each do |hand|
+        other = hand == :right ? :left : :right
+        item = resolved[hand]
+        next unless item.is_a?(GameObj) && wanted[other] == :keep && hand_holding(item) == other
+        raise ArgumentError, "hands: #{item.name} is in the #{other} hand, which was asked to be kept"
+      end
+
+      # Both wanted items are present but in each other's hands: one swap.
+      if resolved[:right].is_a?(GameObj) && resolved[:left].is_a?(GameObj) &&
+         hand_holding(resolved[:right]) == :left && hand_holding(resolved[:left]) == :right
+        waitrt?
+        dothistimeout 'swap', 3, /^You don't have anything to swap!|^You swap/
+      end
+
+      # Empty first, so a wanted item can land in a freed hand. A hand asked to
+      # be emptied that is holding the item wanted in the OTHER hand needs a
+      # swap, not a stash: stashing would drag the wanted item into a container
+      # only for the wield below to fetch it straight back out. If the other
+      # hand is occupied by something unwanted, stash THAT and then swap, so
+      # the item the caller asked for never goes into a container.
+      HANDS.each do |hand|
+        next unless resolved[hand].nil? && wanted.key?(hand) && !(wanted[hand] == :keep)
+        next if empty_hand?(hand)
+        other = hand == :right ? :left : :right
+        other_item = resolved[other]
+        if other_item.is_a?(GameObj) && hand_holding(other_item) == hand
+          free_hand(other) unless empty_hand?(other)
+          if empty_hand?(other)
+            waitrt?
+            dothistimeout 'swap', 3, /^You don't have anything to swap!|^You swap/
+            next if empty_hand?(hand)
+          end
+        end
+        free_hand(hand)
+      end
+
+      HANDS.each do |hand|
+        item = resolved[hand]
+        next unless item.is_a?(GameObj)
+        wield(item, hand: hand)
+      end
+
+      { right: GameObj.right_hand&.id ? GameObj.right_hand : nil,
+        left: GameObj.left_hand&.id ? GameObj.left_hand : nil }
+    end
+
+    # @param hand [Symbol] :right or :left
+    # @return [Boolean]
+    def self.empty_hand?(hand)
+      obj = hand == :right ? GameObj.right_hand : GameObj.left_hand
+      obj.nil? || obj.id.nil?
+    end
+
+    # @return [Boolean] whether the item is in worn inventory (needs REMOVE, not GET)
+    def self.worn?(item)
+      GameObj.inv.to_a.any? { |obj| obj.id == item.id }
+    end
+
+    # @return [GameObj, nil] the container Lich knows the item to be inside,
+    #   from the looked-in registries or the inventory tree
+    def self.container_holding(item)
+      entry = GameObj.containers.find { |_id, items| items.to_a.any? { |obj| obj.id == item.id } }
+      return GameObj.inv.to_a.find { |obj| obj.id == entry.first } || GameObj[entry.first] if entry
+
+      snapshot = inventory(refresh: false)
+      parent = snapshot && snapshot[item.id]&.parent_item
+      parent && GameObj[parent.id]
+    end
+
+    # Items from the inventory tree whose name matches, as GameObjs. Inventory
+    # registers a GameObj for every item it sees, so the id lookup succeeds
+    # even for items in containers nobody has looked in.
+    #
+    # @return [Array<GameObj>]
+    def self.inventory_matches(param)
+      snapshot = inventory
+      return [] if snapshot.nil?
+      snapshot.all.select { |item| name_matches?(item, param) }
+              .reject { |item| item.in_room? || item.at_feet? }
+              .map { |item| GameObj[item.id] }
+              .compact
+    end
+
+    # @return [GameObj, nil] the item in a ready-list slot, checking the list once if needed
+    def self.find_ready_item(slot)
+      fail "unknown ready-list slot #{slot.inspect}" unless ReadyList.ready_list.key?(slot)
+      ReadyList.check(silent: true, quiet: true) unless ReadyList.valid?
+      ReadyList.ready_list[slot]
+    end
+
+    # known_items with a location rank: 0 hands, 1 ready list, 2 worn, 3 in a container.
+    #
+    # @return [Array<Array(GameObj, Integer)>]
+    def self.known_items_ranked
+      hands = [GameObj.right_hand, GameObj.left_hand].compact.reject { |obj| obj.id.nil? }
+      ready = ReadyList.checked? ? ReadyList.ready_list.values.compact : []
+      hands.map { |obj| [obj, 0] } +
+        ready.map { |obj| [obj, 1] } +
+        GameObj.inv.to_a.map { |obj| [obj, 2] } +
+        GameObj.containers.values.flatten.map { |obj| [obj, 3] }
+    end
+
+    # 0 when the name is the whole item name, 1 when it is a run of whole
+    # words inside it, 2 when only the noun (or a loose match) hit.
+    def self.match_specificity(obj, name)
+      wanted = name.strip.downcase
+      actual = obj.name.to_s.downcase
+      return 0 if actual == wanted
+      return 1 if actual =~ /(?:\A|\s)#{Regexp.escape(wanted)}(?:\s|\z)/ && wanted.include?(' ')
+      2
+    end
+
+    # Every item Lich currently knows the character has: hands, worn, and the
+    # contents of containers that have been looked in.
+    #
+    # @return [Array<GameObj>]
+    def self.known_items
+      hands = [GameObj.right_hand, GameObj.left_hand].compact.reject { |obj| obj.id.nil? }
+      hands + GameObj.inv.to_a + GameObj.containers.values.flatten
+    end
+
+    # Same matching find_container uses (substring, and words that may be
+    # non-adjacent), so a profile string means the same thing whether it names
+    # a bag or a weapon. Unlike find_container the pattern is escaped, so an
+    # item name or profile string carrying regex metacharacters cannot raise.
+    def self.name_matches?(obj, param)
+      wanted = param.to_s.strip
+      return false if wanted.empty?
+      name = obj.name.to_s
+      return true if name =~ /#{Regexp.escape(wanted)}/i
+      loose = wanted.split(/ /, 2).map { |part| Regexp.escape(part) }.join(' .*')
+      name =~ /#{loose}/i ? true : false
+    end
+
+    private_class_method :find_ready_item, :known_items, :known_items_ranked, :match_specificity, :name_matches?, :inventory_matches
+
+    # Executes stashed restore actions for one or both hands.
+    #
+    # Pops the most recent proc from $fill_left_hand_actions, $fill_right_hand_actions,
+    # or $fill_hands_actions and calls it to restore the item(s) that were in hand before
+    # the matching stash_hands call. When no hand is specified, prefers right hand if
+    # available, then left hand. Does nothing if no matching actions are queued.
+    #
+    # @param left [Boolean] restore the left hand (default false)
+    # @param right [Boolean] restore the right hand (default false)
+    # @param both [Boolean] restore both hands; overrides left and right (default false)
     # @return [void]
     # @see .stash_hands
     def self.equip_hands(left: false, right: false, both: false)

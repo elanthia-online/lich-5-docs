@@ -4,16 +4,22 @@
 require_relative 'hook_registry'
 require_relative 'script_death'
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich 5 scripting engine and its public API.
 module Lich
-  # Namespace for shared engine utilities.
+  # Namespace for core hook registries and script lifecycle management.
   module Common
-    # Registry for hooks that intercept and transform text flowing from the game server to the client.
+    # Registry for hooks that process game server output before scripts receive it.
     #
-    # Upstream hooks receive each line of unprocessed server output and may modify or suppress it.
-    # Script-scoped hooks are automatically removed when a script dies; persistent hooks remain active.
+    # UpstreamHook allows scripts to intercept and transform the raw XML stream from
+    # the game server. Hooks are executed in priority order and receive the server
+    # string; each hook can modify it before passing to the next. If a hook raises an
+    # exception, it is removed and an error is logged, but processing continues.
     #
-    # @api private
+    # Hooks registered with UpstreamHook are removed when their owning script dies,
+    # unless registered with persist: true.
+    #
+    # @see HookRegistry
+    # @see ScriptDeath
     class UpstreamHook
       extend HookRegistry
 
@@ -21,55 +27,71 @@ module Lich
       @@upstream_hook_sources ||= Hash.new
       @@upstream_hook_owners ||= Hash.new
       @@upstream_hook_persist ||= Hash.new
+      @@upstream_hook_priorities ||= Hash.new
 
       # Per-class storage for the shared HookRegistry methods.
       def self._hooks
         @@upstream_hooks
       end
 
-      # Returns the registry of script sources for upstream hooks.
+      # Returns the per-class storage hash mapping hook keys to their source scripts.
       #
-      # @return [Hash] maps hook keys to their defining scripts
+      # @return [Hash] hook key => source script identity
       # @api private
       def self._hook_sources
         @@upstream_hook_sources
       end
 
-      # Returns the registry of script owners for upstream hooks.
+      # Returns the per-class storage hash mapping hook keys to their owning scripts.
       #
-      # @return [Hash] maps hook keys to their owning script object IDs
+      # @return [Hash] hook key => script object_id
       # @api private
       def self._hook_owners
         @@upstream_hook_owners
       end
 
-      # Returns the registry of persistence flags for upstream hooks.
+      # Returns the per-class storage hash tracking which hooks should survive script death.
       #
-      # @return [Hash] maps hook keys to boolean persistence flags
+      # @return [Hash] hook key => Boolean (true if hook persists)
       # @api private
       def self._hook_persist
         @@upstream_hook_persist
       end
 
-      # Invokes all registered upstream hooks in sequence to transform server output.
+      # Returns the per-class storage hash mapping hook keys to their execution priorities.
       #
-      # Each hook receives the client string and may modify or return nil to suppress it.
-      # If a hook raises an error, it is removed from the registry, an error message is sent,
-      # and processing stops.
-      #
-      # @param client_string [String] the text flowing from the game server to the client
-      # @return [String, nil] the transformed text, or nil if any hook suppressed it
+      # @return [Hash] hook key => priority Integer
       # @api private
+      def self._hook_priorities
+        @@upstream_hook_priorities
+      end
+
+      # Processes game server output through all registered upstream hooks in priority order.
+      #
+      # Executes each registered hook in priority order, passing the server output through
+      # them sequentially. If a hook raises an exception, it is automatically removed and an
+      # error is logged to the game window, but processing of remaining hooks continues.
+      # If any hook returns nil, processing stops and nil is returned.
+      #
+      # @param client_string [String] the raw XML output from the game server
+      # @return [String, nil] the transformed server output, or nil if processing was halted
+      # @example
+      #   upstream_output = Lich::Common::UpstreamHook.run(raw_server_xml)
+      # @raise [StandardError] exceptions from individual hooks are caught and logged;
+      #   the hook is removed but execution continues
       def UpstreamHook.run(client_string)
-        for key in @@upstream_hooks.keys
+        for key in ordered_hook_names
+          return nil if client_string.nil?
           begin
-            client_string = @@upstream_hooks[key].call(client_string)
+            action = hook_action(key)
+            next unless action
+
+            client_string = action.call(client_string)
           rescue
-            @@upstream_hooks.delete(key)
+            remove(key)
             respond "--- Lich: UpstreamHook: #{$!}"
             respond $!.backtrace.first
           end
-          return nil if client_string.nil?
         end
         return client_string
       end

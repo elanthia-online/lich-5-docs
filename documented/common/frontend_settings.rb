@@ -4,10 +4,11 @@ require 'fileutils'
 require 'tempfile'
 require 'yaml'
 require_relative 'frontend'
+require_relative 'sharing_violation_retry'
 
-# Lich scripting engine for text-based games.
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Shared utilities and common infrastructure.
+  # Common utilities and configuration shared across Lich 5.
   module Common
     # Owns user-configurable frontend definitions and built-in launch overrides.
     #
@@ -18,35 +19,38 @@ module Lich
     module FrontendSettings
       FILE_NAME = 'frontends.yml'
       SCHEMA_VERSION = 1
-      # Pattern for valid custom frontend identifiers.
+      # Regexp that validates custom frontend identifiers.
       #
-      # Custom IDs must start with a lowercase letter or digit, followed by 0-63
-      # lowercase letters, digits, hyphens, or underscores.
+      # Identifiers must start with a lowercase letter or digit, followed by zero to
+      # sixty-three characters of lowercase letters, digits, underscores, or hyphens.
+      # Total length is limited to 64 characters.
       #
-      # @example Valid and invalid identifiers
-      #   "my_frontend" #=> matches
-      #   "gstone-iv" #=> matches
-      #   "MyFrontend" #=> does not match (uppercase)
-      #   "_custom" #=> does not match (starts with underscore)
-      #
-      # @see #normalize_custom
+      # @see Frontend.user_definition_id_available?
+      # @example
+      #   "my-frontend" =~ CUSTOM_ID_PATTERN #=> 0
+      #   "My-Frontend" =~ CUSTOM_ID_PATTERN #=> nil
+      #   "_invalid" =~ CUSTOM_ID_PATTERN #=> nil
       CUSTOM_ID_PATTERN = /\A[a-z0-9][a-z0-9_-]{0,63}\z/
       MAX_SCALAR_BYTES = 4096
       MAX_ARGUMENTS = 256
-      # Synchronization lock protecting access to the current frontend configuration.
+      # Synchronizes access to the current frontend configuration.
       #
-      # All public methods that read or write @current must hold this lock to ensure
-      # thread-safe changes to the in-memory catalog and process state.
+      # Protects @current and its mutations from concurrent reads and writes,
+      # ensuring that load!, replace!, current, and settings_for operations are atomic.
       MUTEX = Mutex.new
+      # Bounded backoff for publishing or removing the settings file while
+      # Windows reports a sharing violation. Shared with ActiveSessions.
+      SHARING_VIOLATION_RETRY_DELAYS = SharingViolationRetry::DELAYS
 
       # Raised when saving would overwrite a settings document created by a
       # newer, unsupported schema version.
       class UnsupportedVersionError < StandardError; end
 
-      # The pristine baseline configuration with no built-in overrides or custom definitions.
+      # Default, pristine frontend configuration with no customizations.
       #
-      # Used to restore a known-good state when load! encounters errors or unsupported
-      # schemas. The returned structure is frozen and cannot be mutated.
+      # Contains an empty set of built-in overrides and custom definitions, frozen
+      # to prevent accidental mutation. Used as the initial state and when invalid
+      # or missing settings files are encountered.
       EMPTY_CONFIGURATION = Lich::Util.deep_freeze(
         {
           'version'  => SCHEMA_VERSION,
@@ -56,6 +60,8 @@ module Lich
       )
 
       @current = EMPTY_CONFIGURATION
+
+      extend SharingViolationRetry
 
       class << self
         # Loads, validates, and applies frontends.yml from a Lich data directory.
@@ -177,6 +183,12 @@ module Lich
         end
 
         # Atomically writes a normalized settings document with owner-only access.
+        # The temporary file is staged beside the destination so the rename
+        # never crosses volumes, and it is closed before the rename because
+        # Windows refuses to rename a file that still has an open handle.
+        # If publishing fails, the temporary file is removed with the same
+        # bounded retry; a removal that still fails is logged and never
+        # replaces the publication error.
         #
         # @param path [String] destination settings path
         # @param configuration [Hash] normalized frontend configuration
@@ -186,15 +198,45 @@ module Lich
         def write_file(path, configuration)
           directory = File.dirname(path)
           FileUtils.mkdir_p(directory)
-          Tempfile.create(['frontends', '.yml.tmp'], directory) do |file|
+          file = Tempfile.create(['frontends', '.yml.tmp'], directory)
+          begin
             file.chmod(0o600)
             file.write(configuration.to_yaml)
             file.flush
             file.fsync
-            File.rename(file.path, path)
+            file.close
+            retry_sharing_violation { File.rename(file.path, path) }
+          ensure
+            remove_temp_file(file)
           end
         rescue SystemCallError => error
           raise IOError, "could not save #{FILE_NAME}: #{error.message}"
+        end
+
+        # Best-effort removal of an unpublished temporary file. Every error is
+        # logged and swallowed so it cannot replace the error that caused the
+        # save to fail.
+        #
+        # A close that fails is ignored and the removal continues: after a
+        # failed write or flush, close retries the pending buffer and raises
+        # the same error again, but Ruby has already released the descriptor.
+        #
+        # @param file [File] temporary file created by write_file
+        # @return [void]
+        # @api private
+        def remove_temp_file(file)
+          begin
+            file.close unless file.closed?
+          rescue IOError, SystemCallError
+            nil
+          end
+          return unless File.exist?(file.path)
+
+          retry_sharing_violation { File.unlink(file.path) }
+        rescue Errno::ENOENT
+          nil
+        rescue StandardError => error
+          log_warning("could not remove temporary #{FILE_NAME} file #{file.path}: #{error.message}")
         end
 
         # Converts an arbitrary settings document into the supported immutable schema.

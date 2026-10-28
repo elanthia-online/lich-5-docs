@@ -1,23 +1,21 @@
 # frozen_string_literal: true
 
-# Namespace for Lich5, a Ruby scripting engine for the text-based games GemStone IV and DragonRealms.
+# Namespace for Lich 5, a Ruby scripting engine for text-based games.
 module Lich
-  # Namespace for DragonRealms-specific game logic.
+  # Namespace for DragonRealms-specific Lich extensions.
   module DragonRealms
-    # Common arcana utilities for spell casting, buff management, cambrinth charging, and runestones.
+    # DragonRealms Common Arcana - shared spell casting, buffing, and mana management utilities for all guilds.
     #
-    # Provides methods for preparing and casting spells, managing cyclic spell releases,
-    # handling cambrinth items and mana calculations, activating khri and barbarian abilities,
-    # and parsing game server responses for spell success/failure patterns.
+    # This module provides the core casting workflow (prepare, charge, invoke, cast), cyclic spell
+    # management, Khri and Barbarian buff activation, mana perception and discernment, and cambrinth
+    # charge distribution. Most methods serve scripts that cast spells from waggle configs and
+    # other spell-driven logic.
     module DRCA
       module_function
 
-      # Regex patterns matching successful cyclic spell release messages.
+      # Game messages matching successful release of a cyclic spell.
       #
-      # Used by {#release_cyclics} to detect when a cyclic spell has been successfully
-      # released from active status. Patterns cover cyclic spells across all magic guilds.
-      #
-      # @return [Array<Regexp>] compiled patterns for cyclic release messages
+      # @see #release_cyclics
       CYCLIC_RELEASE_SUCCESS_PATTERNS = [
         # Ranger spells
         /^The world seems to accelerate around you as the spirit of the cheetah escapes you/, # Cheetah Swiftness
@@ -56,7 +54,7 @@ module Lich
         /^The heightened sense of spiritual awareness leaves you/, # Revelation (REV)
         /^The swirling fog dissipates from around you/, # Ghost Shroud (GHS)
         # Paladin spells
-        /^The holy golden radiance of your soul subsides, retreating into your body/, # Holy Warrior (HOW)
+        /^The .* radiance of your soul subsides, retreating into your body/, # Holy Warrior (HOW)
         /^Truffenyi's Rally ends, leaving behind a momentary sensation of something stuck in your throat/, # Truffenyi's Rally (TR)
         # Moon Mage spells
         /^The web of shadows twitches one last time and then goes inert/, # Shadow Web (SHW)
@@ -74,12 +72,8 @@ module Lich
         /^You sense your Call from Within spell weaken and disperse/ # Call from Within (CFW)
       ].freeze
 
-      # String patterns matching successful Osrel Meraud (OM) infusion outcomes.
+      # Strings matching successful infusion of mana into Osrel Meraud (OM), a Moon Mage spell.
       #
-      # Used by {#infuse_om} to detect successful infusion, including when the runestone
-      # reaches full capacity or mana availability is blocked by local interference.
-      #
-      # @return [Array<String>] success condition strings
       # @see #infuse_om
       INFUSE_OM_SUCCESS_PATTERNS = [
         'having reached its full capacity',
@@ -87,12 +81,8 @@ module Lich
         'Something in the area is interfering with your attempt to harness'
       ].freeze
 
-      # String patterns matching Osrel Meraud infusion failures.
+      # Strings matching failed infusion of mana into Osrel Meraud (OM).
       #
-      # Used by {#infuse_om} to detect when infusion cannot proceed, either because the
-      # runestone is not full enough or the character lacks sufficient harnessed mana.
-      #
-      # @return [Array<String>] failure condition strings
       # @see #infuse_om
       INFUSE_OM_FAILURE_PATTERNS = [
         'as if it hungers for more',
@@ -104,16 +94,16 @@ module Lich
       INFUSE_OM_MAX_RETRIES = 20
       PREPARE_MAX_RETRIES = 3
       CAST_MAX_RETRIES = 3
+      # How long, and how often, prep_confirmed? polls the prepared-spell
+      # indicator after prepare? returned '' (see prep_confirmed?).
+      PREP_CONFIRM_WAIT_SECONDS = 3
+      PREP_CONFIRM_POLL_SECONDS = 0.1
       BARB_BUFF_MAX_RETRIES = 3
       STOW_FOCUS_MAX_RETRIES = 3
 
-      # Regex patterns matching successful spell focus wielding messages.
+      # Game messages matching successful wielding (drawing, grabbing, or obtaining) of a spell focus.
       #
-      # Used by {#find_focus} when a focus is configured as sheathed.
-      #
-      # @return [Array<Regexp>] compiled patterns for successful wield outcomes
       # @see #find_focus
-      # @see WIELD_FOCUS_FAILURE_PATTERNS
       WIELD_FOCUS_SUCCESS_PATTERNS = [
         /^You draw out/,
         /^You grab/,
@@ -121,27 +111,18 @@ module Lich
         /^You deftly remove/
       ].freeze
 
-      # Regex patterns matching failed spell focus wielding messages.
+      # Game messages matching failure to wield a spell focus.
       #
-      # Used by {#find_focus} when a focus is configured as sheathed to determine if
-      # the wield command failed.
-      #
-      # @return [Array<Regexp>] compiled patterns for wield failures
       # @see #find_focus
-      # @see WIELD_FOCUS_SUCCESS_PATTERNS
       WIELD_FOCUS_FAILURE_PATTERNS = [
         /^What were you/,
         /^Wield what/,
         /^You need a free hand/
       ].freeze
 
-      # Regex patterns matching successful spell focus sheathing messages.
+      # Game messages matching successful sheathing, securing, or stowing of a spell focus.
       #
-      # Used by {#stow_focus} when a focus is configured as sheathed.
-      #
-      # @return [Array<Regexp>] compiled patterns for successful sheathe outcomes
       # @see #stow_focus
-      # @see SHEATHE_FOCUS_FAILURE_PATTERNS
       SHEATHE_FOCUS_SUCCESS_PATTERNS = [
         /^You sheathe/,
         /^Sheathing/,
@@ -152,25 +133,16 @@ module Lich
         /^You easily strap/
       ].freeze
 
-      # Regex patterns matching failed spell focus sheathing messages.
+      # Game messages matching failure to sheathe a spell focus.
       #
-      # Used by {#stow_focus} when a focus is configured as sheathed to determine if
-      # the sheathe command failed.
-      #
-      # @return [Array<Regexp>] compiled patterns for sheathe failures
       # @see #stow_focus
-      # @see SHEATHE_FOCUS_SUCCESS_PATTERNS
       SHEATHE_FOCUS_FAILURE_PATTERNS = [
         /^Sheathe your .* where/,
         /^There's no room/
       ].freeze
 
-      # Progression messages for Trader aura levels when perceiving aura.
+      # Trader aura levels in order from faintest to brightest, used to infer aura level from perceive aura output.
       #
-      # Messages proceed from faintest hint of starlight at index 0 to blinding brilliance
-      # at index 9, and are indexed by {#perc_aura} to determine the numeric aura level.
-      #
-      # @return [Array<String>] aura level descriptions, ordered from 0 (minimal) to 9 (maximal)
       # @see #perc_aura
       STARLIGHT_MESSAGES = [
         'The smallest hint of starlight flickers within your aura',
@@ -185,17 +157,10 @@ module Lich
         'The power contained in your aura'
       ].freeze
 
-      # Regex patterns matching Warrior Mage elemental charge states.
+      # Warrior Mage elemental charge levels (0-11) in order, matched from pathway sense output.
+      # Each pattern matches one charge level; use the pattern's index to get the level (0 = no charge, 11 = maximum).
       #
-      # Ordered from 0 (no charge) to 11 (maximum charge). Each pattern corresponds to
-      # a specific range of elemental charge, and is used by {#check_elemental_charge}
-      # to determine the character's current charge state via the 'pathway sense' command.
-      #
-      # @return [Array<Regexp>] compiled patterns for elemental charge levels
       # @see #check_elemental_charge
-      # @example
-      #   CHARGE_LEVELS[0] #=> /^You sense nothing out of the ordinary\..*$/
-      #   CHARGE_LEVELS[11] #=> /^You have reached the limits of your body's capacity\..*$/
       CHARGE_LEVELS = [
         /^You sense nothing out of the ordinary.  Only magic could detect the useless trace of .* still in your system.$/,
         /^A small charge lingers within your body, just above the threshold of perception.$/,
@@ -211,89 +176,55 @@ module Lich
         /^You have reached the limits of your body's capacity to store a charge.  The laws of the Elemental Plane of .* scream demands upon your physiology, threatening your life.$/
       ].freeze
 
-      # Regex pattern for the start of Moon Mage mana perception output.
+      # Regexp matching the start of Moon Mage PERC MANA output.
       #
-      # Matches the first line of a mana stream description during 'perc mana' output,
-      # used by {#perc_mana} to delimit the start of mana information parsing.
-      #
-      # @return [Regexp] pattern matching "streams of [type] mana"
       # @see #perc_mana
-      # @see PERC_MANA_END_PATTERN
       PERC_MANA_START_PATTERN = /streams of .* mana/
-      # Regex pattern for the end of perception command output.
+      # Regexp matching the end of Moon Mage PERC MANA output.
       #
-      # Matches the roundtime line that terminates perception output, used by {#perc_mana}
-      # to delimit when mana stream information stops being relevant.
-      #
-      # @return [Regexp] pattern matching "Roundtime"
       # @see #perc_mana
-      # @see PERC_MANA_START_PATTERN
       PERC_MANA_END_PATTERN = /Roundtime/
-      # Regex pattern to extract the type of active symbiotic research.
+      # One line of a Moon Mage's PERC MANA reply, one per Lunar spellbook, e.g.
+      # "You reach out with your senses and see glaring (19/21) streams of cold,
+      # white Lunar mana available for the Illusion book."
+      PERC_MANA_BOOK_PATTERN = %r{\A\s*You reach out with your .+? and (?:see|hear) (?<adj>\w+) (?:\((?<level>\d+)/(?<max>\d+)\) )?streams of .* mana available for the (?<book>.+?) book}
+      # Regexp matching successful perception of active symbiotic research, with named capture :type for the symbiosis type.
       #
-      # Captures the symbiosis type name (e.g., "Warding", "Utility", "Augmentation",
-      # "Sorcery") from a perception message. Used by {#perc_symbiotic_research} to
-      # determine which symbiosis is currently active.
-      #
-      # @return [Regexp] pattern with named capture group 'type' for the symbiosis name
+      # @example
+      #   "You sense yourself ready to combine the weaves of the Necromancy symbiosis".match(SYMBIOSIS_PATTERN)[:type] #=> "Necromancy"
       # @see #perc_symbiotic_research
-      # @example
-      #   "You combine the weaves of the Warding symbiosis".match(SYMBIOSIS_PATTERN)[:type] #=> "Warding"
       SYMBIOSIS_PATTERN = /combine the weaves of the (?<type>\w+) symbiosis/
-      # Regex pattern to extract minimum mana stream requirement from sorcery discern.
+      # Regexp matching discern output for sorcery spells, with named capture :min for the minimum mana streams required.
       #
-      # Captures the minimum number of mana streams required to cast a sorcery spell,
-      # used by {#check_discern} when processing discern results for symbiosis spells.
-      #
-      # @return [Regexp] pattern with named capture group 'min' for the stream count
       # @see #check_discern
-      # @example
-      #   "This spell requires at minimum 5 mana streams".match(DISCERN_SORCERY_PATTERN)[:min] #=> "5"
       DISCERN_SORCERY_PATTERN = /requires at minimum (?<min>\d+) mana streams/
-      # Regex pattern to extract min and reinforcement mana for non-sorcery discern.
+      # Regexp matching full discern output for non-sorcery spells, with named captures :min (base mana) and :more (reinforcement mana).
       #
-      # Captures both the minimum required streams and additional reinforcement mana
-      # available for standard (non-sorcery) spells, used by {#check_discern} to
-      # calculate total mana needed.
-      #
-      # @return [Regexp] pattern with named captures 'min' (required streams) and 'more' (reinforcement)
       # @see #check_discern
-      # @example
-      #   msg = "The spell requires at minimum 4 mana streams and you think you can reinforce it with 2 more"
-      #   msg.match(DISCERN_FULL_PATTERN)[:min] #=> "4"
-      #   msg.match(DISCERN_FULL_PATTERN)[:more] #=> "2"
       DISCERN_FULL_PATTERN = /minimum (?<min>\d+) mana streams and you think you can reinforce it with (?<more>\d+) more/i
 
-      # Regex patterns matching "useless" runestone messages.
+      # Seconds check_discern waits before discerning a spell again after a
+      # discern drew no recognised reply, at most check_discern_timer_in_hours.
+      DISCERN_RETRY_SECONDS = 300
+
+      # Game messages matching retrieval of a useless (expended) runestone.
       #
-      # Runestones become useless (depleted) when their stored spell can no longer be invoked.
-      # Used by {#get_runestone?} to detect and dispose of depleted runestones.
-      #
-      # @return [Array<Regexp>] compiled patterns for useless runestone detection
       # @see #get_runestone?
       USELESS_RUNESTONE_PATTERNS = [
         /^You get a useless/
       ].freeze
 
-      # Regex patterns matching successful runestone retrieval.
+      # Game messages matching successful retrieval of a runestone.
       #
-      # Used by {#get_runestone?} to confirm that the runestone was obtained from storage.
-      #
-      # @return [Array<Regexp>] compiled patterns for successful get outcomes
       # @see #get_runestone?
-      # @see GET_RUNESTONE_FAILURE_PATTERNS
       GET_RUNESTONE_SUCCESS_PATTERNS = [
         /^You get/,
         /^You pick up/
       ].freeze
 
-      # Regex patterns matching runestone retrieval failures.
+      # Game messages matching failure to retrieve a runestone.
       #
-      # Used by {#get_runestone?} to detect when a runestone cannot be obtained from storage.
-      #
-      # @return [Array<Regexp>] compiled patterns for retrieval failures
       # @see #get_runestone?
-      # @see GET_RUNESTONE_SUCCESS_PATTERNS
       GET_RUNESTONE_FAILURE_PATTERNS = [
         /^What were you referring to/,
         /^I could not find/
@@ -301,18 +232,15 @@ module Lich
 
       @backfired_status = false
 
-      # Infuses mana into an Osrel Meraud runestone until it reaches full capacity.
+      # Repeatedly attempts to infuse mana into Osrel Meraud (OM), a Moon Mage cyclic spell that stores mana.
+      # Returns if OM is not active or has >90 seconds remaining, or if amount is nil.
+      # On each attempt, waits until mana > 40, optionally harneses the amount, then sends infuse om command.
+      # Retries up to INFUSE_OM_MAX_RETRIES (20) times on failure, pausing 0.5s between attempts.
       #
-      # Only operates if Osrel Meraud is active and below 90% duration. Optionally harnesses
-      # mana before each infusion attempt. Retries up to {INFUSE_OM_MAX_RETRIES} times, pausing
-      # if mana drops below 40.
-      #
-      # @param harness [Boolean] whether to harness mana before each infusion attempt
-      # @param amount [Integer] mana amount to infuse per attempt
+      # @param harness [Boolean] if true, harness the amount via #harness_mana before each infuse attempt
+      # @param amount [Integer, nil] mana amount to infuse; returns immediately if nil
       # @return [void]
-      # @see #harness_mana
-      # @see INFUSE_OM_SUCCESS_PATTERNS
-      # @see INFUSE_OM_FAILURE_PATTERNS
+      # @note This is the first step of a Moongate/Osrel Meraud casting workflow for Moon Mages.
       def infuse_om(harness, amount)
         return unless DRSpells.active_spells['Osrel Meraud'] && DRSpells.active_spells['Osrel Meraud'] < 90
         return unless amount
@@ -334,11 +262,11 @@ module Lich
         end
       end
 
-      # Attempts to harness a given amount of mana.
+      # Attempts to harness mana for sorcery spellcasting.
       #
-      # @param mana [Integer] mana amount to harness
-      # @return [Boolean] true if the harness command matched "You tap into", false otherwise
-      # @api private
+      # @param mana [Integer] amount of mana to harness
+      # @return [Boolean] true if harness succeeded (matched 'You tap into'), false otherwise
+      # @see #harness_mana
       def harness?(mana)
         result = DRC.bput("harness #{mana}", 'You tap into', 'Strain though you may')
         pause 0.5
@@ -346,12 +274,9 @@ module Lich
         return result =~ /You tap into/
       end
 
-      # Harnesses multiple amounts of mana sequentially.
+      # Iterates through an array of mana amounts, harnessing each via #harness? until one fails.
       #
-      # Iterates through the provided amounts and calls {#harness?} for each. Stops when
-      # any harness attempt fails.
-      #
-      # @param amounts [Array<Integer>] mana amounts to harness in order
+      # @param amounts [Array<Integer>] amounts to harness in order
       # @return [void]
       # @see #harness?
       def harness_mana(amounts)
@@ -360,13 +285,10 @@ module Lich
         end
       end
 
-      # Activates a set of khri abilities.
+      # Activates a list of Thief Khri abilities in sequence.
       #
-      # Iterates through each khri ability set and attempts to activate it, respecting
-      # the kneel_khri setting from configuration.
-      #
-      # @param khris [Array<String>] khri ability names to activate
-      # @param settings [OpenStruct] configuration including kneel_khri
+      # @param khris [Array<String>] list of Khri ability names or variants (e.g., ["Delay Hasten Focus", "Khri Stalking"])
+      # @param settings [OpenStruct] character settings
       # @return [void]
       # @see #activate_khri?
       def start_khris(khris, settings)
@@ -409,14 +331,14 @@ module Lich
         return ['Your mind and body are willing', 'Your body is willing', 'You have not recovered'].none?(result)
       end
 
-      # Determines whether kneeling is required to activate a specific khri ability.
+      # Determines whether to kneel before activating a specific Khri ability.
       #
-      # If kneel is an Array, checks if the ability (with 'khri ' prefix removed) is
-      # in the list (case-insensitive). Otherwise returns the kneel value as-is.
+      # If kneel is an array, returns true only if the ability (case-insensitive, 'khri ' prefix removed)
+      # is in the array. Otherwise returns kneel as-is (true/false).
       #
-      # @param kneel [Boolean, Array<String>] kneel configuration: true/false or array of ability names
-      # @param ability [String] the khri ability name to check
-      # @return [Boolean] true if kneeling is needed for this ability
+      # @param kneel [Boolean, Array<String>] kneel setting: true/false to apply to all, or array of ability names requiring kneel
+      # @param ability [String] the Khri ability name to check
+      # @return [Boolean] whether to kneel for this ability
       # @api private
       def kneel_for_khri?(kneel, ability)
         if kneel.is_a? Array
@@ -426,32 +348,28 @@ module Lich
         end
       end
 
-      # Activates a list of barbarian abilities.
+      # Activates a list of Barbarian active abilities (buffs) in sequence.
       #
-      # Iterates through the provided ability names and attempts to activate each using
-      # {#activate_barb_buff?} with settings from the configuration.
-      #
-      # @param abilities [Array<String>] barbarian ability names to activate
-      # @param settings [OpenStruct] configuration including meditation_pause_timer and sit_to_meditate
+      # @param abilities [Array<String>] list of ability names from settings
+      # @param settings [OpenStruct] character settings, including meditation_pause_timer and sit_to_meditate
       # @return [void]
       # @see #activate_barb_buff?
       def start_barb_abilities(abilities, settings)
         abilities.each { |name| activate_barb_buff?(name, settings.meditation_pause_timer, settings.sit_to_meditate) }
       end
 
-      # Activates a single barbarian ability or meditation.
+      # Activates a single Barbarian active ability, retrying on positioning failures.
+      # Returns immediately (true) if the ability is already active per DRSpells.
+      # For meditation-type abilities and sit_to_meditate=true, sits before attempting activation.
+      # Handles failures: retreats and retries on unengaged/sitting/standing requirements; on water, logs bold message and returns false.
+      # Pauses for meditation_pause_timer seconds after successful meditation activation to let it take effect.
       #
-      # Returns immediately if the ability is already active. Handles kneeling/sitting requirements,
-      # meditation pause timing, and retriable conditions (unengaged, sitting, standing). Logs a
-      # message and returns false if retries are exhausted.
-      #
-      # @param name [String] the barbarian ability name
-      # @param meditation_pause_timer [Integer] pause duration (seconds) for meditation abilities; default 20
-      # @param sit_to_meditate [Boolean] whether to sit before meditation abilities; default false
-      # @param retries [Integer] remaining retry attempts; default {BARB_BUFF_MAX_RETRIES}
-      # @return [Boolean] true if the ability was activated successfully, false otherwise
-      # @example
-      #   activate_barb_buff?("Power Meditation") #=> true
+      # @param name [String] the ability name (e.g., "Bloodrage", "Internal Fortitude")
+      # @param meditation_pause_timer [Integer] seconds to pause after meditation activates (default 20)
+      # @param sit_to_meditate [Boolean] whether to sit before meditation abilities (default false)
+      # @param retries [Integer] remaining retries for positioning failures (default BARB_BUFF_MAX_RETRIES)
+      # @return [Boolean] true if the ability is active after this call, false if it failed or gave up
+      # @note Reads get_data('spells').barb_abilities for ability metadata (start_command, activated_message, type).
       def activate_barb_buff?(name, meditation_pause_timer = 20, sit_to_meditate = false, retries: BARB_BUFF_MAX_RETRIES)
         # Note, you must know Power meditation or Powermonger mastery
         # for your active abilities to be detected by DRSpells.
@@ -500,17 +418,17 @@ module Lich
         activated
       end
 
-      # Determines whether any buffs from a list need to be reapplied.
+      # Determines whether any buffs are missing or need recasting.
       #
-      # For Commoners, always returns true (no way to check buffs). For Barbarians and Thieves,
-      # checks if any ability is not currently active. For other guilds, checks if any buff is
-      # missing or has a remaining duration shorter than its recast time.
+      # Returns false if buff_list is nil or empty (no buffs to check).
+      # For Commoners, returns true (cannot check active spells).
+      # For Barbarians, checks if any buff in the list is not in active spells.
+      # For Thieves, parses buff_list as Khri names (stripping 'Khri', 'Delay' prefixes) and checks each against active spells with 'Khri' prefix.
+      # For other guilds, checks if any spell is missing or has remaining duration <= recast time (allowing for spell refresh before expiry).
       #
-      # @param buff_list [Array, Hash, nil] buff names (Barbarian/Thief) or spell hashes with recast data (Mages)
-      # @return [Boolean] true if any buff needs reapplication, false if all buffs are active/current
-      # @example
-      #   need_buffs?(nil) #=> false
-      #   need_buffs?({"Spirit Ward" => {"recast" => 60}}) #=> true if not active or duration < 60
+      # @param buff_list [Array, Hash, nil] list of buffs to check; format depends on guild
+      # @return [Boolean] true if any buff is missing or needs recasting, false if all are present and have sufficient duration
+      # @note Does not check recast for spells where recast < 0 (ignite, etf, etc.) unless they are cyclic.
       def need_buffs?(buff_list)
         # no need to iterate if list of buffs is already empty
         return false if buff_list.nil? || buff_list.size == 0
@@ -546,14 +464,26 @@ module Lich
         return false
       end
 
+      # Probe text for {#zero_width_pattern?}: a short sentence, a pangram in both
+      # cases, every digit and every ASCII punctuation mark, then a double space
+      # and a sentence ending the probe with a period. Word-boundary assertions
+      # and lookarounds for any single printable character, a double space, a
+      # line-final period, or a word in the probe find a position to match at.
+      # Must stay ASCII-only: a non-ASCII probe raises
+      # Encoding::CompatibilityError (not a RegexpError) against a binary pattern
+      # that carries high bytes.
+      ZERO_WIDTH_PROBE = %q(You a. 1! The quick brown fox jumps over the lazy dog, THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 0123456789 !"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~  You a.)
+
       # Compiles a single player-supplied message into a case-insensitive Regexp
       # for use as a bput pattern, matching how bput treats the built-in string
       # patterns; leading/trailing whitespace is trimmed so an accidental space in
       # yaml does not silently break matching. Returns nil -- so the entry is
       # dropped rather than applied -- when the message is not a String, is
       # blank/whitespace-only (an empty pattern compiles to //, matching every
-      # line), or is not a valid regular expression (which would otherwise raise
-      # inside bput). Shared guard for every custom_*_message key.
+      # line), is not a valid regular expression (which would otherwise raise
+      # inside bput), or can match without consuming any text (see
+      # {#zero_width_pattern?}; like //, such a pattern matches every line).
+      # Shared guard for every custom_*_message key.
       #
       # @param message [String, nil] the player-supplied message
       # @return [Regexp, nil] a case-insensitive pattern, or nil if not a usable string
@@ -563,9 +493,34 @@ module Lich
         stripped = message.strip
         return nil if stripped.empty?
 
-        Regexp.new(stripped, Regexp::IGNORECASE)
+        pattern = Regexp.new(stripped, Regexp::IGNORECASE)
+        return nil if zero_width_pattern?(pattern)
+
+        pattern
       rescue RegexpError
         nil
+      end
+
+      # Whether +pattern+ can succeed without consuming any text -- e.g. '.*',
+      # 'You|', '(foo)?', '^', '\b' or '(?=.)'. bput returns on the first line a
+      # pattern matches, so such a pattern accepts whatever line arrives first
+      # (returning it, or '') as though it were the expected message. Detected by
+      # an empty-string match, or a zero-length match at any position of
+      # {ZERO_WIDTH_PROBE}. A lookaround that needs a word or other multi-character
+      # context the probe lacks (e.g. '(?=Your)' or '(?=You feel a surge)') is
+      # not detected; it still makes an empty match, but only on lines that
+      # contain that text. The probe is matched like any game line, so a pattern
+      # with catastrophic backtracking hangs here just as it would inside bput.
+      #
+      # @param pattern [Regexp] a compiled custom message pattern
+      # @return [Boolean] true if the pattern can match zero characters
+      def zero_width_pattern?(pattern)
+        return true if pattern.match?('')
+
+        (0..ZERO_WIDTH_PROBE.length).any? do |position|
+          match = pattern.match(ZERO_WIDTH_PROBE, position)
+          match && match[0].empty?
+        end
       end
 
       # Appends the player's validated custom message patterns to a built-in
@@ -606,7 +561,39 @@ module Lich
       # @param custom_invoke_message [String, nil] a per-spell invoke message to also accept when preparing via a runestone
       # @param custom_spell_prep [String, nil] the global prep-message fallback (the custom_spell_prep setting); validated independently of custom_prep_message, so a blank/invalid per-spell value never suppresses a valid global one
       # @param retries [Integer] remaining retries for the transient "slips away" case
-      # @return [String, false] the matched prep message, or false on failure
+      # @return [String, false] the matched prep message; or +''+ (truthy) when
+      #   bput matched nothing: normally because no prep message arrived before
+      #   bput gave up (it still reads any lines already waiting when its
+      #   timeout passes, and restarts its timer on the replies it retries,
+      #   such as a wait or a stun). bput also returns +''+ at once for a line
+      #   that no built-in message matches when the first custom pattern that
+      #   matches the line makes an empty match there (bput returns the leftmost
+      #   match of the first pattern that matches), such as
+      #   +'(?=A goblin)'+ on a line starting "A goblin"; an empty match in a
+      #   per-spell pattern also hides a later custom_spell_prep one. That
+      #   applies only to a custom pattern {#custom_message_pattern} lets
+      #   through, and never to a line bput handles itself: it retries on a
+      #   wait, a stun or a type-ahead reply and skips the "can't move" line.
+      #   Or false on one of
+      #   the failure replies prepare? itself checks for (its +when+ arms other
+      #   than the retried "slips away" one, which returns the retry's result),
+      #   a nil +abbrev+, or exhausted retries. Any other matched reply is
+      #   returned as is, even one that reads like a failure.
+      #
+      # @note A timeout is not a failure. When nothing prepare? accepts (the
+      #   prep_messages plus the custom prep messages, or {#invoke_messages}
+      #   for a runestone) arrives before bput gives up, bput returns +''+
+      #   and prepare? returns it unchanged, after still sending the
+      #   tattoo/runestone +target+. A timeout is ambiguous: the prep may
+      #   have succeeded with a message that is not in the list (the reason
+      #   custom_prep_message exists) or with a reply delayed by a server
+      #   stall, and returning false there would abort a real prep. It can
+      #   also mean nothing was prepared at all. Callers that would otherwise
+      #   charge cambrinth, harness mana or cast on the strength of this
+      #   result should pass it to {#prep_confirmed?}, which accepts +''+
+      #   after a prep command only when the game shows a spell being
+      #   prepared (and after an invoke as is). {#cast_spell} and
+      #   {#ritual} do; {#crafting_prepare_spell} returns the result as is.
       def prepare?(abbrev, mana, symbiosis = false, command = 'prepare', tattoo_tm = false, runestone_name = nil, runestone_tm = false, custom_prep_message = nil, custom_invoke_message: nil, custom_spell_prep: nil, retries: PREPARE_MAX_RETRIES)
         return false unless abbrev
         spell_prep_messages = with_custom_messages(get_data('spells').prep_messages, custom_prep_message, custom_spell_prep)
@@ -658,18 +645,61 @@ module Lich
         name
       end
 
-      # Performs a full ritual spell: prepare, find focus, invoke, stow focus, and cast.
+      # Whether a {#prepare?} result means a spell is now being prepared, so a
+      # caller can go on to charge cambrinth, harness mana, invoke a focus or
+      # cast. A matched prep message counts and false does not. For +''+
+      # (bput matched nothing; see {#prepare?}) the answer comes from the
+      # game's prepared-spell indicator ({#spell_preparing?}), which the game
+      # sends with its prep reply (on the same line or just before it),
+      # listed or not: it counts if a spell shows as being prepared within
+      # PREP_CONFIRM_WAIT_SECONDS, which also covers a prep reply that lands
+      # just after bput returned early (see {#prepare?}). Otherwise a bold
+      # message says so, +release spell+ is sent and the result is false.
+      # The game handles commands in order, so during a server stall that
+      # release lands behind the prep still waiting there and cancels it,
+      # rather than leaving it prepared for the next caller (whose own
+      # release is skipped while the indicator still shows no spell) to
+      # charge and cast as its own.
       #
-      # Handles all stages of ritual magic from preparation through casting. Manages focus
-      # retrieval and storage based on configuration (worn, tied, sheathed, or in-hand).
-      # Supports both normal preps and runestone invocation.
+      # The indicator rule covers preps made with a prep command. An invoke
+      # (a runestone, or a tattoo whose prep command is +invoke+) is not
+      # checked: there is no record of whether the game sets the indicator
+      # for those, and rejecting a real invoke would leave its spell
+      # prepared and uncast. For them +''+ counts, as it did before.
       #
-      # @param data [Hash] spell data with keys: abbrev, mana, symbiosis, prep_type, runestone_name, focus, worn_focus, tied_focus, sheathed_focus, custom_prep_message, custom_invoke_message, prep_time, cast, before, after, custom_cast_message, skip_retreat
-      # @param settings [OpenStruct] configuration including ignored_npcs and custom_spell_prep
-      # @return [void]
-      # @see #prepare?
-      # @see #invoke
-      # @see #cast?
+      # @param prep_result [String, false] what {#prepare?} returned
+      # @param abbrev [String, nil] the spell's abbreviation, for the message
+      # @param command [String, nil] the prep command passed to {#prepare?}
+      # @param runestone_name [String, nil] the runestone passed to {#prepare?}
+      # @return [Boolean]
+      def prep_confirmed?(prep_result, abbrev, command: 'prepare', runestone_name: nil)
+        return false unless prep_result
+        return true unless prep_result == ''
+        return true if runestone_name || command.to_s.strip.match?(/\Ainvoke\b/i)
+
+        polls = (PREP_CONFIRM_WAIT_SECONDS / PREP_CONFIRM_POLL_SECONDS).round
+        polls.times do
+          return true if spell_preparing?
+
+          pause PREP_CONFIRM_POLL_SECONDS
+        end
+        return true if spell_preparing?
+
+        Lich::Messaging.msg("bold", "DRCA: no prep reply was recognised for '#{abbrev}' and no spell is being prepared - not casting")
+        DRC.bput('release spell', 'You let your concentration lapse', "You aren't preparing a spell")
+        false
+      end
+
+      # Executes the full ritual spell casting workflow: prepare, find/invoke focus, cast, and cleanup.
+      #
+      # Steps: retreat, release invisibility, prepare spell (retrying on transients), find focus (worn/tied/sheathed),
+      # invoke focus, stow focus, wait for prep_time or cast readiness, then cast.
+      # Respects skip_retreat flag and uses tattoo_tm or runestone_tm to re-target after prep.
+      #
+      # @param data [Hash] spell data (abbrev, mana, focus, worn_focus, tied_focus, sheathed_focus, prep_time, tattoo_tm, runestone_name, etc.)
+      # @param settings [OpenStruct] character settings
+      # @return [Boolean, nil] true/false from #cast?, or nil if prep or prep_confirmed? failed
+      # @note Rituals are for spells requiring manual focus handling (rune, augment, etc.).
       def ritual(data, settings)
         DRC.retreat(settings.ignored_npcs) unless data['skip_retreat']
         DRC.release_invisibility
@@ -679,7 +709,12 @@ module Lich
         command = data['prep'] if data['prep']
         command = data['prep_type'] if data['prep_type']
 
-        return unless prepare?(data['abbrev'], data['mana'], data['symbiosis'], command, data['tattoo_tm'], data['runestone_name'], data['runestone_tm'], data['custom_prep_message'], custom_invoke_message: data['custom_invoke_message'], custom_spell_prep: settings['custom_spell_prep'])
+        # As in cast_spell: drop a spell left prepared by an earlier caller, so
+        # the focus invoke and the cast below act on this ritual's prep.
+        DRC.bput('release spell', 'You let your concentration lapse', "You aren't preparing a spell") unless checkprep == 'None'
+
+        prepared = prepare?(data['abbrev'], data['mana'], data['symbiosis'], command, data['tattoo_tm'], data['runestone_name'], data['runestone_tm'], data['custom_prep_message'], custom_invoke_message: data['custom_invoke_message'], custom_spell_prep: settings['custom_spell_prep'])
+        return unless prep_confirmed?(prepared, data['abbrev'], command: command, runestone_name: data['runestone_name'])
 
         prepare_time = Time.now
         find_focus(data['focus'], data['worn_focus'], data['tied_focus'], data['sheathed_focus'])
@@ -699,16 +734,15 @@ module Lich
         DRC.retreat(settings.ignored_npcs) unless data['skip_retreat']
       end
 
-      # Prepares to cast by retrieving a runestone from storage.
+      # Pre-flight check for runestone casting: verifies the runestone is in storage or obtains it.
       #
-      # Checks if the runestone is already in the character's inventory. If not, attempts
-      # to retrieve it from configured storage. Returns false and logs if retrieval fails
-      # or the runestone is not available.
+      # Returns false if the runestone is in storage but #get_runestone? fails to retrieve it.
+      # Logs a bold message and returns false if the runestone is not in the configured storage location.
       #
-      # @param spell [Hash] spell data with key runestone_name and optional runestone_name
-      # @param settings [OpenStruct] configuration including runestone_storage
-      # @return [Boolean] true if the runestone is available or retrieved; false on failure
-      # @see #get_runestone?
+      # @param spell [Hash] spell data with 'runestone_name' key
+      # @param settings [OpenStruct] character settings with runestone_storage
+      # @return [Boolean] true if the runestone is ready to invoke, false otherwise
+      # @api private
       def prepare_to_cast_runestone?(spell, settings)
         if DRCI.inside?("#{spell['runestone_name']}", settings.runestone_storage)
           return false unless get_runestone?(spell['runestone_name'], settings)
@@ -719,18 +753,17 @@ module Lich
         true
       end
 
-      # Retrieves a runestone from storage, handling useless/depleted runestones.
+      # Retrieves a runestone from storage into hands, or verifies it is already held.
       #
-      # Returns true if the runestone is already in hand. Otherwise attempts to retrieve it
-      # from configured storage. If the runestone is useless (depleted), it is disposed of
-      # and the method returns false. Logs errors on failure.
+      # Returns true immediately if the runestone is in hands.
+      # Attempts to get the runestone from the configured storage location.
+      # If a useless (expended) runestone is obtained, disposes it, logs a bold message, and returns false.
+      # If retrieval fails, logs a bold message and returns false.
       #
-      # @param runestone [String] the runestone noun to retrieve
-      # @param settings [OpenStruct] configuration with runestone_storage location
-      # @return [Boolean] true if the runestone is now in hand or was already held; false if not found or useless
-      # @see #USELESS_RUNESTONE_PATTERNS
-      # @see #GET_RUNESTONE_SUCCESS_PATTERNS
-      # @see #GET_RUNESTONE_FAILURE_PATTERNS
+      # @param runestone [String] the runestone item name (noun)
+      # @param settings [OpenStruct] character settings with runestone_storage
+      # @return [Boolean] true if the runestone is in hands, false otherwise
+      # @api private
       def get_runestone?(runestone, settings)
         return true if DRCI.in_hands?(runestone)
 
@@ -749,10 +782,10 @@ module Lich
         true
       end
 
-      # Returns true if the most recently cast spell backfired.
+      # Returns whether the most recent cast via #cast? backfired.
       #
-      # @return [Boolean] true if last spell backfired, false otherwise
-      # @see #cast?
+      # @return [Boolean] true if a spell backfired flag was set during the last cast, false otherwise
+      # @note Set by #cast? via the 'spell-backfired' flag; persists across calls.
       def backfired?
         @backfired_status || false
       end
@@ -767,7 +800,40 @@ module Lich
       # @param after [Array<Hash>] actions to bput after casting
       # @param custom_cast_message [String, nil] a per-spell cast message to also accept (see {#with_custom_messages})
       # @param retries [Integer] remaining retries for barrage-fallback / cyclic-too-recent / full-prep
-      # @return [Boolean] true if the spell cast without a failure flag being set
+      # @return [Boolean] true if the spell cast without a failure flag being set,
+      #   including when no cast message arrived before DRC.bput gave up, and
+      #   when bput returned +''+ at once for a line that no built-in message
+      #   matches because the first custom pattern that matches the line makes
+      #   an empty match there (as +'(?=A goblin)'+ does on a line starting
+      #   "A goblin"; only a custom pattern {#custom_message_pattern} lets
+      #   through can do this, and never on a line bput handles itself: it
+      #   retries on a wait, a stun or a type-ahead reply and skips the
+      #   "can't move" line); false if the +spell-fail+ flag was set or a retry
+      #   limit ran out. In both +''+ cases the result rests on +spell-fail+ at
+      #   the moment it is read (see the note).
+      #
+      # @note A timeout counts as success. When nothing cast? accepts (the
+      #   cast_messages plus the custom cast message) arrives before bput gives
+      #   up (a server stall, or a successful cast whose message is not
+      #   listed), bput returns +''+, which no +when+ arm handles: the
+      #   barrage and cyclic/full-prep retry flags still apply, and the result
+      #   rests on the +spell-fail+ flag. That flag is read only after the cast
+      #   bput, the roundtime wait and the +after+ actions, so
+      #   the result is true unless a failure line arrived before then (in
+      #   which case mana, and any symbiosis, is released and the result is
+      #   false); a failure line that arrives later is missed. This is
+      #   deliberate. Mapping a timeout to false would make retry loops such as
+      #   +until cast_spell?(...)+ prepare and cast again after a cast that went
+      #   off but was not recognised (a stall, or a message that is not listed;
+      #   the reason custom_cast_message exists). A missed late failure line is
+      #   not always harmless: if it arrives while a later cast? is running,
+      #   that call takes it as its own failure, returns false and releases
+      #   mana (and any symbiosis) even if its own cast went off.
+      #   {#cast_spell}, {#cast_spell?} and {#crafting_cast_spell} pass this
+      #   result through ({#cast_spell} returns nil, and so {#cast_spell?}
+      #   returns false, for a ritual spell, after a successful segue, and
+      #   when the prep failed or {#prep_confirmed?} rejected it, in which
+      #   case cast? is not called).
       def cast?(cast_command = 'cast', symbiosis = false, before = [], after = [], custom_cast_message = nil, retries: CAST_MAX_RETRIES)
         before.each { |action| DRC.bput(action['message'], action['matches']) }
 
@@ -820,21 +886,19 @@ module Lich
         !Flags['spell-fail']
       end
 
-      # Finds cambrinth, charges it with specified amounts, invokes it, and stows it.
+      # Orchestrates the full cambrinth workflow: find, charge, invoke, and stow.
       #
-      # Orchestrates the complete cambrinth cycle: retrieval, charging, invocation, and storage.
-      # Returns immediately if charges is nil or falsy.
+      # Returns immediately if charges is nil or empty.
+      # Calls #find_cambrinth, #charge_and_invoke (with invoke_exact_amount), then #stow_cambrinth.
       #
-      # @param cambrinth [String] the cambrinth item noun
-      # @param stored_cambrinth [Boolean] whether the cambrinth is stored (true) or worn (false)
-      # @param cambrinth_cap [Integer] the mana capacity of the cambrinth
-      # @param dedicated_camb_use [String, nil] optional dedicated cambrinth use mode
-      # @param charges [Array<Integer>] mana amounts to charge in sequence
-      # @param invoke_exact_amount [Integer, nil] exact mana to invoke; if nil, sum of all charges is used
+      # @param cambrinth [String] the cambrinth item name
+      # @param stored_cambrinth [Boolean] whether the cambrinth is stored or worn
+      # @param cambrinth_cap [Integer] mana capacity of the cambrinth
+      # @param dedicated_camb_use [Boolean, String] invoke option (e.g. true or 'dedicated')
+      # @param charges [Array<Integer>] list of mana amounts to charge
+      # @param invoke_exact_amount [Boolean] if true, invoke the total of all charges; if false/nil, invoke without amount
       # @return [void]
-      # @see #find_cambrinth
       # @see #charge_and_invoke
-      # @see #stow_cambrinth
       def find_charge_invoke_stow(cambrinth, stored_cambrinth, cambrinth_cap, dedicated_camb_use, charges, invoke_exact_amount = nil)
         return unless charges
 
@@ -843,15 +907,15 @@ module Lich
         stow_cambrinth(cambrinth, stored_cambrinth, cambrinth_cap)
       end
 
-      # Retrieves a spell focus from its configured location.
+      # Retrieves a spell focus from storage based on how it is equipped.
       #
-      # Handles four storage modes: worn (remove from body), tied (untie), sheathed (wield),
-      # or in-hand (get from storage). Returns immediately if focus is nil.
+      # Returns immediately if focus is nil.
+      # If worn, removes it. If tied, unties it. If sheathed, wields it. Otherwise gets it.
       #
-      # @param focus [String, nil] the focus item noun
-      # @param worn [Boolean] whether the focus is worn on the body
-      # @param tied [String, nil] location the focus is tied to, or false/nil if not tied
-      # @param sheathed [Boolean] whether the focus is sheathed and needs wielding
+      # @param focus [String, nil] the focus item name
+      # @param worn [Boolean] whether the focus is worn
+      # @param tied [String, Boolean] where the focus is tied (or false)
+      # @param sheathed [Boolean] whether the focus is sheathed
       # @return [void]
       def find_focus(focus, worn, tied, sheathed)
         return unless focus
@@ -868,19 +932,17 @@ module Lich
         end
       end
 
-      # Stows a spell focus back to its configured location after casting.
+      # Returns a spell focus to storage based on how it should be equipped.
       #
-      # Handles four storage modes: worn (wear item), tied (tie item with retries on failure),
-      # sheathed (sheathe), or in-hand storage (stow). Returns immediately if focus is nil.
-      # Retries up to {STOW_FOCUS_MAX_RETRIES} times on tie failures by retreating and retrying.
+      # Returns immediately if focus is nil.
+      # If worn, wears it. If tied, ties it (retrying on failure with retreat). If sheathed, sheathes it. Otherwise stows it.
       #
-      # @param focus [String, nil] the focus item noun
-      # @param worn [Boolean] whether the focus should be worn
-      # @param tied [String, nil] location to tie the focus; false/nil if not tied
-      # @param sheathed [Boolean] whether the focus should be sheathed
-      # @param retries [Integer] remaining tie retry attempts; default {STOW_FOCUS_MAX_RETRIES}
-      # @return [Boolean, void] true if focus was successfully stowed (or was nil), false on persistent tie failure
-      # @see #find_focus
+      # @param focus [String, nil] the focus item name
+      # @param worn [Boolean] whether to wear the focus
+      # @param tied [String, Boolean] where to tie the focus (or false)
+      # @param sheathed [Boolean] whether to sheathe the focus
+      # @param retries [Integer] remaining retries for tie failures (default STOW_FOCUS_MAX_RETRIES)
+      # @return [Boolean, void] result from the stow operation, or false if tie retries exhausted
       def stow_focus(focus, worn, tied, sheathed, retries: STOW_FOCUS_MAX_RETRIES)
         return unless focus
 
@@ -905,18 +967,17 @@ module Lich
         end
       end
 
-      # Locates a cambrinth item, handling both worn and stored configurations.
+      # Ensures cambrinth is in hand or ready for charging, based on config and skill.
       #
-      # If stored_cambrinth is true, ensures the cambrinth is in hand. If false (worn) and
-      # Arcana skill is insufficient to charge while worn, retrieves it. If worn and skill
-      # is sufficient, assumes it is already in position without verification.
+      # If stored_cambrinth is true, gets it into hands or removes it from wear.
+      # If stored_cambrinth is false but arcana skill is too low to charge while worn (< 2*cap + 100),
+      # verifies it is in hands or removes it or gets it.
+      # If stored_cambrinth is false and skill is sufficient, assumes it is worn or held and takes no action.
       #
-      # @param cambrinth [String] the cambrinth item noun
-      # @param stored_cambrinth [Boolean] true if configured to be stored, false if worn
-      # @param cambrinth_cap [Integer] the mana capacity for {#skilled_to_charge_while_worn?} check
-      # @return [Boolean] true if the cambrinth is now available; false only if retrieval methods all fail
-      # @see #skilled_to_charge_while_worn?
-      # @see #stow_cambrinth
+      # @param cambrinth [String] the cambrinth item name
+      # @param stored_cambrinth [Boolean] whether cambrinth is configured as stored
+      # @param cambrinth_cap [Integer] mana capacity of the cambrinth
+      # @return [Boolean] true if cambrinth is ready (or assumed ready for the worn+skilled case)
       def find_cambrinth(cambrinth, stored_cambrinth, cambrinth_cap)
         if stored_cambrinth
           # Your config says you keep your cambrinth stowed.
@@ -938,17 +999,16 @@ module Lich
         end
       end
 
-      # Stows a cambrinth item back to its configured location.
+      # Returns cambrinth to storage or wear, based on config.
       #
-      # If configured as stored, ensures it is in storage. If configured as worn and currently
-      # in hand, wears it (or stows it as fallback). If worn and not in hand, assumes it is
-      # already worn and takes no action.
+      # If stored_cambrinth is true, ensures it is in hands (or removes from wear), then stows it.
+      # If stored_cambrinth is false and cambrinth is in hands, tries to wear it, falling back to stow if that fails.
+      # If stored_cambrinth is false and cambrinth is not in hands, assumes it is worn and takes no action.
       #
-      # @param cambrinth [String] the cambrinth item noun
-      # @param stored_cambrinth [Boolean] true if should be stored, false if should be worn
-      # @param _cambrinth_cap [Integer] unused
-      # @return [Boolean] always returns true
-      # @see #find_cambrinth
+      # @param cambrinth [String] the cambrinth item name
+      # @param stored_cambrinth [Boolean] whether cambrinth is configured as stored
+      # @param _cambrinth_cap [Integer] unused; kept for signature compatibility
+      # @return [Boolean] true
       def stow_cambrinth(cambrinth, stored_cambrinth, _cambrinth_cap)
         if stored_cambrinth
           # Your config says you keep your cambrinth stowed.
@@ -969,31 +1029,28 @@ module Lich
         end
       end
 
-      # Checks if Arcana skill is sufficient to charge a cambrinth while wearing it.
+      # Determines whether current Arcana skill is high enough to charge a worn cambrinth without dropping it.
       #
-      # The requirement is: Arcana rank >= (cambrinth_cap × 2) + 100.
+      # Required skill: (cambrinth_cap * 2) + 100.
       #
-      # @param cambrinth_cap [Integer] the mana capacity of the cambrinth
-      # @return [Boolean] true if skilled enough to charge while worn, false otherwise
-      # @example
-      #   skilled_to_charge_while_worn?(600) #=> true if Arcana >= 1300
+      # @param cambrinth_cap [Integer] the cambrinth's mana capacity
+      # @return [Boolean] true if Arcana rank >= (cap * 2) + 100, false otherwise
       def skilled_to_charge_while_worn?(cambrinth_cap)
         DRSkill.getrank('Arcana').to_i >= ((cambrinth_cap.to_i * 2) + 100)
       end
 
-      # Charges a cambrinth item sequentially and then invokes it.
+      # Charges a cambrinth item with mana and invokes it, stopping if any charge fails.
       #
-      # Returns immediately if charges is nil or empty. Charges each amount in sequence,
-      # stopping if any charge fails. Then invokes the cambrinth with either the exact sum
-      # of all charges or the provided invoke_exact_amount.
+      # Iterates through charges array calling #charge? for each; breaks on first failure.
+      # Then invokes the cambrinth with the total of all charges if invoke_exact_amount is true,
+      # or without an amount if false/nil.
       #
-      # @param cambrinth [String] the cambrinth item noun
-      # @param dedicated_camb_use [String, nil] optional dedicated cambrinth use mode
-      # @param charges [Array<Integer>, nil] mana amounts to charge in sequence
-      # @param invoke_exact_amount [Integer, nil] exact mana to invoke; if nil, sum of charges is used
+      # @param cambrinth [String] the cambrinth item name
+      # @param dedicated_camb_use [Boolean, String] invoke option for dedicated cambrinth use
+      # @param charges [Array<Integer>] list of mana amounts to charge
+      # @param invoke_exact_amount [Boolean] if true, sum charges and invoke that amount; if false/nil, invoke without amount
       # @return [void]
-      # @see #charge?
-      # @see #invoke
+      # @see #charge?, #invoke
       def charge_and_invoke(cambrinth, dedicated_camb_use, charges, invoke_exact_amount = nil)
         return unless charges&.any?
 
@@ -1006,19 +1063,18 @@ module Lich
         invoke(cambrinth, dedicated_camb_use, invoke_amount)
       end
 
-      # Invokes a cambrinth item to release charged mana.
+      # Invokes a cambrinth item to release charged mana into the prepared spell.
       #
-      # Returns immediately if cambrinth is nil. On "too clumsy" error (Arcana too low),
-      # logs a message. If the cambrinth is not currently in hand, attempts to retrieve it,
-      # retry invoke, and then re-stow it. Handles the invoke attempt in a single command
-      # by building "invoke my [cambrinth] [amount] [dedicated_use]".strip.
+      # Returns immediately if cambrinth is nil.
+      # Sends invoke command with optional dedicated_camb_use flag and invoke_amount.
+      # If the invoke fails with 'too clumsy' (arcana skill too low while worn), attempts to retrieve
+      # the cambrinth into hands and retry; if successful, re-stows it.
       #
-      # @param cambrinth [String, nil] the cambrinth item noun
-      # @param dedicated_camb_use [String, nil] optional dedicated cambrinth use mode
-      # @param invoke_amount [Integer, nil] optional exact mana to invoke
+      # @param cambrinth [String] the cambrinth item name
+      # @param dedicated_camb_use [Boolean, String] invoke option
+      # @param invoke_amount [Integer, nil] mana amount to invoke, or nil to invoke all
       # @return [void]
-      # @see #invoke_messages
-      # @see #charge_and_invoke
+      # @note Handles the case where arcana is too low to invoke a worn cambrinth by getting it into hands.
       def invoke(cambrinth, dedicated_camb_use, invoke_amount)
         return unless cambrinth
 
@@ -1042,17 +1098,17 @@ module Lich
         end
       end
 
-      # Charges a cambrinth item with a specified mana amount.
+      # Charges a cambrinth item with a mana amount, handling skill and positioning errors.
       #
-      # Returns true if the charge was successful (absorbs message received). On "You are in
-      # no condition" error, attempts to harness instead. On wear/clumsy errors or missing
-      # cambrinth, attempts to retrieve it from storage and retry. Returns false on failure.
+      # If 'in no condition' response (encumbrance, etc.), harneses the mana instead.
+      # If 'too clumsy' response (arcana skill too low while worn) or 'need to hold it', retrieves
+      # the cambrinth into hands and retries; falls back to stow if it cannot be held.
+      # If 'absorbs all of the energy', charge succeeded.
       #
-      # @param cambrinth [String] the cambrinth item noun
+      # @param cambrinth [String] the cambrinth item name
       # @param mana [Integer] mana amount to charge
-      # @return [Boolean] true if charged successfully, false on failure
+      # @return [Boolean] true if charge succeeded, false otherwise
       # @see #harness?
-      # @see #charge_and_invoke
       def charge?(cambrinth, mana)
         charged = false
         result = DRC.bput("charge my #{cambrinth} #{mana}", get_data('spells').charge_messages, 'I could not find')
@@ -1089,12 +1145,12 @@ module Lich
         charged
       end
 
-      # Releases all active cyclic spells, optionally excluding specified ones.
+      # Releases all active cyclic spells except those in the exclusion list.
       #
-      # Filters active spells to find those marked as cyclic in the spell data, removes any
-      # in the exclusion list, and releases each via its abbreviation.
+      # Retrieves cyclic spells from spell data, filters for those in active_spells, excludes any
+      # in cyclic_no_release, and sends 'release abbrev' for each.
       #
-      # @param cyclic_no_release [Array<String>] spell names to exclude from release
+      # @param cyclic_no_release [Array<String>] spell names to NOT release
       # @return [void]
       # @see CYCLIC_RELEASE_SUCCESS_PATTERNS
       def release_cyclics(cyclic_no_release = [])
@@ -1107,13 +1163,10 @@ module Lich
           .each { |abbrev| DRC.bput("release #{abbrev}", CYCLIC_RELEASE_SUCCESS_PATTERNS, 'Release what?') }
       end
 
-      # Parses worn combat regalia crystals for Traders.
+      # Parses the player's worn combat regalia (rough-cut, faceted, or resplendent crystals).
+      # Returns nil for non-Traders.
       #
-      # Returns nil if the character is not a Trader. Otherwise queries worn combat equipment
-      # and filters for rough-cut, faceted, or resplendent crystals, returning their nouns.
-      #
-      # @return [Array<String>, nil] list of regalia crystal nouns, or nil if not a Trader
-      # @see #shatter_regalia?
+      # @return [Array<String>, nil] list of worn crystal regalia item nouns, or nil if not a Trader
       def parse_regalia
         return unless DRStats.trader?
 
@@ -1124,15 +1177,11 @@ module Lich
                      .map { |item| DRC.get_noun(item) }
       end
 
-      # Shatters worn combat regalia crystals for Traders.
+      # Shatters worn crystal regalia for Traders, returning them to motes of silvery light.
+      # Returns false for non-Traders or if no regalia is worn.
       #
-      # Returns false if not a Trader or if no regalia is worn. Otherwise removes each regalia
-      # item, converting it into motes of silvery energy. Defaults to parsing current worn
-      # regalia if not provided.
-      #
-      # @param worn_regalia [Array<String>, nil] list of regalia nouns to shatter; auto-detected if nil
-      # @return [Boolean] true if one or more regalia were shattered, false if none were available
-      # @see #parse_regalia
+      # @param worn_regalia [Array<String>, nil] list of crystal nouns; if nil, parsed via #parse_regalia
+      # @return [Boolean] true if any regalia was removed (shattered), false otherwise
       def shatter_regalia?(worn_regalia = nil)
         return false unless DRStats.trader?
 
@@ -1145,16 +1194,14 @@ module Lich
         true
       end
 
-      # Extracts the numeric mana level from a mana perception message.
+      # Parses the adjective from a PERC message and returns the mana level (1-21).
       #
-      # Parses the adjective at the end of the message to determine the mana strength level.
-      # Keywords "weak", "developing", or "improving" select a mana map; otherwise "good" is used.
-      # Returns the index + 1 of the adjective in the appropriate mana map.
+      # Matches 'weak', 'developing', 'improving' or 'good' in the message to select the mana level scale,
+      # then extracts the last word (adjective) and finds its index + 1 in that scale.
       #
-      # @param mana_msg [String] a mana perception message (e.g., "strong mana streams")
-      # @return [Integer] 1-indexed mana level based on the adjective in the message
+      # @param mana_msg [String] the PERC output message
+      # @return [Integer] mana level 1-21 based on the adjective's position in the scale
       # @api private
-      # @see #perc_mana
       def parse_mana_message(mana_msg)
         manalevels = if mana_msg.include? 'weak'
                        $MANA_MAP['weak']
@@ -1171,62 +1218,67 @@ module Lich
         manalevels.index(adj).to_i + 1
       end
 
-      # Perceives the character's mana level in their trained schools.
+      # Perceives the local mana level.
       #
-      # For Moon Mages, returns a Hash with four keys (enlightened_geometry, moonlight_manipulation,
-      # perception, psychic_projection), each mapping to a numeric mana level. For other Mages,
-      # returns a single Integer mana level. Returns nil for Barbarians, Thieves, Traders, Commoners,
-      # or if perception fails.
+      # A Moon Mage sends PERC MANA and gets one line per Lunar spellbook; the
+      # result is a Hash of book name (downcased, spaces as underscores, e.g.
+      # 'fabrication', 'illusion', 'noematics') to its level on the 21-step mana
+      # scale (1 = faint, 21 = blinding). Only the books named in the reply are
+      # keys. The level is the reply's (N/21) figure, or the adjective's place on
+      # the scale when the figure is missing or out of some other maximum; a book
+      # line with neither is skipped with a bold message. A cut-off reply prints a bold message and returns
+      # the books that arrived. Returns nil when no book line was captured.
       #
-      # @return [Hash<String, Integer>, Integer, nil] mana level(s), or nil if unavailable
-      # @example
-      #   perc_mana #=> {"enlightened_geometry" => 3, "moonlight_manipulation" => 2, ...}
-      #   perc_mana #=> 4 (for non-Moon Mages)
-      # @see #parse_mana_message
-      # @see PERC_MANA_START_PATTERN
-      # @see PERC_MANA_END_PATTERN
+      # Other magic users send PERC and get a single Integer level.
+      #
+      # @return [Hash{String => Integer}, Integer, nil] nil for Barbarians,
+      #   Thieves, Traders and Commoners, and when a Moon Mage reply names no book
       def perc_mana
         return nil if DRStats.barbarian? || DRStats.thief? || DRStats.trader? || DRStats.commoner?
 
         if DRStats.moon_mage?
-          lines = Lich::Util.issue_command(
+          lines, complete = DRC.capture_reply(
             'perc mana',
             PERC_MANA_START_PATTERN,
             PERC_MANA_END_PATTERN,
             usexml: false,
-            include_end: false,
-            quiet: true,
             timeout: 5
           )
-          return nil if lines.nil?
+          if lines.empty?
+            Lich::Messaging.msg("bold", "DRCA: Failed to capture PERC MANA output (timeout).")
+            return nil
+          end
+          Lich::Messaging.msg("bold", "DRCA: PERC MANA output was cut off (timeout); the result may be incomplete.") unless complete
 
-          mana_msgs = lines.map(&:strip).select { |line| line.include?('streams') }[0..3]
-          return nil if mana_msgs.length < 4
+          books = lines.each_with_object({}) do |line, levels|
+            match = PERC_MANA_BOOK_PATTERN.match(line)
+            next unless match
 
-          mana_msgs.collect! { |mana_msg| mana_msg.split(' streams')[0] }
+            level = if match[:level] && match[:max].to_i == $MANA_MAP['good'].length
+                      match[:level].to_i
+                    elsif (idx = $MANA_MAP['good'].index(match[:adj]))
+                      idx + 1
+                    end
+            unless level
+              Lich::Messaging.msg("bold", "DRCA: PERC MANA reported an unknown mana level '#{match[:adj]}' for the #{match[:book]} book; skipping it.")
+              next
+            end
 
-          {
-            'enlightened_geometry'   => parse_mana_message(mana_msgs[0]),
-            'moonlight_manipulation' => parse_mana_message(mana_msgs[1]),
-            'perception'             => parse_mana_message(mana_msgs[2]),
-            'psychic_projection'     => parse_mana_message(mana_msgs[3])
-          }
+            levels[match[:book].downcase.tr(' ', '_')] = level
+          end
+          books.empty? ? nil : books
         else
           mana_msg = DRC.bput('perc', '^You reach out with your .* and (see|hear) \w+')
           parse_mana_message(mana_msg)
         end
       end
 
-      # Perceives the Trader's current aura level, cap status, and growth conditions.
+      # Perceives the player's aura (Traders only) and returns its level, cap status, and growth status.
       #
-      # Only works for Traders. Issues 'perceive aura' and captures starlight level, cap status,
-      # and growth conditions using Flags. Returns a Hash with level (0-9), capped (Boolean),
-      # and growing (Boolean) keys.
+      # Returns nil if not a Trader.
+      # Sends 'perceive aura' and captures starlight messages to determine aura level (0-9 per STARLIGHT_MESSAGES).
       #
-      # @return [Hash{String => (Integer, Boolean)}] aura state with keys 'level', 'capped', 'growing'
-      # @example
-      #   perc_aura #=> {"level" => 5, "capped" => false, "growing" => true}
-      # @see STARLIGHT_MESSAGES
+      # @return [Hash, nil] a hash with keys 'level' (0-9), 'capped' (boolean), 'growing' (boolean); nil if not a Trader
       def perc_aura
         return unless DRStats.trader?
 
@@ -1244,20 +1296,18 @@ module Lich
         aura
       end
 
-      # Casts a series of spells, applying buffs and respecting resource thresholds.
+      # Casts multiple spells in sequence, managing mana and concentration thresholds.
       #
-      # Iterates through the spell list, skipping spells that are already active with sufficient
-      # remaining duration. Waits for mana and concentration to reach configured thresholds before
-      # casting each spell. Infuses Osrel Meraud before starting. Calls the lifecycle lambda
-      # (if provided) at key phases.
+      # Infuses OM if the player is a Moon Mage and configured for it.
+      # Iterates through spells, skipping those already active (unless recast is needed).
+      # Waits for mana and concentration to exceed configured thresholds before each cast.
       #
-      # @param spells [Hash{String => Hash}] spell name => data mapping
-      # @param settings [OpenStruct] configuration with waggle_spells_mana_threshold, concentration_threshold, osrel_no_harness, osrel_amount
-      # @param force_cambrinth [Boolean] force use of cambrinth even if harness is available; default false
-      # @param cast_lifecycle_lambda [Proc, nil] optional callback(phase, data, settings) called at 'pre-prep', 'post-prep', 'pre-cast', 'post-cast'
+      # @param spells [Hash<String, Hash>] spell data keyed by name
+      # @param settings [OpenStruct] character settings
+      # @param force_cambrinth [Boolean] if true, use cambrinth instead of harnessing (default false)
+      # @param cast_lifecycle_lambda [Proc, nil] optional callback block taking (phase, data, settings)
       # @return [void]
       # @see #cast_spell
-      # @see #infuse_om
       def cast_spells(spells, settings, force_cambrinth = false, cast_lifecycle_lambda = nil)
         infuse_om(!settings.osrel_no_harness, settings.osrel_amount)
         spells.each do |name, data|
@@ -1271,37 +1321,33 @@ module Lich
         end
       end
 
-      # Boolean wrapper for {#cast_spell} that returns true on success, false on failure.
+      # Wrapper around #cast_spell that returns true/false instead of the spell result.
       #
       # @param data [Hash] spell data
-      # @param settings [OpenStruct] configuration
-      # @param force_cambrinth [Boolean] force cambrinth use; default false
-      # @param cast_lifecycle_lambda [Proc, nil] optional lifecycle callback
-      # @return [Boolean] true if the spell was cast successfully
-      # @see #cast_spell
+      # @param settings [OpenStruct] character settings
+      # @param force_cambrinth [Boolean] if true, use cambrinth instead of harnessing (default false)
+      # @param cast_lifecycle_lambda [Proc, nil] optional callback block
+      # @return [Boolean] true if spell cast succeeded, false otherwise
       def cast_spell?(data, settings, force_cambrinth = false, cast_lifecycle_lambda = nil)
         !!cast_spell(data, settings, force_cambrinth, cast_lifecycle_lambda)
       end
 
-      # Prepares and casts a single spell with full lifecycle support.
+      # Executes the full spell casting workflow: prepare, charge, cast, with optional ritual or runestone handling.
       #
-      # Handles ritual spells (via {#ritual}) separately. For normal spells: releases active cyclics
-      # (if needed), prepares the spell (with optional symbiosis), harnesses or charges mana, waits
-      # for prep time, and casts. Supports custom prep messages, runestones, and lifecycle callbacks
-      # at 'pre-prep', 'post-prep', 'pre-cast', and 'post-cast' phases.
+      # For Location spells, auto-casts Clear Vision first if not active.
+      # If data['ritual'] is true, delegates to #ritual.
+      # For runestone spells, verifies runestone is ready via #prepare_to_cast_runestone?.
+      # Releases active cyclics (except those to keep), releases any existing prep/mana, then:
+      # - Prepares via #prepare?, confirming with #prep_confirmed?
+      # - Charges cambrinth or harneses mana
+      # - Waits for prep_time or cast readiness
+      # - Casts via #cast?
       #
-      # Returns false immediately if data or settings are nil. Returns false if preparation fails.
-      # Returns the result of {#cast?} after casting, or nil if a ritual.
-      #
-      # @param data [Hash] spell data with keys: abbrev, mana, prep_time, cast, ritual, runestone_name, symbiosis, cyclic, cambrinth, custom_prep_message, custom_invoke_message, before, after, custom_cast_message, tattoo_tm, runestone_tm, prep_type
-      # @param settings [OpenStruct] configuration with cambrinth, cambrinth_cap, stored_cambrinth, dedicated_camb_use, use_harness_when_arcana_locked, custom_spell_prep, runestone_storage
-      # @param force_cambrinth [Boolean] force cambrinth use over harness; default false
-      # @param cast_lifecycle_lambda [Proc, nil] optional callback(phase, data, settings) for lifecycle events
-      # @return [Boolean, nil] true if cast successfully, false on failure, nil for rituals
-      # @see #prepare?
-      # @see #cast?
-      # @see #ritual
-      # @see #check_discern
+      # @param data [Hash] spell data (abbrev, mana, cast, ritual, runestone_name, cyclic, etc.)
+      # @param settings [OpenStruct] character settings
+      # @param force_cambrinth [Boolean] if true, use cambrinth instead of harnessing (default false)
+      # @param cast_lifecycle_lambda [Proc, nil] optional lifecycle callback block (phases: 'pre-prep', 'post-prep', 'pre-cast', 'post-cast')
+      # @return [Boolean, nil] true if spell cast succeeded, false on failure, nil for ritual spells after successful cast
       def cast_spell(data, settings, force_cambrinth = false, cast_lifecycle_lambda = nil)
         return unless data
         return unless settings
@@ -1338,9 +1384,12 @@ module Lich
         DRC.bput('release spell', 'You let your concentration lapse', "You aren't preparing a spell") unless checkprep == 'None'
         DRC.bput('release mana', 'You release all', "You aren't harnessing any mana")
 
-        return unless prepare?(data['abbrev'], data['mana'], data['symbiosis'], command, data['tattoo_tm'], data['runestone_name'], data['runestone_tm'], data['custom_prep_message'], custom_invoke_message: data['custom_invoke_message'], custom_spell_prep: settings['custom_spell_prep'])
+        prepared = prepare?(data['abbrev'], data['mana'], data['symbiosis'], command, data['tattoo_tm'], data['runestone_name'], data['runestone_tm'], data['custom_prep_message'], custom_invoke_message: data['custom_invoke_message'], custom_spell_prep: settings['custom_spell_prep'])
+        return unless prepared
 
         DRCI.put_away_item?(data['runestone_name'], settings.runestone_storage) if DRCI.in_hands?(data['runestone_name'])
+        return unless prep_confirmed?(prepared, data['abbrev'], command: command, runestone_name: data['runestone_name'])
+
         prepare_time = Time.now
 
         normalize_cambrinth_items(settings)
@@ -1365,15 +1414,13 @@ module Lich
         spell_cast
       end
 
-      # Attempts to segue from one cyclic spell to another.
+      # Attempts a bard Segue from a currently prepared cyclic spell.
+      # Returns false if segue is not possible (not performing cyclic, too soon, lacking flair).
+      # Returns true otherwise.
       #
-      # Returns false if the character is not performing a cyclic spell, if it is too soon to segue,
-      # or if the character lacks bardic flair. Returns true on success.
-      #
-      # @param abbrev [String] the spell abbreviation to segue to
-      # @param mana [Integer] mana to prepare the next spell with
-      # @return [Boolean] true if segue succeeded, false on error conditions
-      # @api private
+      # @param abbrev [String] the spell abbreviation to segue into
+      # @param mana [Integer] mana amount for the segue
+      # @return [Boolean] true if segue succeeded or is permitted, false if explicitly denied
       def segue?(abbrev, mana)
         case DRC.bput("segue #{abbrev} #{mana}", get_data('spells').segue_messages)
         when 'You must be performing a cyclic spell to segue from', 'It is too soon to segue', 'You are lacking the bardic flair'
@@ -1382,28 +1429,29 @@ module Lich
         true
       end
 
-      # Discerns spell requirements and caches mana/cambrinth calculations.
+      # Discerns a spell's mana requirements and caches the result for future casts.
       #
-      # Caches per-spell mana discern data in UserVars.discerns. For sorcery or symbiosis spells,
-      # extracts only the minimum mana streams. For other spells, uses the full discern pattern
-      # to get min and reinforcement values. Calculates total mana and cambrinth distribution via
-      # {#calculate_mana}. Re-discerns if cache is stale, timer expires, or settings change.
-      # Returns the modified spell data with 'mana' and 'cambrinth' keys set.
+      # For sorcery spells (or if spell_is_sorcery=true), discerns only the minimum mana streams,
+      # bypassing reinforcement and cambrinth calculations.
       #
-      # @param data [Hash] spell data with key 'abbrev'
-      # @param settings [OpenStruct] configuration including check_discern_timer_in_hours, prep_scaling_factor, cambrinth settings
-      # @param spell_is_sorcery [Boolean] whether the spell is a sorcery spell; default false
-      # @param more_override [Integer, nil] override for reinforcement mana; if set, forces re-discern
-      # @return [Hash] the modified spell data with mana and cambrinth populated
-      # @example
-      #   data = {"abbrev" => "cs", "mana" => 1}
-      #   check_discern(data, settings) #=> {"abbrev" => "cs", "mana" => 42, "cambrinth" => [[5, 5, ...]]}
-      # @see #calculate_mana
-      # @see DISCERN_SORCERY_PATTERN
-      # @see DISCERN_FULL_PATTERN
+      # For non-sorcery spells, discerns full pattern (minimum + reinforcement) if cache is stale
+      # or if a retry window has passed (DISCERN_RETRY_SECONDS or check_discern_timer_in_hours, whichever is shorter).
+      # If held or rooted, casts at minimum. On no recognised reply, marks failed_at and will retry later.
+      # Caches the result in UserVars.discerns, including cambrinth_caps signature for the distribute_charges path.
+      #
+      # Calls #calculate_mana to split the total into prep mana and cambrinth charges.
+      # On any failure or minimum, returns minimum = 1 for mana and nil for cambrinth.
+      #
+      # @param data [Hash] spell data; updated in place with 'mana' and 'cambrinth' keys
+      # @param settings [OpenStruct] character settings
+      # @param spell_is_sorcery [Boolean] if true, skip reinforcement and cambrinth
+      # @param more_override [Integer, nil] override the reinforcement amount (for testing)
+      # @return [Hash] the updated data hash
+      # @note Retreats before discerning; blocks discern retry if one failed too recently.
       def check_discern(data, settings, spell_is_sorcery = false, more_override = nil)
         UserVars.discerns = {} unless UserVars.discerns
         discern_data = UserVars.discerns[data['abbrev']] || {}
+        held = false
         if data['symbiosis'] || spell_is_sorcery
           if discern_data.empty? || discern_data['min'].nil? || more_override
             DRC.retreat
@@ -1417,44 +1465,73 @@ module Lich
             end
           end
           calculate_mana(discern_data['min'], discern_data['more'], discern_data, false, settings)
-        elsif discern_data.empty? || discern_data['time_stamp'].nil? || Time.now - discern_data['time_stamp'] > settings.check_discern_timer_in_hours * 60 * 60 || !discern_data['more'].nil? || stale_cambrinth_caps?(discern_data, settings)
-          discern_data['time_stamp'] = Time.now
+        elsif (discern_data.empty? || discern_data['time_stamp'].nil? || Time.now - discern_data['time_stamp'] > settings.check_discern_timer_in_hours * 60 * 60 || !discern_data['more'].nil? || stale_cambrinth_caps?(discern_data, settings)) && !discern_retry_pending?(discern_data, settings)
           DRC.retreat
           case discern = DRC.bput("discern #{data['abbrev']}", 'The spell requires at minimum \d+ mana streams and you think you can reinforce it with \d+ more', 'You don\'t think you are able to cast this spell', 'You have no idea how to cast that spell', 'You don\'t seem to be able to move to do that')
-          when /you don't think you are able/i, 'You have no idea how to cast that spell', 'You don\'t seem to be able to move to do that'
+          when /you don't think you are able/i, 'You have no idea how to cast that spell'
+            discern_data.delete('failed_at')
+            discern_data['time_stamp'] = Time.now
             discern_data['mana'] = 1
             discern_data['cambrinth'] = nil
+          when 'You don\'t seem to be able to move to do that'
+            # Held or rooted: the reply says nothing about the spell, so this
+            # cast is at the minimum. The stored entry is left alone: it keeps
+            # any earlier real answer, and its time stamp, so the next cast
+            # discerns again.
+            held = true
           else
+            # Only a real answer is cached. A discern with no recognised reply
+            # is tried again after DISCERN_RETRY_SECONDS, so each cast in
+            # between doesn't pay for another retreat and bput timeout.
             match = discern.match(DISCERN_FULL_PATTERN)
-            calculate_mana(match[:min].to_i, match[:more].to_i, discern_data, data['cyclic'] || data['ritual'], settings) if match
+            if match
+              discern_data.delete('failed_at')
+              discern_data['time_stamp'] = Time.now
+              calculate_mana(match[:min].to_i, match[:more].to_i, discern_data, data['cyclic'] || data['ritual'], settings)
+            else
+              discern_data['failed_at'] = Time.now
+            end
           end
         end
         waitrt?
         UserVars.discerns[data['abbrev']] = discern_data
-        data['mana'] = discern_data['mana']
-        data['cambrinth'] = discern_data['cambrinth']
+        # With no stored answer (a discern that drew no recognised reply, and
+        # its retry window), cast at the minimum as when held, not with nil.
+        minimum = held || discern_data['mana'].nil?
+        data['mana'] = minimum ? 1 : discern_data['mana']
+        data['cambrinth'] = minimum ? nil : discern_data['cambrinth']
         data
       end
 
-      # Calculates total mana and cambrinth charge distribution from discern values.
+      # Whether a discern that drew no recognised reply was sent too recently
+      # to try again: within DISCERN_RETRY_SECONDS, or within
+      # check_discern_timer_in_hours when that is shorter.
       #
-      # Computes total mana as (min + more) × prep_scaling_factor, then distributes remaining mana
-      # across configured cambrinth items respecting their caps. For cyclic/ritual spells, all mana
-      # goes to the base prep (no cambrinth). Updates discern_data Hash in place with 'mana' and
-      # 'cambrinth' keys.
+      # @param discern_data [Hash] the spell's entry in UserVars.discerns
+      # @param settings [OpenStruct] character settings
+      # @return [Boolean]
+      # @api private
+      def discern_retry_pending?(discern_data, settings)
+        failed_at = discern_data['failed_at']
+        return false unless failed_at
+
+        Time.now - failed_at < [DISCERN_RETRY_SECONDS, settings.check_discern_timer_in_hours * 60 * 60].min
+      end
+
+      # Calculates prep mana and cambrinth charge distribution from discern min + reinforcement.
       #
-      # Uses either per-item distribution ({#calculate_mana_by_item}) or ratio-based distribution
-      # ({#calculate_mana_by_ratio}) based on the cambrinth_distribute_charges setting.
+      # Applies prep_scaling_factor, calculates base prep as ceil(total/5) but at least min.
+      # Remaining mana is distributed to cambrinth via #calculate_mana_by_ratio (default) or
+      # #calculate_mana_by_item (if cambrinth_distribute_charges is true).
+      # For cyclics or rituals, all remaining goes to prep mana (no cambrinth).
       #
-      # @param min [Integer] minimum mana streams from discern
-      # @param more [Integer] additional reinforcement mana from discern
-      # @param discern_data [Hash] cache entry to update with mana and cambrinth keys
-      # @param cyclic_or_ritual [Boolean] true for cyclic or ritual spells (no cambrinth)
-      # @param settings [OpenStruct] configuration with prep_scaling_factor, cambrinth_distribute_charges, cambrinth_items, cambrinth_num_charges
+      # @param min [Integer] minimum mana streams required
+      # @param more [Integer] reinforcement mana streams
+      # @param discern_data [Hash] hash to store 'mana', 'cambrinth', 'cambrinth_caps' keys (modified in place)
+      # @param cyclic_or_ritual [Boolean] if true, bypass cambrinth and use all mana in prep
+      # @param settings [OpenStruct] character settings (prep_scaling_factor, cambrinth_num_charges, cambrinth_distribute_charges, cambrinth_items)
       # @return [void]
       # @api private
-      # @see #calculate_mana_by_item
-      # @see #calculate_mana_by_ratio
       def calculate_mana(min, more, discern_data, cyclic_or_ritual, settings)
         total = min + more
         total = (total * settings.prep_scaling_factor).floor
@@ -1653,16 +1730,11 @@ module Lich
         discern_data['cambrinth_caps'] != cambrinth_caps(settings)
       end
 
-      # Determines whether to harness mana instead of charging cambrinth.
+      # Determines whether to harness mana (sorcery) or charge cambrinth.
+      # Returns false if should_harness is false, or if Attunement XP >= Arcana XP (Arcana is locked).
       #
-      # Returns false if should_harness is false, or if Attunement XP exceeds Arcana XP.
-      # (Harnessing scales with Arcana; a lower Arcana than Attunement indicates other skills
-      # are preferred.)
-      #
-      # @param should_harness [Boolean] configuration enabling harness path
-      # @return [Boolean] true if harness should be used, false otherwise
-      # @api private
-      # @see #infuse_om
+      # @param should_harness [Boolean] configuration flag
+      # @return [Boolean] true if harnessing should be used, false if cambrinth should be charged instead
       def check_to_harness(should_harness)
         return false unless should_harness
         return false if DRSkill.getxp('Attunement') > DRSkill.getxp('Arcana')
@@ -1670,17 +1742,15 @@ module Lich
         true
       end
 
-      # Casts a spell during crafting without preparation, assuming it is already prepared.
+      # Casts a spell without the full prep workflow, for use during crafting rituals.
+      # Normalizes cambrinth config, charges or harneses mana, and casts.
       #
-      # Charges cambrinth or harnesses mana, then casts. Skips all prep steps. Returns false
-      # if data or settings are nil.
+      # Returns nil if data or settings is nil.
+      # Does not prepare a spell; assumes one is already prepared or will be prepared separately.
       #
-      # @param data [Hash] spell data with keys: cast, symbiosis, before, after, custom_cast_message, cambrinth
-      # @param settings [OpenStruct] configuration for cambrinth and harness
-      # @return [Boolean] true if cast succeeded, false on failure
-      # @api private
-      # @see #cast?
-      # @see #charge_and_invoke
+      # @param data [Hash] spell data (cambrinth, cast, symbiosis, before, after keys)
+      # @param settings [OpenStruct] character settings
+      # @return [Boolean] true if cast succeeded, false otherwise
       def crafting_cast_spell(data, settings)
         return unless data
         return unless settings
@@ -1695,17 +1765,15 @@ module Lich
         cast?(data['cast'], data['symbiosis'], data['before'], data['after'], data['custom_cast_message'])
       end
 
-      # Prepares a spell for crafting, skipping preparation if lunar moons are unavailable.
+      # Prepares a spell without casting, for use during crafting rituals (e.g., alchemy, forging).
+      # Normalizes cambrinth config, releases active cyclics and existing prep/mana, then prepares.
       #
-      # Calls {#DRCMM.set_moon_data} to check lunar availability. Releases active cyclics
-      # and existing preps before preparing. Returns false if data or settings are nil, or if
-      # moon data is unavailable.
+      # For lunar spells, skips if no moons are available (via DRCMM.set_moon_data).
+      # Returns nil if data or settings is nil, or if DRCMM.set_moon_data returns nil.
       #
-      # @param data [Hash] spell data with keys: abbrev, mana, symbiosis, cyclic, prep_type, runestone_name, tattoo_tm, runestone_tm, custom_prep_message, custom_invoke_message
-      # @param settings [OpenStruct] configuration including custom_spell_prep
-      # @return [String, Boolean] matched prep message on success, false on failure
-      # @api private
-      # @see #prepare?
+      # @param data [Hash] spell data (abbrev, mana, cyclic, runestone_name, custom_prep_message keys)
+      # @param settings [OpenStruct] character settings
+      # @return [String, false] what #prepare? returned (prep message, or false on failure)
       def crafting_prepare_spell(data, settings)
         return unless data
         return unless settings
@@ -1724,18 +1792,15 @@ module Lich
         prepare?(data['abbrev'], data['mana'], data['symbiosis'], command, data['tattoo_tm'], data['runestone_name'], data['runestone_tm'], data['custom_prep_message'], custom_invoke_message: data['custom_invoke_message'], custom_spell_prep: settings['custom_spell_prep'])
       end
 
-      # Executes a crafting magic routine to train spells during downtime.
+      # Supports automated spell casting during crafting to train Warding, Utility, Augmentation, and optionally Sorcery.
       #
-      # Skips if no training spells are configured or mana is too low. If a spell is already
-      # prepared, casts it. Otherwise selects the lowest-XP training spell (Warding, Utility,
-      # Augmentation, optional Sorcery) and prepares it for casting. Does not cast—that happens
-      # on the next cycle.
+      # Skips if no training spells configured, mana is below threshold, or cast roundtime is active.
+      # If a spell is prepared and cast is ready, casts it.
+      # Otherwise, selects the first Warding/Utility/Augmentation skill below 31 XP (or Sorcery if enabled),
+      # prioritizing by lowest XP, and prepares its training spell.
       #
-      # @param settings [OpenStruct] configuration with crafting_training_spells, waggle_spells_mana_threshold, crafting_training_spells_enable_sorcery, crafting_training_spells_enable_sorcery_forging
+      # @param settings [OpenStruct] character settings with crafting_training_spells
       # @return [void]
-      # @api private
-      # @see #crafting_prepare_spell
-      # @see #crafting_cast_spell
       def crafting_magic_routine(settings)
         training_spells = settings.crafting_training_spells
 
@@ -1765,18 +1830,33 @@ module Lich
         crafting_prepare_spell(training_spells[needs_training], settings)
       end
 
-      # Applies buffs from a named waggle set based on guild.
+      # Whether a spell's day/night restriction allows casting it now: a
+      # 'night' spell only at night, a 'day' spell only by day, anything else
+      # always. Reads UserVars.sun, which moonwatch keeps current; with no sun
+      # data, day and night spells are both skipped. Scripts that decide
+      # whether to cast or wait on a waggle spell should use this so they agree
+      # with {#do_buffs}.
       #
-      # Routes to {#start_barb_abilities} for Barbarians, {#start_khris} for Thieves, or
-      # {#cast_spells} for Mages (filtering for day/night and discerning auto-mana spells).
-      # Returns immediately if the waggle set is not configured.
+      # @param data [Hash] the spell's waggle data
+      # @return [Boolean] true if the spell can be cast at this time of day
+      def day_night_ok?(data)
+        sun = UserVars.sun || {}
+        return false if data['night'] && !sun['night']
+        return false if data['day'] && !sun['day']
+
+        true
+      end
+
+      # Casts all buffs in a named waggle set, handling guild-specific buff activation.
       #
-      # @param settings [OpenStruct] configuration with waggle_sets, waggle_force_cambrinth
-      # @param set_name [String] the name of the waggle set to apply
+      # For Barbarians, activates abilities via #start_barb_abilities.
+      # For Thieves, activates Khris via #start_khris.
+      # For other guilds, filters by day/night restrictions, auto-discerns spells with use_auto_mana=true,
+      # and casts via #cast_spells.
+      #
+      # @param settings [OpenStruct] character settings with waggle_sets
+      # @param set_name [String] the waggle set name (e.g., 'setup', 'buffs')
       # @return [void]
-      # @see #start_barb_abilities
-      # @see #start_khris
-      # @see #cast_spells
       def do_buffs(settings, set_name)
         return unless settings.waggle_sets[set_name]
 
@@ -1787,9 +1867,10 @@ module Lich
         elsif DRStats.thief?
           start_khris(spells, settings)
         else
-          spells
-            .select! { |_name, data| data['night'] ? UserVars.sun['night'] : true }
-            .select! { |_name, data| data['day'] ? UserVars.sun['day'] : true }
+          # Non-mutating select: select! returns nil when it removes nothing,
+          # which skipped the day filter, and it deleted out-of-season spells
+          # from the caller's settings.waggle_sets.
+          spells = spells.select { |_name, data| day_night_ok?(data) }
 
           spells.values
                 .select { |spell| spell['use_auto_mana'] }
@@ -1799,31 +1880,24 @@ module Lich
         end
       end
 
-      # Updates the Avtalia cambrinth tracking system with current charge state.
-      #
-      # Issues 'focus cambrinth' and parses the mana value from the output. Waits for roundtime.
+      # Queries the current mana in the player's avatar cambrinth item (avtalia script only).
+      # Sends 'focus cambrinth' and extracts the mana amount from the response.
       #
       # @return [void]
       # @api private
-      # @see #invoke_avtalia
-      # @see #charge_avtalia
       def update_avtalia
         DRC.bput("focus cambrinth", /^The .+ pulses? .+ (\d+)/, 'dim, almost magically null', '^You let your magical senses wander')
         waitrt?
       end
 
-      # Invokes a cambrinth item and updates Avtalia tracking if avtalia.lic is running.
+      # Invokes cambrinth for an avatar script (avtalia), updating its mana tracker.
+      # Returns immediately if cambrinth is nil or avtalia script is not running.
       #
-      # Invokes the cambrinth and deducts the invoked amount from Avtalia's cached mana.
-      # Returns without action if cambrinth is nil or avtalia script is not running.
-      #
-      # @param cambrinth [String, nil] the cambrinth item noun
-      # @param dedicated_camb_use [String, nil] optional dedicated cambrinth use mode
-      # @param invoke_amount [Integer, nil] exact mana to invoke
+      # @param cambrinth [String] the cambrinth item name
+      # @param dedicated_camb_use [Boolean, String] invoke option
+      # @param invoke_amount [Integer, nil] mana amount invoked
       # @return [void]
       # @api private
-      # @see #invoke
-      # @see #charge_avtalia
       def invoke_avtalia(cambrinth, dedicated_camb_use, invoke_amount)
         return unless cambrinth
         return unless Script.running?('avtalia')
@@ -1832,18 +1906,16 @@ module Lich
         UserVars.avtalia[cambrinth]['mana'] -= [DRStats.mana, invoke_amount].min
       end
 
-      # Charges a cambrinth item and updates Avtalia tracking if avtalia.lic is running.
+      # Charges cambrinth for an avatar script (avtalia), updating its mana tracker with decay estimation.
+      # Returns immediately if cambrinth is nil or avtalia script is not running.
       #
-      # On successful charge, estimates mana decay over elapsed time and recalculates assumed reserve.
-      # On charge failure, resets to the cap. Returns without action if cambrinth is nil or avtalia
-      # script is not running. Updates the time_seen timestamp.
+      # If charge fails, resets mana to cap. If charge succeeds, estimates 10% decay every 5 minutes
+      # and adjusts the assumed reserve accordingly.
       #
-      # @param cambrinth [String, nil] the cambrinth item noun
-      # @param charge_amount [Integer] mana amount to charge
+      # @param cambrinth [String] the cambrinth item name
+      # @param charge_amount [Integer] mana amount being charged
       # @return [void]
       # @api private
-      # @see #charge?
-      # @see #invoke_avtalia
       def charge_avtalia(cambrinth, charge_amount)
         return unless cambrinth
         return unless Script.running?('avtalia')
@@ -1862,23 +1934,20 @@ module Lich
         UserVars.avtalia[cambrinth]['time_seen'] = Time.now
       end
 
-      # Selects the best cambrinth from Avtalia tracking for a charge attempt.
+      # Selects the best avatar cambrinth item to charge from (avtalia script only).
+      # Filters to items seen recently (< 600s), above mana_percentage of cap, and with mana > charge_needed/10.
+      # Returns the item with the highest mana.
       #
-      # Filters UserVars.avtalia for items that have been seen recently (within 600 seconds),
-      # have sufficient mana percentage, and can provide at least charge_needed/10 mana.
-      # Returns the cambrinth with the highest current mana, or nil if none qualify.
-      #
-      # @param charge_needed [Integer] total mana needed
-      # @param mana_percentage [Integer] minimum mana level as a percentage of cap
-      # @return [Array, nil] [cambrinth_noun, data_hash] or nil if no suitable cambrinth found
+      # @param charge_needed [Integer] mana amount needed
+      # @param mana_percentage [Integer] minimum mana as percentage of cap
+      # @return [Array(String, Hash), nil] [cambrinth_name, mana_data] or nil if no item qualifies
       # @api private
-      # @see #charge_avtalia
       def choose_avtalia(charge_needed, mana_percentage)
         UserVars.avtalia.select { |_camb, data| data['time_seen'] && data['cap'] && data['mana'] }
-                        .select { |_camb, data| Time.now - data['time_seen'] < 600.0 }
-                        .select { |_camb, data| (data['mana'].to_f / data['cap'].to_f) * 100 >= mana_percentage }
-                        .select { |_camb, data| data['mana'] > charge_needed / 10 }
-                        .max_by { |_camb, data| data['mana'] }
+                .select { |_camb, data| Time.now - data['time_seen'] < 600.0 }
+                .select { |_camb, data| (data['mana'].to_f / data['cap'].to_f) * 100 >= mana_percentage }
+                .select { |_camb, data| data['mana'] > charge_needed / 10 }
+                .max_by { |_camb, data| data['mana'] }
       end
 
       # Determine the numerical range of a Warrior Mage's elemental charge.
@@ -1904,13 +1973,12 @@ module Lich
         2.times { DRC.bput("release symbiosis", "Are you sure", "You intentionally wipe", "But you haven't") }
       end
 
-      # Normalizes cambrinth configuration from legacy single-item format to multi-item format.
+      # Converts legacy single-cambrinth settings into the multi-item format.
       #
-      # If cambrinth_items[0] has no 'name' key, replaces it with a single-item array using
-      # the legacy cambrinth, cambrinth_cap, and stored_cambrinth settings. No-op if already
-      # in multi-item format.
+      # If settings.cambrinth_items is empty or missing the 'name' key, replaces it with a single-item
+      # array from settings.cambrinth, cambrinth_cap, and stored_cambrinth.
       #
-      # @param settings [OpenStruct] configuration to normalize in place
+      # @param settings [OpenStruct] character settings (modified in place)
       # @return [void]
       # @api private
       def normalize_cambrinth_items(settings)
@@ -1923,17 +1991,15 @@ module Lich
         }]
       end
 
-      # Routes cambrinth charging to per-item or per-list distribution based on config.
+      # Charges one or more cambrinth items for the prepared spell.
       #
-      # Delegates to {#charge_cambrinth_items_by_item} if cambrinth_distribute_charges is true,
-      # otherwise to {#charge_cambrinth_items_repeated}.
+      # Delegates to #charge_cambrinth_items_repeated (default) or #charge_cambrinth_items_by_item
+      # (if cambrinth_distribute_charges is true).
       #
-      # @param data [Hash] spell data with 'cambrinth' key (Array of charges)
-      # @param settings [OpenStruct] configuration with cambrinth_distribute_charges flag
+      # @param data [Hash] spell data with 'cambrinth' key (nested or flat array of integers)
+      # @param settings [OpenStruct] character settings
       # @return [void]
       # @api private
-      # @see #charge_cambrinth_items_by_item
-      # @see #charge_cambrinth_items_repeated
       def charge_cambrinth_items(data, settings)
         if settings.cambrinth_distribute_charges
           charge_cambrinth_items_by_item(data, settings)

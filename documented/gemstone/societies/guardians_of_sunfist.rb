@@ -1,14 +1,24 @@
+# Root namespace for Lich 5, a Ruby scripting engine for text-based games
+# including GemStone IV and DragonRealms.
 module Lich
+  # Namespace for GemStone IV game logic, including societies, characters,
+  # items, and other in-game entities.
   module Gemstone
+    # Namespace for GemStone IV society implementations and related utilities.
     module Societies
       ##
       # Represents the Guardians of Sunfist society.
       #
-      # This class provides methods to access and use sigils associated with the Guardians of Sunfist.
+      # Provides access to Guardians of Sunfist sigil data, cost calculation, usability checks,
+      # and dynamic method access for individual sigils.
       #
-      # @see Gemstone::Society
       class GuardiansOfSunfist < Gemstone::Society
         ##
+        # Metadata for each Sigil from the Guardians of Sunfist, including rank, costs, duration, etc.
+        # Some fields (e.g., `:summary`, `:duration`) may be defined as lambdas for dynamic content.
+        # These are automatically resolved at access time via `Society.resolve`.
+        #
+        # @return [Hash<String, Hash>] Sigil name mapped to metadata
         #
         @@sunfist_sigils = {
           "sigil_of_recognition"      => {
@@ -195,13 +205,14 @@ module Lich
         }.freeze
 
         ##
-        # Retrieves the sigil metadata by its name.
+        # Retrieves a sigil definition by short or long name.
         #
-        # @param name [String] the name of the sigil to retrieve
-        # @return [Hash, nil] the sigil metadata or nil if not found
-        # @example
-        #   sigil = GuardiansOfSunfist["sigil_of_recognition"]
-        #   #=> retrieves the metadata for the Sigil of Recognition
+        # Normalizes the provided name and attempts to match against both short and long names
+        # of all Guardians of Sunfist sigils. Returns the corresponding sigil metadata if found.
+        #
+        # @param name [String] The short or long name of the sigil
+        # @return [Hash, nil] The sigil metadata, or nil if not found
+        #
         def self.[](name)
           lookup = Society.lookup(name, sigil_lookups)
           return nil unless lookup
@@ -220,9 +231,16 @@ module Lich
         end
 
         ##
-        # Provides a list of all sigil lookups with their metadata.
+        # Returns a simplified list of all sigils with key attributes used for lookup and UI.
         #
-        # @return [Array<Hash>] an array of hashes containing sigil metadata
+        # Used internally to normalize and match against sigil names.
+        #
+        # @return [Array<Hash>] Each hash contains:
+        #   - :short_name [String]
+        #   - :long_name [String]
+        #   - :rank [Integer]
+        #   - :cost [Hash]
+        #
         def self.sigil_lookups
           @@sunfist_sigils.map do |_, sigil|
             {
@@ -235,10 +253,13 @@ module Lich
         end
 
         ##
-        # Checks if a sigil is known and accessible based on the member's rank.
+        # Determines if the character knows a given Sunfist sigil, based on society rank.
         #
-        # @param sigil_name [String] the name of the sigil to check
-        # @return [Boolean] true if the sigil is known and accessible, false otherwise
+        # Uses the unified `[]` method for normalized lookup by short or long name.
+        #
+        # @param sigil_name [String] The short or long name of the sigil
+        # @return [Boolean] True if the character's rank is sufficient to use the sigil
+        #
         def self.known?(sigil_name)
           return false unless member?
           sigil = self[sigil_name]
@@ -248,11 +269,15 @@ module Lich
         end
 
         ##
-        # Uses a sigil on a target if the member is eligible.
+        # Attempts to use a Guardians of Sunfist sigil by issuing the appropriate command.
         #
-        # @param sigil_name [String] the name of the sigil to use
-        # @param target [String, nil] the target for the sigil, if applicable
+        # If the sigil has a defined `:usage` string, it is used directly.
+        # Otherwise, defaults to `sigil of <short_name>`.
+        #
+        # @param sigil_name [String] The short or long name of the sigil to invoke
+        # @param target [String, nil] Optional target for the sigil (appended to command)
         # @return [void]
+        #
         def self.use(sigil_name, target = nil)
           unless member?
             Lich::Messaging.msg("error", "Not a member of Guardians of Sunfist, can't use: #{sigil_name}")
@@ -266,20 +291,35 @@ module Lich
           end
 
           if available?(sigil_name)
-            command = sigil[:usage] || "sigil of #{sigil[:short_name]}"
             waitrt?
             waitcastrt?
-            fput "#{command} #{target}".strip
+            fput Society.command(sigil, "sigil of", target)
           else
             Lich::Messaging.msg("warn", "You cannot use the #{sigil_name} sigil right now.")
           end
         end
 
         ##
-        # Checks if the sigil can be afforded based on the member's resources.
+        # The command {use} sends for a sigil, without sending it.
         #
-        # @param sigil_name [String] the name of the sigil to check
-        # @return [Boolean] true if the sigil can be afforded, false otherwise
+        # @param sigil_name [String] The short or long name of the sigil
+        # @param target [String, Integer, GameObj, nil] Optional target (a GameObj or id as `#id`)
+        # @return [String, nil] e.g. "sigil of contact", nil when the sigil is unknown
+        #
+        def self.command(sigil_name, target = nil)
+          sigil = self[sigil_name]
+          return nil unless sigil
+
+          Society.command(sigil, "sigil of", target)
+        end
+
+        ##
+        # Checks if the character can currently afford to use a given Guardians of Sunfist sigil,
+        # based on available stamina and mana.
+        #
+        # @param sigil_name [String] Long or short name of the sigil
+        # @return [Boolean] True if the sigil can be afforded now
+        #
         def self.affordable?(sigil_name)
           return false unless member?
           sigil = self[sigil_name]
@@ -301,59 +341,62 @@ module Lich
         end
 
         ##
-        # Checks if a sigil is available for use based on membership and affordability.
+        # Determines whether the specified Guardians of Sunfist sigil is currently available for use.
         #
-        # @param sigil_name [String] the name of the sigil to check
-        # @return [Boolean] true if the sigil is available, false otherwise
+        # A sigil is considered available if:
+        # - The character knows the sigil (based on rank)
+        # - The character can afford the sigil (based on stamina and mana)
+        #
+        # @param sigil_name [String] Long or short name of the sigil
+        # @return [Boolean] True if the sigil can be used right now
+        #
         def self.available?(sigil_name)
           return false unless member?
           known?(sigil_name) && affordable?(sigil_name)
         end
 
         ##
-        # Retrieves all sigils with their metadata.
+        # Returns all Guardians of Sunfist sigil metadata entries with evaluated fields.
         #
-        # @return [Array<Hash>] an array of hashes containing all sigil metadata
+        # @return [Array<Hash>] An array of sigil metadata hashes with lambdas resolved
+        #
         def self.all
           @@sunfist_sigils.values.map { |entry| entry.transform_values { |v| Society.resolve(v, entry) } }
         end
 
         ##
-        # Checks if the current character is a member of the Guardians of Sunfist.
+        # Checks if the character is a member of the Guardians of Sunfist,
+        # and optionally at a specific rank.
         #
-        # @param rank [Integer, nil] the rank to check against, or nil to check membership only
-        # @return [Boolean] true if the character is a member, false otherwise
+        # @param rank [Integer, nil] Optional specific rank to check against
+        # @return [Boolean] True if the character is a Sunfist member (and at the specified rank, if given)
+        #
         def self.member?(rank = nil)
           return false unless Society.membership == "Guardians of Sunfist"
           rank.nil? || Society.rank == rank
         end
 
         ##
-        # Checks if the current character is a master member of the Guardians of Sunfist.
+        # Checks if the character is a Sunfist master (rank 20).
         #
-        # @return [Boolean] true if the character is a master, false otherwise
+        # @return [Boolean] True if the character has achieved master rank in the Guardians of Sunfist
+        #
         def self.master?
           return false unless member?
           Society.rank == 20
         end
 
         ##
-        # Retrieves the rank of the current member of the Guardians of Sunfist.
+        # Provides the current rank of the character within the Guardians of Sunfist.
         #
-        # @return [Integer] the rank of the member, or 0 if not a member
+        # @return [Integer] The current rank of the character
+        #
         def self.rank
           return 0 unless member?
           Society.rank
         end
 
         ##
-        # Dynamically defines singleton methods for each Guardians of Sunfist sigil.
-        #
-        # Each method allows accessing the sigil's metadata by calling either its
-        # short name or long name as a method. For example:
-        #
-        #   GuardiansOfSunfist.resolve        #=> metadata for Sigil of Resolve
-        #   GuardiansOfSunfist["Sigil of Resolve"] #=> same result
         # Dynamically defines singleton methods for each Guardians of Sunfist sigil.
         #
         # Each method allows accessing the sigil's metadata by calling either its

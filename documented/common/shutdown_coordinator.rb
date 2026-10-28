@@ -2,7 +2,9 @@
 
 require_relative 'shutdown_log'
 
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for common utilities and infrastructure shared across Lich subsystems.
   module Common
     # Records process shutdown attribution and coarse shutdown progress.
     #
@@ -21,6 +23,8 @@ module Lich
         :connection_reset,
         :connection_pipe,
         :connection_aborted,
+        :connection_tls_error,
+        :websocket_protocol_error,
         :game_stream_desync,
         :unrecoverable_game_thread_error,
       ].freeze
@@ -33,6 +37,8 @@ module Lich
         :connection_reset,
         :connection_pipe,
         :connection_aborted,
+        :connection_tls_error,
+        :websocket_protocol_error,
         :game_stream_desync,
         :unrecoverable_game_thread_error,
       ].freeze

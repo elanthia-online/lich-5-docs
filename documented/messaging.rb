@@ -3,16 +3,18 @@ messaging.rb: Core lich file for collection of various messaging Lich capabiliti
 Entries added here should always be accessible from Lich::Messaging.feature namespace.
 =end
 
-# Provides messaging capabilities for the Lich framework.
-#
-# This module contains methods for encoding messages, formatting them,
-# and handling different types of message streams.
 module Lich
   module Messaging
-    # Encodes a message into XML format.
+    # Encodes a message string for XML display in frontends.
+    #
+    # When the frontend supports GSL, applies XML encoding and passes the result
+    # through sf_to_wiz for GSL control pair handling; bypasses multiline and ensures
+    # a string is always returned (never nil). Otherwise, applies standard XML encoding.
     #
     # @param msg [String] the message to encode
-    # @return [String] the encoded message in XML format
+    # @return [String] the XML-encoded message, or empty string if nil from sf_to_wiz
+    # @example
+    #   Lich::Messaging.xml_encode("You see a <troll>.") #=> "You see a &lt;troll&gt;."
     def self.xml_encode(msg)
       if Frontend.supports_gsl?
         sf_to_wiz(msg.encode(:xml => :text), bypass_multiline: true) || "" # sf_to_wiz returns nil when blank/new line only, which causes issue for messaging, always return string if nil
@@ -21,22 +23,25 @@ module Lich
       end
     end
 
-    # Formats a message to be displayed in bold for monsters.
+    # Formats a message in monsterbold style (bold/error color).
+    #
+    # Applies the appropriate preset color markup based on frontend capabilities.
     #
     # @param msg [String] the message to format
-    # @param encode [Boolean] whether to encode the message
-    # @return [String] the formatted message
+    # @param encode [Boolean] whether to XML-encode the message; defaults to true
+    # @return [String] the formatted message with bold/error color markup
+    # @example
+    #   Lich::Messaging.monsterbold("CRITICAL") #=> "<pushBold/>CRITICAL<popBold/>"
     def self.monsterbold(msg, encode: true)
       # return monsterbold_start + self.xml_encode(msg) + monsterbold_end
       return msg_format("monster", msg, encode: encode)
     end
 
-    # Prepares a message for display in a specific stream window.
+    # Sends msg to a stream window, or to the main window where the frontend
+    # can't show that window. There, familiar is wrapped in the GSL control
+    # pair (\034GSe / \034GSf), and thoughts and voln in game-style text.
     #
-    # @param msg [String] the message to display
-    # @param window [String] the type of stream window (e.g., "familiar")
-    # @param encode [Boolean] whether to encode the message
-    # @return [void]
+    # @return [nil]
     def self.stream_window(msg, window = "familiar", encode: true)
       msg = xml_encode(msg) if encode
       if XMLData.game =~ /^GS/
@@ -66,13 +71,21 @@ module Lich
       _respond stream_window_before_txt + msg + stream_window_after_txt
     end
 
-    # Formats a message with specific styling based on its type.
+    # Wraps a message with preset color markup appropriate to its type and frontend.
     #
-    # @param type [String] the type of message (e.g., "info", "error")
-    # @param msg [String] the message to format
-    # @param cmd_link [String, nil] optional command link for formatting
-    # @param encode [Boolean] whether to encode the message
-    # @return [String] the formatted message
+    # Supports preset types (error, info, warn, green, etc.) for XML and GSL frontends,
+    # with fallback text prefixes for basic frontends. Handles clickable command links
+    # via the "cmd" type when cmd_link is provided.
+    #
+    # @param type [String] the message type: "error", "warn", "info", "green", "cmd", "link", etc.; defaults to "info"
+    # @param msg [String] the message text; defaults to empty string
+    # @param cmd_link [String, nil] for type "cmd", the action string for the clickable link
+    # @param encode [Boolean] whether to XML-encode the message; defaults to true
+    # @return [String] the message wrapped with preset color markup or prefixes
+    # @example Format an error message
+    #   Lich::Messaging.msg_format("error", "Not found") #=> "<pushBold/>Not found<popBold/>"
+    # @example Create a clickable command link (XML frontend)
+    #   Lich::Messaging.msg_format("cmd", "cast", cmd_link: "cast 1") #=> "<d cmd='cast 1'>cast</d>"
     def self.msg_format(type = "info", msg = "", cmd_link: nil, encode: true)
       msg = xml_encode(msg) if encode
       preset_color_before = ""
@@ -150,33 +163,37 @@ module Lich
       return (preset_color_before + msg + preset_color_after)
     end
 
-    # Sends a formatted message to the user.
+    # Sends msg to the frontends in the preset style for type. A debug
+    # message is sent only while debug messaging is on.
     #
-    # @param type [String] the type of message (e.g., "info", "debug")
-    # @param msg [String] the message to send
-    # @param encode [Boolean] whether to encode the message
-    # @return [void]
+    # @return [nil] always, so a method whose last expression is
+    #   Lich::Messaging.msg returns nil: test for success before it, as in
+    #   `return data if found; Lich::Messaging.msg("bold", "not found")`
     def self.msg(type = "info", msg = "", encode: true)
       return if type == "debug" && (Lich.debug_messaging.nil? || Lich.debug_messaging == "false" || Lich.debug_messaging == false)
       _respond msg_format(type, msg, encode: encode)
     end
 
-    # Creates a command link formatted message.
+    # Wraps link text in a clickable command link for frontends that support it.
     #
-    # @param link_text [String] the text to display for the link
-    # @param link_action [String] the action to perform when the link is clicked
-    # @param encode [Boolean] whether to encode the message
-    # @return [String] the formatted command link message
+    # Returns the link formatted as "cmd" type via .msg_format; on basic frontends
+    # without link support, returns the link_text only.
+    #
+    # @param link_text [String] the displayed text of the link
+    # @param link_action [String] the command to execute when the link is clicked
+    # @param encode [Boolean] whether to XML-encode the link text; defaults to true
+    # @return [String] the formatted command link
+    # @example
+    #   Lich::Messaging.make_cmd_link("cast", "cast 1") #=> "<d cmd='cast 1'>cast</d>"
     def self.make_cmd_link(link_text, link_action, encode: true)
       return msg_format("cmd", link_text, cmd_link: link_action, encode: encode)
     end
 
-    # Sends a message in a mono format.
+    # defaulting encoding here to false instead of true like other methods due to backwards compatibility that it never encoded before
+    # whereas all the other methods were already encoding and therefor should default to allow for them.
     #
-    # @param msg [String] the message to send
-    # @param encode [Boolean] whether to encode the message
-    # @return [void]
-    # @raise [StandardError] if msg is not a String
+    # @return [nil]
+    # @raise [StandardError] when msg is not a String
     def self.mono(msg, encode: false)
       return raise StandardError.new 'Lich::Messaging.mono only works with String parameters!' unless msg.is_a?(String)
       msg = xml_encode(msg) if encode

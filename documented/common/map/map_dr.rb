@@ -2,9 +2,7 @@
 
 require_relative 'map_base'
 
-# Namespace for the Lich 5 scripting engine and game integrations.
 module Lich
-  # Shared functionality and constants across Lich scripting environments.
   module Common
     # DragonRealms-specific Map implementation
     # Inherits shared functionality from MapBase
@@ -24,6 +22,11 @@ module Lich
       @@current_location_count ||= -1
       @@current_room_uid       ||= -1
       @@previous_room_id       ||= -1
+      # The last two room resolutions, each [room_count, room id, live UID,
+      # nav_count]. See {note_resolution} and {anchor_room}.
+      @@resolution_mutex         = Mutex.new
+      @@last_resolution        ||= nil
+      @@prior_resolution       ||= nil
       @@uids                     = {}
 
       attr_reader :id
@@ -35,28 +38,28 @@ module Lich
       # @return [TagList] mutation-aware list of this room's tags
       attr_reader :tags
 
-      # Creates and registers a new room in the game map.
+      # Constructs a Map (room) and registers it in the global room list.
       #
-      # @param id [Integer] unique stable room identifier in the map
-      # @param title [Array<String>] room titles across server-to-client updates
-      # @param description [Array<String>] room descriptions across updates
-      # @param paths [Array<String>] room exit lists across updates
-      # @param uid [Array<Integer>] server-provided unique identifiers for disambiguation, defaults to []
-      # @param location [String] geographic location metadata, defaults to nil
-      # @param climate [String] climatic zone, defaults to nil
-      # @param terrain [String] terrain type, defaults to nil
-      # @param wayto [Hash] navigation metadata for pathfinding, defaults to {}
-      # @param timeto [Hash] traversal time metadata, defaults to {}
-      # @param image [String] map image identifier, defaults to nil
-      # @param image_coords [String] coordinates on the map image, defaults to nil
-      # @param tags [Array<String>] script-readable tags for room properties, defaults to []
-      # @param check_location [Boolean, nil] whether to verify location text matches, defaults to nil
-      # @param unique_loot [String, nil] unique item spawned in this room, defaults to nil
-      # @param genie_id [String, nil] genie reference node identifier, defaults to nil
-      # @param genie_zone [String, nil] genie reference zone identifier, defaults to nil
-      # @param genie_pos [String, nil] genie reference position data, defaults to nil
-      # @note If @@loaded is true, this resets the tag index cache after registering the room.
-      # @api private
+      # @param id [Integer] unique room identifier
+      # @param title [String] the room's name
+      # @param description [String] the room's full text description
+      # @param paths [String] the "Obvious exits" line
+      # @param uid [Array<Integer>] UIDs reported by the game for this room; defaults to []
+      # @param location [String, nil] geographical location or zone name
+      # @param climate [String, nil] climate tag
+      # @param terrain [String, nil] terrain tag
+      # @param wayto [Hash] exit name to room id mappings
+      # @param timeto [Hash] exit name to traversal time mappings
+      # @param image [String, nil] image identifier
+      # @param image_coords [String, nil] image coordinate data
+      # @param tags [Array<String>] metadata tags for disambiguation
+      # @param check_location [String, nil] location validation criteria
+      # @param unique_loot [Array, nil] loot table entries unique to this room
+      # @param genie_id [String, nil] GenieSys node identifier
+      # @param genie_zone [String, nil] GenieSys zone identifier
+      # @param genie_pos [String, nil] GenieSys position coordinates
+      # @return [void]
+      # @note When @@loaded is true, invalidates the tag index to keep it current
       def initialize(id, title, description, paths, uid = [], location = nil,
                      climate = nil, terrain = nil, wayto = {}, timeto = {},
                      image = nil, image_coords = nil, tags = [], check_location = nil,
@@ -87,17 +90,18 @@ module Lich
         self.class.reset_tag_index if @@loaded
       end
 
-      # Generates a human-readable representation of the room.
+      # Returns a human-readable representation of this room.
       #
-      # @return [String] the room in format "#<id> (<uid>):\n<title>\n<description>\n<paths>", using the latest values from history arrays
+      # Shows the room id, latest UID, title, description, and exits.
+      #
+      # @return [String] formatted as "#<id> (<uid>):\n<title>\n<description>\n<exits>"
       def to_s
         "##{@id} (#{@uid[-1]}):\n#{@title[-1]}\n#{@description[-1]}\n#{@paths[-1]}"
       end
 
-      # Returns extra genie-reference fields for JSON serialization.
+      # Exports GenieSys fields for JSON serialization.
       #
-      # @return [Hash] genie-related metadata: genie_id, genie_zone, genie_pos
-      # @api private
+      # @return [Hash] hash with :genie_id, :genie_zone, :genie_pos keys
       def json_extra_fields
         { genie_id: @genie_id, genie_zone: @genie_zone, genie_pos: @genie_pos }
       end
@@ -111,42 +115,40 @@ module Lich
           @@current_room_id
         end
 
-        # Sets the current room ID class variable.
-        #
-        # @param id [Integer] the room ID to set
-        # @return [Integer] the ID
-        # @api private
+        # Every resolution goes through here (set_current and set_fuzzy), so it
+        # is also noted for {anchor_room}.
         def current_room_id=(id)
+          note_resolution(id)
           @@current_room_id = id
         end
 
-        # Returns the ID of the room the character was in before the current room.
+        # Returns the room id of the room the character was in before the current one.
         #
-        # @return [Integer] the previous room ID, or -1 if none has been recorded
+        # @return [Integer] the previous room id, or -1 if unset
         def previous_room_id
           @@previous_room_id
         end
 
-        # Sets the previous room ID class variable.
+        # Sets the room id of the room the character was in before the current one.
         #
-        # @param id [Integer] the room ID to set
-        # @return [Integer] the ID
-        # @api private
+        # @param id [Integer] the previous room id
+        # @return [Integer] the value set
         def previous_room_id=(id)
           @@previous_room_id = id
         end
 
-        # Whether the map data has been loaded from persistent storage.
+        # Checks whether the map has been loaded from the data source.
         #
-        # @return [Boolean] true if .load has completed, false otherwise
+        # @return [Boolean] true if map data has been loaded, false otherwise
         def loaded?
           @@loaded
         end
 
-        # Returns the list of all rooms in the map, loading from storage if needed.
+        # Returns the array of all loaded Map (Room) objects, indexed by room id.
         #
-        # @return [Array<Map>] all registered rooms, indexed by room ID
-        # @note Triggers .load if not yet loaded; blocks on the load mutex
+        # Triggers a map load if not yet loaded.
+        #
+        # @return [Array<Map, nil>] the global room list; may contain nil entries for sparse ids
         def list
           self.load unless @@loaded
           @@list
@@ -158,25 +160,26 @@ module Lich
           @@list
         end
 
-        # Replaces the room list and normalizes tag metadata.
+        # Replaces the entire room list and normalizes tag structures.
         #
-        # @param value [Array<Map>] the new room list
-        # @return [Array<Map>] the assigned list
-        # @note Calls normalize_tag_lists on the new value
+        # @param value [Array<Map>] the new list of rooms
+        # @return [Array<Map>] the value set
         # @api private
         def list=(value)
           @@list = value
           normalize_tag_lists(value)
         end
 
-        # Returns the UID-to-room-IDs mapping for disambiguation.
+        # Returns the UID-to-room-id index.
         #
-        # @return [Hash{Integer => Array<Integer>}] maps server UID to list of room IDs sharing that UID
+        # Maps each UID to an array of room ids that carry it.
+        #
+        # @return [Hash{Integer => Array<Integer>}] the uid index
         def uids
           @@uids
         end
 
-        # Invalidates the tag index cache, forcing tags to be re-indexed on next query.
+        # Clears the tag search index so the next tag query rebuilds it.
         #
         # @return [void]
         # @api private
@@ -184,7 +187,7 @@ module Lich
           reset_tag_index
         end
 
-        # Marks the map as fully loaded from storage.
+        # Marks the map as fully loaded.
         #
         # @return [void]
         # @api private
@@ -192,42 +195,87 @@ module Lich
           @@loaded = true
         end
 
-        # Acquires the load mutex and executes the block, preventing concurrent map loads.
+        # Executes a block while holding the load mutex.
         #
-        # @yield Executes the block while holding the load mutex
-        # @return [Object] the return value of the block
+        # Prevents concurrent map loads.
+        #
+        # @yield the block to execute within the lock
+        # @return [Object] the block's return value
         # @api private
         def synchronize_load(&block)
           @@load_mutex.synchronize(&block)
         end
       end
 
-      # Looks up a room by its genie (map client) zone and node identifiers.
+      # Finds a room by its GenieSys zone and node identifiers.
       #
-      # @param zone_id [Integer, String] the genie zone identifier
-      # @param node_id [Integer, String] the genie node identifier
-      # @return [Map, nil] the matched room, or nil if no room carries that genie reference
-      # @note Triggers .load if not yet loaded
+      # @param zone_id [String, Integer] the GenieSys zone id
+      # @param node_id [String, Integer] the GenieSys node id
+      # @return [Map, nil] the matching room, or nil if not found
       def self.by_genie_ref(zone_id, node_id)
         self.load unless @@loaded
         @@list.find { |r| r&.genie_zone == zone_id.to_s && r&.genie_id == node_id.to_s }
       end
 
-      # Returns the room the character was in before the current room.
+      # Returns the room the character was in before the current one.
       #
-      # @return [Map, nil] the previous room, or nil if no previous room has been recorded
+      # @return [Map, nil] the previous room, or nil if unset or out of range
       def self.previous
         @@list[@@previous_room_id]
       end
 
-      # Returns the character's current room by resolving game state to a room ID.
+      # Remember which room the live display at the current room count resolved
+      # to, the UID the game showed with it, and how many arrivals the game had
+      # reported by then. A later resolution of the same display replaces the
+      # record only with a room, never with nil: scriptless matching declines a
+      # peer-tagged room that a script resolves.
       #
-      # Uses exact title/description/paths matching when a script is running (#match_current),
-      # or fuzzy matching when scriptless (#match_fuzzy). Applies UID disambiguation to reject
-      # matches if the game exposes a live UID that contradicts the matched room's stored UIDs.
+      # @param id [Integer, nil] the resolved room id
+      # @return [void]
+      def self.note_resolution(id)
+        count = XMLData.room_count
+        record = [count, id, XMLData.room_id.to_i, XMLData.nav_count]
+        @@resolution_mutex.synchronize do
+          if @@last_resolution && @@last_resolution[0] == count
+            @@last_resolution = record unless id.nil?
+          else
+            @@prior_resolution = @@last_resolution
+            @@last_resolution = record
+          end
+        end
+      end
+
+      # Forget the noted resolutions, so no room carries over as an anchor.
       #
-      # @return [Map, nil] the current room, or nil when no room matches the game state
-      # @note Triggers .load if not yet loaded; caches result based on XMLData.room_count
+      # @return [void]
+      def self.reset_resolutions
+        @@resolution_mutex.synchronize do
+          @@last_resolution = nil
+          @@prior_resolution = nil
+        end
+      end
+
+      # The newest noted resolution made for a room count before the live one.
+      # A resolution of the live display itself is never returned: it would make
+      # the room its own anchor.
+      #
+      # @return [Array, nil] [room_count, room id, live UID, nav_count]
+      def self.earlier_resolution
+        count = XMLData.room_count
+        records = @@resolution_mutex.synchronize { [@@last_resolution, @@prior_resolution] }
+        records.find do |record|
+          record && record[0].is_a?(Integer) && count.is_a?(Integer) && record[0] < count
+        end
+      end
+
+      # Resolves and returns the room the character is currently in.
+      #
+      # When a script is running, uses strict text matching (title, description, exits)
+      # and retries until the live room_count stabilizes. When no script is running,
+      # uses fuzzy matching that honors peer-disambiguation tags. Falls back to title/description/exits
+      # matching when a UID is not available.
+      #
+      # @return [Map, nil] the current room, or nil if unresolvable
       def self.current
         self.load unless @@loaded
         if Script.current
@@ -243,6 +291,11 @@ module Lich
         end
         match_no_uid
       end
+
+      # Pattern for the live exits line when fog hides the exits. The exits
+      # cannot be compared in that state, so text matching uses the title and
+      # description alone.
+      FOG_EXITS_PATTERN = /^Obvious (?:exits|paths): obscured by a thick fog$/
 
       # Pattern identifying a room whose disambiguation depends on a manual
       # +peer+ action (for example peering through a doorway to read an adjacent
@@ -262,6 +315,28 @@ module Lich
         room.tags.any? { |tag| tag =~ PEER_TAG_PATTERN }
       end
 
+      # The UIDs stored on +room+ that can identify it. A stored 0 is not a UID:
+      # the parser reads 0 for a room the game shows without one (a bare
+      # <nav/>), and {ids_from_uid} and {current} already treat it as none.
+      #
+      # @param room [Lich::Common::Map]
+      # @return [Array<Integer>]
+      def self.stored_uids(room)
+        Array(room.uid) - [0]
+      end
+
+      # Whether the live game UID rules +room+ out: the game reports a UID and
+      # the room stores UIDs, none of which is the live one.
+      #
+      # @param room [Lich::Common::Map]
+      # @return [Boolean]
+      def self.uid_vetoes?(room)
+        return false if XMLData.room_id.zero?
+
+        uids = stored_uids(room)
+        uids.any? && !uids.include?(XMLData.room_id)
+      end
+
       # Resolve a room that already matched on title/description/paths down to a
       # final room id, applying UID disambiguation.
       #
@@ -270,153 +345,277 @@ module Lich
       #
       # * When the game exposes a live UID (+XMLData.room_id+ is non-zero) and the
       #   matched room carries one or more UIDs, the match only stands if the live
-      #   UID is among them. This is what keeps distinct rooms that share a
-      #   title/description/paths (day/night variants, look-alike maze cells) from
-      #   collapsing onto one another.
-      # * When the game exposes *no* UID (+XMLData.room_id+ is zero, a room the
-      #   server does not surface a UID for), UID disambiguation is skipped and the
-      #   title/description/paths match is trusted regardless of any UID stored on
-      #   the room. Previously such a room returned +nil+ here (a stored UID can
-      #   never include the zero live id), so a UID accidentally or provisionally
-      #   stamped onto a no-UID room made that room permanently unresolvable
-      #   (+Map.current+ became +nil+). Trusting the text match in the no-UID case
-      #   removes that failure mode without weakening disambiguation when the game
-      #   does expose a UID.
+      #   UID is among them (see {uid_vetoes?}). A stored UID of 0 counts as no
+      #   UID (see {stored_uids}).
+      # * When the game exposes *no* UID (+XMLData.room_id+ is zero), UID
+      #   disambiguation is skipped and the title/description/paths match is
+      #   trusted regardless of any UID stored on the room, so a UID stamped onto
+      #   a room the game shows without one cannot make it unresolvable.
       #
       # @param room [Lich::Common::Map] the room matched on title/description/paths
       # @param honor_peer_tags [Boolean] when +true+, a room requiring a manual
-      #   peer to disambiguate (see {peer_disambiguation_tag?}) resolves to +nil+;
-      #   used by scriptless fuzzy matching, which cannot perform the peer. Exact
-      #   ({match_current}) matching passes +false+ and never consults peer tags.
-      # @return [Integer, nil] the resolved room id; +nil+ when a UID'd room's
-      #   stored UIDs exclude the live game UID, or when a peer-tagged room cannot
-      #   be disambiguated
+      #   peer to disambiguate (see {peer_disambiguation_tag?}) resolves to +nil+
+      #   unless the live UID confirms it; used by scriptless fuzzy matching,
+      #   which cannot perform the peer. Exact ({match_current}) matching passes
+      #   +false+ and never consults peer tags.
+      # @return [Integer, nil] the resolved room id; +nil+ when the live UID
+      #   vetoes the room, or when a peer-tagged room cannot be disambiguated
       def self.resolve_matched_room(room, honor_peer_tags:)
-        if room.uid.any? && !XMLData.room_id.zero?
-          return room.uid.include?(XMLData.room_id) ? room.id : nil
-        end
+        return nil if uid_vetoes?(room)
+        return room.id if !XMLData.room_id.zero? && stored_uids(room).any?
         return nil if honor_peer_tags && peer_disambiguation_tag?(room)
 
         room.id
       end
 
-      # Resolve the current room by exact title/description/paths matching.
+      # Every room whose title, description and exits all match the live room.
+      # Under fog the live exits line carries no exits, so title and description
+      # alone must match. The description is compared whole.
       #
-      # Used when a script is running (see {match_no_uid}). Tries an exact
-      # description match first, then a punctuation-tolerant regex description
-      # match, re-reading the room whenever the live +room_count+ changes
-      # mid-match. Final UID disambiguation is delegated to
-      # {resolve_matched_room} (peer tags are not honored on this path).
+      # @param rooms [Array<Lich::Common::Map>] rooms already matching the live
+      #   title and exits (see {rooms_matching_live_title_and_exits})
+      # @return [Array<Lich::Common::Map>] the matching rooms, in id order
+      def self.text_candidates(rooms = rooms_matching_live_title_and_exits)
+        description = XMLData.room_description.to_s.strip
+        rooms.select { |r| Array(r.description).include?(description) }
+      end
+
+      # Fewest words a live description sentence needs to identify a room in
+      # {tolerant_text_candidates}. Shorter fragments (a closing quote mark, an
+      # abbreviation cut at its period, a two-word aside) occur in many stored
+      # descriptions and say nothing about which room this is.
+      TOLERANT_SENTENCE_MIN_WORDS = 4
+
+      # The sentences of a live description that {tolerant_text_candidates}
+      # looks for: split at each run of sentence-ending marks (+.+, +!+, +?+),
+      # stripped, keeping only those of at least {TOLERANT_SENTENCE_MIN_WORDS}
+      # words. An empty description has none.
+      #
+      # @param description [String, nil]
+      # @return [Array<String>]
+      def self.description_sentences(description)
+        description.to_s.split(/[.!?]+/).map(&:strip).select do |sentence|
+          sentence.split.size >= TOLERANT_SENTENCE_MIN_WORDS
+        end
+      end
+
+      # Every room whose title and exits match the live room exactly (title
+      # alone under fog) and one of whose stored descriptions contains, as a run
+      # of text, at least one sentence of the live description (see
+      # {description_sentences}). The run need not start or end at a word edge
+      # of the stored text ("over the road" is found in "over the roadway").
+      # This tolerates a description that has drifted from the map: a typo
+      # fixed in one sentence, a sentence rewritten, a day/night variant the
+      # map lacks. A live description with no usable sentence, an empty one
+      # included, matches nothing.
+      #
+      # @param rooms [Array<Lich::Common::Map>] rooms already matching the live
+      #   title and exits (see {rooms_matching_live_title_and_exits})
+      # @return [Array<Lich::Common::Map>] the matching rooms, in id order
+      def self.tolerant_text_candidates(rooms = rooms_matching_live_title_and_exits)
+        sentences = description_sentences(XMLData.room_description)
+        return [] if sentences.empty?
+
+        rooms.select do |r|
+          Array(r.description).any? { |stored| sentences.any? { |sentence| stored.to_s.include?(sentence) } }
+        end
+      end
+
+      # The rooms that can be the live room by their text: those matching it
+      # exactly (see {text_candidates}), or, only when no room does, those whose
+      # description merely shares a sentence with it (see
+      # {tolerant_text_candidates}). The tolerant rooms are never mixed with an
+      # exact match, even an ambiguous or vetoed one.
+      #
+      # @return [Array<Lich::Common::Map>]
+      def self.live_text_candidates
+        rooms = rooms_matching_live_title_and_exits
+        candidates = text_candidates(rooms)
+        candidates.empty? ? tolerant_text_candidates(rooms) : candidates
+      end
+
+      # Every room whose title and exits match the live room, ignoring the
+      # exits under fog. The map is scanned once for both description passes.
+      # A room missing its title or exits (the map has a few) is skipped
+      # without relying on Lich's NilClass patch.
+      #
+      # @return [Array<Lich::Common::Map>] the matching rooms, in id order
+      def self.rooms_matching_live_title_and_exits
+        title = XMLData.room_title
+        exits = XMLData.room_exits_string.to_s
+        foggy = exits.match?(FOG_EXITS_PATTERN)
+        exits = exits.strip
+        @@list.select do |r|
+          # Skip nil holes without relying on Lich's NilClass patch.
+          r &&
+            Array(r.title).include?(title) &&
+            (foggy || Array(r.paths).include?(exits))
+        end
+      end
+
+      # The room the character was in before the live display, to judge which
+      # of several identical rooms it can have reached.
+      #
+      # DR resolves a room only on demand, so the last resolved room can be
+      # several moves old (go2 walks its whole path without asking) or can be
+      # the live room itself (resolved a moment ago for the same display). The
+      # game's own record of the room it left comes first: the UID of the
+      # previous <nav>, when exactly one room has it. Otherwise the room
+      # resolved for an earlier display is used, but only when it was resolved
+      # in the room just left (one arrival ago, and shown with the UID the game
+      # says that room had) or in the live room before any further arrival
+      # (shown with the live UID). An older resolution is never used. Before
+      # the first <nav> there is no previous room to check against, so no
+      # earlier resolution is trusted.
+      #
+      # @return [Lich::Common::Map, nil] the anchor room, or +nil+ when none can
+      #   be trusted
+      def self.anchor_room
+        previous_uid = XMLData.previous_nav_rm
+        ids = previous_uid.to_i.positive? ? ids_from_uid(previous_uid.to_i) : []
+        return @@list[ids.first] if ids.size == 1
+
+        return nil if previous_uid.nil?
+
+        _count, id, uid, nav = earlier_resolution
+        return nil unless id.is_a?(Integer) && id >= 0 && nav.is_a?(Integer)
+
+        arrivals = XMLData.nav_count.to_i - nav
+        return @@list[id] if arrivals == 1 && uid == previous_uid.to_i
+        return @@list[id] if arrivals.zero? && uid == XMLData.room_id.to_i
+
+        nil
+      end
+
+      # Whether the game's own UIDs show the character has left +room+: the
+      # previous <nav> carried a UID that +room+ stores, and the live room shows
+      # another UID, or none, that +room+ does not store.
+      #
+      # @param room [Lich::Common::Map]
+      # @return [Boolean]
+      def self.left_room?(room)
+        previous_uid = XMLData.previous_nav_rm.to_i
+        live_uid = XMLData.room_id.to_i
+        return false unless previous_uid.positive? && previous_uid != live_uid
+
+        uids = stored_uids(room)
+        uids.include?(previous_uid) && !uids.include?(live_uid)
+      end
+
+      # Of +candidates+, the single one the character can be standing in after
+      # leaving the anchor room (see {anchor_room}): a room it has a wayto to,
+      # or the anchor itself. The anchor counts because a fresh room display
+      # does not always mean a move, so an identical neighbour must not win over
+      # it; but not when the game's UIDs show the character has left it (see
+      # {left_room?}), so an identical room just left is never taken for the
+      # live one.
+      #
+      # @param candidates [Array<Lich::Common::Map>]
+      # @return [Lich::Common::Map, nil] the one reachable candidate; +nil+ with
+      #   no anchor room, or when none or several are reachable
+      def self.adjacent_candidate(candidates)
+        from = anchor_room
+        return nil if from.nil?
+
+        stayed = !left_room?(from)
+        wayto = from.wayto || {}
+        reachable = candidates.select { |r| (stayed && r.id == from.id) || wayto.key?(r.id.to_s) }
+        reachable.size == 1 ? reachable.first : nil
+      end
+
+      # Pick the live room from the rooms matching its text.
+      #
+      # Every candidate the live UID vetoes is dropped. A lone survivor is the
+      # room. Otherwise the room resolves only when exactly one candidate is
+      # reachable from the anchor room (see {adjacent_candidate}) and
+      # that candidate survived the veto; in every other case it is unresolved
+      # rather than the first of them. No candidates is unresolved without
+      # looking up an anchor room.
+      #
+      # When the veto dropped any candidate, reachability is judged over all the
+      # candidates, vetoed ones included, and even a lone survivor must be the
+      # one reachable. The game's UID then belongs to no candidate, so the live
+      # room may be the vetoed room under a UID the map lacks: a look-alike copy
+      # elsewhere in the map, or one sharing the vetoed room's neighbours, is not
+      # taken for it.
+      #
+      # @param candidates [Array<Lich::Common::Map>] rooms matching the live text
+      # @return [Lich::Common::Map, nil]
+      def self.pick_text_candidate(candidates)
+        return nil if candidates.empty?
+
+        survivors = candidates.reject { |r| uid_vetoes?(r) }
+        return survivors.first if survivors.size == 1 && survivors.size == candidates.size
+
+        room = adjacent_candidate(candidates)
+        survivors.include?(room) ? room : nil
+      end
+
+      # Resolve the live room from its title, description and exits (see
+      # {live_text_candidates}).
+      #
+      # @param honor_peer_tags [Boolean] see {resolve_matched_room}
+      # @return [Integer, nil] the resolved room id, or +nil+ when no room, or
+      #   more than one, can be the live room
+      def self.match_live_text(honor_peer_tags:)
+        room = pick_text_candidate(live_text_candidates)
+        return nil if room.nil?
+
+        resolve_matched_room(room, honor_peer_tags: honor_peer_tags)
+      end
+
+      # Resolve the current room by title/description/paths matching.
+      #
+      # Used when a script is running (see {match_no_uid}). Re-reads the room
+      # whenever the live +room_count+ changes mid-match. See
+      # {match_live_text}; peer tags are not honored on this path.
       #
       # @param _script [Object] the running script (unused; retained for the
       #   historical call signature)
-      # @return [Integer, nil] the resolved room id, or +nil+ when nothing matches
-      #   or UID disambiguation rejects the match
+      # @return [Integer, nil] the resolved room id, or +nil+ when no single
+      #   room matches
       def self.match_current(_script)
         @@current_room_mutex.synchronize do
-          need_set_desc_off = false
-          begin
-            loop do
-              @@current_room_count = XMLData.room_count
-              foggy_exits = XMLData.room_exits_string =~ /^Obvious (?:exits|paths): obscured by a thick fog$/
-              room = @@list.find do |r|
-                # Skip nil holes without relying on Lich's NilClass patch.
-                r &&
-                  r.title.include?(XMLData.room_title) &&
-                  r.description.include?(XMLData.room_description.strip) &&
-                  (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip))
-              end
-
-              if room
-                redo unless @@current_room_count == XMLData.room_count
-                return resolve_matched_room(room, honor_peer_tags: false)
-              else
-                redo unless @@current_room_count == XMLData.room_count
-                desc_regex = /#{Regexp.escape(XMLData.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
-                room = @@list.find do |r|
-                  # Skip nil holes without relying on Lich's NilClass patch.
-                  r &&
-                    r.title.include?(XMLData.room_title) &&
-                    (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip)) &&
-                    (XMLData.room_window_disabled || r.description.any? { |desc| desc =~ desc_regex })
-                end
-
-                if room
-                  redo unless @@current_room_count == XMLData.room_count
-                  return resolve_matched_room(room, honor_peer_tags: false)
-                else
-                  redo unless @@current_room_count == XMLData.room_count
-                  return nil
-                end
-              end
-            end
-          ensure
-            put 'set description off' if need_set_desc_off
+          loop do
+            @@current_room_count = XMLData.room_count
+            id = match_live_text(honor_peer_tags: false)
+            return id if @@current_room_count == XMLData.room_count
           end
         end
       end
 
-      # Resolve the current room by fuzzy title/description/paths matching.
+      # Resolve the current room by title/description/paths matching without a
+      # script.
       #
       # Used when no script is running (see {match_no_uid}). Mirrors
       # {match_current} but honors peer-disambiguation tags: a room that would
       # need a manual peer to tell apart cannot be resolved without a script, so
-      # it yields +nil+. Final UID disambiguation is delegated to
-      # {resolve_matched_room} with +honor_peer_tags: true+.
+      # it yields +nil+.
       #
-      # @return [Integer, nil] the resolved room id, or +nil+ when nothing
-      #   matches, UID disambiguation rejects the match, or the room needs a peer
+      # @return [Integer, nil] the resolved room id, or +nil+ when no single
+      #   room matches or the room needs a peer
       def self.match_fuzzy
         @@fuzzy_room_mutex.synchronize do
-          @@fuzzy_room_count = XMLData.room_count
           loop do
-            foggy_exits = XMLData.room_exits_string =~ /^Obvious (?:exits|paths): obscured by a thick fog$/
-            room = @@list.find do |r|
-              # Skip nil holes without relying on Lich's NilClass patch.
-              r &&
-                r.title.include?(XMLData.room_title) &&
-                r.description.include?(XMLData.room_description.strip) &&
-                (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip))
-            end
-
-            if room
-              redo unless @@fuzzy_room_count == XMLData.room_count
-
-              return resolve_matched_room(room, honor_peer_tags: true)
-            else
-              redo unless @@fuzzy_room_count == XMLData.room_count
-              desc_regex = /#{Regexp.escape(XMLData.room_description.strip.sub(/\.+$/, '')).gsub(/\\\.(?:\\\.\\\.)?/, '|')}/
-              room = @@list.find do |r|
-                # Skip nil holes without relying on Lich's NilClass patch.
-                r &&
-                  r.title.include?(XMLData.room_title) &&
-                  (foggy_exits || r.paths.include?(XMLData.room_exits_string.strip)) &&
-                  (XMLData.room_window_disabled || r.description.any? { |desc| desc =~ desc_regex })
-              end
-
-              if room
-                redo unless @@fuzzy_room_count == XMLData.room_count
-
-                return resolve_matched_room(room, honor_peer_tags: true)
-              else
-                redo unless @@fuzzy_room_count == XMLData.room_count
-                return nil
-              end
-            end
+            @@fuzzy_room_count = XMLData.room_count
+            id = match_live_text(honor_peer_tags: true)
+            return id if @@fuzzy_room_count == XMLData.room_count
           end
         end
       end
 
-      # Returns the current room, or mints a new room if none exists.
+      # Resolves the current room or creates and registers a new one if needed.
       #
-      # Resolves the character's current location like .current, but creates and registers
-      # a new room if no match is found and a script is running. Skips minting when the arrival
-      # frame is blank (no UID, pitch-dark, no exits), as the server is likely still loading
-      # the real room.
+      # Requires a running script. Loads the map if not yet loaded. Returns the
+      # current room by id if already resolved. Appends any new live UID to an
+      # existing room's uid list. Creates a new room when the live text matches no
+      # existing room or multiple candidates cannot be disambiguated. Skips creation
+      # if the live display is incomplete (no UID, pitch-dark description, no exits).
       #
-      # @return [Map, nil] the current room (matched or newly minted), or nil if no script is running, the frame is blank, or matching fails
-      # @note Adds server UIDs to room.uid and updates the @@uids index when found; only callable from a running script
-      # @api private
+      # @return [Integer, nil] the room id of the resolved or new room; nil if
+      #   incomplete display, no running script, or creation was skipped
+      # @note Mutates the current room's uid list and the global UID index
+      # @raise [RuntimeError] if no script is running
       def self.current_or_new
         return nil unless Script.current
 
@@ -457,6 +656,15 @@ module Lich
           return nil
         end
 
+        # Several rooms fit the live text but none was confirmed as this room:
+        # the live UID vetoed them, or none could be told apart from the room
+        # before it. The room may be one of them or a new one; mapping it as
+        # new keeps identical rooms with no UID mappable, so say so.
+        twins = live_text_candidates.size
+        if twins > 1
+          echo "Map: #{twins} mapped rooms match this room's text but none could be confirmed as this room; mapping it as a new room"
+        end
+
         id = get_free_id
         title = [XMLData.room_title]
         description = [XMLData.room_description.strip]
@@ -468,13 +676,12 @@ module Lich
         set_current(id)
       end
 
-      # Rebuilds the UID-to-room-IDs index from the current room list.
+      # Rebuilds the UID-to-room-id index from the loaded room list.
       #
-      # Clears and repopulates @@uids, aggregating all UIDs stored on all rooms.
-      # Handles sparse maps (nil holes) gracefully without relying on NilClass patches.
+      # Loads the map if not yet loaded. Iterates all rooms and populates @@uids
+      # so that each UID maps to the array of room ids carrying it.
       #
       # @return [void]
-      # @note Triggers .load if not yet loaded
       # @api private
       def self.load_uids
         self.load unless @@loaded
@@ -492,26 +699,24 @@ module Lich
         end
       end
 
-      # Returns the list of room IDs sharing a given server UID.
+      # Looks up room ids by a game-reported UID.
       #
-      # @param n [Integer] the server UID to look up
-      # @return [Array<Integer>] room IDs with that UID, or [] if the UID is unknown or zero
+      # @param n [Integer] the UID to search for
+      # @return [Array<Integer>] the room ids carrying this UID, or [] if the UID is not found or is zero
       def self.ids_from_uid(n)
         @@uids[n].nil? || n.zero? ? [] : @@uids[n]
       end
 
-      # Clears all rooms from memory and resets map state.
+      # Clears all loaded rooms, tags, and resolutions; marks the map as unloaded.
       #
-      # Clears the room list, tag index cache, and resets the loaded flag. Requests garbage
-      # collection after clearing.
+      # Thread-safe. Triggers garbage collection after clearing.
       #
-      # @return [Boolean] always returns true
-      # @note Acquires the load mutex; blocks other load attempts until completion
-      # @api private
+      # @return [Boolean] true on completion
       def self.clear
         @@load_mutex.synchronize do
           @@list.clear
           clear_tags_cache
+          reset_resolutions
           @@loaded = false
           GC.start
         end
@@ -533,7 +738,9 @@ module Lich
       end
     end
 
-    # Alias for Map; provided for API compatibility.
+    # Alias for Map, used for compatibility and readability.
+    #
+    # All Map methods and attributes are available.
     class Room < Map
     end
   end

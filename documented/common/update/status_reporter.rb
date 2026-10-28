@@ -7,18 +7,26 @@
   for sync summaries.
 =end
 
-# Provides utility methods for the Lich project.
+# Namespace for the Lich scripting engine and its utilities.
 #
 # @see Lich::Util
+# @see Lich::Messaging
 module Lich
+  # Namespace for Lich utility modules.
   module Util
+    # Namespace for script update functionality.
     module Update
+      # Utilities for rendering update status messages and tables.
+      #
+      # Provides monospace-aware response wrapper and Terminal::Table formatting
+      # for sync summaries.
+      #
+      # @api private
       module StatusReporter
-        # Renders the given text in a monospace format.
+        # Outputs text with monospace formatting if available.
         #
-        # @param text [String] the text to render in monospace
-        # @return [String] the rendered monospace text
-        # @api private
+        # @param text [String] text to display
+        # @return [void]
         def self.respond_mono(text)
           if defined?(Lich::Messaging) && Lich::Messaging.respond_to?(:mono)
             Lich::Messaging.mono(text)
@@ -29,23 +37,45 @@ module Lich
           end
         end
 
-        # Renders a summary of the synchronization process.
+        # Reports a failed GitHub request as one message stating what was not
+        # done and whether the user needs to act.
         #
-        # @param repo_name [String] the name of the repository
-        # @param script_count [Integer] the number of scripts checked
-        # @param downloaded_scripts [Array<String>] the list of downloaded scripts
-        # @param downloaded_other [Hash] a hash of other downloaded files categorized by subdirectory
-        # @param subdir_names [Array<String>] the names of subdirectories
-        # @param failed_scripts [Array<String>] the list of failed scripts (default: [])
-        # @param failed_other [Hash] a hash of failed files categorized by subdirectory (default: {})
+        # @param error [FetchError, nil] the client's last_error (nil = unclassified)
+        # @param consequence [String] what did not happen, e.g. "No scripts have been updated this run."
+        # @param subject [String, nil] what was being fetched, named in the not-found message
         # @return [void]
-        # @example Render a sync summary
-        #   render_sync_summary("my_repo", 5, ["script1.rb", "script2.rb"], {}, ["subdir1", "subdir2"], ["script3.rb"], {"subdir1" => ["file1.txt"]})
-        def self.render_sync_summary(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {})
+        def self.respond_github_failure(error, consequence, subject: nil)
+          message = case error&.kind
+                    when :rate_limited
+                      reset = error.reset_at ? ", resets at #{error.reset_at.strftime('%H:%M')}" : ''
+                      "GitHub check failed (rate limit reached#{reset}). #{consequence} This is temporary and will clear once the limit resets."
+                    when :not_found
+                      "GitHub check failed (#{subject || 'repository'} not found). #{consequence} Check that the repository and branch exist."
+                    when :rejected
+                      "GitHub check failed (GitHub refused access to #{subject || 'the repository'}). #{consequence} Check that the repository and branch exist and are public."
+                    else
+                      "GitHub check failed. #{consequence} This is a temporary error that should resolve itself by your next login."
+                    end
+          respond_mono("[lich5-update: #{message}]")
+        end
+
+        # Renders sync results as Terminal::Table.
+        #
+        # @param repo_name [String] repository display name
+        # @param script_count [Integer] total scripts checked
+        # @param downloaded_scripts [Array<String>] scripts downloaded
+        # @param downloaded_other [Hash<String, Array<String>>] subdir => files
+        # @param subdir_names [Array<String>] subdirectory names
+        # @param failed_scripts [Array<String>] scripts that failed (default: [])
+        # @param failed_other [Hash<String, Array<String>>] subdir => failed files (default: {})
+        # @param held_scripts [Array<Array(String, String)>] [file, required Lich version] pairs
+        #   not installed because the running Lich is too old (default: [])
+        # @return [void]
+        def self.render_sync_summary(repo_name, script_count, downloaded_scripts, downloaded_other, subdir_names, failed_scripts = [], failed_other = {}, held_scripts = [])
           total_downloaded = downloaded_scripts.length + downloaded_other.values.flatten.length
           total_failed = failed_scripts.length + failed_other.values.flatten.length
 
-          if total_downloaded == 0 && total_failed == 0
+          if total_downloaded == 0 && total_failed == 0 && held_scripts.empty?
             table = Terminal::Table.new(
               title: "#{repo_name} Sync",
               rows: [
@@ -63,6 +93,7 @@ module Lich
 
           downloaded_scripts.each { |f| table_rows << ['script', f, 'downloaded'] }
           failed_scripts.each { |f| table_rows << ['script', f, 'FAILED (will retry next login)'] }
+          held_scripts.each { |f, required| table_rows << ['script', f, "needs Lich #{required}+ (not updated)"] }
 
           downloaded_other.each do |subdir, files|
             files.each { |f| table_rows << [subdir, f, 'downloaded'] }
@@ -78,13 +109,14 @@ module Lich
             table_rows << [s, '--', 'up to date']
           end
 
-          if downloaded_scripts.empty? && failed_scripts.empty?
+          if downloaded_scripts.empty? && failed_scripts.empty? && held_scripts.empty?
             table_rows << ['scripts', '--', "#{script_count} checked, all up to date"]
           end
 
           table_rows << :separator
           summary = "Total: #{total_downloaded} updated"
           summary += ", #{total_failed} failed" if total_failed > 0
+          summary += ", #{held_scripts.length} need newer Lich" unless held_scripts.empty?
           table_rows << [{ value: summary, colspan: 3 }]
 
           table = Terminal::Table.new(title: "#{repo_name} Sync", rows: table_rows)
