@@ -1,24 +1,25 @@
+# frozen_string_literal: true
 
+# Namespace for the Lich scripting engine and its supporting libraries.
 module Lich
+  # Namespace for DragonRealms-specific scripting utilities.
   module DragonRealms
+    # Theurgy helper methods for clerics performing rituals and commune sense.
+    #
+    # Theurgy is the cleric holy magic system in DragonRealms. This module provides
+    # inventory management for ritual supplies (holy water, oil, incense, etc.),
+    # sprinkle/apply operations, and parsing of COMMUNE SENSE output to determine
+    # active/recent communes and readiness for the next commune.
     module DRCTH
       module_function
 
       # Items used by clerics for theurgy rituals
       # Note: With frozen_string_literal: true, string literals are already frozen
-      # Items used by clerics for theurgy rituals.
-      #
-      # @example
-      #   CLERIC_ITEMS #=> ["holy water", "holy oil", "wine", "incense", "flint", "chamomile", "sage", "jalbreth balm"]
       CLERIC_ITEMS = [
         'holy water', 'holy oil', 'wine', 'incense', 'flint', 'chamomile', 'sage', 'jalbreth balm'
       ].freeze unless defined?(CLERIC_ITEMS)
 
       # Error messages when attempting commune rituals
-      # Error messages when attempting commune rituals.
-      #
-      # @example
-      #   COMMUNE_ERRORS #=> ["As you commune you sense that the ground is already consecrated.", "You stop as you realize that you have attempted a commune", "completed this commune too recently"]
       COMMUNE_ERRORS = [
         'As you commune you sense that the ground is already consecrated.',
         'You stop as you realize that you have attempted a commune',
@@ -26,10 +27,6 @@ module Lich
       ].freeze unless defined?(COMMUNE_ERRORS)
 
       # Devotion level messages from commune sense, ordered from lowest to highest
-      # Devotion level messages from commune sense, ordered from lowest to highest.
-      #
-      # @example
-      #   DEVOTION_LEVELS #=> ["You sense nothing special from your communing", "You feel unclean and unworthy", ...]
       DEVOTION_LEVELS = [
         'You sense nothing special from your communing',
         'You feel unclean and unworthy',
@@ -53,43 +50,73 @@ module Lich
       # Start pattern for commune sense output. Matches the first line of output
       # which varies depending on active commune state.
       # Verified in-game 2026-02-07.
-      # Start pattern for commune sense output. Matches the first line of output.
-      #
-      # @example
-      #   COMMUNE_SENSE_START #=> /benevolent eyes|miracle of Tamsine|auspices of Kertigen|influence is woven|not a vessel|will not be able|eager to better/
       COMMUNE_SENSE_START = /benevolent eyes|miracle of Tamsine|auspices of Kertigen|influence is woven|not a vessel|will not be able|eager to better/.freeze unless defined?(COMMUNE_SENSE_START)
 
-      # Represents the result of a commune sense operation.
+      # Data class for commune_sense results. Replaces raw hash return.
+      # Supports [] for backward compat with callers using result['key'].
       #
-      # @see #commune_ready?
-      # @see #[]
+      # +captured+ is false when the COMMUNE SENSE reply was not captured in
+      # full: no reply arrived (a timeout), or the reply was cut off before its
+      # Roundtime line. commune_ready is then false so the result never reads as
+      # ready; treat it as "unknown". After a timeout the lists are empty; after
+      # a cut-off reply they hold what arrived, which may not be everything.
+      # +captured+ true means a complete reply was read; it does not prove the
+      # reply was sent in answer to this call (the tail of a reply that arrives
+      # after an earlier call timed out can still be read by the next call,
+      # since COMMUNE_SENSE_START also matches lines from the middle of a reply).
       class CommuneSenseResult
-        attr_reader :active_communes, :recent_communes, :commune_ready
+        attr_reader :active_communes, :recent_communes, :commune_ready, :captured
 
-        # Initializes a new CommuneSenseResult.
-        # @param active_communes [Array<String>] list of active communes.
-        # @param recent_communes [Array<String>] list of recent communes.
-        # @param commune_ready [Boolean] indicates if commune is ready.
-        # @return [CommuneSenseResult]
-        def initialize(active_communes: [], recent_communes: [], commune_ready: true)
+        # Initializes a CommuneSenseResult with commune status data.
+        #
+        # @param active_communes [Array<String>] god names from currently active communes (e.g., ["Tamsine", "Kertigen"])
+        # @param recent_communes [Array<String>] god names from recently completed communes
+        # @param commune_ready [Boolean] true if the character may open another divine conduit now
+        # @param captured [Boolean] true if the full COMMUNE SENSE reply was captured; false if timeout or cut off
+        def initialize(active_communes: [], recent_communes: [], commune_ready: true, captured: true)
           @active_communes = active_communes.freeze
           @recent_communes = recent_communes.freeze
           @commune_ready = commune_ready
+          @captured = captured
         end
 
+        # Returns true if the character is ready to open another divine conduit.
+        #
+        # @return [Boolean] false when COMMUNE SENSE output indicates a cooldown is active; true otherwise
         def commune_ready?
           @commune_ready
         end
 
+        # @return [Boolean] true when the COMMUNE SENSE reply was captured
+        def captured?
+          @captured
+        end
+
+        # Hash-style accessor for backward compatibility with older calling code.
+        #
+        # Allows code that expects a Hash to call result["active_communes"] or result["commune_ready"].
+        #
+        # @param key [String, Symbol] the attribute name (e.g., "active_communes", :commune_ready)
+        # @return [Array<String>, Boolean] the value of the requested attribute
+        # @example
+        #   result = commune_sense
+        #   result["active_communes"] #=> ["Tamsine"]
         def [](key)
           send(key.to_sym)
         end
       end
 
-      # Checks if the specified container has holy water.
-      # @param theurgy_supply_container [String] the container to check.
-      # @param water_holder [String] the item holding the water.
-      # @return [Boolean] true if holy water is present, false otherwise.
+      # Checks for holy water in a container without leaving the container open.
+      #
+      # Retrieves the water_holder (e.g., a waterskin) from theurgy_supply_container,
+      # verifies it contains holy water, then puts it back. This is safer than a simple
+      # inventory check.
+      #
+      # @param theurgy_supply_container [String] the container noun where supplies are stored
+      # @param water_holder [String] the water_holder item noun (e.g., "waterskin", "vial")
+      # @return [Boolean] true if holy water was found in the water_holder
+      # @example
+      #   DRCTH.has_holy_water?("portal", "waterskin") #=> true
       def has_holy_water?(theurgy_supply_container, water_holder)
         return false unless DRCI.get_item?(water_holder, theurgy_supply_container)
 
@@ -98,38 +125,48 @@ module Lich
         has_water
       end
 
-      # Checks if the specified container has flint.
-      # @param theurgy_supply_container [String] the container to check.
-      # @return [Boolean] true if flint is present, false otherwise.
+      # Checks for flint in the supply container.
+      #
+      # @param theurgy_supply_container [String] the container noun where supplies are stored
+      # @return [Boolean] true if flint is present in the container
       def has_flint?(theurgy_supply_container)
         DRCI.have_item_by_look?('flint', theurgy_supply_container)
       end
 
-      # Checks if the specified container has holy oil.
-      # @param theurgy_supply_container [String] the container to check.
-      # @return [Boolean] true if holy oil is present, false otherwise.
+      # Checks for holy oil in the supply container.
+      #
+      # @param theurgy_supply_container [String] the container noun where supplies are stored
+      # @return [Boolean] true if holy oil is present in the container
       def has_holy_oil?(theurgy_supply_container)
         DRCI.have_item_by_look?('holy oil', theurgy_supply_container)
       end
 
-      # Checks if the specified container has incense.
-      # @param theurgy_supply_container [String] the container to check.
-      # @return [Boolean] true if incense is present, false otherwise.
+      # Checks for incense in the supply container.
+      #
+      # @param theurgy_supply_container [String] the container noun where supplies are stored
+      # @return [Boolean] true if incense is present in the container
       def has_incense?(theurgy_supply_container)
         DRCI.have_item_by_look?('incense', theurgy_supply_container)
       end
 
-      # Checks if the specified container has jalbreth balm.
-      # @param theurgy_supply_container [String] the container to check.
-      # @return [Boolean] true if jalbreth balm is present, false otherwise.
+      # Checks for jalbreth balm in the supply container.
+      #
+      # @param theurgy_supply_container [String] the container noun where supplies are stored
+      # @return [Boolean] true if jalbreth balm is present in the container
       def has_jalbreth_balm?(theurgy_supply_container)
         DRCI.have_item_by_look?('jalbreth balm', theurgy_supply_container)
       end
 
-      # Determines if buying a cleric item requires a blessing.
-      # @param town [String] the town where the item is being bought.
-      # @param item_name [String] the name of the item.
-      # @return [Boolean, nil] true if a blessing is needed, false if not, nil if town data is missing.
+      # Queries theurgy data to determine if an item must be blessed when purchased.
+      #
+      # Consults the game data (lich/theurgy.yaml) for the given town and item.
+      # Returns nil if town data or item shop data does not exist.
+      #
+      # @param town [String] the town key used in theurgy.yaml (e.g., "River's Rest")
+      # @param item_name [String] the item name (e.g., "holy water", "incense")
+      # @return [Boolean, nil] true if the item requires blessing after purchase; false if not; nil if town or item not found
+      # @example
+      #   DRCTH.buying_cleric_item_requires_bless?("River's Rest", "holy water") #=> true
       def buying_cleric_item_requires_bless?(town, item_name)
         town_theurgy_data = get_data('theurgy')[town]
         return if town_theurgy_data.nil?
@@ -140,13 +177,21 @@ module Lich
         item_shop_data['needs_bless']
       end
 
-      # Attempts to buy a cleric item from a shop.
-      # @param town [String] the town where the item is being bought.
-      # @param item_name [String] the name of the item.
-      # @param stackable [Boolean] indicates if the item is stackable.
-      # @param num_to_buy [Integer] number of items to buy.
-      # @param theurgy_supply_container [String] the container for the items.
-      # @return [Boolean] true if the purchase was successful, false otherwise.
+      # Purchases cleric ritual supplies and returns them to storage.
+      #
+      # Walks to the shop location, buys the requested quantity of items, optionally
+      # combines stackable items, and stores them in the supply container. Each item
+      # is blessed after purchase if needed and the player knows the Bless spell.
+      # Prints a bold message and returns false if town or item data is missing.
+      #
+      # @param town [String] the town key used in theurgy.yaml
+      # @param item_name [String] the supply item name
+      # @param stackable [Boolean] true to combine identical items after each purchase
+      # @param num_to_buy [Integer] the number of items to purchase
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @return [Boolean] true on successful purchase of all items; false if data lookup failed
+      # @example
+      #   DRCTH.buy_cleric_item?("River's Rest", "incense", false, 2, "portal") #=> true
       def buy_cleric_item?(town, item_name, stackable, num_to_buy, theurgy_supply_container)
         town_theurgy_data = get_data('theurgy')[town]
         if town_theurgy_data.nil?
@@ -181,10 +226,16 @@ module Lich
         true
       end
 
-      # Buys a single supply item from the shop.
-      # @param item_name [String] the name of the item to buy.
-      # @param shop_data [Hash] the data of the shop where the item is being bought.
+      # Purchases a single cleric supply item and optionally blesses it.
+      #
+      # If shop_data contains a 'method' key, calls that method to perform purchase
+      # (allowing custom handling). Otherwise uses the standard DRCT.buy_item call.
+      # If the item requires blessing and the player knows Bless, casts it immediately.
+      #
+      # @param item_name [String] the supply item name
+      # @param shop_data [Hash] shop configuration including 'id' (shop location), optional 'method' (custom purchase), and 'needs_bless' (Boolean)
       # @return [void]
+      # @api private
       def buy_single_supply(item_name, shop_data)
         if shop_data['method']
           send(shop_data['method'])
@@ -197,9 +248,14 @@ module Lich
         quick_bless_item(item_name)
       end
 
-      # Quickly blesses an item if required.
-      # @param item_name [String] the name of the item to bless.
+      # Casts Bless on a held item using minimal mana and prep time.
+      #
+      # Constructs a dummy settings object and invokes DRCA.cast_spell with fixed
+      # parameters suitable for quick blessing during supply purchase.
+      #
+      # @param item_name [String] the item noun to bless
       # @return [void]
+      # @api private
       def quick_bless_item(item_name)
         # use dummy settings object since this isn't complex enough for camb, etc.
         DRCA.cast_spell(
@@ -208,9 +264,16 @@ module Lich
         )
       end
 
-      # Ensures the cleric's hands are empty before performing actions.
-      # @param theurgy_supply_container [String] the container for the items.
+      # Puts away or drops all items held by the cleric.
+      #
+      # Calls empty_cleric_right_hand and empty_cleric_left_hand to handle both hands.
+      # Issues an explicit glance command first to refresh hand state (because item
+      # snuffing and other operations can leave hands in unexpected states).
+      #
+      # @param theurgy_supply_container [String] the container noun for ritual supplies
       # @return [void]
+      # @see #empty_cleric_right_hand
+      # @see #empty_cleric_left_hand
       def empty_cleric_hands(theurgy_supply_container)
         # Adding an explicit glance to ensure we know what's in hands, as
         # items can change
@@ -227,9 +290,15 @@ module Lich
         empty_cleric_left_hand(theurgy_supply_container)
       end
 
-      # Empties the cleric's right hand if it contains a cleric item.
-      # @param theurgy_supply_container [String] the container for the items.
+      # Puts away the right hand item if it is a cleric ritual supply.
+      #
+      # Checks the right hand against CLERIC_ITEMS patterns. If matched, stores in
+      # theurgy_supply_container; otherwise drops it or uses default put-away. Does
+      # nothing if the right hand is empty.
+      #
+      # @param theurgy_supply_container [String] the container noun for ritual supplies
       # @return [void]
+      # @api private
       def empty_cleric_right_hand(theurgy_supply_container)
         return if DRC.right_hand.nil?
 
@@ -237,9 +306,15 @@ module Lich
         DRCI.put_away_item?(DRC.right_hand, container)
       end
 
-      # Empties the cleric's left hand if it contains a cleric item.
-      # @param theurgy_supply_container [String] the container for the items.
+      # Puts away the left hand item if it is a cleric ritual supply.
+      #
+      # Checks the left hand against CLERIC_ITEMS patterns. If matched, stores in
+      # theurgy_supply_container; otherwise drops it or uses default put-away. Does
+      # nothing if the left hand is empty.
+      #
+      # @param theurgy_supply_container [String] the container noun for ritual supplies
       # @return [void]
+      # @api private
       def empty_cleric_left_hand(theurgy_supply_container)
         return if DRC.left_hand.nil?
 
@@ -247,11 +322,18 @@ module Lich
         DRCI.put_away_item?(DRC.left_hand, container)
       end
 
-      # Sprinkles holy water on a target.
-      # @param theurgy_supply_container [String] the container holding the water.
-      # @param water_holder [String] the item holding the water.
-      # @param target [String] the target to sprinkle on.
-      # @return [Boolean] true if successful, false otherwise.
+      # Sprinkles holy water on a target from a water container, with error handling.
+      #
+      # Retrieves the water_holder from storage, attempts the sprinkle action, and
+      # returns it to storage. Prints a bold message and returns false if retrieval
+      # fails or the sprinkle action does not succeed.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param water_holder [String] the water-holding item noun
+      # @param target [String] the target name or pronoun (e.g., "knight", "corpse")
+      # @return [Boolean] true if the sprinkle succeeded; false if retrieval or action failed
+      # @example
+      #   DRCTH.sprinkle_holy_water?("portal", "waterskin", "knight") #=> true
       def sprinkle_holy_water?(theurgy_supply_container, water_holder, target)
         unless DRCI.get_item?(water_holder, theurgy_supply_container)
           Lich::Messaging.msg("bold", "DRCTH: Can't get #{water_holder} to sprinkle.")
@@ -266,10 +348,17 @@ module Lich
         true
       end
 
-      # Sprinkles holy oil on a target.
-      # @param theurgy_supply_container [String] the container holding the oil.
-      # @param target [String] the target to sprinkle on.
-      # @return [Boolean] true if successful, false otherwise.
+      # Sprinkles holy oil on a target, with error handling.
+      #
+      # Retrieves holy oil from storage, attempts the sprinkle action, and empties
+      # both cleric hands afterward. Prints a bold message and returns false if
+      # retrieval or the sprinkle action fails.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param target [String] the target name or pronoun
+      # @return [Boolean] true if the sprinkle succeeded; false if retrieval or action failed
+      # @example
+      #   DRCTH.sprinkle_holy_oil?("portal", "corpse") #=> true
       def sprinkle_holy_oil?(theurgy_supply_container, target)
         unless DRCI.get_item?("holy oil", theurgy_supply_container)
           Lich::Messaging.msg("bold", "DRCTH: Can't get holy oil to sprinkle.")
@@ -284,51 +373,85 @@ module Lich
         true
       end
 
-      # Sprinkles holy water on a target without checks.
-      # @param theurgy_supply_container [String] the container holding the water.
-      # @param water_holder [String] the item holding the water.
-      # @param target [String] the target to sprinkle on.
-      # @return [Boolean] true if successful, false otherwise.
+      # Sprinkles holy water on a target without explicit error handling.
+      #
+      # Retrieves the water_holder, executes the sprinkle, and returns it to storage.
+      # No return value or error messages; suitable for scripted sequences where
+      # preconditions are already verified.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param water_holder [String] the water-holding item noun
+      # @param target [String] the target name or pronoun
+      # @return [void]
+      # @see #sprinkle_holy_water?
+      # @api private
       def sprinkle_holy_water(theurgy_supply_container, water_holder, target)
         DRCI.get_item?(water_holder, theurgy_supply_container)
         sprinkle?(water_holder, target)
         DRCI.put_away_item?(water_holder, theurgy_supply_container)
       end
 
-      # Sprinkles holy oil on a target without checks.
-      # @param theurgy_supply_container [String] the container holding the oil.
-      # @param target [String] the target to sprinkle on.
-      # @return [Boolean] true if successful, false otherwise.
+      # Sprinkles holy oil on a target without explicit error handling.
+      #
+      # Retrieves holy oil, executes the sprinkle, and returns it to storage only if
+      # still held. No return value or error messages; suitable for scripted sequences
+      # where preconditions are already verified.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param target [String] the target name or pronoun
+      # @return [void]
+      # @see #sprinkle_holy_oil?
+      # @api private
       def sprinkle_holy_oil(theurgy_supply_container, target)
         DRCI.get_item?('holy oil', theurgy_supply_container)
         sprinkle?('oil', target)
         DRCI.put_away_item?('holy oil', theurgy_supply_container) if DRCI.in_hands?('oil')
       end
 
-      # Performs the action of sprinkling an item on a target.
-      # @param item [String] the item to sprinkle.
-      # @param target [String] the target to sprinkle on.
-      # @return [Boolean] true if the action was successful, false otherwise.
+      # Attempts to sprinkle an item on a target and reports success.
+      #
+      # Issues the sprinkle command and returns true only if the output contains
+      # "You sprinkle"; returns false for any other response (invalid target, etc.).
+      #
+      # @param item [String] the item noun to sprinkle (e.g., "holy water", "oil")
+      # @param target [String] the target name or pronoun
+      # @return [Boolean] true if the "You sprinkle" message was received; false otherwise
+      # @api private
       def sprinkle?(item, target)
         result = DRC.bput("sprinkle #{item} on #{target}", 'You sprinkle', 'Sprinkle (what|that)', 'What were you referring to')
         result == 'You sprinkle'
       end
 
-      # Applies jalbreth balm to a target.
-      # @param theurgy_supply_container [String] the container holding the balm.
-      # @param target [String] the target to apply the balm to.
+      # Applies jalbreth balm to a target and returns it to storage.
+      #
+      # Retrieves jalbreth balm from the supply container, applies it to the target,
+      # and returns it to storage if still held. Accepts any server response (.*)
+      # without checking success.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param target [String] the target name or pronoun
       # @return [void]
+      # @api private
       def apply_jalbreth_balm(theurgy_supply_container, target)
         DRCI.get_item?('jalbreth balm', theurgy_supply_container)
         DRC.bput("apply balm to #{target}", '.*')
         DRCI.put_away_item?('jalbreth balm', theurgy_supply_container) if DRCI.in_hands?('balm')
       end
 
-      # Waves incense at a target after lighting it.
-      # @param theurgy_supply_container [String] the container holding the incense.
-      # @param flint_lighter [String] the item used to light the incense.
-      # @param target [String] the target to wave the incense at.
-      # @return [Boolean] true if successful, false otherwise.
+      # Lights incense with flint and waves it at a target, with full error handling.
+      #
+      # Clears both hands first, verifies presence of flint and incense in storage,
+      # retrieves the flint lighter, gets incense, attempts to light (retrying up to 5
+      # times on "nothing happens"), waves at target, snuffs if still held, and returns
+      # both items to storage. Prints bold messages and returns false at each failure
+      # point.
+      #
+      # @param theurgy_supply_container [String] the container noun for storage
+      # @param flint_lighter [String] the lighter item noun (e.g., "flint", "steel")
+      # @param target [String] the target name or pronoun
+      # @return [Boolean] true if incense was lit and waved successfully; false if any step failed
+      # @example
+      #   DRCTH.wave_incense?("portal", "flint", "knight") #=> true
       def wave_incense?(theurgy_supply_container, flint_lighter, target)
         empty_cleric_hands(theurgy_supply_container)
 
@@ -372,25 +495,42 @@ module Lich
         true
       end
 
-      # Performs a commune sense operation to gather commune information.
-      # @return [CommuneSenseResult] the result of the commune sense operation.
+      # Issues 'commune sense' and parses the output to determine active/recent communes
+      # and whether the character is ready to commune again.
+      # Returns a CommuneSenseResult (backward-compatible with hash access via []).
+      #
+      # A reply that is not captured in full never gives a "ready" reading:
+      # - no reply in time: prints a bold message and returns a result with
+      #   captured false, commune_ready false and empty lists.
+      # - a reply cut off before its Roundtime line: prints a bold message and
+      #   returns the communes that did arrive, with captured false and
+      #   commune_ready false.
       def commune_sense
-        lines = Lich::Util.issue_command(
+        lines, complete = DRC.capture_reply(
           'commune sense',
           COMMUNE_SENSE_START,
           /Roundtime/,
-          usexml: false,
-          quiet: true,
-          include_end: false
+          usexml: false
         )
-        return CommuneSenseResult.new if lines.nil?
+        if lines.empty?
+          Lich::Messaging.msg("bold", "DRCTH: Failed to capture COMMUNE SENSE output (timeout).")
+          return CommuneSenseResult.new(commune_ready: false, captured: false)
+        end
 
-        parse_commune_sense_lines(lines.map(&:strip).reject(&:empty?))
+        result = parse_commune_sense_lines(lines.map(&:strip).reject(&:empty?))
+        return result if complete
+
+        Lich::Messaging.msg("bold", "DRCTH: COMMUNE SENSE output was cut off (timeout); the result is incomplete.")
+        CommuneSenseResult.new(
+          active_communes: result.active_communes,
+          recent_communes: result.recent_communes,
+          commune_ready: false,
+          captured: false
+        )
       end
 
-      # Parses the lines returned from a commune sense operation.
-      # @param lines [Array<String>] the lines to parse.
-      # @return [CommuneSenseResult] the parsed commune sense result.
+      # Pure parsing method for commune sense output lines.
+      # Takes an array of plain text strings and returns a CommuneSenseResult.
       def parse_commune_sense_lines(lines)
         commune_ready = true
         active_communes = []

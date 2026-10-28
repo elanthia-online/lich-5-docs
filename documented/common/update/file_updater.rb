@@ -8,20 +8,27 @@
   for script repository files.
 =end
 
+# Namespace for the Lich scripting engine and its components.
 module Lich
+  # Namespace for utility and helper functionality.
   module Util
+    # Namespace for file update operations.
     module Update
-      # Handles updates for individual scripts, libraries, and data files.
+      # Updates individual scripts, libraries, and data files from script repositories.
       #
-      # Supports both repo-specific updates (via "repo_key:filename" syntax with SHA-based
-      # skip-if-current checks) and legacy auto-detected updates. Transparently delegates to
-      # the appropriate remote repository based on file type and version channel.
+      # Handles both repository-specific file updates (e.g., `dr-scripts:foo.lic`) and
+      # legacy auto-detected updates. Supports SHA-based skip-if-current checks for
+      # script repository files to avoid redundant downloads.
       class FileUpdater
         # @param client [GitHubClient] GitHub API client instance
         # @param resolver [ChannelResolver] channel resolver instance
-        def initialize(client, resolver)
+        # @param snapshot_manager [SnapshotManager] snapshot manager instance,
+        #   used to place data-file backups under a shared L5-snapshot-<DATE-TIME>
+        #   directory instead of accumulating them in DATA_DIR
+        def initialize(client, resolver, snapshot_manager)
           @client = client
           @resolver = resolver
+          @snapshot_manager = snapshot_manager
         end
 
         # Updates a file from a specific repository.
@@ -64,7 +71,7 @@ module Lich
           tree_data = @client.fetch_github_json(config[:api_url])
           unless tree_data && tree_data['tree']
             name = config[:display_name] || repo_key
-            StatusReporter.respond_mono("[lich5-update: Failed to fetch repository tree for #{name}.]")
+            StatusReporter.respond_github_failure(@client.last_error, "#{filename} was not updated.", subject: name)
             return
           end
 
@@ -104,7 +111,10 @@ module Lich
             FileWriter.safe_write(File.join(location, filename), content)
             StatusReporter.respond_mono("[lich5-update: #{filename} has been updated from #{name}.]")
           else
-            StatusReporter.respond_mono("[lich5-update: Failed to download #{filename} from #{name}.]")
+            # The tree just listed this file, so a repo-specific error here is
+            # transient (e.g. raw CDN lag), not a missing repository.
+            error = @client.last_error
+            StatusReporter.respond_github_failure(error&.global? ? error : nil, "#{filename} was not updated.")
           end
         end
 
@@ -137,7 +147,11 @@ module Lich
             when "beta"
               ref = @resolver.resolve_channel_ref(:beta)
               if ref.nil?
-                respond 'No viable beta found. Aborting beta update.'
+                if @resolver.last_error
+                  StatusReporter.respond_github_failure(@resolver.last_error, 'No beta update was installed.')
+                else
+                  respond 'No viable beta found. Aborting beta update.'
+                end
                 return
               end
               remote_repo = "https://raw.githubusercontent.com/#{GITHUB_REPO}/#{ref}/lib"
@@ -151,18 +165,13 @@ module Lich
 
           unless requested_file_ext == "bad extension"
             file_path = File.join(location, requested_file)
-            tmp_file_path = file_path + ".tmp"
-            old_file_path = file_path + ".old"
-
-            File.rename(file_path, old_file_path) if File.exist?(file_path)
 
             begin
-              File.open(tmp_file_path, "wb") do |file|
-                file.write URI.parse(File.join(remote_repo, requested_file)).open.read
-              end
-
-              File.rename(tmp_file_path, file_path)
-              File.delete(old_file_path) if File.exist?(old_file_path)
+              # Download fully before touching the file, then replace it
+              # atomically: the live file stays in place for the whole
+              # network read and is untouched if anything fails.
+              content = URI.parse(File.join(remote_repo, requested_file)).open.read
+              FileWriter.safe_write(file_path, content)
 
               respond
               respond "#{requested_file} has been updated."
@@ -170,24 +179,7 @@ module Lich
               respond
               respond "Error updating #{requested_file}: #{e.class} - #{e.message}"
               respond "Backtrace: #{e.backtrace.first(3).join(' | ')}" if $debug
-
-              if File.exist?(tmp_file_path)
-                begin
-                  File.delete(tmp_file_path)
-                  respond "Cleaned up incomplete temporary file."
-                rescue => cleanup_error
-                  respond "Warning: Could not delete temporary file: #{cleanup_error.message}"
-                end
-              end
-
-              if File.exist?(old_file_path)
-                begin
-                  File.rename(old_file_path, file_path)
-                  respond "Restored original file."
-                rescue => restore_error
-                  respond "Warning: Could not restore original file: #{restore_error.message}"
-                end
-              end
+              respond "The existing #{requested_file} was left unchanged." if File.exist?(file_path)
 
               respond
               respond "The filename #{requested_file} is not available via lich5-update."
@@ -205,8 +197,15 @@ module Lich
         # Updates core data files (effect-list.xml) after version upgrade.
         #
         # @param version [String] version string (default: LICH_VERSION)
+        # @param snapshot_dir [String, nil] snapshot directory to back data files
+        #   up into, e.g. one just created by the active update flow's
+        #   SnapshotManager#snapshot call. When nil (a standalone call not part
+        #   of a full update, such as the login autostart path), a fresh
+        #   data-only backup directory is created (SnapshotManager#new_data_backup_dir)
+        #   -- never an L5-snapshot-* directory -- so it can't be mistaken by
+        #   SnapshotManager#revert for a real, restorable ecosystem snapshot.
         # @return [void]
-        def update_core_data_and_scripts(version = LICH_VERSION)
+        def update_core_data_and_scripts(version = LICH_VERSION, snapshot_dir = nil)
           if XMLData.game !~ /^GS|^DR/
             respond "invalid game type, unsure what scripts to update via Update.update_core_scripts"
             return
@@ -214,11 +213,12 @@ module Lich
 
           if XMLData.game =~ /^GS/
             ["effect-list.xml"].each do |file|
-              transition_filename = "#{file}".sub(".xml", '')
-              newfilename = File.join(DATA_DIR, "#{transition_filename}-#{Time.now.to_i}.xml")
               if File.exist?(File.join(DATA_DIR, file))
+                data_backup_dir = File.join(snapshot_dir || @snapshot_manager.new_data_backup_dir, "data")
+                FileUtils.mkdir_p(data_backup_dir)
+                newfilename = File.join(data_backup_dir, file)
                 File.open(File.join(DATA_DIR, file), 'rb') { |r| File.open(newfilename, 'wb') { |w| w.write(r.read) } }
-                respond "The prior version of #{file} was renamed to #{newfilename}."
+                respond "The prior version of #{file} was backed up to #{newfilename}."
               end
               update_file('data', file)
             end

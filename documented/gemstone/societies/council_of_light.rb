@@ -2,13 +2,17 @@ module Lich
   module Gemstone
     module Societies
       ##
-      # Represents the Council of Light society in the game.
+      # Represents the Council of Light society.
       #
-      # This class provides methods to access and use various signs associated with the Council of Light.
+      # Provides access to CoL sign data, cost handling, usability checks, and sign commands.
       #
-      # @see Gemstone::Society
       class CouncilOfLight < Gemstone::Society
         ##
+        # Metadata for each Sign from the Council of Light, including rank, cost, duration, etc.
+        # Some fields (e.g., `:summary`, `:duration`) may be defined as lambdas for dynamic content.
+        # These are automatically resolved at access time via `Society.resolve`.
+        #
+        # @return [Hash<String, Hash>] Sign long name mapped to metadata
         @@col_signs = {
           "sign_of_recognition"  => {
             rank: 1,
@@ -234,12 +238,14 @@ module Lich
         }.freeze
 
         ##
-        # Retrieves the sign metadata for a given sign name.
+        # Retrieves a sign definition by short or long name.
         #
-        # @param name [String] the name of the sign to retrieve
-        # @return [Hash, nil] the metadata of the sign or nil if not found
-        # @example Retrieve sign metadata
-        #   sign_metadata = CouncilOfLight["sign_of_recognition"]
+        # Normalizes the provided name and attempts to match against both short and long names
+        # of all Council of Light signs. Returns the corresponding sign metadata if found.
+        #
+        # @param name [String] The short or long name of the sign
+        # @return [Hash, nil] The sign metadata, or nil if not found
+        #
         def self.[](name)
           lookup = Society.lookup(name, sign_lookups)
           return nil unless lookup
@@ -258,9 +264,16 @@ module Lich
         end
 
         ##
-        # Provides a list of all available signs with their metadata.
+        # Returns an array of sign metadata, including cost and rank.
         #
-        # @return [Array<Hash>] an array of hashes containing sign metadata
+        # This is used for display, iteration, and generating dynamic method accessors.
+        #
+        # @return [Array<Hash>] Each hash contains keys:
+        #   - :long_name [String]
+        #   - :short_name [String]
+        #   - :rank [Integer]
+        #   - :cost [Hash]
+        #
         def self.sign_lookups
           @@col_signs.map do |_, sign|
             {
@@ -273,10 +286,12 @@ module Lich
         end
 
         ##
-        # Checks if a sign is known by the member and if its rank is accessible.
+        # Determines if the character knows the given Council of Light sign,
+        # based on the society rank and the sign's required rank.
         #
-        # @param sign_name [String] the name of the sign to check
-        # @return [Boolean] true if the sign is known and accessible, false otherwise
+        # @param sign_name [String] The short or long name of the sign
+        # @return [Boolean] True if the character's rank is sufficient to use the sign
+        #
         def self.known?(sign_name)
           return false unless member?
           sign = self[sign_name]
@@ -286,13 +301,15 @@ module Lich
         end
 
         ##
-        # Uses a sign for the member, optionally targeting a specific entity.
+        # Attempts to use a Council of Light sign by issuing the appropriate command.
         #
-        # @param sign_name [String] the name of the sign to use
-        # @param target [String, nil] the target for the sign, if applicable
+        # If the sign has a defined `:usage` string (e.g., "signal"), it is used directly.
+        # Otherwise, defaults to `sign of <short_name>`.
+        #
+        # @param sign_name [String] The long or short name of the sign to invoke
+        # @param target [String, nil] Optional target for the sign (appended to command)
         # @return [void]
-        # @example Use a sign on a target
-        #   CouncilOfLight.use("sign_of_signal", "friend")
+        #
         def self.use(sign_name, target = nil)
           unless member?
             Lich::Messaging.msg("error", "Not a member of Council of Light, can't use: #{sign_name}")
@@ -306,20 +323,38 @@ module Lich
           end
 
           if available?(sign_name)
-            command = sign[:usage] || "sign of #{sign[:short_name]}"
             waitrt?
             waitcastrt?
-            fput "#{command} #{target}".strip
+            fput Society.command(sign, "sign of", target)
           else
             Lich::Messaging.msg("warn", "You cannot use the #{sign_name} sign right now.")
           end
         end
 
         ##
-        # Checks if the member can afford to use a specific sign based on its costs.
+        # The command {use} sends for a sign, without sending it.
         #
-        # @param sign_name [String] the name of the sign to check affordability
-        # @return [Boolean] true if the sign can be afforded, false otherwise
+        # @param sign_name [String] The short or long name of the sign
+        # @param target [String, Integer, GameObj, nil] Optional target (a GameObj or id as `#id`)
+        # @return [String, nil] e.g. "sign of striking", nil when the sign is unknown
+        #
+        def self.command(sign_name, target = nil)
+          sign = self[sign_name]
+          return nil unless sign
+
+          Society.command(sign, "sign of", target)
+        end
+
+        ##
+        # Checks if the character can currently afford to use a given Council of Light sign,
+        # based on available spirit and mana.
+        #
+        # For signs that use the `:dissipates` cost type, pending spirit loss is added to the cost
+        # to prevent overcommitment.
+        #
+        # @param sign_name [String] Long or short name of the sign
+        # @return [Boolean] True if the sign can be afforded now
+        #
         def self.affordable?(sign_name)
           return false unless member?
           sign = self[sign_name]
@@ -344,9 +379,14 @@ module Lich
         end
 
         ##
-        # Calculates the total spirit loss from active dissipating signs.
+        # Calculates the total pending spirit loss from active Council of Light signs
+        # that consume spirit when their effects end (i.e., cost_type is :dissipates).
         #
-        # @return [Integer] the total spirit loss from active signs
+        # Only signs with a non-zero :spirit cost and active buff status are considered.
+        # Mana costs are ignored.
+        #
+        # @return [Integer] Total spirit points that will be lost when applicable signs expire.
+        #
         def self.pending_spirit_loss
           @@col_signs.values
                      .select { |sign| sign[:cost_type] == :dissipates }
@@ -355,46 +395,57 @@ module Lich
         end
 
         ##
-        # Retrieves all signs with their resolved metadata.
+        # Returns all known sign metadata, resolving any dynamic (lambda) fields.
         #
-        # @return [Array<Hash>] an array of hashes containing all sign metadata
+        # @return [Array<Hash>] Array of sign metadata hashes with evaluated fields
+        #
         def self.all
           @@col_signs.values.map { |entry| entry.transform_values { |v| Society.resolve(v, entry) } }
         end
 
         ##
-        # Checks if the member is a master of the Council of Light.
+        # Checks if the character is a COL master (rank 20).
         #
-        # @return [Boolean] true if the member is a master, false otherwise
+        # @return [Boolean] True if the character has achieved master rank
+        #
         def self.master?
           return false unless member?
           Society.rank == 20 # is the rank of a COL Master
         end
 
         ##
-        # Checks if the current member belongs to the Council of Light.
+        # Checks if the character is a member of COL and optionally at a given rank.
         #
-        # @param rank [Integer, nil] optional rank to check against
-        # @return [Boolean] true if the member belongs to the Council of Light, false otherwise
+        # @param rank [Integer, nil] Optionally check if the character is at this rank
+        # @return [Boolean] True if the character is a COL member (and at the specified rank, if given)
+        #
         def self.member?(rank = nil)
           return false unless Society.membership == "Council of Light"
           rank.nil? || Society.rank == rank
         end
 
         ##
-        # Retrieves the rank of the current member in the Council of Light.
+        # Provides the current rank of the character within the Council of Light.
         #
-        # @return [Integer] the rank of the member, or 0 if not a member
+        # @return [Integer] The current rank of the character
+        #
         def self.rank
           return 0 unless member?
           Society.rank
         end
 
         ##
-        # Checks if a sign is available for use by the member.
+        # Determines whether the specified Council of Light sign is currently available for use.
         #
-        # @param sign_name [String] the name of the sign to check
-        # @return [Boolean] true if the sign is available, false otherwise
+        # A sign is considered available if:
+        # - The character knows the sign (based on rank)
+        # - The character can afford the sign's cost (spirit/mana)
+        # - If the sign's `:cost_type` is `:dissipates`, it is not currently active (as that would
+        #   delay the cost and prevent re-use until expiration)
+        #
+        # @param sign_name [String] Long or short name of the sign
+        # @return [Boolean] True if the sign can be used right now
+        #
         def self.available?(sign_name)
           return false unless member?
           sign = self[sign_name]

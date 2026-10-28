@@ -5,18 +5,27 @@ spell.rb: Core lich file for spell management and for spell related scripts.
 require 'open-uri'
 require 'ox'
 
-# Namespace for the Lich 5 scripting engine and its associated utilities.
+# Namespace for all Lich5 scripting engine classes and modules.
 module Lich
-  # Namespace for common game-related classes and utilities shared across Lich scripts.
+  # Namespace for shared Lich5 core classes.
   module Common
-    # Represents a spell from the game's spell database, loaded from effect-list.xml.
+    # Represents a spell from the game, parsed from the effect-list.xml data file.
     #
-    # Provides spell metadata (name, circle, type, duration, costs), active tracking,
-    # casting methods, and convenience accessors for calculated values like duration formulas
-    # and spell bonuses. Spells are globally indexed by number and name for fast lookup.
+    # Spells are loaded once and cached in the class-level @@list; they track active
+    # effects on the character and provide methods to cast spells and calculate costs,
+    # durations, and bonuses. A Spell object reads spell metadata from XML including
+    # number, name, type, availability (self-cast, group, or all), costs (mana, spirit,
+    # stamina), duration formulas, and modifier bonuses. Instance state tracks whether
+    # the spell is currently active, how much time remains, and when it was last cast.
     #
-    # @see Spell.load
-    # @see Spell.[]
+    # @example Retrieve and cast a spell
+    #   spell = Spell[1701] # Major Heal
+    #   spell.cast(target)
+    # @example Check if a spell is known
+    #   Spell[9610].known? #=> true or false
+    # @see .load
+    # @see .active
+    # @see #cast
     class Spell
       @@list ||= Array.new
       @@loaded ||= false
@@ -25,7 +34,7 @@ module Lich
       @@cost_list ||= Array.new
       @@load_mutex = Mutex.new
       @@after_stance = nil
-      attr_reader :num, :name, :timestamp, :msgup, :msgdn, :circle, :active, :type, :cast_proc, :real_time, :persist_on_death, :availability, :no_incant, :last_cast
+      attr_reader :num, :name, :timestamp, :msgup, :msgdn, :circle, :active, :type, :cast_proc, :real_time, :persist_on_death, :availability, :no_incant, :last_cast, :group_cooldown, :target_cooldown, :target_msgup
       attr_accessor :stance, :channel
 
       @@prepare_regex = Regexp.union(
@@ -71,18 +80,16 @@ module Lich
         /^You can't make that dextrous of a move!$/
       )
 
-      # Initializes a Spell from an XML element (from effect-list.xml).
+      # Parses an XML spell element and initializes a Spell object.
       #
-      # Parses spell metadata including number, name, type, duration formulas, cost formulas,
-      # bonus formulas, and caster requirements from the XML node. Sets default duration to
-      # 250 seconds per self-cast unless specified. Registers this spell in the global list
-      # unless a spell with the same number already exists.
+      # Called internally by {.load} when parsing effect-list.xml. Extracts spell number,
+      # name, type, incantation requirement, availability, bonus modifiers, start/end
+      # messages, costs, durations, cast procedures, and cooldown information from the XML.
+      # Automatically appends the new Spell to the class-level @@list if not already
+      # present.
       #
-      # @param xml_spell [Ox::Element] an XML element with attributes and child elements
-      #   describing the spell (e.g., number, name, type, channel, stance) and optional
-      #   children (bonus, message, cost, duration, cast-proc)
+      # @param xml_spell [Ox::Element] an XML spell element from the parsed effect-list
       # @return [void]
-      # @api private
       def initialize(xml_spell)
         @num = xml_spell['number'].to_i
         @name = xml_spell['name']
@@ -156,6 +163,24 @@ module Lich
           end
         }
         @cast_proc = xml_spell.locate('cast-proc').first&.text
+        # Seconds a character is locked out of this spell, by kind. A 'group'
+        # cooldown covers another group (EVOKE) casting of it; a 'target'
+        # cooldown covers the spell landing on them from any caster, paired
+        # with the third-person message that names them. Both are nil when the
+        # spell declares no cooldown of that kind. See Group.spell_cooldown and
+        # Group.spell_cooldown_ready?.
+        xml_spell.locate('cooldown').each { |xml_cooldown|
+          case xml_cooldown['type'].to_s.downcase
+          when 'group'
+            @group_cooldown = xml_cooldown.text.to_i
+          when 'target'
+            @target_cooldown = xml_cooldown.text.to_i
+          end
+        }
+        @target_msgup = xml_spell.locate('message')
+                                 .select { |e| e['type'].to_s.downcase == 'target-start' }
+                                 .collect { |e| e.text }.join('$|^')
+        @target_msgup = nil if @target_msgup.empty?
         @last_cast = Time.at(0)
         @timestamp = Time.now
         @timeleft = 0
@@ -165,43 +190,54 @@ module Lich
         # self # rubocop Lint/Void: self used in void context
       end
 
-      # Sets the global default stance to adopt after spell casting completes.
+      # Every line that answers a cast: the regex {#cast} waits on, exposed
+      # so a caller that sends and confirms on its own terms can wait on
+      # the same lines instead of copying them.
       #
-      # When set, spells cast with {#cast} will return to this stance after the spell
-      # is cast (e.g., 'offensive', 'guarded', 'defensive') instead of the default
-      # guarded/defensive choice.
+      # @param results_of_interest [Regexp, nil] extra lines to match, as {#cast} takes
+      # @return [Regexp]
+      def Spell.results_regex(results_of_interest: nil)
+        return @@results_regex unless results_of_interest.is_a?(Regexp)
+        Regexp.union(@@results_regex, results_of_interest)
+      end
+
+      # Sets the stance to restore after a stance spell finishes casting.
       #
-      # @param val [String, nil] the stance name to adopt post-cast, or nil to clear
-      # @return [String, nil] the value assigned
-      # @see Spell.after_stance
+      # When a spell with @stance = true completes, {#restore_stance_after_cast}
+      # restores the character to this stance. Used by scripts to control post-cast
+      # stance recovery.
+      #
+      # @param val [String, nil] the stance name (e.g. "offensive", "defensive", "guarded")
+      #   or nil to let the game pick the safest stance
+      # @return [String, nil]
       def Spell.after_stance=(val)
         @@after_stance = val
       end
 
-      # Returns the global default stance set for after spell casting.
+      # Returns the stance to restore after a stance spell finishes casting.
       #
       # @return [String, nil] the stance name, or nil if not set
-      # @see Spell.after_stance=
       def Spell.after_stance
         @@after_stance
       end
 
-      # Loads and parses the spell database from an XML file (effect-list.xml).
+      # Loads the spell database from effect-list.xml and parses all spells.
       #
-      # If no filename is given, looks for the file in the DATA directory. If not found,
-      # attempts to download from the Elanthia-Online scripts GitHub repository. Falls back
-      # to the ;repository script if GitHub download fails. Thread-safe via mutex.
+      # Called automatically on first access to the spell list if not already loaded.
+      # If no file exists at DATA_DIR/effect-list.xml, attempts to download it from
+      # the Elanthia-Online scripts GitHub repository. Falls back to the ;repository
+      # script if GitHub retrieval fails.
       #
-      # Preserves active spell tracking across reloads: spells marked active before the reload
-      # are restored to their active state with their remaining duration preserved.
+      # Thread-safe via @@load_mutex. Loading preserves active spell tracking across
+      # reloads by storing and restoring timeleft for each active spell.
       #
-      # Caches bonus and cost keys across all spells for method_missing dispatch.
-      #
-      # @param filename [String, nil] path to the spell XML file, or nil for default DATA_DIR location
-      # @return [Boolean] true on successful load, false on error
+      # @param filename [String, nil] path to effect-list.xml; if nil, uses the
+      #   default DATA_DIR/effect-list.xml
+      # @return [Boolean] true if load succeeds, false otherwise
       # @example
-      #   Spell.load  # Loads from DATA_DIR/effect-list.xml
-      # @note This method is called automatically by most Spell class methods if needed.
+      #   Spell.load #=> true
+      # @example Load from a custom path
+      #   Spell.load('/custom/path/effect-list.xml') #=> true
       def Spell.load(filename = nil)
         if filename.nil?
           filename = File.join(DATA_DIR, 'effect-list.xml')
@@ -259,25 +295,24 @@ module Lich
         }
       end
 
-      # Looks up a spell by number, numeric ID, or name.
+      # Looks up a spell by number, name, or pattern.
       #
-      # If val is already a Spell object, returns it directly. If it's an integer or
-      # numeric string, finds the spell by number. Otherwise, escapes the value as a
-      # regex pattern and searches by name (exact match first, then prefix match, then
-      # a fuzzy match against up/down messages).
+      # Automatically loads the spell database on first call. Looks up by:
+      # - A Spell object: returns it as-is
+      # - An integer or numeric string: finds spell by number
+      # - A string: exact case-insensitive name match, then prefix match,
+      #   then pattern match against start/end messages
       #
-      # Automatically loads spell data if not yet loaded.
-      #
-      # @param val [Spell, Integer, String] a spell object, spell number, or spell name
+      # @param val [Spell, Integer, String] the lookup key
       # @return [Spell, nil] the matching spell, or nil if not found
-      # @example
-      #   Spell[505]                    #=> Spell for number 505
-      # @example
-      #   Spell["Minor Heal"]           #=> spell by name
-      # @example
-      #   s = Spell[505]
-      #   Spell[s]                      #=> s (passthrough)
-      # @see Spell.load
+      # @example Lookup by number
+      #   Spell[1701] #=> #<Spell:... @num=1701 @name="Major Heal">
+      # @example Lookup by exact name
+      #   Spell["Major Heal"] #=> #<Spell:... @num=1701>
+      # @example Lookup by prefix
+      #   Spell["Major"] #=> #<Spell:... @num=1701>
+      # @example Lookup by message pattern
+      #   Spell["heals"] #=> #<Spell:... @num=1701>
       def Spell.[](val)
         Spell.load unless @@loaded
         if val.is_a?(Spell)
@@ -290,16 +325,11 @@ module Lich
         end
       end
 
-      # Returns an array of all currently active spells.
+      # Returns all currently active spells.
       #
-      # A spell is active if its {#active?} predicate returns true (remaining duration > 0).
-      # The returned array is a fresh copy; modifications do not affect the spell list.
-      #
-      # Automatically loads spell data if not yet loaded.
-      #
-      # @return [Array<Spell>] all spells with remaining duration > 0
+      # @return [Array<Spell>] array of spell objects with {#active?} == true
       # @example
-      #   Spell.active.map(&:name)  #=> ["Minor Heal", "Strength"]
+      #   Spell.active #=> [#<Spell... Haste>, #<Spell... Spirit Defense>]
       def Spell.active
         Spell.load unless @@loaded
         active = Array.new
@@ -307,78 +337,78 @@ module Lich
         active
       end
 
-      # Tests whether a given spell is currently active.
+      # Checks if a spell is currently active.
       #
-      # @param val [Spell, Integer, String] a spell object, number, or name
-      # @return [Boolean] true if the spell's remaining duration > 0 and it is marked active
+      # @param val [Spell, Integer, String] spell lookup key (see {.[]})
+      # @return [Boolean] true if the spell is active, false otherwise
       # @example
-      #   Spell.active?(505)  #=> true
+      #   Spell.active?(1701) #=> true
       def Spell.active?(val)
         Spell.load unless @@loaded
         Spell[val].active?
       end
 
-      # Returns the global list of all known spells.
+      # Returns the complete cached list of all loaded spells.
       #
-      # Automatically loads spell data if not yet loaded.
-      #
-      # @return [Array<Spell>] all spells loaded from effect-list.xml
+      # @return [Array<Spell>] all spell objects
       # @example
-      #   Spell.list.count  #=> 1700+
+      #   Spell.list.count #=> 1043
       def Spell.list
         Spell.load unless @@loaded
         @@list
       end
 
-      # Returns all unique spell "up" (cast start) messages from the spell database.
+      # Returns all spell start messages for matching active spells.
       #
-      # Messages are concatenated with the pattern $|^ to form a union regex.
-      # Nil messages (spells with no start message) are excluded.
+      # Used to detect when a spell has landed. Each spell can have multiple start
+      # messages separated by $|^ (join of multiple message elements with type="start").
       #
-      # Automatically loads spell data if not yet loaded.
-      #
-      # @return [Array<String>] all non-nil msgup values
-      # @see Spell#msgup
+      # @return [Array<String>] start messages from all spells
+      # @see #msgup
+      # @see .dnmsgs
       def Spell.upmsgs
         Spell.load unless @@loaded
         @@list.collect { |spell| spell.msgup }.compact
       end
 
-      # Returns all unique spell "down" (cast end) messages from the spell database.
+      # Third-person start messages, for spells that name the character they
+      # land on. Empty until the effect list carries target-start messages.
+      def Spell.target_upmsgs
+        Spell.load unless @@loaded
+        @@list.collect { |spell| spell.target_msgup }.compact
+      end
+
+      # Returns all spell end messages for detecting when spells wear off.
       #
-      # Messages are concatenated with the pattern $|^ to form a union regex.
-      # Nil messages (spells with no end message) are excluded.
+      # Used to detect when a spell has expired. Each spell can have multiple end
+      # messages separated by $|^ (join of multiple message elements with type="end").
       #
-      # Automatically loads spell data if not yet loaded.
-      #
-      # @return [Array<String>] all non-nil msgdn values
-      # @see Spell#msgdn
+      # @return [Array<String>] end messages from all spells
+      # @see #msgdn
+      # @see .upmsgs
       def Spell.dnmsgs
         Spell.load unless @@loaded
         @@list.collect { |spell| spell.msgdn }.compact
       end
 
-      # Returns the duration formula for this spell, with skill references substituted.
+      # Returns the duration formula for this spell as a string.
       #
-      # Retrieves the appropriate duration formula (self-cast or target-cast) and rewrites
-      # skill references (e.g., Spells.minorelemental, Skills.magicitemuse) to concrete
-      # expressions. The substitution depends on the :caster, :target, and :activator options.
+      # The formula can reference spell ranks, skill ranks, and character level.
+      # Formulas differ by cast-type (self vs. target) and by whether the spell is
+      # cast by the current character or another caster. When :caster or :target
+      # options are provided and name a different character, the target cast-type
+      # formula is used if available.
       #
-      # Activators (tap, rub, wave, raise, drink, etc.) get scaled multipliers applied to
-      # skill values. Invocation methods (invoke, scroll) use arcanesymbols instead. Caster
-      # and target names are case-insensitive; a caster other than self receives lookups via
-      # SpellRanks['name'] instead of global Skills.
-      #
-      # @param options [Hash] optional parameters for skill substitution
-      # @option options [String] :caster the name of the caster, defaults to player character
-      # @option options [String] :target the name of the spell target
-      # @option options [String] :activator the activation method (tap, rub, wave, raise, invoke, scroll, etc.)
-      # @option options [String] :line reserved for internal use
-      # @return [String] the duration formula with skill references replaced
+      # @param options [Hash] lookup options
+      # @option options [String] :caster name of the caster (defaults to self)
+      # @option options [String] :target name of the spell target (defaults to self)
+      # @option options [String] :activator spell activation method ("tap", "rub",
+      #   "wave", "raise", "invoke", "scroll", etc.) for adjusting skill references
+      # @return [String] a Ruby expression that evaluates to spell duration in minutes
       # @example
-      #   spell = Spell[505]
-      #   spell.time_per_formula                #=> "(Spells.minorspiritual * 2) + 20"
-      # @see Spell#time_per
+      #   Spell[1701].time_per_formula #=> "(Spells.majorspiritual + 5) / 2.0"
+      # @see #time_per
+      # @see #timeleft
       def time_per_formula(options = {})
         activator_modifier = { 'tap' => 0.5, 'rub' => 1, 'wave' => 1, 'raise' => 1.33, 'drink' => 0, 'bite' => 0, 'eat' => 0, 'gobble' => 0 }
         can_haz_spell_ranks = /Spells\.(?:minorelemental|majorelemental|minorspiritual|majorspiritual|wizard|sorcerer|ranger|paladin|empath|cleric|bard|minormental)/
@@ -431,22 +461,19 @@ module Lich
         formula
       end
 
-      # Evaluates the duration formula and returns the calculated spell duration in minutes.
+      # Calculates the duration of this spell in minutes given the current character's skills.
       #
-      # Computes the duration by evaluating {#time_per_formula} with the game's current
-      # skill values and bonuses. For spells with spell knowledge (SK) integration, enforces
-      # a 10-minute minimum duration.
+      # Evaluates the duration formula with the character's current spell ranks and
+      # skills. Returns a minimum of 10 minutes for spells in the Lich Gemstone Keeper
+      # database that evaluate to less than 10 minutes.
       #
-      # @param options [Hash] optional parameters (see {#time_per_formula})
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
-      # @option options [String] :activator the activation method
-      # @option options [String] :line reserved for internal use
-      # @return [Float] the duration in minutes, with a minimum of 10.0 for known spells
+      # @param options [Hash] lookup options (see {#time_per_formula})
+      # @option options [String] :caster name of the caster
+      # @option options [String] :target name of the spell target
+      # @option options [String] :activator spell activation method
+      # @return [Float] spell duration in minutes
       # @example
-      #   spell = Spell[505]
-      #   spell.time_per  #=> 15.5
-      # @see Spell#time_per_formula
+      #   Spell[1701].time_per #=> 42.5
       def time_per(options = {})
         formula = self.time_per_formula(options)
         if options[:line]
@@ -458,31 +485,26 @@ module Lich
         return result
       end
 
-      # Sets the remaining duration for this spell and updates the timestamp.
+      # Sets the remaining time on this spell and updates the timestamp.
       #
-      # Used internally to track spell duration across duration checks. Setting a new
-      # value resets the base timestamp to now.
-      #
-      # @param val [Numeric] the remaining duration in minutes
-      # @return [Numeric] the value assigned
-      # @api private
+      # @param val [Float, Integer] remaining time in minutes
+      # @return [Float, Integer] the value assigned
       def timeleft=(val)
         @timeleft = val
         @timestamp = Time.now
       end
 
-      # Returns the remaining duration of this spell in minutes.
+      # Returns the remaining time on this spell in minutes.
       #
-      # Subtracts elapsed time since the last {#timeleft=} or {#timeleft} call from the
-      # tracked duration. If the spell's duration formula is a Spellsong reference, queries
-      # Spellsong.timeleft directly instead. When remaining time drops to 0 or below, calls
-      # {#putdown} and returns 0.0.
+      # Decrements the stored time by elapsed real time since the last update.
+      # Automatically calls {#putdown} and returns 0.0 when time expires. Updates
+      # the internal timestamp to now.
       #
-      # Updates the timestamp on each call.
+      # For spellsongs, delegates to the Spellsong object to get live remaining time.
       #
-      # @return [Float] remaining duration in minutes, or 0.0 if expired
-      # @see Spell#minsleft
-      # @see Spell#secsleft
+      # @return [Float] remaining time in minutes, or 0.0 if expired
+      # @see #minsleft
+      # @see #secsleft
       def timeleft
         if self.time_per_formula.to_s == 'Spellsong.timeleft'
           @timeleft = Spellsong.timeleft
@@ -497,58 +519,46 @@ module Lich
         @timeleft
       end
 
-      # Returns the remaining duration of this spell in minutes.
+      # Returns the remaining time on this spell in minutes (alias for {#timeleft}).
       #
-      # Alias for {#timeleft}.
-      #
-      # @return [Float] remaining duration in minutes
+      # @return [Float] remaining time in minutes
       def minsleft
         self.timeleft
       end
 
-      # Returns the remaining duration of this spell in seconds.
+      # Returns the remaining time on this spell in seconds.
       #
-      # Multiplies {#timeleft} by 60.
-      #
-      # @return [Float] remaining duration in seconds
+      # @return [Float] remaining time converted to seconds from {#timeleft}
+      # @see #timeleft
       def secsleft
         self.timeleft * 60
       end
 
-      # Sets the active status of this spell.
+      # Sets the active state of this spell.
       #
-      # @param val [Boolean] true to mark the spell as active, false otherwise
+      # @param val [Boolean] true to mark active, false to mark inactive
       # @return [Boolean] the value assigned
-      # @api private
       def active=(val)
         @active = val
       end
 
-      # Tests whether this spell is currently active.
+      # Checks if this spell is currently active.
       #
-      # A spell is active when both the remaining duration is greater than 0 AND the
-      # internal active flag is set to true (via {#putup} or {#active=}).
+      # Returns true only if {#timeleft} > 0 and the @active flag is set.
       #
-      # @return [Boolean] true if duration > 0 and the spell is marked active
-      # @see Spell#timeleft
-      # @see Spell#putup
+      # @return [Boolean] true if the spell is active and has time remaining
       def active?
         (self.timeleft > 0) and @active
       end
 
-      # Tests whether this spell's duration stacks when recast before expiration.
-      #
-      # Duration stacking behavior depends on the spell's duration XML metadata (span="stackable")
-      # and can differ for self-cast vs. target-cast variants. When a :caster option is provided,
-      # uses the caster's spell data if it differs from the player. When a :target is specified
-      # that differs from the caster, uses target-cast metadata; otherwise uses self-cast.
-      #
-      # @param options [Hash] optional parameters for determining cast type
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
-      # @return [Boolean] true if the spell stacks with itself on recast
-      # @see Spell#refreshable?
-      # @see Spell#multicastable?
+      # The cast-type predicates below (stackable?, refreshable?, multicastable?)
+      # and the duration formulas resolve against the 'self' cast-type unless a
+      # :caster or :target naming someone else is supplied. A bare call therefore
+      # answers for a self-cast only, which is not the same answer for spells
+      # whose target cast-type differs: in the current effect list 14 group buffs
+      # (Bravery 211 and Heroism 215 among them) are stackable when self-cast but
+      # refreshable when cast on someone else. Pass :caster/:target whenever the
+      # spell may have come from another character.
       def stackable?(options = {})
         if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
@@ -573,19 +583,20 @@ module Lich
         end
       end
 
-      # Tests whether recasting this spell before expiration refreshes its duration.
+      # Checks if casting this spell again refreshes (replaces) an active cast instead of stacking.
       #
-      # Duration refresh behavior depends on the spell's duration XML metadata (span="refreshable")
-      # and can differ for self-cast vs. target-cast variants. When a :caster option is provided,
-      # uses the caster's spell data if it differs from the player. When a :target is specified
-      # that differs from the caster, uses target-cast metadata; otherwise uses self-cast.
+      # Whether a spell is refreshable depends on its cast-type (self vs. target) and
+      # the caster/target relationship. Defaults to the 'self' cast-type interpretation
+      # unless a :caster or :target option names someone else.
       #
-      # @param options [Hash] optional parameters for determining cast type
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
-      # @return [Boolean] true if the spell refreshes (restarts duration) on recast
-      # @see Spell#stackable?
-      # @see Spell#multicastable?
+      # @param options [Hash] cast context options
+      # @option options [String] :caster name of the caster (defaults to self)
+      # @option options [String] :target name of the spell target (defaults to self)
+      # @return [Boolean] true if refreshing the spell replaces the prior cast
+      # @note In the current effect list, 14 group buffs (e.g. Bravery 211, Heroism 215)
+      #   are refreshable when cast on another character but stackable when self-cast.
+      # @see #stackable?
+      # @see #multicastable?
       def refreshable?(options = {})
         if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
@@ -610,19 +621,18 @@ module Lich
         end
       end
 
-      # Tests whether this spell can be multicast (cast multiple times in rapid succession).
+      # Checks if multiple instances of this spell can be cast at the same time.
       #
-      # Duration multicast behavior depends on the spell's duration XML metadata (multicastable="yes")
-      # and can differ for self-cast vs. target-cast variants. When a :caster option is provided,
-      # uses the caster's spell data if it differs from the player. When a :target is specified
-      # that differs from the caster, uses target-cast metadata; otherwise uses self-cast.
+      # Whether a spell is multicastable depends on its cast-type (self vs. target) and
+      # the caster/target relationship. Defaults to the 'self' cast-type interpretation
+      # unless a :caster or :target option names someone else.
       #
-      # @param options [Hash] optional parameters for determining cast type
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
+      # @param options [Hash] cast context options
+      # @option options [String] :caster name of the caster (defaults to self)
+      # @option options [String] :target name of the spell target (defaults to self)
       # @return [Boolean] true if the spell can be multicast
-      # @see Spell#stackable?
-      # @see Spell#refreshable?
+      # @see #stackable?
+      # @see #refreshable?
       def multicastable?(options = {})
         if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
@@ -647,19 +657,17 @@ module Lich
         end
       end
 
-      # Tests whether the player character knows this spell.
+      # Checks if the character currently knows this spell.
       #
-      # Checks if the spell number falls within the player's trained circle ranks for the
-      # appropriate spell school (e.g., minorspiritual for circle 1, majorelemental for circle 5).
-      # Circle 17 spells (1700) are available only to Wizard, Cleric, Empath, Sorcerer, or Savant.
-      # Circles 96-99 (society/custom magic) are handled specially via Society status and rank.
+      # Spell knowledge is determined by spell circle and minimum spell ranks in the
+      # appropriate school. Delegates to Lich::Gemstone::SK if available for more
+      # accurate tracking. Special cases: spell 1700 (Elemental Channels) is only known
+      # to Wizards, Clerics, Empaths, Sorcerers, and Savants; circles 97-99 require
+      # society membership and rank; circle 96 (Custom Man) is never known here.
       #
-      # If Lich::Gemstone::SK (spell knowledge system) is available, uses that directly.
-      #
-      # @return [Boolean] true if the spell is trained and the character meets circle/level requirements
+      # @return [Boolean] true if the character knows this spell
       # @example
-      #   Spell[505].known?  #=> true (if trained in minorspiritual and within circle)
-      # @see Spell#available?
+      #   Spell[1701].known? #=> true if character has Major Spiritual ranks
       def known?
         return true if defined?(Lich::Gemstone::SK) && Lich::Gemstone::SK.known?(self)
         if @num.to_s.length == 3
@@ -721,23 +729,19 @@ module Lich
         end
       end
 
-      # Tests whether this spell can be cast by a given caster on a given target.
+      # Checks if this spell is available to cast given a caster and target.
       #
-      # A spell is available if it is {#known?} by the relevant caster AND the spell's
-      # availability allows casting on the target. Availability is either 'all' (group/other),
-      # 'group', or 'self-cast' (self only). When a :caster other than self is provided,
-      # availability is checked as 'all' for other targets. When a :target other than self
-      # is provided, availability is checked as 'all'.
+      # A spell is available if it is {#known?} and the availability allows the
+      # caster/target combination. Availability modes from the effect-list:
+      # - "all": can be cast on any character
+      # - "group": can only be cast on self or groupmates
+      # - "self-cast": can only be cast on self
       #
-      # @param options [Hash] optional parameters for determining availability
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
-      # @return [Boolean] true if {#known?} and availability requirements are met
-      # @example
-      #   Spell[505].available?                      #=> true (if known and can self-cast)
-      # @example
-      #   Spell[505].available?(target: "Zeke")      #=> true (if known and 'all' availability)
-      # @see Spell#known?
+      # @param options [Hash] cast context options
+      # @option options [String] :caster name of the caster (defaults to self)
+      # @option options [String] :target name of the spell target (defaults to self)
+      # @return [Boolean] true if the spell is known and availability permits the cast
+      # @see #known?
       def available?(options = {})
         if self.known?
           if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
@@ -758,23 +762,22 @@ module Lich
         end
       end
 
-      # Tests whether this spell requires an incantation.
+      # Checks if this spell requires an incantation to cast.
       #
-      # @return [Boolean] true if the spell requires spoken incantation, false if it is a no-incant spell
+      # @return [Boolean] true if the spell must be incanted, false if it has no-incant
       def incant?
         !@no_incant
       end
 
       # Sets whether this spell requires an incantation.
       #
-      # @param val [Boolean] true to require incant, false to mark as no-incant
+      # @param val [Boolean] true to require incantation, false for no-incant
       # @return [Boolean] the value assigned
-      # @api private
       def incant=(val)
         @no_incant = !val
       end
 
-      # Returns the spell's name as a string.
+      # Returns the spell name.
       #
       # @return [String] the spell name
       def to_s
@@ -783,16 +786,14 @@ module Lich
 
       # Returns the maximum allowed duration for this spell in minutes.
       #
-      # Duration maxima depend on the spell's XML metadata and can differ for self-cast vs.
-      # target-cast variants. Defaults to 250 minutes per cast type if not specified in XML.
-      # When a :caster option is provided, uses the caster's spell data. When a :target is
-      # specified that differs from the caster, uses target-cast metadata; otherwise uses self-cast.
+      # Maximum duration defaults to 250.0 minutes if not specified in the XML.
+      # Different cast-types (self vs. target) can have different max durations.
       #
-      # @param options [Hash] optional parameters for determining cast type
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
+      # @param options [Hash] cast context options
+      # @option options [String] :caster name of the caster (defaults to self)
+      # @option options [String] :target name of the spell target (defaults to self)
       # @return [Float] the maximum duration in minutes
-      # @see Spell#time_per
+      # @see #time_per
       def max_duration(options = {})
         if options[:caster] and (options[:caster] !~ /^(?:self|#{XMLData.name})$/i)
           if options[:target] and (options[:target].downcase == options[:caster].downcase)
@@ -809,19 +810,16 @@ module Lich
         end
       end
 
-      # Marks this spell as active and sets its duration.
+      # Marks this spell as active and sets its remaining time.
       #
-      # Calculates the spell's duration using {#time_per} and applies stacking rules:
-      # if {#stackable?} is true, adds the new duration to the current remaining duration;
-      # otherwise replaces the duration. Clamps the result to {#max_duration}.
-      # Sets the active flag to true.
+      # If the spell is stackable, adds the new duration to the existing time (capped
+      # at max duration). Otherwise, replaces the time with the new duration. Sets the
+      # @active flag to true.
       #
-      # @param options [Hash] optional parameters for duration calculation (see {#time_per})
-      # @option options [String] :caster the caster's name
-      # @option options [String] :target the target's name
+      # @param options [Hash] cast context options (see {#time_per})
       # @return [void]
-      # @see Spell#putdown
-      # @see Spell#stackable?
+      # @see #putdown
+      # @see #stackable?
       def putup(options = {})
         if stackable?(options)
           self.timeleft = [self.timeleft + self.time_per(options), self.max_duration(options)].min
@@ -831,39 +829,37 @@ module Lich
         @active = true
       end
 
-      # Marks this spell as inactive and clears its remaining duration.
+      # Marks this spell as no longer active.
       #
-      # Sets timeleft to 0 and active flag to false.
+      # Sets remaining time to 0.0 and clears the @active flag.
       #
       # @return [void]
-      # @see Spell#putup
+      # @see #putup
       def putdown
         self.timeleft = 0
         @active = false
       end
 
-      # Returns a human-readable string of the remaining spell duration.
+      # Returns the remaining time on this spell formatted as a human-readable string.
       #
-      # @return [String] the formatted duration (e.g., "2 hours 30 minutes")
-      # @see Spell#timeleft
-      # @see Spell#secsleft
+      # @return [String] formatted time (e.g. "42 minutes 30 seconds")
+      # @see #timeleft
       def remaining
         self.timeleft.as_time
       end
 
-      # Tests whether the player can currently cast this spell given resource constraints.
+      # Checks if the character can currently afford to cast this spell.
       #
-      # Checks if the player has sufficient mana, spirit, and stamina to cast the spell.
-      # For monks with the mental_acuity feat (circle 12 spells), uses stamina instead of
-      # mana for cost calculations. Accounts for active debuffs like Overexerted. For
-      # mana-costing spells with the mental_acuity feat, doubles the mana cost and checks
-      # stamina instead.
+      # Verifies that the character has sufficient mana, spirit, and stamina for the
+      # spell's costs. Special handling for monks (Feat.mental_acuity) who pay mana
+      # costs in stamina; spirit spells account for active spirit modifiers; stamina
+      # costs fail if Overexerted or if a stamina drain is active.
       #
-      # @param options [Hash] optional parameters (reserved for future use)
-      # @return [Boolean] true if all required resources are available, false otherwise
-      # @example
-      #   Spell[505].affordable?  #=> true (if mana/spirit/stamina sufficient)
-      # @see Spell#cast
+      # @param options [Hash] cast context options (see {#mana_cost})
+      # @return [Boolean] true if all cost requirements are met
+      # @see #mana_cost
+      # @see #spirit_cost
+      # @see #stamina_cost
       def affordable?(options = {})
         # fixme: deal with them dirty bards!
         release_options = options.dup
@@ -886,16 +882,15 @@ module Lich
         end
       end
 
-      # Acquires the global spell casting lock, blocking until it is the first in queue.
+      # Acquires an exclusive lock preventing other scripts from casting simultaneously.
       #
-      # Used internally by {#cast} to serialize spell casting across multiple concurrent
-      # scripts. The lock queue is checked periodically; paused scripts and those no longer
-      # in Script.list are automatically removed. This method blocks the calling script until
-      # its lock acquire completes.
+      # Blocks until the current script is first in the cast lock queue. Used internally
+      # by {#cast} to ensure only one script casts at a time and to serialize prepare/cast
+      # sequences. Sleeps 0.1 seconds between checks and allows paused scripts to release
+      # their place in line.
       #
       # @return [void]
-      # @see Spell.unlock_cast
-      # @api private
+      # @see .unlock_cast
       def Spell.lock_cast
         script = Script.current
         @@cast_lock.push(script)
@@ -906,51 +901,52 @@ module Lich
         end
       end
 
-      # Releases the global spell casting lock for the current script.
+      # Releases the exclusive cast lock acquired by {.lock_cast}.
       #
-      # Removes the current script from the lock queue, allowing the next waiting script
-      # to acquire the lock and proceed with casting.
+      # Called automatically by {#cast} in an ensure block. Scripts should not call this
+      # directly unless they have called {.lock_cast} outside of a normal cast.
       #
       # @return [void]
-      # @see Spell.lock_cast
-      # @api private
+      # @see .lock_cast
       def Spell.unlock_cast
         @@cast_lock.delete(Script.current)
       end
 
-      # Casts this spell, handling preparation, casting, and stance management.
+      # Casts this spell and waits for the cast to complete.
       #
-      # A comprehensive casting method that handles spell preparation (if not incant),
-      # resource checks, target validation, the actual cast/incant/channel/evoke command,
-      # and post-cast stance restoration. Acquires the global cast lock to serialize
-      # casting across scripts.
+      # Handles the full spell casting sequence: checks energy/resources, acquires the
+      # cast lock, prepares the spell (unless using incant), issues the cast/channel/evoke
+      # command, and waits for a game response. Handles target resolution (GameObj, ID,
+      # or name string), stance changes before casting and restoration after, and
+      # retries for certain failures. Returns the final game output line or result message.
       #
-      # Returns the final cast result string (e.g., "Cast Roundtime 5 Seconds.") or a
-      # status message if preparation or casting fails (e.g., "You don't have a spell prepared!").
+      # Logs the cast time to @last_cast; updates @active and @timeleft when the spell
+      # lands. Returns early if energy checks fail.
       #
-      # Supports custom cast commands (incant, cast, channel, evoke) via arg_options.
-      # Handles stance enforcement: if spell.stance is true and force_stance is not false,
-      # moves to offensive stance before casting and returns to Spell.after_stance (if set)
-      # or guarded/defensive after casting.
+      # @param target [String, Integer, GameObj, nil] spell target; nil for self-cast
+      # @param results_of_interest [Regexp, nil] additional result patterns to match beyond
+      #   the built-in {.results_regex} patterns
+      # @param arg_options [String, nil] optional arguments and cast method override
+      #   (e.g. "cast target", "channel left hand", "evoke")
+      # @param force_stance [Boolean, nil] true to force stance change before cast
+      #   (overrides spell's @stance setting), false to skip stance change, nil for default
+      # @return [String] the game output line that matched the results regex, or a failure
+      #   reason (e.g. "You can't think clearly enough to prepare a spell!")
+      # @example Cast Major Heal on target
+      #   Spell[1701].cast(target) #=> "Cast Roundtime 2 Seconds."
+      # @example Cast with no incantation
+      #   Spell[1701].cast(target, nil, "cast target")
+      # @example Cast and capture custom results
+      #   result = Spell[1721].cast(nil, /Your skin hardens/)
       #
-      # For spells with a cast_proc (custom cast logic), evaluates that proc instead of
-      # generating a standard command.
-      #
-      # Checks spell affordability (mana, spirit, stamina) before and during preparation.
-      # Automatically releases a prepared spell if a different spell is needed.
-      #
-      # @param target [GameObj, Integer, String, nil] the target, as object ID, object, or name
-      # @param results_of_interest [Regexp, nil] a custom regex of additional successful cast outcomes
-      # @param arg_options [String, nil] space-separated cast command and arguments (e.g., "cast at ground")
-      # @param force_stance [Boolean, nil] true to enforce stance, false to skip, nil for default
-      # @return [String] the cast result message from the game
-      # @example
-      #   result = Spell[505].cast("Lich")  # Cast on target
-      # @example
-      #   result = Spell[505].cast         # Self-cast
-      # @see Spell#force_cast
-      # @see Spell#force_channel
-      # @see Spell.lock_cast
+      # @note Acquires {.lock_cast} for the duration. Restores character stance after
+      #   casting if the spell has @stance set and force_stance is not false. Failed
+      #   prepare attempts return the error message instead of retrying indefinitely.
+      # @raise [ArgumentError] if restored stance is invalid (from restore_stance_after_cast)
+      # @see #force_cast
+      # @see #force_channel
+      # @see #force_incant
+      # @see .results_regex
       def cast(target = nil, results_of_interest = nil, arg_options = nil, force_stance: nil)
         # fixme: find multicast in target and check mana for it
         check_energy = proc {
@@ -1111,19 +1107,7 @@ module Lich
                 cast_result = dothistimeout cast_cmd, 5, merged_results_regex
               end
               if ((@stance && force_stance != false) || force_stance == true)
-                if @@after_stance
-                  if Char.stance !~ /#{@@after_stance}/
-                    waitrt?
-                    dothistimeout "stance #{@@after_stance}", 3, /^You (?:are now in|move into) an? \w+ stance|^You are unable to change your stance\.$/
-                  end
-                elsif Char.stance !~ /^guarded$|^defensive$/
-                  waitrt?
-                  if checkcastrt > 0
-                    dothistimeout 'stance guarded', 3, /^You (?:are now in|move into) an? \w+ stance|^You are unable to change your stance\.$/
-                  else
-                    dothistimeout 'stance defensive', 3, /^You (?:are now in|move into) an? \w+ stance|^You are unable to change your stance\.$/
-                  end
-                end
+                restore_stance_after_cast
               end
               if cast_result =~ /^Cast at what\?$|^Be at peace my child, there is no need for spells of war in here\.$|^Provoking a GameMaster is not such a good idea\.$/
                 dothistimeout 'release', 5, /^You feel the magic of your spell rush away from you\.$|^You don't have a prepared spell to release!$/
@@ -1145,19 +1129,41 @@ module Lich
         end
       end
 
-      # Casts this spell using the standard "cast" command, bypassing incant.
+      # After a stance spell is cast, put the character back into the stance
+      # they asked for (Spell.after_stance), or the safest one the game allows.
+      # Stance.change no-ops when already there and waits out roundtime itself.
       #
-      # Wrapper around {#cast} that prepends "cast" to arg_options, forcing the spell
-      # to use the cast command even if it would normally incant.
+      # @return [void]
+      def restore_stance_after_cast
+        # after_stance can be a blank string when a script captured Char.stance
+        # before the first pbarStance update arrived. Treat that as "no
+        # preference" rather than letting it raise, which is what the old
+        # inline regex check did.
+        after = @@after_stance.to_s.strip
+        if !after.empty?
+          Lich::Gemstone::Stance.change(after)
+        elsif Char.stance !~ /^guarded$|^defensive$/
+          Lich::Gemstone::Stance.change(Lich::Gemstone::Stance.safest)
+        end
+      rescue ArgumentError => e
+        echo "cast: #{e.message}"
+      end
+      private :restore_stance_after_cast
+
+      # Casts this spell using the "cast" command (default cast method).
       #
-      # @param target [GameObj, Integer, String, nil] the spell target
-      # @param arg_options [String, nil] additional command arguments (appended after "cast")
-      # @param results_of_interest [Regexp, nil] custom successful cast outcomes
-      # @param force_stance [Boolean, nil] true to enforce stance, false to skip, nil for default
-      # @return [String] the cast result message
+      # Convenience method that wraps {#cast} and forces the cast command, overriding
+      # any channel/evoke/incant preference in the spell definition.
+      #
+      # @param target [String, Integer, GameObj, nil] spell target
+      # @param arg_options [String, nil] optional arguments (e.g. "target", "left hand")
+      # @param results_of_interest [Regexp, nil] additional result patterns to match
+      # @param force_stance [Boolean, nil] true to force offensive stance before cast,
+      #   false to skip stance change
+      # @return [String] the game output line or failure reason (see {#cast})
       # @example
-      #   Spell[505].force_cast("Lich")  #=> "Cast Roundtime 5 Seconds."
-      # @see Spell#cast
+      #   Spell[1701].force_cast(target) #=> "Cast Roundtime 2 Seconds."
+      # @see #cast
       def force_cast(target = nil, arg_options = nil, results_of_interest = nil, force_stance: nil)
         unless arg_options.nil? || arg_options.empty?
           arg_options = "cast #{arg_options}"
@@ -1167,19 +1173,20 @@ module Lich
         cast(target, results_of_interest, arg_options, force_stance: force_stance)
       end
 
-      # Casts this spell using the "channel" command, for spells that support channeling.
+      # Casts this spell using the "channel" command.
       #
-      # Wrapper around {#cast} that prepends "channel" to arg_options, forcing the spell
-      # to use the channel command. Returns an error string if the spell does not support channeling.
+      # Convenience method that wraps {#cast} and forces the channel command, overriding
+      # the spell's default cast method.
       #
-      # @param target [GameObj, Integer, String, nil] the spell target
-      # @param arg_options [String, nil] additional command arguments (appended after "channel")
-      # @param results_of_interest [Regexp, nil] custom successful cast outcomes
-      # @param force_stance [Boolean, nil] true to enforce stance, false to skip, nil for default
-      # @return [String] the cast result message, or error if channeling not supported
+      # @param target [String, Integer, GameObj, nil] spell target
+      # @param arg_options [String, nil] optional arguments (e.g. "left hand")
+      # @param results_of_interest [Regexp, nil] additional result patterns to match
+      # @param force_stance [Boolean, nil] true to force offensive stance before cast,
+      #   false to skip stance change
+      # @return [String] the game output line or failure reason (see {#cast})
       # @example
-      #   Spell[505].force_channel("Lich")  #=> "Cast Roundtime 5 Seconds."
-      # @see Spell#cast
+      #   Spell[1721].force_channel(target) #=> "Channel Roundtime 3 Seconds."
+      # @see #cast
       def force_channel(target = nil, arg_options = nil, results_of_interest = nil, force_stance: nil)
         unless arg_options.nil? || arg_options.empty?
           arg_options = "channel #{arg_options}"
@@ -1189,19 +1196,20 @@ module Lich
         cast(target, results_of_interest, arg_options, force_stance: force_stance)
       end
 
-      # Casts this spell using the "evoke" command, for spells that support evoking.
+      # Casts this spell using the "evoke" command.
       #
-      # Wrapper around {#cast} that prepends "evoke" to arg_options, forcing the spell
-      # to use the evoke command. Returns an error string if the spell does not support evoking.
+      # Convenience method that wraps {#cast} and forces the evoke command, typically
+      # used for wands and other evokable items.
       #
-      # @param target [GameObj, Integer, String, nil] the spell target
-      # @param arg_options [String, nil] additional command arguments (appended after "evoke")
-      # @param results_of_interest [Regexp, nil] custom successful cast outcomes
-      # @param force_stance [Boolean, nil] true to enforce stance, false to skip, nil for default
-      # @return [String] the cast result message, or error if evoking not supported
+      # @param target [String, Integer, GameObj, nil] spell target
+      # @param arg_options [String, nil] optional arguments (e.g. "target", "at orc")
+      # @param results_of_interest [Regexp, nil] additional result patterns to match
+      # @param force_stance [Boolean, nil] true to force offensive stance before cast,
+      #   false to skip stance change
+      # @return [String] the game output line or failure reason (see {#cast})
       # @example
-      #   Spell[505].force_evoke("Lich")  #=> "Cast Roundtime 5 Seconds."
-      # @see Spell#cast
+      #   Spell[1721].force_evoke(target) #=> "Evoke Roundtime 3 Seconds."
+      # @see #cast
       def force_evoke(target = nil, arg_options = nil, results_of_interest = nil, force_stance: nil)
         unless arg_options.nil? || arg_options.empty?
           arg_options = "evoke #{arg_options}"
@@ -1211,18 +1219,20 @@ module Lich
         cast(target, results_of_interest, arg_options, force_stance: force_stance)
       end
 
-      # Casts this spell using the "incant" command (verbal incantation).
+      # Casts this spell using the "incant" command (quick-cast without prepare).
       #
-      # Wrapper around {#cast} that prepends "incant" to arg_options, forcing the spell
-      # to use verbal incantation. No target parameter; incanting is always self-initiated.
+      # Convenience method that wraps {#cast} and forces the incant command, skipping
+      # the normal prepare/cast sequence. Incantation is instantaneous if the spell
+      # supports it.
       #
-      # @param arg_options [String, nil] additional command arguments (appended after "incant")
-      # @param results_of_interest [Regexp, nil] custom successful cast outcomes
-      # @param force_stance [Boolean, nil] true to enforce stance, false to skip, nil for default
-      # @return [String] the cast result message
+      # @param arg_options [String, nil] optional arguments (e.g. additional targeting)
+      # @param results_of_interest [Regexp, nil] additional result patterns to match
+      # @param force_stance [Boolean, nil] true to force offensive stance before cast,
+      #   false to skip stance change
+      # @return [String] the game output line or failure reason (see {#cast})
       # @example
-      #   Spell[505].force_incant  #=> "Cast Roundtime 5 Seconds."
-      # @see Spell#cast
+      #   Spell[1701].force_incant #=> "Incant Roundtime 1 Seconds."
+      # @see #cast
       def force_incant(arg_options = nil, results_of_interest = nil, force_stance: nil)
         unless arg_options.nil? || arg_options.empty?
           arg_options = "incant #{arg_options}"
@@ -1232,61 +1242,50 @@ module Lich
         cast(nil, results_of_interest, arg_options, force_stance: force_stance)
       end
 
-      # Returns a copy of the spell's bonus formulas hash.
+      # Returns a copy of the spell's bonus modifier hash.
       #
-      # Bonus keys are spell attribute types (e.g., 'bolt-as', 'physical-ds', 'elemental-cs').
-      # Values are formula strings evaluated at runtime. Used by method_missing for dynamic
-      # bonus accessors like {#bolt_as} and {#physical_ds}.
+      # Bonus modifiers are spell-specific effects stored in the XML (e.g., bolt AS,
+      # elemental CS). The hash keys are modifier types (as strings with dashes, e.g.
+      # "bolt-as", "elemental-cs") and values are formulas as strings that reference
+      # character skills and attributes.
       #
-      # @return [Hash{String => String}] a copy of the bonus formulas
+      # @return [Hash] a copy of the @bonus hash
       # @api private
       def _bonus
         @bonus.dup
       end
 
-      # Returns a copy of the spell's cost formulas hash.
+      # Returns a copy of the spell's cost hash.
       #
-      # Cost keys are resource types (e.g., 'mana', 'spirit', 'stamina'). Values are hashes
-      # mapping cast-type ('self', 'target') to formula strings. Used by method_missing for
-      # dynamic cost accessors like {#mana_cost} and {#mana_cost_formula}.
+      # Cost hash structure: {cost_type => {'self' => formula, 'target' => formula}}.
+      # Cost types include "mana", "spirit", and "stamina". Some spells have separate
+      # costs for self-cast vs. target cast; missing target costs default to self costs.
       #
-      # @return [Hash{String => Hash{String => String}}] a copy of the cost formulas
+      # @return [Hash] a copy of the @cost hash
       # @api private
       def _cost
         @cost.dup
       end
 
-      # Provides dynamic accessors for spell bonuses and costs based on XML data.
+      # Dynamically delegates spell bonus and cost lookups to the bonus/cost hashes.
       #
-      # Supports three categories of dynamic methods:
+      # Handles method calls of the form:
+      # - `spell.bonus_type` → evaluates the bonus formula for bonus_type
+      # - `spell.bonus_type_formula` → returns the bonus formula as a string
+      # - `spell.cost_type_cost(options)` → evaluates the cost formula
+      # - `spell.cost_type_cost_formula(options)` → returns the cost formula string
       #
-      # 1. **Bonus accessors** (e.g., `bolt_as`, `physical_ds`):
-      #    - Method name keys map to hyphens (e.g., `bolt_as` → `bolt-as`).
-      #    - Without `_formula` suffix: evaluates the formula and returns integer result.
-      #    - With `_formula` suffix: returns the formula string as-is.
-      #    - Returns 0 if the bonus key is not found.
+      # Bonus/cost types use underscores in method names but dashes in the XML
+      # (e.g., `bolt_as` maps to "bolt-as" key). Raises NoMethodError if the method
+      # name does not match a known bonus or cost type.
       #
-      # 2. **Cost accessors** (e.g., `mana_cost`, `spirit_cost`):
-      #    - Method name keys map to cost type with hyphens removed (e.g., `mana_cost` → `mana`).
-      #    - Without `_formula` suffix: evaluates the formula with options and returns integer.
-      #    - With `_formula` suffix: returns the formula string.
-      #    - Handles :caster, :target, and :multicast options to select and rewrite formulas.
-      #    - For mana costs, adds 5 if spell 597 (Rapid Fire Penalty) is active.
-      #    - Returns 0 if the cost key is not found or formula is nil.
-      #
-      # 3. **Unknown methods** raise NoMethodError with the method name.
-      #
-      # Formula evaluation substitutes skill references (Spells.minorelemental, Skills.magicitemuse)
-      # with runtime values, including SpellRanks lookups for non-self casters.
-      #
-      # @param args [Array] method name and arguments; args[0] is the method name, args[1] is options hash (for costs)
-      # @return [Integer, String, nil] evaluated result (integer or formula string) or 0 if key not found
+      # @param args [Array] method name and optional arguments
+      # @return [Integer] evaluated cost or bonus value, or [String] if _formula variant
       # @example
-      #   spell.bolt_as           #=> 10 (evaluated)
-      # @example
-      #   spell.bolt_as_formula   #=> "Spells.wizard + 5"
-      # @example
-      #   spell.mana_cost(caster: "Bob")  #=> 50 (evaluated for Bob's skills)
+      #   Spell[1701].mana_cost #=> 11
+      #   Spell[1701].mana_cost_formula #=> "9 + (Spells.majorspiritual / 2)"
+      #   Spell[1721].bolt_as #=> 42
+      # @raise [NoMethodError] if method name does not match a bonus or cost type
       # @api private
       def method_missing(*args)
         if @@bonus_list.include?(args[0].to_s.gsub('_', '-'))
@@ -1337,133 +1336,131 @@ module Lich
 
       # Returns the human-readable name of this spell's circle.
       #
-      # @return [String] the circle name (e.g., "Minor Spiritual", "Major Elemental", "Wizard")
+      # @return [String] circle name (e.g. "Minor Spiritual", "Major Elemental", "Wizard")
       # @example
-      #   Spell[505].circle_name  #=> "Minor Spiritual"
+      #   Spell[1701].circle_name #=> "Major Spiritual"
       # @see Spells.get_circle_name
       def circle_name
         Spells.get_circle_name(@circle)
       end
 
-      # Tests whether this spell is cleared (removed) when the character dies.
+      # Checks if this spell is cleared when the character dies.
       #
-      # The inverse of {#persist_on_death}; returns true if the spell does NOT persist across death.
+      # Returns the opposite of @persist_on_death: spells that do not persist through
+      # death are cleared on death.
       #
-      # @return [Boolean] true if the spell is cleared on death, false if it persists
-      # @see Spell#persist_on_death
+      # @return [Boolean] true if the spell should be cleared on death
       def clear_on_death
         !@persist_on_death
       end
 
       # for backwards compatiblity
-      def duration;      self.time_per_formula;            end
-      # Returns the mana cost formula for this spell (backward compatibility alias).
+      def duration; self.time_per_formula; end
+      # Returns the mana cost formula (backward-compatible alias for {#mana_cost_formula}).
       #
       # @return [String] the mana cost formula, or '0' if not defined
-      # @deprecated Use {#mana_cost_formula} instead
-      def cost;          self.mana_cost_formula    || '0'; end
-      # Returns the mana cost formula for this spell (backward compatibility alias).
+      # @deprecated Use {#mana_cost} or {#mana_cost_formula} instead
+      def cost; self.mana_cost_formula || '0'; end
+      # Returns the mana cost formula (backward-compatible camelCase alias).
       #
       # @return [String] the mana cost formula, or '0' if not defined
-      # @deprecated Use {#mana_cost_formula} instead
-      def manaCost;      self.mana_cost_formula    || '0'; end
-      # Returns the spirit cost formula for this spell (backward compatibility alias).
+      # @deprecated Use {#mana_cost} or {#mana_cost_formula} instead
+      def manaCost; self.mana_cost_formula || '0'; end
+      # Returns the spirit cost formula (backward-compatible camelCase alias).
       #
       # @return [String] the spirit cost formula, or '0' if not defined
-      # @deprecated Use {#spirit_cost_formula} instead
-      def spiritCost;    self.spirit_cost_formula  || '0'; end
-      # Returns the stamina cost formula for this spell (backward compatibility alias).
+      # @deprecated Use {#spirit_cost} or {#spirit_cost_formula} instead
+      def spiritCost; self.spirit_cost_formula || '0'; end
+      # Returns the stamina cost formula (backward-compatible camelCase alias).
       #
       # @return [String] the stamina cost formula, or '0' if not defined
-      # @deprecated Use {#stamina_cost_formula} instead
-      def staminaCost;   self.stamina_cost_formula || '0'; end
-      # Returns the spell's bolt attack strength formula (backward compatibility alias).
+      # @deprecated Use {#stamina_cost} or {#stamina_cost_formula} instead
+      def staminaCost; self.stamina_cost_formula || '0'; end
+      # Returns the spell's bolt attack strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#bolt_as_formula} instead
-      def boltAS;        self.bolt_as_formula;             end
-      # Returns the spell's physical attack strength formula (backward compatibility alias).
+      # @return [String] the bolt AS formula
+      # @deprecated Use {#bolt_as} or {#bolt_as_formula} instead
+      def boltAS; self.bolt_as_formula; end
+      # Returns the spell's physical attack strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#physical_as_formula} instead
-      def physicalAS;    self.physical_as_formula;         end
-      # Returns the spell's bolt defense strength formula (backward compatibility alias).
+      # @return [String] the physical AS formula
+      # @deprecated Use {#physical_as} or {#physical_as_formula} instead
+      def physicalAS; self.physical_as_formula; end
+      # Returns the spell's bolt defense strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#bolt_ds_formula} instead
-      def boltDS;        self.bolt_ds_formula;             end
-      # Returns the spell's physical defense strength formula (backward compatibility alias).
+      # @return [String] the bolt DS formula
+      # @deprecated Use {#bolt_ds} or {#bolt_ds_formula} instead
+      def boltDS; self.bolt_ds_formula; end
+      # Returns the spell's physical defense strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#physical_ds_formula} instead
-      def physicalDS;    self.physical_ds_formula;         end
-      # Returns the spell's elemental cast strength formula (backward compatibility alias).
+      # @return [String] the physical DS formula
+      # @deprecated Use {#physical_ds} or {#physical_ds_formula} instead
+      def physicalDS; self.physical_ds_formula; end
+      # Returns the spell's elemental cast strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#elemental_cs_formula} instead
-      def elementalCS;   self.elemental_cs_formula;        end
-      # Returns the spell's mental cast strength formula (backward compatibility alias).
+      # @return [String] the elemental CS formula
+      # @deprecated Use {#elemental_cs} or {#elemental_cs_formula} instead
+      def elementalCS; self.elemental_cs_formula; end
+      # Returns the spell's mental cast strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#mental_cs_formula} instead
-      def mentalCS;      self.mental_cs_formula;           end
-      # Returns the spell's spirit cast strength formula (backward compatibility alias).
+      # @return [String] the mental CS formula
+      # @deprecated Use {#mental_cs} or {#mental_cs_formula} instead
+      def mentalCS; self.mental_cs_formula; end
+      # Returns the spell's spirit cast strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#spirit_cs_formula} instead
-      def spiritCS;      self.spirit_cs_formula;           end
-      # Returns the spell's sorcerer cast strength formula (backward compatibility alias).
+      # @return [String] the spirit CS formula
+      # @deprecated Use {#spirit_cs} or {#spirit_cs_formula} instead
+      def spiritCS; self.spirit_cs_formula; end
+      # Returns the spell's sorcerer cast strength bonus formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#sorcerer_cs_formula} instead
-      def sorcererCS;    self.sorcerer_cs_formula;         end
-      # Returns the spell's elemental trivial difficulty formula (backward compatibility alias).
+      # @return [String] the sorcerer CS formula
+      # @deprecated Use {#sorcerer_cs} or {#sorcerer_cs_formula} instead
+      def sorcererCS; self.sorcerer_cs_formula; end
+      # Returns the spell's elemental target defense formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#elemental_td_formula} instead
-      def elementalTD;   self.elemental_td_formula;        end
-      # Returns the spell's mental trivial difficulty formula (backward compatibility alias).
+      # @return [String] the elemental TD formula
+      # @deprecated Use {#elemental_td} or {#elemental_td_formula} instead
+      def elementalTD; self.elemental_td_formula; end
+      # Returns the spell's mental target defense formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#mental_td_formula} instead
-      def mentalTD;      self.mental_td_formula;           end
-      # Returns the spell's spirit trivial difficulty formula (backward compatibility alias).
+      # @return [String] the mental TD formula
+      # @deprecated Use {#mental_td} or {#mental_td_formula} instead
+      def mentalTD; self.mental_td_formula; end
+      # Returns the spell's spirit target defense formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#spirit_td_formula} instead
-      def spiritTD;      self.spirit_td_formula;           end
-      # Returns the spell's sorcerer trivial difficulty formula (backward compatibility alias).
+      # @return [String] the spirit TD formula
+      # @deprecated Use {#spirit_td} or {#spirit_td_formula} instead
+      def spiritTD; self.spirit_td_formula; end
+      # Returns the spell's sorcerer target defense formula (backward-compatible alias).
       #
-      # @return [String] the formula, or nil if not defined
-      # @deprecated Use {#sorcerer_td_formula} instead
-      def sorcererTD;    self.sorcerer_td_formula;         end
-      # Returns this spell's custom cast procedure (backward compatibility alias).
+      # @return [String] the sorcerer TD formula
+      # @deprecated Use {#sorcerer_td} or {#sorcerer_td_formula} instead
+      def sorcererTD; self.sorcerer_td_formula; end
+      # Returns the spell's custom cast procedure (backward-compatible alias).
       #
-      # @return [String, nil] the cast-proc XML text, or nil if not defined
-      # @deprecated Use the {#cast_proc} reader instead
-      def castProc;      @cast_proc;                       end
-      # Tests whether this spell stacks when recast (backward compatibility alias).
+      # @return [String, nil] the cast-proc code block, or nil if not defined
+      # @deprecated Use {#cast_proc} instead
+      def castProc; @cast_proc; end
+      # Checks if this spell stacks (backward-compatible alias for {#stackable?}).
       #
-      # @return [Boolean] true if the spell stacks
+      # @return [Boolean] true if the spell is stackable
       # @deprecated Use {#stackable?} instead
-      def stacks;        self.stackable?                   end
-      # Returns the command string to cast this spell (backward compatibility alias).
-      #
-      # Always returns nil; cast commands are generated dynamically by {#cast}.
+      def stacks; self.stackable? end
+      # Returns nil (deprecated method, included for backward compatibility).
       #
       # @return [nil]
-      # @deprecated Legacy API; use {#cast} directly instead
-      def command;       nil;                              end
-      # Returns the human-readable circle name (backward compatibility alias).
+      # @deprecated This method is not used in Lich5
+      def command; nil; end
+      # Returns the human-readable name of this spell's circle (backward-compatible alias).
       #
-      # @return [String] the circle name
+      # @return [String] circle name (e.g. "Minor Spiritual", "Major Elemental")
       # @deprecated Use {#circle_name} instead
-      def circlename;    self.circle_name;                 end
-      # Tests whether this spell is self-cast only (backward compatibility alias).
+      def circlename; self.circle_name; end
+      # Checks if this spell is self-only or restricted (not available to all).
       #
-      # @return [Boolean] true if spell availability is not 'all'
+      # @return [Boolean] true if availability is not 'all'
       # @deprecated Use {#available?} instead
-      def selfonly;      @availability != 'all';           end
+      def selfonly; @availability != 'all'; end
     end # class
   end # mod
 end # mod

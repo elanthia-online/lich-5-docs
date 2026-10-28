@@ -17,7 +17,10 @@
 #     with no `exist` id (consumed separately by DRRoom; not used here).
 #   * the `assess` combat stream (`<d cmd='look #NNN'>A jeol moradu</d>
 #     (1: ...) is behind you at melee range`) - the only feed that ties an
-#     `exist` id to a name, plus assess number, relation and range.
+#     `exist` id to a name, plus assess number, relation and range. The
+#     Saga-identity stream also links the name inside the `<d>` tag
+#     (`<d cmd='look #NNN'><pushBold/>A <a exist="NNN" noun="moradu">jeol
+#     moradu</a><popBold/></d>`), which supplies the server's noun.
 #
 # So {CreatureInstance}s are created id-first from `<crtrStatus>` (flags, no
 # name) and have their name/position/range backfilled from `assess` via
@@ -29,14 +32,10 @@
 # =============================================================================
 
 require_relative '../common/creature/creature_base'
+require_relative '../common/creature/creature_facade'
 require_relative 'drinfomon/drvariables' # DR_BALANCE_VALUES (assess balance parsing)
 
-# @api private
 module Lich
-  # Namespace for DragonRealms creature tracking, built on the shared
-  # {Lich::Common::CreatureBase} mixin. Runtime creatures are registered from
-  # `<crtrStatus>` elements and enriched with name, range, balance, and combat
-  # data from the `assess` stream.
   module DragonRealms
     # A single DragonRealms creature, keyed by its server `exist` id.
     #
@@ -49,8 +48,9 @@ module Lich
 
       # @return [Integer] server creature id.
       attr_reader :id
-      # @return [String, nil] attack noun (the trailing word of the name),
-      #   derived whenever a name is set; nil until then.
+      # @return [String, nil] attack noun: the server's noun (a link's `noun=`)
+      #   when the stream supplies one, otherwise the trailing word of the name;
+      #   set whenever a name is set, nil until then.
       attr_reader :noun
       # @return [String, nil] display name; nil until a room-objs backfill or an
       #   `assess` tie-in supplies one.
@@ -95,6 +95,7 @@ module Lich
       def initialize(id, noun, name)
         @id = id.to_i
         @noun = noun
+        @noun_from_server = server_noun?(noun)
         @name = name
         @created_at = Time.now
         @assess_number = nil
@@ -121,14 +122,23 @@ module Lich
       # DragonRealms learns which name/relation/range belongs to that id. The
       # `assess` feed capitalizes the subject ("A jeol moradu"); the name is
       # downcased to match the room-objs vocabulary DragonRealms scripts expect.
+      # The noun is the entry's `:noun` (the server noun from the subject's
+      # `<a exist>` link, Saga-identity stream) when present, so a long name
+      # such as "a sleek golden panther with enigmatic violet eyes" keeps noun
+      # "panther"; link-less (legacy) entries derive it from the name.
+      # A server noun keeps the server's case and is not downcased with the
+      # name, so it matches the noun the linked room-objs path stores (a link
+      # `noun="Warden"` stays "Warden"); a derived noun comes from the
+      # downcased name and is lowercase.
       #
       # @param entry [Hash] an entry from `XMLData.parse_assess_line`, with keys
-      #   `:name`, `:number`, `:status`, `:relation`, `:range`, `:target_id`.
+      #   `:name`, `:noun`, `:number`, `:status`, `:relation`, `:range`, `:target_id`.
       # @return [void]
       def feed_assess(entry)
         if entry[:name]
           @name = entry[:name].to_s.downcase
-          @noun = derive_noun(@name)
+          @noun = resolve_noun(entry[:noun], @name)
+          @noun_from_server = server_noun?(entry[:noun])
           # Authoritative from here on: subsequent room-objs backfills no-op.
           @name_from_assess = true
         end
@@ -143,25 +153,36 @@ module Lich
         @enriched_at = Time.now
       end
 
-      # Applies a name learned from the room-objs stream, and derives the attack
-      # noun from it.
+      # Applies a name learned from the room-objs stream, with its attack noun.
       #
       # Two producers call this, both via the XML parser: the stream-order
       # backfill that pairs the Nth bold room-objs name with the Nth
-      # `<crtrStatus>` id, and (future-proofing) a GemStone-style
-      # `<a exist noun>` room-objs tag if DragonRealms ever emits one. The
-      # `assess` stream is the authoritative id<->name tie, so once #feed_assess
-      # has named the creature this is a no-op. A nil name (e.g. an out-of-range
-      # positional lookup, the count-guard) is ignored, leaving any existing name
-      # intact.
+      # `<crtrStatus>` id (legacy dialect), and the linked room-objs creature
+      # (`<a exist noun>`) of the Saga-identity dialect, named with the article
+      # that precedes the link ("a jeol moradu"). The linked creature passes the
+      # link's `noun=`, which is the server's noun and wins: it need not be the
+      # last word of the name ("a sleek golden panther with enigmatic violet
+      # eyes" has noun "panther"). Without one (legacy) the noun is derived from
+      # the name's last word. The
+      # `assess` stream is the authoritative id<->name tie over the legacy
+      # positional pairing, so once #feed_assess has named the creature a name
+      # without a link noun is ignored. A linked name is tied to its id by the
+      # link itself, so it replaces an assess name: server ids are recycled,
+      # and an id reused for another creature must not keep the old creature's
+      # assessed name. A nil name (e.g. an out-of-range positional lookup, the
+      # count-guard) is ignored, leaving any existing name intact.
       #
       # @param name [String, nil] display name from the room-objs stream.
+      # @param noun [String, nil] the server's noun (the link's `noun=`); nil or
+      #   blank derives it from the name. Surrounding whitespace is trimmed.
       # @return [void]
-      def apply_room_name(name)
-        return if name.nil? || @name_from_assess
+      def apply_room_name(name, noun = nil)
+        return if name.nil?
+        return if @name_from_assess && !server_noun?(noun)
 
         @name = name
-        @noun = derive_noun(name)
+        @noun = resolve_noun(noun, name)
+        @noun_from_server = server_noun?(noun)
       end
 
       # Whether this creature should be considered attackable.
@@ -226,6 +247,36 @@ module Lich
         condition?('friendly')
       end
 
+      # Leading article dropped before comparing a configured entry with {#name}.
+      NAME_ARTICLE = /\A(?:an?|the|some)\s+/i.freeze
+
+      # Whether a configured entry, such as an `ignored_npcs` item, names this
+      # creature. Case-insensitive, and a leading article on the entry is
+      # ignored. An entry matches when it is:
+      # - the game's noun ("leopard"), from the stream's creature link;
+      # - the whole name ("spectral white leopard with luminous blue eyes");
+      # - a phrase of two or more words in the name ("spectral white leopard").
+      #
+      # A single word matches the game's noun only, never another word of the
+      # name, so "eyes" does not name every creature "with ... eyes". A noun
+      # Lich derived from the name (legacy stream, no link) is not used: it is
+      # the name's last word, which can be a word of a "with ..." clause.
+      # DRRoom.unignored_npcs still drops plain nouns by its own noun rule.
+      #
+      # @param entry [String, nil]
+      # @return [Boolean]
+      def matches?(entry)
+        wanted = entry.to_s.strip.downcase.squeeze(' ').sub(NAME_ARTICLE, '')
+        return false if wanted.empty?
+        return true if @noun_from_server && @noun.downcase == wanted
+
+        full = @name.to_s.strip.downcase.squeeze(' ').sub(NAME_ARTICLE, '')
+        return false if full.empty?
+        return true if full == wanted
+
+        wanted.include?(' ') && " #{full} ".include?(" #{wanted} ")
+      end
+
       # Matches a DR_BALANCE_VALUES descriptor followed by the balance word in an
       # assess parenthetical, e.g. "solidly balanced", "off balance", and the
       # worst levels' "imbalanced" phrasing ("extremely imbalanced"). Built lazily
@@ -265,6 +316,25 @@ module Lich
         [balance, conditions]
       end
 
+      # The server's noun when one is supplied (a link's `noun=`), trimmed;
+      # otherwise the noun derived from the name (legacy, link-less streams).
+      #
+      # @param noun [String, nil] the server noun; nil or blank means none.
+      # @param name [String, nil] the display name to derive from.
+      # @return [String, nil]
+      def resolve_noun(noun, name)
+        server_noun?(noun) ? noun.strip : derive_noun(name)
+      end
+
+      # Whether the stream supplied a noun (a link's `noun=`), as opposed to
+      # Lich deriving one from the name.
+      #
+      # @param noun [String, nil]
+      # @return [Boolean]
+      def server_noun?(noun)
+        !noun.to_s.strip.empty?
+      end
+
       # Extracts the attack noun (trailing word) from a display name, matching
       # DragonRealms' end-anchored creature-name convention (see
       # DRDefsPattern::CREATURE_NAME) so `noun` is a drop-in for `attack <noun>`
@@ -281,20 +351,17 @@ module Lich
 
     # Public Creature API for DragonRealms runtime creature tracking.
     #
-    # Mirrors `Lich::Gemstone::Creature`: registry/roster/query operations
-    # delegate to {CreatureInstance} (which carries the shared
-    # {Lich::Common::CreatureBase} class methods), plus the two DragonRealms feed
-    # entry points {sync} and {feed_assess} used by the XML parser.
+    # The registry/roster/query surface shared with `Lich::Gemstone::Creature`
+    # comes from {Lich::Common::CreatureFacade}, delegating to {CreatureInstance}
+    # (which carries the shared {Lich::Common::CreatureBase} class methods).
+    # DragonRealms adds the two feed entry points the XML parser uses: {sync}
+    # (id-first <crtrStatus>) and {feed_assess}.
     module Creature
-      # Toggles live echo of status, flag, and registration changes.
-      #
-      # @param level [Boolean, Symbol] false disables debug output; true or
-      #   `:changes` reports changes only; `:all` reports every `<crtrStatus>`
-      #   flag; `:active` reports only active `<crtrStatus>` flags.
-      # @return [Boolean, Symbol] the configured debug value.
-      def self.debug_on(level = :changes)
-        $creature_debug = level
-      end
+      extend Lich::Common::CreatureFacade
+
+      # @return [Class] the registry class the shared facade delegates to.
+      def self.instance_class = CreatureInstance
+      private_class_method :instance_class
 
       # Applies a `<crtrStatus>` snapshot, registering the creature id-first if
       # it has not been seen yet.
@@ -302,10 +369,12 @@ module Lich
       # This is the automatic, name-less DragonRealms feed: it produces an
       # id-keyed hostile roster with flags before any `assess` has run.
       #
-      # Name-less on purpose: the stream-order room-objs name is applied
-      # separately via {CreatureInstance#apply_room_name}, batched at the prompt
-      # once the parser has confirmed the bold-name and crtrStatus counts match
-      # (see lib/common/xmlparser.rb). assess later backfills authoritatively.
+      # Name-less on purpose: the room-objs name is applied separately via
+      # {CreatureInstance#apply_room_name}, either from the linked creature
+      # (Saga-identity dialect, registered before this batch arrives) or, in the
+      # legacy dialect, batched at the prompt once the parser has confirmed the
+      # bold-name and crtrStatus counts match (see lib/common/xmlparser.rb).
+      # assess later backfills authoritatively.
       #
       # @param id [Integer, String] server creature id (the tag's `exist`).
       # @param flags [Hash{String=>String}] tag attributes excluding `exist`.
@@ -332,87 +401,6 @@ module Lich
 
         instance.feed_assess(entry)
         instance
-      end
-
-      # Lookup creature instance by id.
-      #
-      # @param id [Integer, String] server creature id.
-      # @return [CreatureInstance, nil]
-      def self.[](id)
-        CreatureInstance[id]
-      end
-
-      # Returns attackable hostile creatures currently in the room.
-      #
-      # @param filters [Array<String, Symbol>] optional ANDed status/classification filters.
-      # @return [Array<CreatureInstance>]
-      def self.targets(*filters)
-        CreatureInstance.targets(*filters)
-      end
-
-      # Returns all tracked creatures currently in the room.
-      #
-      # @param filters [Array<String, Symbol>] optional ANDed status/classification filters.
-      # @return [Array<CreatureInstance>]
-      def self.in_room(*filters)
-        CreatureInstance.in_room(*filters)
-      end
-
-      # Empties the current room roster.
-      #
-      # @return [void]
-      def self.clear_room
-        CreatureInstance.clear_room
-      end
-
-      # Registers a creature.
-      #
-      # @param name [String, nil] display name (may be nil for an id-first feed).
-      # @param id [Integer, String] server creature id.
-      # @param noun [String, nil] noun, when available.
-      # @return [CreatureInstance, nil]
-      def self.register(name, id, noun = nil)
-        CreatureInstance.register(name, id, noun)
-      end
-
-      # Configures the registry.
-      #
-      # @return [void]
-      def self.configure(**options)
-        CreatureInstance.configure(**options)
-      end
-
-      # @return [Hash] registry statistics.
-      def self.stats
-        {
-          instances: CreatureInstance.size,
-          max_size: CreatureInstance.max_size,
-          auto_register: CreatureInstance.auto_register?
-        }
-      end
-
-      # Clears every instance and the room roster.
-      #
-      # @return [void]
-      def self.clear
-        CreatureInstance.clear
-      end
-
-      # Removes creatures older than the given age (in seconds).
-      #
-      # Positional to match {CreatureInstance#cleanup_old} (supplied by
-      # {Lich::Common::CreatureBase}); a keyword-only signature would raise
-      # ArgumentError against the positional base method.
-      #
-      # @param max_age_seconds [Integer] age cutoff in seconds.
-      # @return [Integer] number of instances removed.
-      def self.cleanup_old(max_age_seconds = 600)
-        CreatureInstance.cleanup_old(max_age_seconds)
-      end
-
-      # @return [Array<CreatureInstance>] every registered instance.
-      def self.all
-        CreatureInstance.all
       end
     end
   end

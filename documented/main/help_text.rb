@@ -2,13 +2,14 @@
 
 # Namespace for the Lich 5 scripting engine.
 module Lich
-  # Namespace for the Lich launcher and CLI.
+  # Namespace for Lich's command-line interface and startup logic.
   module Main
     # Renders user-facing CLI help text by topic.
     module HelpText
-      # Valid help topic names.
+      # Valid help topic names available to render.
       #
-      # @api private
+      # @see .render
+      # @see .normalize_topic
       HELP_TOPICS = %w[login accounts automation paths advanced].freeze
 
       # Returns formatted help text for the requested topic.
@@ -65,7 +66,9 @@ module Lich
 
       # Returns the default help text shown when no topic is specified.
       #
-      # @return [String] formatted help output with usage examples and available topics
+      # @return [String] formatted help text listing common commands and available topics
+      # @example
+      #   Lich::Main::HelpText.render #=> "Lich 5\nUsage:\n  lich [command] [options]\n..."
       def self.default_help
         <<~TEXT
           Lich 5
@@ -91,9 +94,13 @@ module Lich
         TEXT
       end
 
-      # Returns help text for the login topic.
+      # Returns formatted help text for the login topic.
       #
-      # @return [String] formatted help output covering login options, game selection, frontend selection, and advanced launch modes
+      # Covers login options, game selection, frontend selection, advanced launch options, and examples.
+      #
+      # @return [String] formatted help text for login
+      # @example
+      #   Lich::Main::HelpText.render("login") #=> "Lich Help: login\n..."
       def self.login_help
         <<~TEXT
           Lich Help: login
@@ -146,9 +153,13 @@ module Lich
         TEXT
       end
 
-      # Returns help text for the accounts topic.
+      # Returns formatted help text for the accounts topic.
       #
-      # @return [String] formatted help output covering account management commands, encryption modes, and game codes
+      # Covers account management commands, encryption modes, game codes, and examples.
+      #
+      # @return [String] formatted help text for accounts
+      # @example
+      #   Lich::Main::HelpText.render("accounts") #=> "Lich Help: accounts\n..."
       def self.accounts_help
         <<~TEXT
           Lich Help: accounts
@@ -157,7 +168,7 @@ module Lich
             lich [account command] [options]
 
           Commands:
-            --add-account ACCOUNT PASSWORD
+            --add-account ACCOUNT PASSWORD [--frontend FRONTEND]
             --refresh-characters ACCOUNT [--frontend FRONTEND]
             --add-character ACCOUNT CHAR_NAME --game-code CODE [--frontend FRONTEND]
             --change-account-password ACCOUNT NEWPASSWORD
@@ -187,9 +198,13 @@ module Lich
         TEXT
       end
 
-      # Returns help text for the automation topic.
+      # Returns formatted help text for the automation topic.
       #
-      # @return [String] formatted help output covering active session discovery and configuration
+      # Covers live session discovery and coordination through shared directories.
+      #
+      # @return [String] formatted help text for automation
+      # @example
+      #   Lich::Main::HelpText.render("automation") #=> "Lich Help: automation\n..."
       def self.automation_help
         <<~TEXT
           Lich Help: automation
@@ -221,9 +236,13 @@ module Lich
         TEXT
       end
 
-      # Returns help text for the paths topic.
+      # Returns formatted help text for the paths topic.
       #
-      # @return [String] formatted help output covering directory and file path configuration options
+      # Covers command-line options for customizing Lich's directory layout.
+      #
+      # @return [String] formatted help text for paths
+      # @example
+      #   Lich::Main::HelpText.render("paths") #=> "Lich Help: paths\n..."
       def self.paths_help
         <<~TEXT
           Lich Help: paths
@@ -251,9 +270,13 @@ module Lich
         TEXT
       end
 
-      # Returns help text for the advanced topic.
+      # Returns formatted help text for the advanced topic.
       #
-      # @return [String] formatted help output covering compatibility options, GUI control, and network binding
+      # Covers compatibility options, GUI behavior, frontend handshake manipulation, address binding, and detachable clients.
+      #
+      # @return [String] formatted help text for advanced
+      # @example
+      #   Lich::Main::HelpText.render("advanced") #=> "Lich Help: advanced\n..."
       def self.advanced_help
         <<~TEXT
           Lich Help: advanced
@@ -264,8 +287,12 @@ module Lich
             --without-frontend
             --detachable-client=PORT|auto|HOST:PORT
             --pipe
+            --sentinel
+            --frontend-caps=LIST
             --frontend=NAME
             --frontend-command=CMD
+            --fe-version=VALUE
+            --keep-fe-string
             --game=HOST:PORT
             --bind-address=HOST
 
@@ -273,7 +300,29 @@ module Lich
             The GTK GUI starts by default. To suppress it, pass --no-gui or --no-gtk,
             including when using --headless.
             Prefer --headless PORT or --headless auto for new headless launches.
+            --fe-version=VALUE reports the frontend version (e.g. 1.0.1.28) in the
+            /VERSION: field of the game handshake Lich builds: --without-frontend, and
+            the handshake that replaces a proxied frontend's own (below). Wizard, Avalon
+            and Frostbite always send the default. VALUE: 1-32 of A-Z a-z 0-9 . _ + -
+            DragonRealms currently needs the default /VERSION:1.0.1.28 for its full XML
+            stream; another value may lose it.
+            A frontend that connects through Lich and sends its own /FE: ... /XML
+            handshake (Genie, Warlock, Wrayth, Frostbite without --frostbite) has it
+            replaced with Lich's, so every session gets the same game stream; Lich
+            reshapes that stream for the frontend. Saga's own /P:SAGA handshake is
+            replaced too.
+            --keep-fe-string forwards the frontend's own handshake instead, for that
+            launch. To keep it for every launch: ;e Lich.keep_fe_string = true
+            (;e Lich.keep_fe_string = false undoes it).
             --pipe uses stdin/stdout as the client transport instead of a front-end socket.
+            With -g HOST:PORT, name the client reading it with a frontend flag (--frontend=NAME, --stormfront);
+            without one the frontend is unknown and script output is not XML-escaped.
+            --sentinel prefixes each line forwarded from the game with the origin marker
+            (0x1F) for a client that strips it, whichever frontend it identifies as.
+            --frontend-caps=LIST names the DragonRealms rich-stream features every attached
+            client renders itself (room_element, game_links, double_bold; comma-separated),
+            in place of the frontend's defaults. Lich rewrites the rest to the legacy
+            stream. A client's own SET_FRONTEND_CAPS line takes precedence.
             --bind-address=HOST sets the local address Lich binds its listen sockets to
             (the frontend, --game proxy, and detachable-client listeners).
             Defaults to 127.0.0.1.

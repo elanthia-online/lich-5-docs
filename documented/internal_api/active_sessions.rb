@@ -5,17 +5,15 @@ require 'json'
 require 'securerandom'
 require 'tmpdir'
 
+require_relative '../common/sharing_violation_retry'
+
 require_relative 'active_sessions/registry'
 require_relative 'active_sessions/server'
 require_relative 'active_sessions/client'
 require_relative 'active_sessions/lifecycle'
 
-# Root namespace for the Lich game scripting engine.
-#
-# @api private
 module Lich
-  # Namespace for internal APIs used by the Lich scripting engine.
-  #
+  # Namespace for internal Lich APIs not intended for direct use from .lic scripts.
   # @api private
   module InternalAPI
     # Cross-process local service that tracks currently active Lich sessions.
@@ -67,6 +65,16 @@ module Lich
       #
       # @return [String]
       LOCK_FILENAME = 'lich-active-sessions.lock'
+
+      # Backoff used when Windows temporarily denies rename or delete because
+      # another process still has the discovery file open. The ownership flock
+      # remains held throughout these bounded retries, so no successor can
+      # validly publish a competing generation in the meantime.
+      #
+      # @return [Array<Float>]
+      DISCOVERY_FILESYSTEM_RETRY_DELAYS = Lich::Common::SharingViolationRetry::DELAYS
+
+      extend Lich::Common::SharingViolationRetry
 
       @registry = nil
       @server = nil
@@ -265,6 +273,10 @@ module Lich
           @server&.stop
           @server = nil
           @registry = nil
+          # Keep the native flock through the ownership check and unlink. A
+          # successor can publish as soon as we release it; checking the pid
+          # before an unlocked unlink does not protect that new publication.
+          delete_discovery_if_owned if own_lock?
           release_ownership_lock
         end
         @service_client_mutex.synchronize do
@@ -272,7 +284,6 @@ module Lich
           @service_client_token = nil
           @service_client_port = nil
         end
-        delete_discovery_if_owned
       end
 
       # Returns a client configured from the current discovery record.
@@ -522,11 +533,46 @@ module Lich
         File.open(temp_path, File::WRONLY | File::CREAT | File::TRUNC, 0o600) do |file|
           file.write(JSON.dump(payload))
         end
-        File.rename(temp_path, discovery_path)
+        retry_discovery_filesystem_operation { File.rename(temp_path, discovery_path) }
       ensure
-        File.delete(temp_path) if defined?(temp_path) && File.exist?(temp_path)
+        cleanup_discovery_temp_file(temp_path) if defined?(temp_path)
       end
       private_class_method :write_discovery
+
+      # Best-effort removal for a publication temp file. Cleanup is retried for
+      # Windows sharing violations, but can never replace the publication error
+      # that caused the ensure path to run.
+      #
+      # @param temp_path [String]
+      # @return [void]
+      def self.cleanup_discovery_temp_file(temp_path)
+        return unless File.exist?(temp_path)
+
+        retry_sharing_violation do
+          File.delete(temp_path) if File.exist?(temp_path)
+        end
+      rescue StandardError => e
+        Lich.log("warning: ActiveSessions discovery temp cleanup failed: #{e.class}: #{e.message}") if Lich.respond_to?(:log)
+        nil
+      end
+      private_class_method :cleanup_discovery_temp_file
+
+      # Runs a discovery-file mutation with bounded retries for Windows sharing
+      # violations. The local ownership handle is checked before every attempt;
+      # callers retain the actual flock under the lifecycle mutex throughout.
+      #
+      # @yield the filesystem mutation to attempt
+      # @return [Object] the mutation result
+      # @raise [IOError] when the local discovery ownership handle is absent
+      # @raise [Errno::EACCES] when every bounded retry is exhausted
+      def self.retry_discovery_filesystem_operation
+        retry_sharing_violation do
+          raise IOError, 'ActiveSessions discovery ownership handle absent during filesystem operation' unless own_lock?
+
+          yield
+        end
+      end
+      private_class_method :retry_discovery_filesystem_operation
 
       # Deletes the discovery file only when the current process still owns it.
       #
@@ -538,17 +584,18 @@ module Lich
 
       # Deletes the discovery file only when it still belongs to the given owner.
       #
-      # Re-reads the file before deletion to avoid a race where another process
-      # has written a fresh discovery between the caller's initial read and this
-      # deletion attempt.
+      # The caller must retain the native ownership flock throughout this
+      # operation. The pid check alone cannot serialize publication and unlink.
       #
       # @param expected_owner_pid [Integer]
       # @return [void]
       def self.delete_discovery_if_owner(expected_owner_pid)
-        current = load_discovery
-        return unless current[:owner_pid].to_i == expected_owner_pid.to_i
+        retry_discovery_filesystem_operation do
+          current = load_discovery
+          return unless current[:owner_pid].to_i == expected_owner_pid.to_i
 
-        File.delete(discovery_path) if File.exist?(discovery_path)
+          File.delete(discovery_path) if File.exist?(discovery_path)
+        end
       rescue StandardError
         nil
       end

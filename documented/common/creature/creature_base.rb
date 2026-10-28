@@ -12,13 +12,14 @@
 #
 # Both games receive the same structured, id-keyed creature feed:
 #
-#   <crtrStatus exist="..." hostile="1" .../>
+#   <crtrStatus exist="357970513" health="260" maxhealth="260" challenging="1"/>
 #
 # a full snapshot of a creature's transient combat status and classification
 # flags. The flag vocabulary is identical across the two games (see
 # {CRTR_STATUS_FLAGS} and {CRTR_CLASSIFICATION_FLAGS}), so status/flag
-# reconciliation, the registry, the room roster and target filtering all live
-# here and are mixed into each game's concrete `CreatureInstance`.
+# reconciliation, exact server-health storage, the registry, the room roster
+# and target filtering all live here and are mixed into each game's concrete
+# `CreatureInstance`.
 #
 # Game-specific concerns stay out of this file:
 #   * GemStone: bestiary templates, UCS (Unarmed Combat System) tracking,
@@ -40,17 +41,22 @@
 #   end
 # =============================================================================
 
-# Namespace for the Lich 5 scripting engine and game-specific modules.
+# Namespace for the Lich 5 scripting engine, a runtime for automation and
+# scripting in GemStone IV and DragonRealms.
 #
-# Lich provides runtime support for player-authored .lic scripts executing
-# against GemStone IV and DragonRealms game servers.
+# Lich provides a unified scripting interface across both games, with game-agnostic
+# shared components ({Common}) and game-specific facades ({Gemstone}, {Dragonrealms}).
+#
+# @api private
 module Lich
-  # Namespace for game-agnostic shared behaviour (creature registry, map data,
-  # item tracking) mixed into game-specific implementations.
+  # Shared, game-agnostic runtime components mixed into both GemStone and
+  # DragonRealms implementations.
   #
-  # Code in this module targets both GemStone IV and DragonRealms without
-  # game-specific logic; game-specific rules live in the including classes
-  # (e.g., lib/gemstone/creature.rb, lib/dragonrealms/creature.rb).
+  # Includes the creature model ({CreatureBase}), map model ({MapBase}), and other
+  # cross-game utilities. Game-specific behaviour lives in {Lich::Gemstone} and
+  # {Lich::Dragonrealms}.
+  #
+  # @api private
   module Common
     # Shared creature behaviour mixed into each game's `CreatureInstance`.
     #
@@ -59,8 +65,8 @@ module Lich
     # includes {InstanceMethods} (status/flag tracking). The class must define a
     # `new(id, noun, name)` constructor, call {InstanceMethods#initialize_status_tracking}
     # from its own `initialize`, and expose a `valid_target?` predicate (used by
-    # {ClassMethods#targets}) plus a `created_at` reader (used by
-    # {ClassMethods#cleanup_old}).
+    # {ClassMethods#targets}). {InstanceMethods#initialize_status_tracking}
+    # stamps `last_seen_at`, which {ClassMethods#cleanup_old} ages against.
     module CreatureBase
       # Wires the shared behaviour into the including class, matching the
       # MapBase convention.
@@ -196,8 +202,13 @@ module Lich
         #   supplies an id before a name (DragonRealms `<crtrStatus>`).
         # @param id [Integer, String] server creature id.
         # @param noun [String, nil] noun from room XML, when available.
+        # Housekeeping also runs from here on a wall-clock throttle
+        # ({#housekeep}), so the registry stays bounded whether or not
+        # Combat::Tracker (off by default) ever calls {#cleanup_old}.
+        #
         # @return [Object, nil] the registered instance, or nil when
-        #   auto-registration is disabled or the registry is full.
+        #   auto-registration is disabled or the registry is full of creatures
+        #   in the current room.
         def register(name, id, noun = nil)
           # Record room presence first: the feed event that triggers this call
           # (a bolded room-object name or a <crtrStatus> tag) is itself proof the
@@ -208,20 +219,27 @@ module Lich
           entered_room = mark_in_room(id)
           return nil unless auto_register?
 
+          # Before the known-creature return: a session that only refreshes
+          # creatures it already knows must still sweep stale out-of-room ones.
+          housekeep
+
           existing = instances[id.to_i]
           if existing
+            existing.touch_seen
             respond "--- #{name} (#{id}): in room" if entered_room && $creature_debug
             return existing
           end
 
           if full?
-            # Progressively more aggressive: 120 minutes, then 15-minute steps.
-            [7200, 6300, 5400, 4500, 3600, 2700, 1800, 900].each do |age_threshold|
-              removed = cleanup_old(age_threshold)
-              respond "--- Auto-cleanup: removed #{removed} old creatures (threshold: #{age_threshold}s)" if removed > 0 && $creature_debug
-              break unless full?
+            # Housekeeping should keep this from ever happening; if it does,
+            # drop the single least-recently-seen creature that is not in the
+            # room. Only a room holding max_size creatures leaves nothing to
+            # evict.
+            evict_stalest
+            if full?
+              warn_full_once
+              return nil
             end
-            return nil if full? # Still full after every cleanup attempt.
           end
 
           instance = new(id, noun, name)
@@ -250,6 +268,11 @@ module Lich
         # @return [void]
         def clear_room
           count = room_roster.size
+          # Keep the outgoing roster as a shield: the parser rebuilds the new
+          # one a creature at a time, so a creature late in the refresh is
+          # briefly absent from the live roster. Housekeeping must not sweep
+          # it in that window (see {#sheltered_ids}).
+          @previous_room_ids = room_roster
           @current_room_ids = []
           respond "--- room: roster cleared (#{count} creature#{'s' unless count == 1})" if $creature_debug && count > 0
         end
@@ -274,6 +297,14 @@ module Lich
           instances[id.to_i]
         end
 
+        # Drops one instance from the registry (room roster untouched).
+        #
+        # @param id [Integer, String] server creature id.
+        # @return [Object, nil] the removed instance.
+        def forget(id)
+          instances.delete(id.to_i)
+        end
+
         # @return [Array<Object>] every registered instance.
         def all
           instances.values
@@ -285,32 +316,120 @@ module Lich
         def clear
           instances.clear
           clear_room
+          @previous_room_ids = []
         end
 
-        # Removes instances older than the given age.
+        # Removes instances not seen within the given age.
+        #
+        # Ages against `last_seen_at`, not creation time, so a creature that
+        # has been in a long fight is not discarded mid-fight and re-registered
+        # as a blank stranger. Creatures in the current or immediately previous
+        # room roster are never removed ({#sheltered_ids}).
         #
         # @param max_age_seconds [Integer] age cutoff in seconds.
         # @return [Integer] number of instances removed.
-        def cleanup_old(max_age_seconds = 600)
+        def cleanup_old(max_age_seconds = cleanup_max_age)
           cutoff = Time.now - max_age_seconds
-          removed = instances.select { |_id, instance| instance.created_at < cutoff }.size
-          instances.reject! { |_id, instance| instance.created_at < cutoff }
+          shelter = sheltered_ids
+          before = instances.size
+          instances.reject! { |id, instance| instance.last_seen_at < cutoff && !shelter.include?(id) }
+          before - instances.size
+        end
+
+        # Ids housekeeping must never evict: the live roster plus the roster
+        # that {#clear_room} just replaced. The previous roster covers the
+        # window in which the parser is still re-marking creatures from a
+        # fresh room refresh; it is superseded on the next {#clear_room}.
+        #
+        # @return [Array<Integer>]
+        def sheltered_ids
+          room_roster | (@previous_room_ids || [])
+        end
+
+        # Seconds between wall-clock housekeeping passes from {#register}.
+        HOUSEKEEPING_INTERVAL = 60
+
+        # Runs {#cleanup_old} at most once per {HOUSEKEEPING_INTERVAL}.
+        #
+        # Independent of Combat::Tracker, whose own periodic cleanup only runs
+        # when tracking is enabled (it is off by default) and only advances on
+        # combat text - which left the registry to fill up during travel and
+        # long non-tracked sessions.
+        #
+        # @return [Integer] number of instances removed (0 when throttled).
+        def housekeep
+          now = Time.now
+          return 0 if @last_housekeeping && now - @last_housekeeping < HOUSEKEEPING_INTERVAL
+
+          @last_housekeeping = now
+          removed = cleanup_old
+          respond "--- Housekeeping: removed #{removed} stale creatures (unseen > #{cleanup_max_age}s)" if removed > 0 && $creature_debug
           removed
+        end
+
+        # Evicts the least-recently-seen instance that is not in the room.
+        #
+        # The previous room's roster is a soft shelter here: it exists only
+        # to cover the mid-refresh window (see {#sheltered_ids}), so when the
+        # registry is full and nothing else is evictable, a previous-room
+        # creature goes before the newcomer is refused. Without that fallback
+        # a registry filled at the moment of a room change would refuse
+        # every creature in the new room until the next refresh. Only the
+        # live roster is untouchable.
+        #
+        # @return [Object, nil] the evicted instance, or nil when every
+        #   instance is in the current room.
+        def evict_stalest
+          previous = @previous_room_ids || []
+          candidates = instances.reject { |id, _| room_roster.include?(id) }
+          preferred = candidates.reject { |id, _| previous.include?(id) }
+          id, instance = (preferred.empty? ? candidates : preferred)
+                         .min_by { |_, candidate| candidate.last_seen_at }
+          return nil unless id
+
+          instances.delete(id)
+          respond "--- Registry full: evicted #{instance.name} (#{id})" if $creature_debug
+          instance
+        end
+
+        # Logs once per process that the registry is full of creatures in the
+        # current room.
+        #
+        # @return [void]
+        def warn_full_once
+          return if @warned_full
+
+          @warned_full = true
+          Lich.log full_warning if defined?(Lich) && Lich.respond_to?(:log)
+        end
+
+        # @return [String] the {#warn_full_once} message.
+        def full_warning
+          "#{name}: creature registry full (#{max_size}) with every entry in the current room; new creatures are not being tracked"
         end
 
         # Configures registry limits.
         #
-        # Every call resets omitted options to their defaults - max_size to 1000
-        # and auto_register to true - so calling this with no arguments restores
-        # all defaults. Facade callers (e.g. `Creature.configure(**options)`)
-        # should pass every option they mean to keep.
+        # Every call resets omitted options to their defaults - max_size to 1000,
+        # auto_register to true, cleanup_max_age to 600 - so calling this with no
+        # arguments restores all defaults. Facade callers (e.g.
+        # `Creature.configure(**options)`) should pass every option they mean
+        # to keep.
         #
         # @param max_size [Integer] maximum number of retained instances.
         # @param auto_register [Boolean] whether {#register} creates instances.
+        # @param cleanup_max_age [Integer] seconds a creature may go unseen
+        #   before housekeeping removes it.
         # @return [void]
-        def configure(max_size: 1000, auto_register: true)
+        def configure(max_size: 1000, auto_register: true, cleanup_max_age: 600)
           @max_size = max_size
           @auto_register = auto_register
+          @cleanup_max_age = cleanup_max_age
+        end
+
+        # @return [Integer] seconds unseen before housekeeping removes a creature (default 600).
+        def cleanup_max_age
+          @cleanup_max_age ||= 600
         end
 
         # @return [Boolean] whether auto-registration is enabled (default true).
@@ -340,14 +459,30 @@ module Lich
         # and `<crtrStatus>` events), not from any client last-selected-target
         # control, which can go stale after movement or death. `valid_target?`
         # (supplied by the game class) removes decoys/dead appendages and
-        # `crtr_flag?(:hostile)` supplies structured hostility.
+        # `crtr_flag?(:hostile)` supplies structured hostility. A creature the
+        # feed has sent no `<crtrStatus>` for at all (see {#crtr_flags?}, e.g. a
+        # fresh mount) counts when GameObj.targets lists it.
+        # A creature that was hostile and is now `sympathetic` (Sympathy 1120 swaps one
+        # for the other mid-fight) is still a target; see
+        # {InstanceMethods#ever_hostile?}. Pass `:not_sympathetic` to leave
+        # such creatures alone (e.g. to respect a group empath's Sympathy).
+        #
+        # Server ids are recycled: a reused id gets the existing instance,
+        # `ever_hostile?` included, until housekeeping evicts it - unless the
+        # game class starts a fresh one (GemStone does when a known id arrives
+        # under a different name; see Lich::Gemstone::Creature.register).
         #
         # @param filters [Array<String, Symbol>] optional ANDed status/classification filters.
         # @return [Array<Object>]
         def targets(*filters)
-          candidates = room_roster
-                       .filter_map { |id| self[id] }
-                       .select { |c| c.valid_target? && c.crtr_flag?(:hostile) }
+          fallback_ids = nil # only built if an untagged creature is in the room
+          candidates = room_roster.filter_map { |id| self[id] }.select do |c|
+            next false unless c.valid_target?
+            next true if c.crtr_flag?(:hostile) || (c.crtr_flag?(:sympathetic) && c.ever_hostile?)
+            next false if c.crtr_flags?
+
+            (fallback_ids ||= unreported_target_ids).include?(c.id.to_s)
+          end
           apply_filters(candidates, filters)
         end
 
@@ -376,6 +511,18 @@ module Lich
         end
 
         private
+
+        # Ids {#targets} accepts for a creature the feed has sent no
+        # `<crtrStatus>` for (a fresh mount sends none until first harmed): the
+        # pre-`<crtrStatus>` hostility signal, GameObj.targets. Delegating
+        # reuses its dead/gone filter (the sticky dropdown keeps listing
+        # corpses), which has no Creature-side equivalent for an untagged
+        # creature. Its decoy/appendage exclusions are also in valid_target?.
+        #
+        # @return [Array<String>]
+        def unreported_target_ids
+          GameObj.targets.map(&:id)
+        end
 
         # Applies status/classification filters to a candidate list.
         #
@@ -437,6 +584,46 @@ module Lich
           @status = []
           @status_timestamps = {}
           @crtr_flags = {}
+          @inferred_crtr_flags = {}
+          @ever_hostile = false
+          @health = nil
+          @max_health = nil
+          @last_seen_at = Time.now
+        end
+
+        # Exact current health from the latest `<crtrStatus health="...">`
+        # snapshot. It may be negative when damage carries a creature below
+        # zero. It is nil until reported, and becomes nil again when a complete
+        # snapshot omits or malforms the attribute.
+        #
+        # @return [Integer, nil]
+        def health
+          @health
+        end
+
+        # Exact maximum health from the latest
+        # `<crtrStatus maxhealth="...">` snapshot. It may be zero for entities
+        # that do not participate in combat. It is nil until reported, and
+        # becomes nil again when a complete snapshot omits or malforms the
+        # attribute.
+        #
+        # @return [Integer, nil]
+        def max_health
+          @max_health
+        end
+
+        # When the feed last showed this creature (registration, room-object
+        # refresh, or a `<crtrStatus>` update). Registry housekeeping ages
+        # against this rather than creation time.
+        #
+        # @return [Time]
+        attr_reader :last_seen_at
+
+        # Stamps the creature as just seen.
+        #
+        # @return [Time] the new `last_seen_at`.
+        def touch_seen
+          @last_seen_at = Time.now
         end
 
         # Adds a status to the creature.
@@ -535,6 +722,12 @@ module Lich
         # @param attrs [Hash{String=>String}] XML attributes excluding `exist`.
         # @return [void]
         def sync_crtr_status(attrs)
+          touch_seen
+          # crtrStatus is a complete snapshot. Missing (or malformed) exact HP
+          # attributes clear the previous values instead of leaving stale data.
+          @health = strict_crtr_integer(attrs['health'])
+          @max_health = strict_crtr_integer(attrs['maxhealth'])
+
           # Scoped to CRTR_STATUS_FLAGS on purpose: @status has two writers,
           # this feed and the combat parser reading messaging. The feed is a
           # full snapshot only of the states it reports, so it owns removal
@@ -555,11 +748,17 @@ module Lich
             debug_log("~flag: #{key}=#{new_value}") if debug_level == :changes && @crtr_flags[key] != new_value
             @crtr_flags[key] = new_value
           end
+          # Sticky: Sympathy (1120) swaps hostile for sympathetic in the next
+          # snapshot while the creature is still in the fight. See #ever_hostile?.
+          @ever_hostile = true if @crtr_flags[:hostile]
 
           report_crtr_snapshot(attrs) if %i[all active].include?(debug_level)
         end
 
-        # Checks a classification flag captured from `<crtrStatus>`.
+        # Checks a classification flag captured from `<crtrStatus>`, or, until
+        # the first real tag arrives, one inferred by the parser (see
+        # {#infer_crtr_flags}). Callers that need the server's own word should
+        # check {#crtr_flags?} first.
         #
         # Unlike template tri-state facts, live XML flags are always-sent
         # booleans, so an unknown or unseen flag is false, not nil.
@@ -567,7 +766,39 @@ module Lich
         # @param key [String, Symbol] classification key, e.g. `:hostile`.
         # @return [Boolean]
         def crtr_flag?(key)
-          @crtr_flags[key.to_sym] || false
+          flags = crtr_flags? ? @crtr_flags : @inferred_crtr_flags
+          flags[key.to_sym] || false
+        end
+
+        # Stands in classification flags for a creature the feed has not
+        # reported on yet (see {#crtr_flags?}), e.g. a mount inferred from its
+        # rider's `rider="1"` tag. Consulted by {#crtr_flag?} only until the
+        # first real `<crtrStatus>` arrives, which then wins outright.
+        # {#crtr_flags?} stays false, so callers can still tell the two apart.
+        #
+        # Replaces, not merges: each call is the full current inference.
+        #
+        # @param flags [Hash{Symbol=>Boolean}] classification key => value.
+        # @return [void]
+        def infer_crtr_flags(flags)
+          @inferred_crtr_flags = flags.dup
+        end
+
+        # Whether `<crtrStatus>` has ever asserted this creature hostile.
+        #
+        # Sympathy (1120) replaces `hostile` with `sympathetic` in the next
+        # snapshot even though the creature is still in the fight, so
+        # `crtr_flag?(:hostile)` - the literal live value - drops it. This
+        # remembers the earlier assertion for the life of the registry entry.
+        #
+        # It never un-latches, so it is not an attack gate by itself: pair it
+        # with a live `crtr_flag?(:sympathetic)`, as {ClassMethods#targets}
+        # does. Only the Sympathy (1120) hostile -> sympathetic path has been
+        # observed in a capture.
+        #
+        # @return [Boolean]
+        def ever_hostile?
+          @ever_hostile || false
         end
 
         # Whether any `<crtrStatus>` classification has been seen for this
@@ -595,6 +826,20 @@ module Lich
         end
 
         private
+
+        # Parses a complete base-10 integer without the partial coercion that
+        # String#to_i permits (for example, "12hp" must not become 12).
+        # Malformed server values are treated as unavailable for this snapshot.
+        #
+        # @param value [String, nil]
+        # @return [Integer, nil]
+        def strict_crtr_integer(value)
+          return nil unless value.is_a?(String) && value.match?(/\A[+-]?\d+\z/)
+
+          Integer(value, 10)
+        rescue ArgumentError, TypeError
+          nil
+        end
 
         # Normalizes the configured creature debug level.
         #

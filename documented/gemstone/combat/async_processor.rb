@@ -12,25 +12,25 @@
 
 require_relative '../../util/gtk_compaction'
 
-# Namespace for the Lich scripting engine.
+# Namespace for the Lich 5 scripting engine.
 module Lich
-  # Namespace for GemStone IV scripting components.
+  # Namespace for GemStone IV integration.
   module Gemstone
-    # Namespace for combat scripting and processing.
+    # Namespace for combat processing.
     module Combat
-      # Single-threaded async combat processor that handles combat chunks in arrival order.
+      # Single-threaded async processor for combat chunks.
       #
-      # Chunks are enqueued via #process_async from the game stream thread (O(1), non-blocking)
-      # and consumed sequentially by a dedicated worker thread. This guarantees that status
-      # updates, UCS changes, and damage events are processed in order, and ensures creature
-      # instances are only mutated from one thread.
+      # Queues game-stream lines from a downstream hook and processes them on a dedicated
+      # worker thread, preserving arrival order. This ordering is required for status
+      # add/remove, UCS updates, and damage calculations to work correctly. The single
+      # worker thread also guarantees that Creature/CreatureInstance objects are mutated
+      # from only one thread, eliminating the need for synchronization in creature logic.
       #
-      # The worker thread is automatically respawned if it dies (e.g., when the parent script
-      # exits), since it can be spawned from a script thread but must survive the script's
-      # lifetime to process events from the downstream hook.
+      # The worker thread survives script exit because it is spawned from the game-stream
+      # thread, not the script context—allowing long-running processors to remain active
+      # across script reloads.
       #
-      # @see #process_async
-      # @see #shutdown
+      # @see Processor
       class AsyncProcessor
         # max_threads retained for call-site compatibility; processing is
         # intentionally single-threaded to preserve event ordering.
@@ -49,9 +49,19 @@ module Lich
         # group and is killed when the script exits. process_async runs on
         # the downstream-hook (game) thread, so a worker respawned here
         # survives script death.
-        def process_async(chunk)
+        # @param chunk [Array<String>] game lines to process in arrival order
+        # @param source [Hash, nil] optional ingestion context; permitted scalar
+        #   fields are copied before queueing and validated by Processor
+        # @return [nil] after enqueueing, or when the chunk is empty
+        def process_async(chunk, source: nil)
           return if chunk.empty?
-          @queue.push(chunk)
+          if source.is_a?(Hash)
+            source = source.slice(:connection_id, :game, :character, :room_epoch, :sequence, :received_at)
+                           .transform_values { |value| value.is_a?(String) ? value.dup.freeze : value }.freeze
+          else
+            source = nil
+          end
+          @queue.push([chunk, source])
           ensure_worker
           nil
         end
@@ -69,15 +79,12 @@ module Lich
           Lich::Util::GtkCompaction.safe_compact!
         end
 
-        # Returns the current state of the async processor.
+        # Returns statistics about the async processor queue and worker.
         #
-        # @return [Hash] a hash with keys:
-        #   - :active [Integer] 1 if currently processing a chunk, 0 otherwise
-        #   - :queued [Integer] number of chunks waiting in the queue
-        #   - :total [Integer] total chunks processed since initialization
-        #   - :worker_alive [Boolean] true if the worker thread is running
+        # @return [Hash] with keys :active (0 or 1), :queued (number of pending chunks),
+        #   :total (count of processed chunks since startup), and :worker_alive (boolean)
         # @example
-        #   processor.stats #=> { active: 1, queued: 0, total: 42, worker_alive: true }
+        #   processor.stats #=> {active: 0, queued: 2, total: 150, worker_alive: true}
         def stats
           {
             active: @processing ? 1 : 0,
@@ -102,13 +109,14 @@ module Lich
 
         def run_loop
           loop do
-            chunk = @queue.pop
-            break if chunk == :shutdown
+            work = @queue.pop
+            break if work == :shutdown
+            chunk, source = work
 
             @processing = true
             started = Time.now
             begin
-              Processor.process(chunk)
+              Processor.process(chunk, source: source)
 
               elapsed = Time.now - started
               if elapsed > 0.5 && Tracker.debug?

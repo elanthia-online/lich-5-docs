@@ -2,16 +2,35 @@
 
 require "ostruct"
 
+# Namespace for Lich scripting engine.
 module Lich
+  # Namespace for GemStone IV game server integration.
   module Gemstone
+    # Access enhancive bonuses tracked on your character.
+    #
+    # Provides singleton methods to query current stat, skill, resource, martial knowledge,
+    # and spell enhancements granted by enhancive items. Data is stored in Infomon and
+    # populated by the game parser. Call `.refresh` to trigger a full data update.
+    #
+    # @example Query strength enhancive bonus
+    #   Lich::Gemstone::Enhancive.strength.value  #=> 8
+    #   Lich::Gemstone::Enhancive.str             #=> 8
+    # @example Check if active and how many pauses available
+    #   Lich::Gemstone::Enhancive.active?         #=> true
+    #   Lich::Gemstone::Enhancive.pauses          #=> 3
+    # @example Get skill bonus and combined value
+    #   skill = Lich::Gemstone::Enhancive.edged_weapons
+    #   skill.ranks  #=> 0
+    #   skill.bonus  #=> 5
+    #   skill.value  #=> 5
+    #   skill.cap    #=> 50
     module Enhancive
       # Stats - all 10 stats including influence
-      # Stats - all 10 stats including influence.
-      #
-      # @example
-      #   Lich::Gemstone::Enhancive::STATS
-      #   # => [:strength, :constitution, :dexterity, :agility, :discipline, :aura, :logic, :intuition, :wisdom, :influence]
       STATS = %i[strength constitution dexterity agility discipline aura logic intuition wisdom influence].freeze
+      # Map of uppercase stat abbreviations to their symbol names.
+      #
+      # @return [Hash{String => Symbol}] key is two or three letter code (STR, CON, DEX, etc.),
+      #   value is the stat symbol (:strength, :constitution, etc.)
       STAT_ABBREV = {
         'STR' => :strength, 'CON' => :constitution, 'DEX' => :dexterity,
         'AGI' => :agility, 'DIS' => :discipline, 'AUR' => :aura,
@@ -37,23 +56,17 @@ module Lich
       SKILL_CAP = 50
 
       # Resources
-      # Resources available in the game.
-      #
-      # @example
-      #   Lich::Gemstone::Enhancive::RESOURCES
-      #   # => [:max_mana, :max_health, :max_stamina, :mana_recovery, :stamina_recovery]
       RESOURCES = %i[max_mana max_health max_stamina mana_recovery stamina_recovery].freeze
+      # Maximum values that each resource can be enhanced to.
+      #
+      # @return [Hash{Symbol => Integer}] keys are :max_mana (600), :max_health (300),
+      #   :max_stamina (300), :mana_recovery (50), :stamina_recovery (50)
       RESOURCE_CAPS = {
         max_mana: 600, max_health: 300, max_stamina: 300,
         mana_recovery: 50, stamina_recovery: 50
       }.freeze
 
       # Mapping from game output names to internal names
-      # Mapping from game output names to internal names.
-      #
-      # @example
-      #   Lich::Gemstone::Enhancive::SKILL_NAME_MAP['Two Weapon Combat']
-      #   # => :two_weapon_combat
       SKILL_NAME_MAP = {
         'Two Weapon Combat'            => :two_weapon_combat,
         'Armor Use'                    => :armor_use,
@@ -103,11 +116,13 @@ module Lich
         'Pickpocketing'                => :pickpocketing
       }.freeze
 
-      # Mapping from game output resource names to internal names.
+      # Map of game output display names to internal resource symbol names.
       #
-      # @example
-      #   Lich::Gemstone::Enhancive::RESOURCE_NAME_MAP['Max Mana']
-      #   # => :max_mana
+      # Used by the parser to convert "Max Mana", "Max Health", etc. from game output
+      # to internal symbols for storage in Infomon.
+      #
+      # @return [Hash{String => Symbol}] key is display name (e.g. "Max Mana"),
+      #   value is symbol (e.g. :max_mana)
       RESOURCE_NAME_MAP = {
         'Max Mana'         => :max_mana,
         'Max Health'       => :max_health,
@@ -130,26 +145,14 @@ module Lich
         :predators_eye       => "Predator's Eye"
       }.freeze
 
-      # Converts a martial skill symbol to its display name.
-      #
-      # @param symbol [Symbol] the martial skill symbol to convert.
-      # @return [String] the display name of the martial skill.
-      # @example
-      #   Lich::Gemstone::Enhancive.martial_symbol_to_display(:acrobats_leap)
-      #   # => "Acrobat's Leap"
+      # Convert symbol to display name (e.g., :combat_focus => "Combat Focus")
       def self.martial_symbol_to_display(symbol)
         return MARTIAL_SPECIAL_NAMES[symbol] if MARTIAL_SPECIAL_NAMES.key?(symbol)
 
         symbol.to_s.split('_').map(&:capitalize).join(' ')
       end
 
-      # Converts a martial skill display name to its symbol.
-      #
-      # @param display_name [String] the display name of the martial skill.
-      # @return [Symbol] the corresponding martial skill symbol.
-      # @example
-      #   Lich::Gemstone::Enhancive.martial_display_to_symbol("Acrobat's Leap")
-      #   # => :acrobats_leap
+      # Convert display name to symbol (e.g., "Combat Focus" => :combat_focus)
       def self.martial_display_to_symbol(display_name)
         # Check special names first (reverse lookup)
         special = MARTIAL_SPECIAL_NAMES.key(display_name)
@@ -159,12 +162,8 @@ module Lich
         display_name.downcase.gsub(' ', '_').to_sym
       end
 
-      # Returns a list of martial skills defined in the CMan module.
-      #
-      # @return [Array<Symbol>] an array of martial skill symbols.
-      # @example
-      #   Lich::Gemstone::Enhancive.martial_skills_list
-      #   # => [:two_weapon_combat, :armor_use, ...]
+      # Get list of all martial skill symbols from CMan module
+      # Returns empty array if CMan not yet loaded
       def self.martial_skills_list
         return [] unless defined?(Lich::Gemstone::CMan)
 
@@ -260,6 +259,9 @@ module Lich
         end
       end
 
+      # === MARTIAL KNOWLEDGE SKILL ACCESSORS ===
+      # Dynamic accessor for any martial skill by symbol
+      # Returns OpenStruct with :ranks and :cap
       def self.martial_skill(skill_symbol)
         OpenStruct.new(
           ranks: Infomon.get("enhancive.martial.#{skill_symbol}").to_i,
@@ -267,23 +269,34 @@ module Lich
         )
       end
 
+      # Get all martial skills with non-zero values
+      # Scans all CMan skills from the CMan module
       def self.martial_skills
         martial_skills_list.select { |s| martial_skill(s).ranks > 0 }
                            .map { |s| { name: s, ranks: martial_skill(s).ranks } }
       end
 
+      # Convenience aliases
       def self.mana
         max_mana
       end
 
+      # Convenience alias for `max_health`.
+      #
+      # @return [OpenStruct] with :value (current enhancement) and :cap (300)
       def self.health
         max_health
       end
 
+      # Convenience alias for `max_stamina`.
+      #
+      # @return [OpenStruct] with :value (current enhancement) and :cap (300)
       def self.stamina
         max_stamina
       end
 
+      # === SPELL ACCESSORS ===
+      # Returns array of spell numbers that enhancives grant self-knowledge of
       def self.spells
         raw = Infomon.get("enhancive.spells")
         return [] if raw.nil? || raw.empty?
@@ -291,79 +304,79 @@ module Lich
         raw.to_s.split(',').map(&:to_i)
       end
 
+      # Check if enhancives grant knowledge of a specific spell
       def self.knows_spell?(spell_num)
         spells.include?(spell_num.to_i)
       end
 
+      # === STATISTICS ACCESSORS ===
       def self.item_count
         Infomon.get("enhancive.stats.item_count").to_i
       end
 
+      # Returns the number of unique enhancive properties currently active.
+      #
+      # @return [Integer] the count of distinct enhancive properties
       def self.property_count
         Infomon.get("enhancive.stats.property_count").to_i
       end
 
+      # Returns the total aggregate enhancive bonus value across all items and properties.
+      #
+      # @return [Integer] sum of all stat, skill, resource, and martial knowledge enhancements
       def self.total_amount
         Infomon.get("enhancive.stats.total_amount").to_i
       end
 
+      # === ACTIVE STATE ===
+      # Whether enhancives are currently active (toggled on)
       def self.active?
-        Infomon.get("enhancive.active") == true
+        Infomon.get_bool("enhancive.active")
       end
 
+      # Returns Time when active state was last updated, or nil if never
       def self.active_last_updated
         timestamp = Infomon.get_updated_at("enhancive.active")
         timestamp ? Time.at(timestamp) : nil
       end
 
+      # Number of enhancive pauses available
       def self.pauses
         Infomon.get("enhancive.pauses").to_i
       end
 
+      # === LAST UPDATED ===
+      # Returns Time when enhancive data was last refreshed, or nil if never
       def self.last_updated
         timestamp = Infomon.get_updated_at("enhancive.stats.item_count")
         timestamp ? Time.at(timestamp) : nil
       end
 
-      # Checks if a given stat is over its cap.
-      #
-      # @param stat [Symbol] the stat to check.
-      # @return [Boolean] true if the stat is over cap, false otherwise.
-      # @example
-      #   Lich::Gemstone::Enhancive.stat_over_cap?(:strength)
-      #   # => true or false
+      # === UTILITY METHODS ===
+      # Check if a stat is over cap
       def self.stat_over_cap?(stat)
         send(stat).value > STAT_CAP
       end
 
-      # Checks if a given skill is over its cap.
-      #
-      # @param skill [Symbol] the skill to check.
-      # @return [Boolean] true if the skill is over cap, false otherwise.
-      # @example
-      #   Lich::Gemstone::Enhancive.skill_over_cap?(:two_weapon_combat)
-      #   # => true or false
+      # Check if a skill is over cap
       def self.skill_over_cap?(skill)
         s = send(skill)
         s.bonus > SKILL_CAP
       end
 
+      # Get all over-cap stats
       def self.over_cap_stats
         STATS.select { |s| stat_over_cap?(s) }
       end
 
+      # Get all over-cap skills
       def self.over_cap_skills
         BONUS_SKILLS.select { |s| skill_over_cap?(s) rescue false }
       end
 
-      # Refreshes the enhancive data from the game.
-      #
-      # @param silent [Boolean] whether to suppress output messages (default: false).
-      # @param quiet [Boolean] whether to suppress all output (default: true).
-      # @return [void]
-      # @example
-      #   Lich::Gemstone::Enhancive.refresh
-      #   # => Refreshes the data without output.
+      # Blocks until complete
+      # @param silent [Boolean] suppress command echo (default: false)
+      # @param quiet [Boolean] suppress game output (default: true)
       def self.refresh(silent: false, quiet: true)
         respond "Refreshing enhancive data..." unless quiet
         # First get status (active state + pauses)
@@ -385,14 +398,10 @@ module Lich
         respond "Enhancive data refreshed." unless quiet
       end
 
-      # Refreshes the current status of enhancive data.
-      #
-      # @param silent [Boolean] whether to suppress output messages (default: false).
-      # @param quiet [Boolean] whether to suppress all output (default: true).
-      # @return [void]
-      # @example
-      #   Lich::Gemstone::Enhancive.refresh_status
-      #   # => Refreshes the status without output.
+      # Trigger refresh of active state and pauses only (lightweight)
+      # Blocks until complete
+      # @param silent [Boolean] suppress command echo (default: false)
+      # @param quiet [Boolean] suppress game output (default: true)
       def self.refresh_status(silent: false, quiet: true)
         Lich::Util.issue_command(
           "invento enh",
@@ -402,12 +411,9 @@ module Lich
         )
       end
 
-      # Resets all stats, skills, resources, and spells to their initial values.
-      #
-      # @return [void]
-      # @example
-      #   Lich::Gemstone::Enhancive.reset_all
-      #   # => Resets all enhancive data.
+      # === RESET METHOD (called by parser before populating new data) ===
+      # Resets all enhancive values to 0/empty
+      # Critical because game output only shows non-zero values
       def self.reset_all
         batch = []
 

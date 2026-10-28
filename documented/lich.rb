@@ -1,51 +1,12 @@
 require 'time'
-# Namespace for Lich 5 scripting engine functionality, providing database access,
-# configuration management, logging, and frontend integration for GemStone IV and DragonRealms.
+require_relative 'common/sqlite_connection'
+# Namespace for Lich 5 scripting engine core functionality, including database
+# management, display settings, host configuration, and deprecated legacy accessors.
+#
+# Most user scripts interact with Lich through {Vars}, {Script}, and other specific
+# modules rather than directly calling Lich.* methods. See individual method
+# documentation for their public contracts.
 module Lich
-  # Default timeout in milliseconds for SQLite3 busy waits when the database is locked.
-  #
-  # @return [Integer] 5000 milliseconds
-  DEFAULT_SQLITE_BUSY_TIMEOUT_MS = 5000 unless const_defined?(:DEFAULT_SQLITE_BUSY_TIMEOUT_MS)
-
-  # Returns the configured SQLite busy timeout in milliseconds.
-  #
-  # @return [Integer] the busy timeout value (5000 by default)
-  def Lich.sqlite_busy_timeout_ms
-    DEFAULT_SQLITE_BUSY_TIMEOUT_MS
-  end
-
-  # Configures an SQLite3 database connection with the busy timeout setting.
-  #
-  # @param db [SQLite3::Database] an SQLite database connection object
-  # @return [SQLite3::Database] the configured database object
-  # @note If the database object does not respond to `busy_timeout`, it is returned unchanged
-  def Lich.configure_sqlite_connection(db)
-    db.busy_timeout(sqlite_busy_timeout_ms) if db.respond_to?(:busy_timeout)
-    db
-  end
-
-  # Opens or creates an SQLite3 database at the specified path and applies busy timeout configuration.
-  #
-  # @param path [String] the file path to the database
-  # @return [SQLite3::Database] the configured database connection
-  # @example
-  #   db = Lich.open_sqlite_db("#{Lich::DATA_DIR}/lich.db3")
-  def Lich.open_sqlite_db(path)
-    configure_sqlite_connection(SQLite3::Database.new(path))
-  end
-
-  # Opens an SQLite database via the Sequel ORM and sets the busy timeout via PRAGMA.
-  #
-  # @param path [String] the file path to the database
-  # @return [Sequel::Database] the configured Sequel database object
-  # @note Sequel does not expose SQLite3's busy_timeout API directly; the PRAGMA is used instead
-  def Lich.open_sequel_sqlite(path)
-    db = Sequel.sqlite(path)
-    # Sequel does not expose sqlite3's busy_timeout API on its database wrapper.
-    db.run("PRAGMA busy_timeout = #{sqlite_busy_timeout_ms.to_i}")
-    db
-  end
-
   # --- Minimal DB maintenance helpers (simple + safe) ---
   # Stores last maintenance timestamp and summary in lich_settings.
   # Uses an advisory OS file lock so only one Lich instance attempts VACUUM.
@@ -53,10 +14,13 @@ module Lich
     File.join(DATA_DIR, 'lich.db3.maint.lock')
   end
 
-  # Retrieves the timestamp of the last database maintenance operation from lich_settings.
+  # Retrieves the timestamp of the last database maintenance operation.
   #
-  # @return [String, nil] ISO 8601 UTC timestamp string of the last maintenance, or nil if never run
-  # @note Retries on SQLite3::BusyException; returns nil on other errors
+  # Reads from the lich_settings table and retries on SQLite3::BusyException.
+  # Returns nil if the setting does not exist or if a read error occurs (other than
+  # busy contention).
+  #
+  # @return [String, nil] ISO 8601 UTC timestamp, or nil if no maintenance has been recorded
   def Lich.db_maint_last_at
     ts = nil
     begin
@@ -70,12 +34,15 @@ module Lich
     ts
   end
 
-  # Records a database maintenance completion timestamp and optional note in lich_settings.
+  # Records a database maintenance operation with timestamp and optional summary.
   #
-  # @param iso_utc [String] ISO 8601 UTC timestamp of maintenance completion
-  # @param note [String] optional summary of maintenance activity (e.g., "VACUUM ok pages 100->80")
+  # Creates the lich_settings table if it does not exist, then writes the
+  # db_maint_last_at and db_maint_last_note settings via INSERT OR REPLACE.
+  # The note is UTF-8 encoded before storage. Retries on SQLite3::BusyException.
+  #
+  # @param iso_utc [String] ISO 8601 UTC timestamp (e.g., from Time.now.utc.iso8601)
+  # @param note [String] optional summary of the maintenance operation (default '')
   # @return [void]
-  # @note Retries on SQLite3::BusyException; creates lich_settings table if needed
   def Lich.db_maint_set!(iso_utc, note = '')
     begin
       Lich.db.execute("CREATE TABLE IF NOT EXISTS lich_settings (name TEXT NOT NULL, value TEXT, PRIMARY KEY(name));")
@@ -89,11 +56,15 @@ module Lich
     end
   end
 
-  # Checks whether database maintenance is due based on elapsed time since last run.
+  # Determines whether database maintenance is due based on elapsed time.
   #
-  # @param months [Integer] the interval in months; maintenance is due if last run was more than this long ago
-  # @return [Boolean] true if maintenance has never run, the timestamp is empty/invalid, or the interval has elapsed
-  # @note Returns true on parsing errors to allow maintenance to attempt
+  # Returns true if no maintenance timestamp is recorded, or if the last recorded
+  # time is older than the specified number of months. Treats the timestamp as
+  # ISO 8601 and compares against the current UTC time. Returns true on parse errors
+  # or if last_at is nil.
+  #
+  # @param months [Integer] interval in months between maintenance operations (default 6)
+  # @return [Boolean] true if VACUUM should be attempted, false otherwise
   def Lich.db_maint_due?(months = 6)
     last = Lich.db_maint_last_at
     return true if last.nil? || last.empty?
@@ -174,18 +145,16 @@ module Lich
   @@last_warn_deprecated = 0
   @@deprecated_log       = []
 
-  @@db_mutex             ||= Mutex.new
+  @@db_mutex ||= Mutex.new
+  @display_settings_mutex ||= Mutex.new
+
+  # Display caches are reset on reload, like the former individual fields.
+  @display_settings_cache = {}
+  @display_read_retry_at = nil
+  @display_uid_retry_at = nil
 
   # settings
-  @@display_lichid       = nil # boolean
-  @@display_uid          = nil # boolean
-  @@display_exits        = nil # boolean
-  @@display_stringprocs  = nil # boolean
-  @@display_room_links   = nil # boolean
-  @@display_room_mono    = nil # boolean
-  @@display_expgains     = nil # boolean (DragonRealms only)
-  @@display_roomid_location = nil # string (DragonRealms only): "title" | "line" | "both"
-  @@hide_uid_flag        = nil # boolean
+  @@keep_fe_string       = nil # boolean
   @@track_autosort_state = nil # boolean
   @@track_dark_mode      = nil # boolean
   @@track_layout_state   = nil # boolean
@@ -193,19 +162,19 @@ module Lich
   @@debug_messaging = nil # boolean
   @@max_debug_logs  = nil # integer
 
-  # Returns the module-level mutex used to serialize database access.
+  # Returns the Mutex protecting access to Lich.db.
   #
-  # @return [Mutex] the database access mutex
-  # @api private
+  # @return [Mutex] the shared database mutex
   def self.db_mutex
     @@db_mutex
   end
 
-  # Acquires the database mutex lock if not already held by the current thread.
+  # Acquires the database mutex if not already owned by the current thread.
+  #
+  # Logs errors to stderr and sends a respond message on acquisition failure.
+  # Does nothing if the mutex is already held by this thread.
   #
   # @return [void]
-  # @note Logs and responds to user on lock errors; safe to call multiple times
-  # @api private
   def self.mutex_lock
     begin
       self.db_mutex.lock unless self.db_mutex.owned?
@@ -215,11 +184,12 @@ module Lich
     end
   end
 
-  # Releases the database mutex lock if currently held by the current thread.
+  # Releases the database mutex if currently owned by the calling thread.
+  #
+  # Logs errors to stderr and sends a respond message on release failure.
+  # Does nothing if the mutex is not currently owned by this thread.
   #
   # @return [void]
-  # @note Logs and responds to user on unlock errors; safe to call when not locked
-  # @api private
   def self.mutex_unlock
     begin
       self.db_mutex.unlock if self.db_mutex.owned?
@@ -229,13 +199,15 @@ module Lich
     end
   end
 
-  # Deprecated delegation to Vars.method_missing for legacy Lich.* variable access.
+  # Delegates deprecated Lich.* variable access to Vars.*.
   #
-  # @param arg1 [String] the variable name
-  # @param arg2 [String] optional value for assignment
-  # @return [Object] delegated result from Vars.method_missing
-  # @note Emits a deprecation warning (throttled to once per 5 minutes); scripts should use Vars.* instead
-  # @deprecated Use {Vars} class instead
+  # Emits a deprecation warning (at most once per 5 minutes) directing script authors
+  # to use Vars instead. Calls are delegated transparently to Vars.method_missing.
+  #
+  # @param arg1 [Object] the variable name or method call
+  # @param arg2 [String] optional secondary argument (default '')
+  # @return [Object] the result of delegating to Vars
+  # @api private
   def Lich.method_missing(arg1, arg2 = '')
     if (Time.now.to_i - @@last_warn_deprecated) > 300
       respond "--- warning: Lich.* variables will stop working in a future version of Lich.  Use Vars.* (offending script: #{Script.current.name || 'unknown'})"
@@ -244,11 +216,13 @@ module Lich
     Vars.method_missing(arg1, arg2)
   end
 
-  # Locates the installation directory of a frontend by name.
+  # Locates the installation path for a game front-end by name.
   #
-  # @param fe [String] the frontend identifier (e.g., "wizard", "stormfront")
-  # @return [String, nil] the frontend installation path, or nil if not found
-  # @note Prefers Lich::Common::FrontendLocator if available; falls back to legacy global variables
+  # Uses Lich::Common::FrontendLocator if available; falls back to legacy global
+  # variables ($wiz_fe_loc, $sf_fe_loc) for Wizard and Stormfront respectively.
+  #
+  # @param fe [String] front-end identifier (e.g., "wizard", "stormfront")
+  # @return [String, nil] the front-end installation path, or nil if not found
   def Lich.seek(fe)
     if defined?(Lich::Common::FrontendLocator)
       return Lich::Common::FrontendLocator.compatibility_location(fe)
@@ -260,20 +234,27 @@ module Lich
     nil
   end
 
-  # Returns the primary SQLite3 database connection, creating it on first access.
-  #
-  # @return [SQLite3::Database] the lazily-initialized database object at #{DATA_DIR}/lich.db3
-  # @note Connection is cached in @@lich_db; the database file is created if it does not exist
+  # WARNING: do not call Lich.db.transaction { } (or run BEGIN/COMMIT by hand
+  # on Lich.db) without handling a failed or interrupted COMMIT. If the thread
+  # is killed while COMMIT waits for the lock, the transaction stays open on
+  # this shared connection and holds the write lock until Lich exits. Nothing
+  # calls Lich.db.transaction today. Databases opened with
+  # Lich.open_sequel_sqlite roll back a failed or interrupted COMMIT; see
+  # SQLiteBusyWait::Transactions.
   def Lich.db
     @@lich_db ||= open_sqlite_db("#{DATA_DIR}/lich.db3")
   end
 
-  # Initializes the Lich database schema, creating all required tables and indices.
+  # Initializes the Lich database schema on first run.
+  #
+  # Creates all core tables if they do not exist: script_setting, script_auto_settings,
+  # lich_settings, uservars, session_summary_state, and indexes. Applies idempotent
+  # ALTER TABLE statements for backward-compatible migration (tolerating duplicate
+  # column errors). Retries on SQLite3::BusyException.
+  #
+  # Called once at Lich startup to ensure the database structure is ready.
   #
   # @return [void]
-  # @note Creates: script_setting, script_auto_settings, lich_settings, uservars, session_summary_state, session_summary_state indices, trusted_scripts (Ruby 2.0-2.2 only), simu_game_entry, enable_inventory_boxes
-  # @note Safely handles SQLite3::BusyException and idempotently tolerates duplicate-column errors from migrations
-  # @api private
   def Lich.init_db
     begin
       Lich.db.execute("CREATE TABLE IF NOT EXISTS script_setting (script TEXT NOT NULL, name TEXT NOT NULL, value BLOB, PRIMARY KEY(script, name));")
@@ -315,43 +296,54 @@ module Lich
     end
   end
 
-  # Stub implementation that prevents access to class variables.
+  # Disabled stub for class variable access.
   #
-  # @return [nil] always nil
+  # Always returns nil. Prevents scripts from calling Lich.class_variable_get.
+  #
+  # @return [nil]
   # @api private
   def Lich.class_variable_get(*_a); nil; end
 
-  # Stub implementation that prevents dynamic class evaluation.
+  # Disabled stub for class evaluation.
   #
-  # @return [nil] always nil
-  # @api private
-  def Lich.class_eval(*_a);         nil; end
-
-  # Stub implementation that prevents dynamic module evaluation.
+  # Always returns nil. Prevents scripts from calling Lich.class_eval.
   #
-  # @return [nil] always nil
+  # @return [nil]
   # @api private
-  def Lich.module_eval(*_a);        nil; end
+  def Lich.class_eval(*_a); nil; end
 
-  # Writes a timestamped message to stderr (the debug log).
+  # Disabled stub for module evaluation.
+  #
+  # Always returns nil. Prevents scripts from calling Lich.module_eval.
+  #
+  # @return [nil]
+  # @api private
+  def Lich.module_eval(*_a); nil; end
+
+  # Writes a timestamped message to stderr.
+  #
+  # Used internally by Lich to log debug, error, and informational messages.
+  # The timestamp is in YYYY-MM-DD HH:MM:SS format (UTC).
   #
   # @param msg [String] the message to log
   # @return [void]
-  # @note Format: "YYYY-MM-DD HH:MM:SS: {msg}"
   def Lich.log(msg)
     $stderr.puts "#{Time.now.strftime("%Y-%m-%d %H:%M:%S")}: #{msg}"
   end
 
-  # Records a deprecation notice for an old API call and optionally logs it.
+  # Records a deprecation warning for outdated script API usage.
   #
-  # @param old_object [String] the deprecated call or object name
-  # @param new_object [String] the recommended replacement
-  # @param script_location [String] the script name or location using the deprecated API
+  # Logs the warning to stderr (if debug_log is true) and optionally displays it in-game
+  # via Lich::Messaging (if fe_log is true). By default, each unique message is logged
+  # only once (limit_log: true) to avoid spam. The warning includes the calling script name.
+  #
+  # @param old_object [String] the deprecated method or variable name (default '')
+  # @param new_object [String] the recommended replacement (default '')
+  # @param script_location [String] the script calling the deprecated code (default current script name or 'unknown')
   # @param debug_log [Boolean] whether to log to stderr (default true)
-  # @param fe_log [Boolean] whether to send to frontend via messaging (default false)
-  # @param limit_log [Boolean] whether to deduplicate messages in the log (default true)
+  # @param fe_log [Boolean] whether to display in-game (default false)
+  # @param limit_log [Boolean] whether to suppress duplicate messages (default true)
   # @return [void]
-  # @note Deduplication tracks messages in @@deprecated_log; use {.show_deprecated_log} to display accumulated notices
   def Lich.deprecated(old_object = '', new_object = '', script_location = "#{Script.current.name || 'unknown'}", debug_log: true, fe_log: false, limit_log: true)
     msg = "Deprecated call to #{old_object} used in #{script_location}. Please change to #{new_object} instead!"
     return if limit_log && @@deprecated_log.include?(msg)
@@ -360,27 +352,35 @@ module Lich
     @@deprecated_log.push(msg) unless @@deprecated_log.include?(msg)
   end
 
-  # Displays all recorded deprecation notices to the user via respond().
+  # Displays all recorded deprecation warnings to the game window.
+  #
+  # Iterates over the internal deprecation log and responds with each message.
   #
   # @return [void]
-  # @see .deprecated
   def Lich.show_deprecated_log
     @@deprecated_log.each do |msg|
       respond(msg)
     end
   end
 
-  # Displays a modal message box dialog using the native platform GUI or terminal fallback.
+  # Displays a modal message box with optional buttons and icon.
   #
-  # @param args [Hash] dialog configuration
-  # @option args :message [String] the message body (required)
-  # @option args :title [String] the window title (default: "Lich v{LICH_VERSION}")
-  # @option args :buttons [Symbol] :ok (default), :ok_cancel, or :yes_no
-  # @option args :icon [Symbol] :error, :question, :warning, or nil (default)
-  # @return [Symbol, nil] :ok, :cancel, :yes, :no, or nil if closed without selection
-  # @note Uses Win32 API on Windows, Gtk on Linux/Mac with Gtk, or stdout.puts on text terminals
-  # @api private
+  # On Windows (Win32), uses native MessageBox; on Linux/Mac with Gtk, uses a Gtk dialog;
+  # otherwise writes to stdout. Accepts a String (converted to message) or a Hash with keys:
+  # :message, :buttons, :icon, :title.
+  #
+  # :buttons may be :ok, :ok_cancel, or :yes_no; :icon may be :error, :question, :warning,
+  # or omitted. The title defaults to "Lich vVERSION".
+  #
+  # @param args [String, Hash] either a message string or options hash
+  # @return [Symbol, nil] :ok, :cancel, :yes, :no, or nil (if dismissed or unsupported platform)
+  # @example Show a simple message
+  #   Lich.msgbox("Script finished.")
+  # @example Show a yes/no dialog
+  #   response = Lich.msgbox(message: "Continue?", buttons: :yes_no, icon: :question, title: "Confirm")
+  #   respond response.to_s
   def Lich.msgbox(args)
+    args = { message: args.to_s } unless args.is_a?(Hash)
     if defined?(Win32)
       if args[:buttons] == :ok_cancel
         buttons = Win32::MB_OKCANCEL
@@ -454,11 +454,13 @@ module Lich
     end
   end
 
-  # Retrieves the path or command of the Simutronics Game Entry (SGE) launcher from the system registry.
+  # Retrieves the Simutronics launcher command from the system registry.
   #
-  # @return [String, nil] the launcher command, or nil if not found
-  # @note Reads from Windows HKEY_LOCAL_MACHINE on Windows; Wine registry on Wine; returns nil on other platforms
-  # @api private
+  # On Windows, queries HKEY_LOCAL_MACHINE\\Software\\Classes\\Simutronics.Autolaunch\\Shell\\Open\\command.
+  # On Linux/Mac with Wine, queries the equivalent Wine registry key.
+  # Returns nil on unsupported platforms or if the registry key is not found.
+  #
+  # @return [String, nil] the launcher command path, or nil if not available
   def Lich.get_simu_launcher
     if defined?(Win32)
       begin
@@ -482,13 +484,16 @@ module Lich
     end
   end
 
-  # Integrates Lich into the Simutronics Game Entry launcher by modifying the registry.
+  # Integrates Lich into the Simutronics Game Entry (SGE) launcher on Windows.
   #
-  # @return [Boolean, nil] true if successful or already linked, false on error, nil on unsupported platform
-  # @note On Windows non-admin: elevates to admin and re-runs self via ShellExecuteEx
-  # @note On Wine: modifies the Wine registry for Simutronics launcher integration
-  # @note Saves the original launcher directory for later restoration
-  # @api private
+  # Requires administrator privileges. Modifies the registry to redirect the SGE launcher
+  # to launch Lich, then Lich launches the game. Returns false if already linked or if the
+  # operation fails (insufficient privileges, registry errors, etc.).
+  #
+  # On Windows without admin, attempts elevation via ShellExecuteEx with 'runas' verb.
+  # On Wine/Linux, updates the Wine registry equivalently.
+  #
+  # @return [Boolean] true if successfully linked or already linked, false on error
   def Lich.link_to_sge
     if defined?(Win32)
       if Win32.admin?
@@ -557,12 +562,13 @@ module Lich
     end
   end
 
-  # Removes Lich integration from the Simutronics Game Entry launcher by restoring the original registry.
+  # Removes Lich from the Simutronics Game Entry (SGE) launcher on Windows.
   #
-  # @return [Boolean, nil] true if successful or not linked, false on error, nil on unsupported platform
-  # @note On Windows non-admin: elevates to admin and re-runs self via ShellExecuteEx
-  # @note On Wine: restores the Wine registry for Simutronics launcher
-  # @api private
+  # Reverses a previous link_to_sge operation by restoring the original launcher
+  # command in the registry. Requires administrator privileges; attempts elevation
+  # via ShellExecuteEx if run without admin.
+  #
+  # @return [Boolean] true if successfully unlinked or was never linked, false on error
   def Lich.unlink_from_sge
     if defined?(Win32)
       if Win32.admin?
@@ -613,13 +619,13 @@ module Lich
     end
   end
 
-  # Integrates Lich into Simutronics AutoLaunch (browser launcher) by modifying the registry.
+  # Integrates Lich into the Simutronics Autolaunch (SAL) protocol on Windows.
   #
-  # @return [Boolean, nil] true if successful or already linked, false on error, nil on unsupported platform
-  # @note On Windows non-admin: elevates to admin and re-runs self via ShellExecuteEx
-  # @note On Wine: modifies the Wine registry for AutoLaunch integration
-  # @note Saves the original launcher command for later restoration
-  # @api private
+  # Modifies the registry to handle Simutronics.Autolaunch URIs (SAL links) by routing
+  # them through Lich before launching the game. Requires administrator privileges;
+  # attempts elevation via ShellExecuteEx if run without admin.
+  #
+  # @return [Boolean] true if successfully linked or already linked, false on error
   def Lich.link_to_sal
     if defined?(Win32)
       if Win32.admin?
@@ -689,12 +695,13 @@ module Lich
     end
   end
 
-  # Removes Lich integration from Simutronics AutoLaunch by restoring the original registry.
+  # Removes Lich from the Simutronics Autolaunch (SAL) protocol on Windows.
   #
-  # @return [Boolean, nil] true if successful or not linked, false on error, nil on unsupported platform
-  # @note On Windows non-admin: elevates to admin and re-runs self via ShellExecuteEx
-  # @note On Wine: restores the Wine registry for AutoLaunch
-  # @api private
+  # Reverses a previous link_to_sal operation by restoring the original SAL handler
+  # command in the registry. Requires administrator privileges; attempts elevation
+  # via ShellExecuteEx if run without admin.
+  #
+  # @return [Boolean] true if successfully unlinked or was never linked, false on error
   def Lich.unlink_from_sal
     if defined?(Win32)
       if Win32.admin?
@@ -745,21 +752,25 @@ module Lich
     end
   end
 
-  # Returns the path to the system hosts file, locating it on first access.
+  # Returns the path to the system hosts file.
   #
-  # @return [String, false] the hosts file path, or false if not found
-  # @note Caches the result in @@hosts_file for subsequent calls
+  # Caches the result after the first lookup. Calls find_hosts_file to locate it if
+  # not already cached.
+  #
+  # @return [String, Boolean] the hosts file path, or false if not found
   def Lich.hosts_file
     Lich.find_hosts_file if @@hosts_file.nil?
     return @@hosts_file
   end
 
-  # Searches the system for the hosts file and caches its path.
+  # Locates the hosts file on the current system.
   #
-  # @return [String, false] the hosts file path, or false if not found
-  # @note On Windows: queries registry, checks default paths, and searches all drives
-  # @note On Linux/Mac: checks /etc/hosts and /private/etc/hosts
-  # @note Stores result in @@hosts_file
+  # On Windows, queries the registry for the TCP/IP database path or searches standard
+  # Windows locations (C:\\windows\\system32\\drivers\\etc\\hosts, etc.). On macOS/Linux,
+  # checks /etc/hosts and /private/etc/hosts. Caches and returns the result, or false
+  # if not found.
+  #
+  # @return [String, Boolean] the hosts file path, or false if not found
   def Lich.find_hosts_file
     if defined?(Win32)
       begin
@@ -770,7 +781,7 @@ module Lich
       end
       if hosts_path
         windir = (ENV['windir'] || ENV['SYSTEMROOT'] || 'c:\windows')
-        hosts_path.gsub('%SystemRoot%', windir)
+        hosts_path = hosts_path.gsub(/%SystemRoot%/i, windir)
         hosts_file = "#{hosts_path}\\hosts"
         if File.exist?(hosts_file)
           return (@@hosts_file = hosts_file)
@@ -797,12 +808,14 @@ module Lich
     return (@@hosts_file = false)
   end
 
-  # Adds a hosts file entry redirecting a game hostname to 127.0.0.1 for local testing.
+  # Adds a localhost entry to the hosts file for testing purposes.
   #
-  # @param game_host [String] the hostname to redirect (e.g., "gs4.simutronics.net")
-  # @return [Boolean] true if successful, false if the hosts file does not exist or backup creation fails
-  # @note Backs up the original hosts file to {hosts_file}.bak and registers an at_exit handler to restore it
-  # @api private
+  # Backs up the current hosts file to hosts.bak, then appends a line mapping
+  # game_host to 127.0.0.1. Restores the backup on exit. Returns false if the
+  # hosts file does not exist or if a backup already exists.
+  #
+  # @param game_host [String] the game hostname to redirect to localhost
+  # @return [Boolean] true on success, false if hosts file not found or backup exists
   def Lich.modify_hosts(game_host)
     if Lich.hosts_file and File.exist?(Lich.hosts_file)
       at_exit { Lich.restore_hosts }
@@ -825,11 +838,13 @@ module Lich
     end
   end
 
-  # Restores the hosts file from its backup if present.
+  # Restores the hosts file from backup (hosts.bak).
+  #
+  # Called automatically on exit if modify_hosts was used. Replaces the current
+  # hosts file with the backed-up version and removes the .bak file. Exits with
+  # code 1 and logs the error if restoration fails.
   #
   # @return [void]
-  # @note Exits the process with code 1 on restoration error
-  # @api private
   def Lich.restore_hosts
     if Lich.hosts_file and File.exist?(Lich.hosts_file)
       begin
@@ -850,11 +865,12 @@ module Lich
     end
   end
 
-  # Checks whether inventory boxes are enabled for a given player.
+  # Checks whether inventory boxes are enabled for a player.
   #
-  # @param player_id [Integer] the player ID
+  # Queries the enable_inventory_boxes table and retries on SQLite3::BusyException.
+  #
+  # @param player_id [Integer, #to_i] the player ID
   # @return [Boolean] true if inventory boxes are enabled for this player, false otherwise
-  # @note Retries on SQLite3::BusyException
   def Lich.inventory_boxes(player_id)
     begin
       v = Lich.db.get_first_value('SELECT player_id FROM enable_inventory_boxes WHERE player_id=?;', [player_id.to_i])
@@ -869,12 +885,14 @@ module Lich
     end
   end
 
-  # Enables or disables inventory boxes for a given player.
+  # Enables or disables inventory boxes for a player.
   #
-  # @param player_id [Integer] the player ID
+  # Inserts a row into enable_inventory_boxes if enabled is true, or deletes the row
+  # if false. Retries on SQLite3::BusyException.
+  #
+  # @param player_id [Integer, #to_i] the player ID
   # @param enabled [Boolean] true to enable, false to disable
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # @return [nil]
   def Lich.set_inventory_boxes(player_id, enabled)
     if enabled
       begin
@@ -894,11 +912,11 @@ module Lich
     nil
   end
 
-  # Retrieves the stored Windows launch method preference from lich_settings.
+  # Retrieves the Windows game launch method preference.
   #
-  # @return [String, nil] the launch method value, or nil if not set
-  # @note Retries on SQLite3::BusyException
-  # @api private
+  # Reads from lich_settings and retries on SQLite3::BusyException.
+  #
+  # @return [String, nil] the stored launch method, or nil if not set
   def Lich.win32_launch_method
     begin
       val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='win32_launch_method';")
@@ -909,12 +927,13 @@ module Lich
     val
   end
 
-  # Stores a Windows launch method preference in lich_settings.
+  # Stores the Windows game launch method preference.
   #
-  # @param val [String] the launch method value
+  # Writes to lich_settings as UTF-8 encoded string via INSERT OR REPLACE.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] the launch method to store
   # @return [void]
-  # @note Retries on SQLite3::BusyException
-  # @api private
   def Lich.win32_launch_method=(val)
     begin
       Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('win32_launch_method',?);", [val.to_s.encode('UTF-8')])
@@ -924,12 +943,17 @@ module Lich
     end
   end
 
-  # Normalizes deprecated game server hostnames and ports to current values.
+  # Normalizes game server host and port for known redirects.
   #
-  # @param gamehost [String] the game hostname
-  # @param gameport [Integer] the game port
-  # @return [Array<(String, Integer)>] the normalized [hostname, port] pair
-  # @note Maps: gs-plat.simutronics.net:10121 and gs3.simutronics.net:4900 and gs4.simutronics.net:10321 and prime.dr.game.play.net:4901 to current endpoints
+  # Maps legacy game server addresses to their current Storm endpoints:
+  # gs-plat.simutronics.net:10121 → storm.gs4.game.play.net:10124 (Platinum)
+  # gs3.simutronics.net:4900 → storm.gs4.game.play.net:10024 (Prime)
+  # gs4.simutronics.net:10321 → storm.gs4.game.play.net:10324 (Shattered)
+  # prime.dr.game.play.net:4901 → dr.simutronics.net:11024 (DragonRealms Prime)
+  #
+  # @param gamehost [String] the game server hostname
+  # @param gameport [Integer, #to_i] the game server port
+  # @return [Array(String, Integer)] the normalized [gamehost, gameport] pair
   def Lich.fix_game_host_port(gamehost, gameport)
     if (gamehost == 'gs-plat.simutronics.net') and (gameport.to_i == 10121)
       gamehost = 'storm.gs4.game.play.net'
@@ -947,12 +971,14 @@ module Lich
     [gamehost, gameport]
   end
 
-  # Converts current game server hostnames and ports back to their deprecated equivalents (inverse of {.fix_game_host_port}).
+  # Reverses game server normalization, converting Storm endpoints back to legacy addresses.
   #
-  # @param gamehost [String] the game hostname
-  # @param gameport [Integer] the game port
-  # @return [Array<(String, Integer)>] the legacy [hostname, port] pair
-  # @note Maps: storm.gs4.game.play.net:10124 and storm.gs4.game.play.net:10024 and dr.simutronics.net:11024 to their original aliases
+  # Inverse of fix_game_host_port: maps Storm consolidated servers back to their
+  # original pre-consolidation hostnames and ports (for launcher registry restoration).
+  #
+  # @param gamehost [String] the game server hostname
+  # @param gameport [Integer, #to_i] the game server port
+  # @return [Array(String, Integer)] the original [gamehost, gameport] pair
   def Lich.break_game_host_port(gamehost, gameport)
     if (gamehost == 'storm.gs4.game.play.net') and (gameport.to_i == 10324)
       gamehost = 'gs4.simutronics.net'
@@ -972,10 +998,12 @@ module Lich
 
   # new feature GUI / internal settings states
 
-  # Returns the debug messaging toggle state, lazily loaded from lich_settings.
+  # Returns the debug messaging setting (cached).
+  #
+  # Reads from lich_settings on first call and caches the result as a Boolean.
+  # Retries on SQLite3::BusyException.
   #
   # @return [Boolean] true if debug messaging is enabled, false otherwise
-  # @note Lazily evaluates from database on first call and caches in @@debug_messaging
   def Lich.debug_messaging
     if @@debug_messaging.nil?
       begin
@@ -990,11 +1018,14 @@ module Lich
     return @@debug_messaging
   end
 
-  # Sets and persists the debug messaging toggle state.
+  # Enables or disables debug messaging.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings as UTF-8 encoded string. Updates the cache immediately.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
   # @return [void]
-  # @note Retries on SQLite3::BusyException
   def Lich.debug_messaging=(val)
     @@debug_messaging = (val.to_s =~ /on|true|yes/ ? true : false)
     begin
@@ -1005,79 +1036,253 @@ module Lich
     end
   end
 
-  # Returns the room ID display toggle, defaulting based on game type.
+  # Shared Lich.db uses a Ruby busy handler that releases the GVL while
+  # waiting (5000 ms per attempt by default). The calling thread still waits.
+  # Two attempts plus one 100 ms pause bound each operation's default lock
+  # waiting to about 10.1 seconds plus execution overhead. Failed writes raise;
+  # hot-path reads use an uncached default unless a command requests strict reads.
+  DISPLAY_SETTINGS_MAX_ATTEMPTS = 2
+  DISPLAY_SETTINGS_RETRY_DELAY = 0.1
+  DISPLAY_SETTINGS_RETRY_COOLDOWN = 30.0
+
+  # Commands and one-shot startup actions must not act on a busy-read default.
+  # Nested callers retain the outer strict scope, even when a read raises.
+  # @yield reads display settings through their public accessors
+  # @return [Object] the block result
+  def self.with_strict_display_reads
+    previous = Thread.current[:lich_strict_display_reads]
+    Thread.current[:lich_strict_display_reads] = true
+    yield
+  ensure
+    Thread.current[:lich_strict_display_reads] = previous
+  end
+
+  # Checks whether display-setting reads are in cooldown due to contention.
   #
-  # @return [Boolean, nil] true if room IDs should be displayed, nil until a game is identified
-  # @note Default: true for GemStone, false for DragonRealms
-  # @note Lazily loaded from lich_settings and cached
+  # Returns true if a previous read attempt encountered database contention
+  # (SQLite3::BusyException) and the cooldown interval has not yet expired.
+  # Allows hot-path rendering reads to use the last published cached value
+  # instead of retrying the busy database during the cooldown.
+  #
+  # @return [Boolean] true if in cooldown, false otherwise
+  # @api private
+  def self.display_read_cooling_down?
+    retry_at = @display_read_retry_at
+    !Thread.current[:lich_strict_display_reads] && retry_at &&
+      Process.clock_gettime(Process::CLOCK_MONOTONIC) < retry_at
+  end
+
+  # Retries one display-setting read or write after transient contention.
+  # @yield performs one DB operation
+  # @return [Object] the operation's result
+  # @raise [SQLite3::BusyException] when the final attempt remains busy
+  def self.with_display_settings_retry
+    attempts = 0
+    begin
+      attempts += 1
+      yield
+    rescue SQLite3::BusyException
+      raise if attempts >= DISPLAY_SETTINGS_MAX_ATTEMPTS
+
+      sleep DISPLAY_SETTINGS_RETRY_DELAY
+      retry
+    end
+  end
+
+  # Loads and normalizes an unresolved display value under the same lock as
+  # writes, so a concurrent cold read cannot overwrite a successful update.
+  # @param name [Symbol] the internal display setting name
+  # @yieldparam value [String, nil] the stored value, or nil for no row
+  # @return [Boolean, String, nil] cached value, or an uncached default while busy
+  def self.read_display_setting(name)
+    # Warm rendering reads may use the last published value during a write.
+    cached = @display_settings_cache[name]
+    return cached unless cached.nil?
+    return yield(nil) if display_read_cooling_down?
+
+    @display_settings_mutex.synchronize do
+      cached = @display_settings_cache[name]
+      return cached unless cached.nil?
+      return yield(nil) if display_read_cooling_down?
+
+      stored = begin
+        with_display_settings_retry do
+          Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='#{name}';")
+        end
+      rescue SQLite3::BusyException
+        raise if Thread.current[:lich_strict_display_reads]
+
+        # A rendering/hook read must not remove the hook or abort the parser.
+        # Share the cooldown across cold settings in this render/session.
+        # Defaults remain uncached, so expiry can load the saved choice.
+        @display_read_retry_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + DISPLAY_SETTINGS_RETRY_COOLDOWN
+        return yield(nil)
+      end
+      @display_settings_cache[name] = yield(stored)
+    end
+  end
+
+  # Persists first, then publishes the cache while still holding the display
+  # lock. Competing writes therefore leave the cache at the last saved value.
+  # Defer raised exceptions through publication. A thread kill invalidates an
+  # unfinished publication so the next read reloads the saved value. Explicit
+  # writes propagate synchronous DB failures and retain the previous cache.
+  # @param name [Symbol] the internal display setting name
+  # @param value [Boolean, String] the normalized value to save
+  # @param automatic [Boolean] cooldown and log optional subtitle UID writes
+  # @return [Boolean, String, nil] saved value, or nil for a skipped automatic write
+  def self.write_display_setting(name, value, automatic: false)
+    @display_settings_mutex.synchronize do
+      publication_pending = false
+      if automatic
+        return if @display_settings_cache[name] == true
+        return if @display_uid_retry_at && Process.clock_gettime(Process::CLOCK_MONOTONIC) < @display_uid_retry_at
+      end
+
+      Thread.handle_interrupt(Exception => :never) do
+        publication_pending = true
+        with_display_settings_retry do
+          Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('#{name}',?);",
+                          [value.to_s.encode('UTF-8')])
+        end
+        @display_settings_cache[name] = value
+        publication_pending = false
+        @display_read_retry_at = nil
+        @display_uid_retry_at = nil if name == :display_uid
+        value
+      end
+    rescue SQLite3::Exception => e
+      publication_pending = false
+      raise unless automatic
+
+      # Optional subtitle persistence must not abort parsing or retry every room.
+      # Retain the prior value; the next numbered subtitle after expiry retries.
+      @display_uid_retry_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + DISPLAY_SETTINGS_RETRY_COOLDOWN
+      Lich.log "warning: could not persist automatic display_uid: #{e.message}"
+      nil
+    ensure
+      if publication_pending
+        @display_settings_cache.delete(name)
+        @display_read_retry_at = nil
+      end
+    end
+  end
+  private_class_method :with_display_settings_retry, :read_display_setting, :write_display_setting,
+                       :display_read_cooling_down?
+
+  # Explicit setters bypass this cooldown and clear it after a successful save.
+  def self.enable_display_uid_automatically
+    write_display_setting(:display_uid, true, automatic: true)
+  end
+
+  # Returns whether Lich IDs should be displayed in output.
+  #
+  # Reads from lich_settings on first access and caches the result. Defaults to
+  # true for GemStone games, false for others, when no value is stored. Returns nil
+  # before any game is identified.
+  #
+  # @return [Boolean, nil] true to display Lich IDs, false to hide them, or nil if no game identified
   def Lich.display_lichid
-    if @@display_lichid.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_lichid';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = (XMLData.game =~ /^GS/ ? true : false) if val.nil? and XMLData.game != ""; # default false if DR, otherwise default true
-      @@display_lichid = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_lichid) do |val|
+      val = (XMLData.game =~ /^GS/ ? true : false) if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_lichid
   end
 
-  # Sets and persists the room ID display toggle.
+  # Sets whether Lich IDs should be displayed in output.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and retry cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
   def Lich.display_lichid=(val)
-    @@display_lichid = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_lichid',?);", [@@display_lichid.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
+    write_display_setting(:display_lichid, val.to_s.match?(/on|true|yes/))
+  end
+
+  # Returns whether the UID flag should be hidden from output.
+  #
+  # Reads from lich_settings on first access and caches the result. Defaults to
+  # false when no value is stored and a game is identified. Returns nil before
+  # any game is identified.
+  #
+  # @return [Boolean, nil] true to hide the UID flag, false to show it, or nil if no game identified
+  def Lich.hide_uid_flag
+    read_display_setting(:hide_uid_flag) do |val|
+      val = false if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
   end
 
-  # Returns the UID hiding toggle state.
+  # Sets whether the UID flag should be hidden from output.
   #
-  # @return [Boolean, nil] true if UIDs should be hidden, nil until a game is identified
-  # @note Default: false
-  # @note Lazily loaded from lich_settings and cached
-  def Lich.hide_uid_flag
-    if @@hide_uid_flag.nil?
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and retry cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
+  def Lich.hide_uid_flag=(val)
+    write_display_setting(:hide_uid_flag, val.to_s.match?(/on|true|yes/))
+  end
+
+  # Whether the client gets the character's room view without its
+  # description while DragonRealms' FLAG DESCRIPTION is OFF (";display
+  # descflag"). Works around the Saga-identity stream ignoring the flag; see
+  # Lich::Common::RoomDescriptionFilter. Off by default.
+  # @return [Boolean, nil] nil until a game is identified and no value is stored
+  def Lich.follow_description_flag
+    read_display_setting(:follow_description_flag) do |val|
+      val = false if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
+    end
+  end
+
+  # Sets and persists the room description filter toggle.
+  # @param val [Boolean, String] truthy values are any of on/true/yes
+  def Lich.follow_description_flag=(val)
+    write_display_setting(:follow_description_flag, val.to_s.match?(/on|true|yes/))
+  end
+
+  # Whether Lich's proxy forwards a front end's own /FE: handshake instead of
+  # replacing it with Lich's client string (Frontend.proxy_handshake). The
+  # kill switch for that replacement; the --keep-fe-string flag does the same
+  # for one launch. Persisted in the lich_settings table, shared across
+  # characters, read at the handshake. Default false, also when the read fails.
+  # @return [Boolean]
+  def Lich.keep_fe_string
+    if @@keep_fe_string.nil?
       begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='hide_uid_flag';")
+        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='keep_fe_string';")
       rescue SQLite3::BusyException
         sleep 0.1
         retry
       end
-      val = false if val.nil? and XMLData.game != ""; # default false
-      @@hide_uid_flag = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+      @@keep_fe_string = val.to_s.strip.match?(/\A(?:on|true|yes)\z/i)
     end
-    return @@hide_uid_flag
+    @@keep_fe_string
+  rescue StandardError => e
+    # Read on the login path: a settings failure must not stop the handshake.
+    Lich.log "warning: could not read keep_fe_string, replacing the client string: #{e}"
+    false
   end
 
-  # Sets and persists the UID hiding toggle state.
-  #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
-  def Lich.hide_uid_flag=(val)
-    @@hide_uid_flag = (val.to_s =~ /on|true|yes/ ? true : false)
+  # Sets and persists the handshake kill switch; takes effect at the next login.
+  # @param val [Boolean, String] true, or any of on/true/yes
+  def Lich.keep_fe_string=(val)
+    @@keep_fe_string = val.to_s.strip.match?(/\A(?:on|true|yes)\z/i)
     begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('hide_uid_flag',?);", [@@hide_uid_flag.to_s.encode('UTF-8')])
+      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('keep_fe_string',?);", [@@keep_fe_string.to_s.encode('UTF-8')])
     rescue SQLite3::BusyException
       sleep 0.1
       retry
     end
   end
 
-  # Retrieves the Lich version string recorded at the last core update.
+  # Retrieves the Lich version that last updated the core scripts.
+  #
+  # Reads from lich_settings and retries on SQLite3::BusyException.
   #
   # @return [String] the version string, or empty string if not set
-  # @note Retries on SQLite3::BusyException
-  # @api private
   def Lich.core_updated_with_lich_version
     begin
       val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='core_updated_with_lich_version';")
@@ -1088,12 +1293,13 @@ module Lich
     return val.to_s
   end
 
-  # Records the Lich version at core update time.
+  # Records the Lich version that last updated the core scripts.
   #
-  # @param val [String] the version string to store
+  # Writes to lich_settings as UTF-8 encoded string via INSERT OR REPLACE.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] the Lich version string
   # @return [void]
-  # @note Retries on SQLite3::BusyException
-  # @api private
   def Lich.core_updated_with_lich_version=(val)
     begin
       Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('core_updated_with_lich_version',?);", [val.to_s.encode('UTF-8')])
@@ -1103,38 +1309,30 @@ module Lich
     end
   end
 
-  # Returns the UID (unique ID) display toggle, defaulting based on game type.
+  # Returns whether UIDs (unique identifiers) should be displayed in output.
   #
-  # @return [Boolean, nil] true if UIDs should be displayed, nil until a game is identified
-  # @note Default: true for GemStone, false for DragonRealms
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first access and caches the result. Defaults to
+  # true for GemStone games, false for others, when no value is stored. Returns nil
+  # before any game is identified.
+  #
+  # @return [Boolean, nil] true to display UIDs, false to hide them, or nil if no game identified
   def Lich.display_uid
-    if @@display_uid.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_uid';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = (XMLData.game =~ /^GS/ ? true : false) if val.nil? and XMLData.game != ""; # default false if DR, otherwise default true
-      @@display_uid = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_uid) do |val|
+      val = (XMLData.game =~ /^GS/ ? true : false) if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_uid
   end
 
-  # Sets and persists the UID display toggle.
+  # Sets whether UIDs should be displayed in output.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and triggers automatic subtitle UID
+  # cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
   def Lich.display_uid=(val)
-    @@display_uid = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_uid',?);", [@@display_uid.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_uid, val.to_s.match?(/on|true|yes/))
   end
 
   # The valid values for Lich.display_roomid_location.
@@ -1147,19 +1345,10 @@ module Lich
   # read fresh from the lich_settings table on first access and then memoized.
   # @return [String, nil] one of ROOMID_LOCATIONS, or nil before a game has been identified
   def Lich.display_roomid_location
-    if @@display_roomid_location.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_roomid_location';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      # Default to the historical below-room line once a game is known; leave unresolved
-      # (nil) until then, matching the other display_* getters.
+    read_display_setting(:display_roomid_location) do |val|
       val = "line" if val.nil? && XMLData.game != ""
-      @@display_roomid_location = (ROOMID_LOCATIONS.include?(val) ? val : "line") unless val.nil?
+      val.nil? ? nil : (ROOMID_LOCATIONS.include?(val) ? val : "line")
     end
-    return @@display_roomid_location
   end
 
   # Sets the DragonRealms room-id display placement and persists it. An unrecognized value is
@@ -1171,81 +1360,57 @@ module Lich
     normalized = val.to_s.downcase
     return unless ROOMID_LOCATIONS.include?(normalized)
 
-    @@display_roomid_location = normalized
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_roomid_location',?);", [normalized.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_roomid_location, normalized)
   end
 
-  # Returns the room exits display toggle.
+  # Returns whether room exits should be displayed in output.
   #
-  # @return [Boolean, nil] true if room exits should be displayed, nil until a game is identified
-  # @note Default: false
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first access and caches the result. Defaults to
+  # false when no value is stored and a game is identified. Returns nil before
+  # any game is identified.
+  #
+  # @return [Boolean, nil] true to display exits, false to hide them, or nil if no game identified
   def Lich.display_exits
-    if @@display_exits.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_exits';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = false if val.nil? and XMLData.game != ""; # default false
-      @@display_exits = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_exits) do |val|
+      val = false if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_exits
   end
 
-  # Sets and persists the room exits display toggle.
+  # Sets whether room exits should be displayed in output.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and retry cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
   def Lich.display_exits=(val)
-    @@display_exits = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_exits',?);", [@@display_exits.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_exits, val.to_s.match?(/on|true|yes/))
   end
 
-  # Returns the StringProcs display toggle.
+  # Returns whether StringProcs should be displayed in output.
   #
-  # @return [Boolean, nil] true if StringProcs should be displayed, nil until a game is identified
-  # @note Default: false
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first access and caches the result. Defaults to
+  # false when no value is stored and a game is identified. Returns nil before
+  # any game is identified.
+  #
+  # @return [Boolean, nil] true to display StringProcs, false to hide them, or nil if no game identified
   def Lich.display_stringprocs
-    if @@display_stringprocs.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_stringprocs';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = false if val.nil? and XMLData.game != ""; # default false
-      @@display_stringprocs = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_stringprocs) do |val|
+      val = false if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_stringprocs
   end
 
-  # Sets and persists the StringProcs display toggle.
+  # Sets whether StringProcs should be displayed in output.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and retry cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
   def Lich.display_stringprocs=(val)
-    @@display_stringprocs = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_stringprocs',?);", [@@display_stringprocs.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_stringprocs, val.to_s.match?(/on|true|yes/))
   end
 
   # Whether room exits are rendered as clickable command links (a <d> tag) or as
@@ -1258,17 +1423,10 @@ module Lich
   #   the game is identified (XMLData.game still blank), matching the pre-existing
   #   display_* getters. Callers treat nil as falsy.
   def Lich.display_room_links
-    if @@display_room_links.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_room_links';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = (XMLData.game =~ /^DR/ ? false : true) if val.nil? and XMLData.game != ""; # default: DR off, others on
-      @@display_room_links = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_room_links) do |val|
+      val = (XMLData.game =~ /^DR/ ? false : true) if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_room_links
   end
 
   # Sets and persists the room-exit link toggle.
@@ -1276,13 +1434,7 @@ module Lich
   # @return [Boolean, String] the value passed in - Ruby assignment methods
   #   always return their argument, not the method body's result
   def Lich.display_room_links=(val)
-    @@display_room_links = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_room_links',?);", [@@display_room_links.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_room_links, val.to_s.match?(/on|true|yes/))
   end
 
   # Whether the Lich-injected room lines (Room Number, Room Exits, StringProcs)
@@ -1296,17 +1448,10 @@ module Lich
   #   nil until the game is identified (XMLData.game still blank), matching the
   #   pre-existing display_* getters. Callers treat nil as falsy.
   def Lich.display_room_mono
-    if @@display_room_mono.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_room_mono';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      val = (XMLData.game =~ /^DR/ ? true : false) if val.nil? and XMLData.game != ""; # default: DR on, others off
-      @@display_room_mono = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?;
+    read_display_setting(:display_room_mono) do |val|
+      val = (XMLData.game =~ /^DR/ ? true : false) if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    return @@display_room_mono
   end
 
   # Sets and persists the room-line mono-font toggle.
@@ -1314,57 +1459,40 @@ module Lich
   # @return [Boolean, String] the value passed in - Ruby assignment methods
   #   always return their argument, not the method body's result
   def Lich.display_room_mono=(val)
-    @@display_room_mono = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_room_mono',?);", [@@display_room_mono.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_room_mono, val.to_s.match?(/on|true|yes/))
   end
 
-  # Returns the experience gains display toggle.
+  # Returns whether experience gains should be displayed in output.
   #
-  # @return [Boolean, nil] true if experience gains should be displayed, nil until a game is identified
-  # @note Default: true for non-Genie frontends, false for Genie (which has built-in exp tracking)
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first access and caches the result. Defaults based
+  # on frontend: Genie defaults to false (off), others default to true (on). Returns nil
+  # before any game is identified.
+  #
+  # @return [Boolean, nil] true to display exp gains, false to hide them, or nil if no game identified
   def Lich.display_expgains
-    if @@display_expgains.nil?
-      begin
-        val = Lich.db.get_first_value("SELECT value FROM lich_settings WHERE name='display_expgains';")
-      rescue SQLite3::BusyException
-        sleep 0.1
-        retry
-      end
-      # Default to true for non-Genie frontends (Genie has built-in exp tracking)
-      # Once explicitly set, the persisted value takes precedence
-      if val.nil? && XMLData.game != ""
-        val = ($frontend == 'genie') ? 'false' : 'true'
-      end
-      @@display_expgains = (val.to_s =~ /on|true|yes/ ? true : false) if !val.nil?
+    read_display_setting(:display_expgains) do |val|
+      val = ($frontend == 'genie' ? 'false' : 'true') if val.nil? && XMLData.game != ""
+      val.nil? ? nil : val.to_s.match?(/on|true|yes/)
     end
-    @@display_expgains
   end
 
-  # Sets and persists the experience gains display toggle.
+  # Sets whether experience gains should be displayed in output.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
-  # @return [void]
-  # @note Retries on SQLite3::BusyException
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings. Clears the display cache and retry cooldown on save.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
+  # @return [Boolean, String] the normalized value passed in
   def Lich.display_expgains=(val)
-    @@display_expgains = (val.to_s =~ /on|true|yes/ ? true : false)
-    begin
-      Lich.db.execute("INSERT OR REPLACE INTO lich_settings(name,value) values('display_expgains',?);", [@@display_expgains.to_s.encode('UTF-8')])
-    rescue SQLite3::BusyException
-      sleep 0.1
-      retry
-    end
+    write_display_setting(:display_expgains, val.to_s.match?(/on|true|yes/))
   end
 
-  # Returns the autosort state tracking toggle.
+  # Returns the autosort state tracking preference (cached).
   #
-  # @return [Boolean] true if autosort state should be tracked, false otherwise
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first call and caches the result as a Boolean.
+  # Retries on SQLite3::BusyException.
+  #
+  # @return [Boolean] true if autosort state tracking is enabled, false otherwise
   def Lich.track_autosort_state
     if @@track_autosort_state.nil?
       begin
@@ -1378,11 +1506,14 @@ module Lich
     return @@track_autosort_state
   end
 
-  # Sets and persists the autosort state tracking toggle.
+  # Enables or disables autosort state tracking.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings as UTF-8 encoded string. Updates the cache immediately.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
   # @return [void]
-  # @note Retries on SQLite3::BusyException
   def Lich.track_autosort_state=(val)
     @@track_autosort_state = (val.to_s =~ /on|true|yes/ ? true : false)
     begin
@@ -1393,10 +1524,12 @@ module Lich
     end
   end
 
-  # Returns the dark mode state tracking toggle.
+  # Returns the dark mode tracking preference (cached).
   #
-  # @return [Boolean] true if dark mode state should be tracked, false otherwise
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first call and caches the result as a Boolean.
+  # Retries on SQLite3::BusyException.
+  #
+  # @return [Boolean] true if dark mode tracking is enabled, false otherwise
   def Lich.track_dark_mode
     if @@track_dark_mode.nil?
       begin
@@ -1410,11 +1543,14 @@ module Lich
     return @@track_dark_mode
   end
 
-  # Sets and persists the dark mode state tracking toggle.
+  # Enables or disables dark mode tracking.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings as UTF-8 encoded string. Updates the cache immediately.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
   # @return [void]
-  # @note Retries on SQLite3::BusyException
   def Lich.track_dark_mode=(val)
     @@track_dark_mode = (val.to_s =~ /on|true|yes/ ? true : false)
     begin
@@ -1425,10 +1561,12 @@ module Lich
     end
   end
 
-  # Returns the layout state tracking toggle.
+  # Returns the layout state tracking preference (cached).
   #
-  # @return [Boolean] true if layout state should be tracked, false otherwise
-  # @note Lazily loaded from lich_settings and cached
+  # Reads from lich_settings on first call and caches the result as a Boolean.
+  # Retries on SQLite3::BusyException.
+  #
+  # @return [Boolean] true if layout state tracking is enabled, false otherwise
   def Lich.track_layout_state
     if @@track_layout_state.nil?
       begin
@@ -1442,11 +1580,14 @@ module Lich
     return @@track_layout_state
   end
 
-  # Sets and persists the layout state tracking toggle.
+  # Enables or disables layout state tracking.
   #
-  # @param val [String, Boolean] truthy values are "on", "true", or "yes" (case-insensitive)
+  # Normalizes the value to Boolean (on/true/yes → true, else false) and persists
+  # to lich_settings as UTF-8 encoded string. Updates the cache immediately.
+  # Retries on SQLite3::BusyException.
+  #
+  # @param val [#to_s] any value; truthy strings: on, true, yes
   # @return [void]
-  # @note Retries on SQLite3::BusyException
   def Lich.track_layout_state=(val)
     @@track_layout_state = (val.to_s =~ /on|true|yes/ ? true : false)
     begin

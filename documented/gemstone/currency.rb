@@ -1,113 +1,151 @@
-# Top-level namespace for Lich 5, a Ruby scripting engine for GemStone IV and
-# DragonRealms.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for GemStone IV scripting APIs.
+  # Namespace for GemStone IV game integration.
   module Gemstone
-    # Access to the player\'s current currency and scrip balances.
+    # Access character currency holdings including silver, notes, and specialty scrips.
     #
-    # All methods query the live character data maintained by the Lich engine.
-    # Returns are [Integer] or [nil] if the data is not yet available.
+    # All accessor methods query Infomon's cached wealth data; use the +refresh:+ parameter
+    # or explicit refresh methods to send WEALTH commands to the game server.
     module Currency
-      # Returns the player\'s current silver balance.
+      # Silver carried, as Infomon last saw it. Infomon updates it whenever a
+      # WEALTH or INFO response goes by, so the value is only as fresh as the
+      # last of those; pass +refresh: true+ to send WEALTH QUIET first.
       #
-      # @return [Integer, nil] silver amount, or nil if not yet available
-      # @example
-      #   Lich::Gemstone::Currency.silver #=> 5000
-      def self.silver
+      # @param refresh [Boolean]
+      # @return [Integer, nil]
+      def self.silver(refresh: false)
+        self.refresh if refresh
         Lich::Gemstone::Infomon.get('currency.silver')
       end
 
-      # Returns the item noun of the container holding the player\'s silver.
+      # Send WEALTH so Infomon re-reads the silver carried (WEALTH is quiet by
+      # default; LOUD is the option that echoes to the room). The response is
+      # parsed on the game thread before hooks run, so hiding it from the front
+      # end does not hide it from Infomon.
       #
-      # @return [String, nil] container noun (e.g. "pouch", "sack"), or nil if not yet available
+      # @param all [Boolean] WEALTH ALL, which also refreshes gigas fragments,
+      #   redsteel marks and gemstone dust
+      # @return [Integer, nil] the refreshed silver
+      def self.refresh(all: false)
+        Lich::Util.issue_command(all ? 'wealth all' : 'wealth', Lich::Gemstone::Infomon::Parser::Pattern::WealthSilver, silent: true, quiet: true)
+        Lich::Gemstone::Infomon.get('currency.silver')
+      end
+
+      # Silver stored in worn containers, as WEALTH last reported it.
+      #
+      # @return [Integer, nil]
       def self.silver_container
         Lich::Gemstone::Infomon.get('currency.silver_container')
       end
 
-      # Returns the player\'s current Redsteel Marks balance.
+      # Carried plus container silver, the "carrying a total of" line.
       #
-      # @return [Integer, nil] Redsteel Marks amount, or nil if not yet available
-      # @example
-      #   Lich::Gemstone::Currency.redsteel_marks #=> 42
+      # @param refresh [Boolean]
+      # @return [Integer, nil]
+      def self.silver_total(refresh: false)
+        self.refresh if refresh
+        Lich::Gemstone::Infomon.get('currency.silver_total')
+      end
+
+      # Total value of accessible bank notes, from WEALTH NOTES.
+      #
+      # @param refresh [Boolean]
+      # @return [Integer, nil]
+      def self.notes(refresh: false)
+        refresh_notes if refresh
+        Lich::Gemstone::Infomon.get('currency.notes')
+      end
+
+      # Send WEALTH NOTES so Infomon re-reads the note total.
+      #
+      # @return [Integer, nil]
+      def self.refresh_notes
+        Lich::Util.issue_command('wealth notes', /^Listing accessible bank notes/, /^Total note value:/, silent: true, quiet: true)
+        Lich::Gemstone::Infomon.get('currency.notes')
+      end
+
+      # Returns the character's redsteel mark balance, as WEALTH RICH last reported it.
+      #
+      # @return [Integer, nil]
       def self.redsteel_marks
         Lich::Gemstone::Infomon.get('currency.redsteel_marks')
       end
 
-      # Returns the player\'s current Tickets balance.
+      # Returns the character's ticket balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Tickets amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.tickets
         Lich::Gemstone::Infomon.get('currency.tickets')
       end
 
-      # Returns the player\'s current Blackscrip balance.
+      # Returns the character's blackscrip balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Blackscrip amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.blackscrip
         Lich::Gemstone::Infomon.get('currency.blackscrip')
       end
 
-      # Returns the player\'s current Bloodscrip balance.
+      # Returns the character's bloodscrip balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Bloodscrip amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.bloodscrip
         Lich::Gemstone::Infomon.get('currency.bloodscrip')
       end
 
-      # Returns the player\'s current Ethereal Scrip balance.
+      # Returns the character's ethereal scrip balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Ethereal Scrip amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.ethereal_scrip
         Lich::Gemstone::Infomon.get('currency.ethereal_scrip')
       end
 
-      # Returns the player\'s current Raikhen balance.
+      # Returns the character's raikhen balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Raikhen amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.raikhen
         Lich::Gemstone::Infomon.get('currency.raikhen')
       end
 
-      # Returns the player\'s current Elans balance.
+      # Returns the character's elan balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Elans amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.elans
         Lich::Gemstone::Infomon.get('currency.elans')
       end
 
-      # Returns the player\'s current Soul Shards balance.
+      # Returns the character's soul shard balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Soul Shards amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.soul_shards
         Lich::Gemstone::Infomon.get('currency.soul_shards')
       end
 
-      # Returns the player\'s current Aevit balance.
+      # Returns the character's aevit balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] Aevit amount, or nil if not yet available
+      # @return [Integer, nil]
       def self.aevit
         Lich::Gemstone::Infomon.get('currency.aevit')
       end
 
-      # Returns the player\'s current gold balance.
+      # Returns the character's gold balance, as WEALTH last reported it.
       #
-      # @return [Integer, nil] gold amount, or nil if not yet available
-      # @example
-      #   Lich::Gemstone::Currency.gold #=> 15000
+      # @return [Integer, nil]
       def self.gold
         Lich::Gemstone::Infomon.get('currency.gold')
       end
 
-      # Returns the player\'s current Gigas Artifact Fragments balance.
+      # Returns the character's gigas artifact fragment balance, as WEALTH ALL last reported it.
       #
-      # @return [Integer, nil] Gigas Artifact Fragments amount, or nil if not yet available
+      # @return [Integer, nil]
+      # @see .refresh Use +refresh(all: true)+ to update this value from the game server.
       def self.gigas_artifact_fragments
         Lich::Gemstone::Infomon.get('currency.gigas_artifact_fragments')
       end
 
-      # Returns the player\'s current Gemstone Dust balance.
+      # Returns the character's gemstone dust balance, as WEALTH ALL last reported it.
       #
-      # @return [Integer, nil] Gemstone Dust amount, or nil if not yet available
+      # @return [Integer, nil]
+      # @see .refresh Use +refresh(all: true)+ to update this value from the game server.
       def self.gemstone_dust
         Lich::Gemstone::Infomon.get('currency.gemstone_dust')
       end

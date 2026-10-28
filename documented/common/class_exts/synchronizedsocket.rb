@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich 5 scripting engine and supporting infrastructure.
 module Lich
-  # Namespace for shared utilities and threading primitives used throughout Lich 5.
   module Common
     # Thread-safe socket wrapper with write-side resilience.
     #
@@ -34,14 +32,12 @@ module Lich
     # while a frontend stream is open and released after the matching popStream
     # or prompt has entered the queue.
     class SynchronizedSocket
-      # Raised when the pending-write queue exceeds capacity and cannot be compacted.
+      # Raised when the pending write queue exceeds capacity and cannot be
+      # compacted enough to recover space.
       #
-      # When a slow frontend cannot keep up with the game server, queued writes are
-      # first compacted by discarding the oldest prompt-delimited groups. If compaction
-      # cannot free enough space, this error is raised and the socket is marked dead.
-      # All still-pending writes are logged so the bottleneck can be diagnosed.
-      #
-      # @see SynchronizedSocket#compact_write_queue!
+      # When this error is raised, the socket is marked dead, the delegate closed,
+      # and all still-pending writes are dumped to the log for diagnosis of
+      # stalled frontends.
       class WriteQueueOverflow < StandardError; end
 
       # Errors that indicate a permanently broken write path.
@@ -53,11 +49,12 @@ module Lich
         IOError,
       ].freeze
 
-      # Mutex guarding lazy initialization of the writer thread and associated state.
+      # Global mutex protecting lazy initialization of the writer thread
+      # and its associated queue and stream state.
       #
-      # Synchronizes access to +@write_queue+, +@stream_mutex+, +@stream_stack+,
-      # +@deferred_main_stream+, and +@writer_thread+ to prevent race conditions when
-      # the first write arrives and those structures are created.
+      # Serializes access to @writer_thread, @write_queue, @stream_stack,
+      # @stream_mutex, and @deferred_main_stream across concurrent calls to
+      # #ensure_writer! from different enqueue paths.
       WRITER_INIT_MUTEX = Mutex.new
       DEFAULT_WRITE_QUEUE_CAPACITY = 4_096
       # Number of trailing prompt-delimited groups retained when the write queue
@@ -69,15 +66,16 @@ module Lich
       # resync prompt and the client-visible notice. Kept in sync with
       # +drop_preamble+, which never returns more than this many items.
       DROP_PREAMBLE_SIZE = 2
-      # Pattern matching the opening tag of a prompt element in game server XML output.
+      # Regexp matching the start of a +<prompt>+ tag (case-insensitive).
       #
-      # A prompt clears the stream stack, making it a safe boundary point for
-      # discarding older display data during write-queue compaction.
+      # Used to detect prompt boundaries that demarcate output groups safe to drop
+      # during write queue compaction. A prompt clears the frontend's stream stack,
+      # so cutting at a prompt boundary preserves stream nesting invariants.
       #
-      # @example Matching a prompt tag
-      #   text = "<prompt time='1234567890'>Some&gt; </prompt>"
-      #   SynchronizedSocket::PROMPT_TAG.match?(text) #=> true
-      # @see SynchronizedSocket#note_stream_xml!
+      # @example
+      #   "<prompt type=\"room state\">" =~ PROMPT_TAG #=> 0
+      #   "<Prompt>" =~ PROMPT_TAG #=> 0
+      #   "<other>" =~ PROMPT_TAG #=> nil
       PROMPT_TAG = /<prompt\b/i
       # Per-argument byte cap applied when dumping pending writes after an
       # overflow. Longer payloads are truncated with their full byte size noted.
@@ -86,22 +84,21 @@ module Lich
       # Bounds a single log record at roughly 400 entries per section instead of
       # the full queue capacity.
       OVERFLOW_DUMP_EDGE_ENTRIES = 200
-      # Valid roles for a SynchronizedSocket.
+      # Valid socket roles controlling failure behavior.
       #
-      # +primary+:: A fatal write error ends the session immediately. Used for the
-      #             main frontend connection.
-      # +detachable+:: A fatal write error closes the connection but does not end the
-      #                session. Used for secondary connections that can be reconnected
-      #                without restarting the game.
+      # +:primary+ — socket failure ends the game session via ShutdownCoordinator.
+      # +:detachable+ — socket failure only closes this connection; the session
+      #   continues and the frontend can reconnect.
       #
-      # @see SynchronizedSocket#initialize
+      # @see #initialize
       ROLES = %i[primary detachable].freeze
-      # Sentinel marking the boundary between a detachable socket's pre-attachment
-      # and post-attachment stream stack entries.
+      # Sentinel object marking the initial state of a +:detachable+ socket's
+      # stream stack.
       #
-      # When a detachable connection is attached, this sentinel is pushed onto the
-      # stream stack so that any popStream before the first pushStream after attachment
-      # cannot accidentally pop the initial sentinel, leaving the stack corrupted.
+      # A detachable frontend can reconnect after disconnection, potentially leaving
+      # the parser with an orphaned open stream. This sentinel in the stack indicates
+      # pre-connection state; if found during stream tracking, it is cleared rather
+      # than triggering an unbalanced popStream error.
       ATTACHMENT_STREAM_SENTINEL = Object.new.freeze
 
       # @param delegate [#puts, #write, #gets, #close] the underlying socket
@@ -120,6 +117,7 @@ module Lich
         @alive = true
         @role = role
         @write_queue_capacity = write_queue_capacity
+        @declared_capabilities = nil
       end
 
       # Whether the socket is usable for I/O.
@@ -185,6 +183,22 @@ module Lich
         @write_queue.push([:stop, [], nil], true) if @write_queue.is_a?(Queue)
       rescue ThreadError
         nil
+      end
+
+      # The rich-stream capabilities this client declared with a
+      # SET_FRONTEND_CAPS line (see Lich::Common::ClientCapabilities), or nil
+      # when it has not declared any. Set by the client's reader thread and read
+      # by the game thread; the value is a frozen Array replaced whole, so a
+      # reader sees either the old set or the new one.
+      #
+      # @return [Array<Symbol>, nil]
+      def declared_capabilities
+        @declared_capabilities
+      end
+
+      # @param capabilities [Array<Symbol>, nil]
+      def declared_capabilities=(capabilities)
+        @declared_capabilities = capabilities.nil? ? nil : capabilities.dup.freeze
       end
 
       # Delegates all non-write methods to the underlying socket.

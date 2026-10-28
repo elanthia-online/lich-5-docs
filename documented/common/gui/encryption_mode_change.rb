@@ -5,21 +5,23 @@ require_relative 'master_password_manager'
 require_relative 'master_password_prompt_ui'
 require_relative 'accessibility'
 
+# Namespace for Lich scripting engine.
 module Lich
-  # Provides common functionality for the Lich GUI.
-  #
-  # @see Lich::Common::Authentication for authentication-related methods.
+  # Namespace for common Lich functionality shared across scripting contexts.
   module Common
+    # Namespace for Lich GUI components and dialogs.
     module GUI
+      # Provides encryption mode change functionality for the Lich GUI
+      # Allows users to change between plaintext, standard, and enhanced encryption modes
+      # Reuses existing UI components and domain logic
       module EncryptionModeChange
-        # Displays a dialog for changing the encryption mode.
+        # Shows a change encryption mode dialog
+        # Displays mode selection with current mode and handles all mode change workflows
         #
-        # @param parent [Gtk::Window] the parent window for the dialog
-        # @param data_dir [String] the directory containing the data
-        # @param on_completion [Proc, nil] optional callback to execute on completion
-        # @return [Boolean] true if the dialog was shown, false otherwise
-        # @example Show the change mode dialog
-        #   Lich::Common::GUI::EncryptionModeChange.show_change_mode_dialog(parent, "/path/to/data")
+        # @param parent [Gtk::Window] Parent window
+        # @param data_dir [String] Directory containing account data
+        # @param on_completion [Proc, nil] Optional callback to call when mode change completes successfully
+        # @return [Boolean] true if mode changed successfully, false if cancelled
         def self.show_change_mode_dialog(parent, data_dir, on_completion = nil)
           yaml_file = Lich::Common::Authentication::EntryStore.yaml_file_path(data_dir)
 
@@ -166,7 +168,7 @@ module Lich
           content_area.add(warning_label)
 
           # Track mode change result
-          mode_changed = false
+          mode_changed = false # rubocop:disable Lint/UselessAssignment
 
           # Set up response handler
           dialog.signal_connect('response') do |dlg, response|
@@ -247,7 +249,7 @@ module Lich
                     Lich.log "debug: change_encryption_mode returned #{success}"
 
                     if success
-                      mode_changed = true
+                      mode_changed = true # rubocop:disable Lint/UselessAssignment
                       success_dialog = Gtk::MessageDialog.new(
                         parent: parent,
                         flags: :modal,
@@ -305,10 +307,7 @@ module Lich
         class << self
           private
 
-          # Returns a user-friendly display text for the given encryption mode.
-          #
-          # @param mode [Symbol] the encryption mode (:plaintext, :standard, or :enhanced)
-          # @return [String] the display text for the mode
+          # Returns display text for encryption mode
           def mode_display_text(mode)
             case mode
             when :plaintext
@@ -322,10 +321,8 @@ module Lich
             end
           end
 
-          # Displays a confirmation dialog for switching to plaintext mode.
-          #
-          # @param parent [Gtk::Window] the parent window for the dialog
-          # @return [Boolean] true if the user confirms, false otherwise
+          # Confirms plaintext mode selection with warning
+          # Uses Gtk.queue for thread-safe dialog operations
           def confirm_plaintext_mode_dialog(parent)
             result = nil
             mutex = Mutex.new
@@ -366,11 +363,7 @@ module Lich
             result
           end
 
-          # Displays an error dialog with the specified message.
-          #
-          # @param parent [Gtk::Window] the parent window for the dialog
-          # @param message [String] the error message to display
-          # @return [void]
+          # Shows error dialog
           def show_error_dialog(parent, message)
             dialog = Gtk::MessageDialog.new(
               parent: parent,

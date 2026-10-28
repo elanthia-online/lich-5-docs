@@ -6,13 +6,16 @@ require 'open-uri'
 require 'open3'
 require 'rbconfig'
 require 'rubygems/installer'
+require 'tempfile'
+require 'timeout'
 require 'tmpdir'
 require 'uri'
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich5 Ruby scripting engine.
 #
-# Lich provides a Ruby interpreter for text-based games GemStone IV and
-# DragonRealms, along with runtime utilities and gem dependency recovery.
+# Lich5 powers script automation for text-based games including GemStone IV and
+# DragonRealms. The engine provides script loading, gem dependency recovery, and
+# runtime support.
 module Lich
   # Restores approved runtime gems from the Ruby4Lich5 manifest when an
   # installed runtime is incomplete or a native extension cannot load. The
@@ -24,49 +27,61 @@ module Lich
   # corruption and mismatched assets; they are not a substitute for signing,
   # because the manifest and assets currently share a publisher.
   class DependencyRecovery
-    # Default HTTPS URL to the Ruby4Lich5 gem bundle manifest.
+    # Default HTTPS location of the approved gem manifest for this Lich5 release.
     #
-    # @see DependencyRecovery#initialize
-    DEFAULT_MANIFEST_URL = 'https://github.com/Lich5/Ruby4Lich5/releases/download/' \
+    # Points to a GitHub release asset for the Ruby4Lich5 gem bundle on Windows
+    # (x64-mingw-ucrt platform). The manifest is a JSON document with schema version
+    # 1, containing approved gem units keyed by Ruby ABI and platform.
+    #
+    # @return [String] absolute HTTPS URL
+    # @see DependencyRecovery.run_windows_replacement DependencyRecovery#load_manifest
+    DEFAULT_MANIFEST_URL = 'https://github.com/elanthia-online/Ruby4Lich5/releases/download/' \
                            'R4L5-gem-bundle-x64-mingw-ucrt/R4L5-gem-manifest.json'
     LOCK_FILENAME = '.lich-dependency-recovery.lock'
     HTTP_OPEN_TIMEOUT_SECONDS = 10
     HTTP_READ_TIMEOUT_SECONDS = 60
-    # Regexp matching a SHA-256 digest in the format required by manifest entries.
+    NATIVE_LOAD_TIMEOUT_SECONDS = 60
+    # Regexp that matches a validated SHA-256 digest in manifest format.
     #
-    # @example Match a valid manifest digest
-    #   "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" =~ SHA256_PATTERN #=> 0
-    # @example Non-match: uppercase hex
-    #   "sha256:ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789" =~ SHA256_PATTERN #=> nil
+    # Ensures the prefix `sha256:` followed by exactly 64 lowercase hexadecimal
+    # digits representing a 256-bit hash. Used to validate artifact and package
+    # digests from the manifest before any download or installation attempt.
+    #
+    # @return [Regexp]
+    # @example
+    #   SHA256_PATTERN.match?("sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") #=> true
+    # @example
+    #   SHA256_PATTERN.match?("sha256:invalid") #=> false
+    # @see DependencyRecovery#require_sha256!
     SHA256_PATTERN = /\Asha256:[0-9a-f]{64}\z/
-    # Regexp matching a safe archive member filename.
+    # Regexp that matches filenames safe to extract or write within the runtime.
     #
-    # Allows any non-empty sequence of characters except backslash and forward
-    # slash, but rejects pure dot sequences (.", ..", etc.) to prevent directory
-    # traversal during ZIP extraction.
+    # Allows alphanumerics, hyphens, dots, and underscores, but rejects dot-only
+    # names (like `.` or `..`) and paths containing backslashes or forward slashes.
+    # Protects against manifest-controlled path traversal during ZIP extraction
+    # and gem installation.
     #
-    # @example Valid filenames
-    #   "gem-1.2.3.gem" =~ SAFE_FILENAME #=> 0
-    #   "lib/extconf.rb" =~ SAFE_FILENAME #=> nil (contains /)
-    # @example Invalid filenames
-    #   ".." =~ SAFE_FILENAME #=> nil
-    #   "." =~ SAFE_FILENAME #=> nil
-    # @see #require_filename!
+    # @return [Regexp]
+    # @example
+    #   SAFE_FILENAME.match?("gtk3-1.5.0.gem") #=> true
+    # @example
+    #   SAFE_FILENAME.match?("..\\exploit") #=> false
+    # @see DependencyRecovery#require_filename! DependencyRecovery#unsafe_archive_entry?
     SAFE_FILENAME = /\A(?!\.+\z)[^\\\/]+\z/
-    # Regexp matching a safe gem or unit name in the manifest.
+    # Regexp that matches gem names and unit identifiers safe to process.
     #
-    # Restricts names to alphanumeric characters, underscore, period, and hyphen.
-    # This prevents manifest names from being misinterpreted as shell commands or
-    # path components.
+    # Permits only ASCII alphanumerics, underscores, hyphens, and dots. Rejects
+    # control characters, slashes, and special characters to prevent gem names from
+    # being interpreted as shell metacharacters or path components during recovery.
     #
-    # @example Valid names
-    #   "gtk3" =~ SAFE_NAME #=> 0
-    #   "nokogiri-1.15.0" =~ SAFE_NAME #=> 0
-    # @example Invalid names
-    #   "../../../etc/passwd" =~ SAFE_NAME #=> nil
-    #   "gem; rm -rf /" =~ SAFE_NAME #=> nil
-    # @see #validate_unit!
-    # @see #validate_package!
+    # @return [Regexp]
+    # @example
+    #   SAFE_NAME.match?("gtk3") #=> true
+    # @example
+    #   SAFE_NAME.match?("ruby-gtk3") #=> true
+    # @example
+    #   SAFE_NAME.match?("gtk/3") #=> false
+    # @see DependencyRecovery#unit_members DependencyRecovery#validate_unit! DependencyRecovery#validate_package!
     SAFE_NAME = /\A[a-zA-Z0-9_.-]+\z/
 
     # Result of a successful or unsuccessful recovery attempt.
@@ -430,29 +445,48 @@ module Lich
 
     # Performs the destructive portion only after the original Ruby process is
     # gone. Every old package is moved, not deleted, until the complete new suite
-    # is installed and its exact manifest versions are registered.
+    # is installed and its exact manifest versions are registered. Journals are
+    # updated before installation and after each successful backup move so a
+    # partial failure cannot discard ownership information needed for rollback.
     # @param payload [Hash]
     # @return [void]
     def run_windows_replacement!(payload)
       validate_replacement_payload!(payload)
       wait_for_parent_exit(payload.fetch('parent_pid'))
       with_install_lock do
-        rollback_dir = File.join(payload.fetch('work_dir'), 'previous-runtime')
+        # Lich's temp directory can be on another drive. Keep runtime moves
+        # on the gem filesystem so they cannot become copy/delete operations.
+        rollback_dir = Dir.mktmpdir('.lich-previous-runtime-', @gem_home)
         moved = []
+        replacements = []
         begin
-          moved = backup_existing_packages(payload.fetch('packages'), rollback_dir)
+          backup_existing_packages(payload.fetch('packages'), rollback_dir, moved)
           refresh_rubygems!
           payload.fetch('packages').each do |package|
             verify_file!(package.fetch('path'), package.fetch('sha256'), "#{package.fetch('name')} gem")
+            paths = replacement_package_paths(package)
+            paths.each do |path|
+              raise Error, "replacement gem path is outside Ruby runtime: #{path}" unless path_within?(path, @gem_home)
+              backup_path(path, rollback_dir, moved) if File.exist?(path)
+            end
+            replacements.concat(paths)
             @install_gem.call(package.fetch('path'), @gem_home)
           end
           verify_replacement!(payload.fetch('packages'))
-          FileUtils.remove_entry(rollback_dir) if Dir.exist?(rollback_dir)
-        rescue StandardError
-          remove_replacement_packages(payload.fetch('packages'))
-          restore_backup(moved)
+        rescue StandardError => error
+          failures = []
+          [-> { remove_replacement_packages(replacements) }, -> { restore_backup(moved) }].each do |rollback|
+            rollback.call
+          rescue StandardError => rollback_error
+            failures << rollback_error.message
+          end
+          unless failures.empty?
+            raise Error, "#{error.message}; rollback incomplete: #{failures.join('; ')}; backups retained in #{rollback_dir}"
+          end
+          remove_empty_backup_directories(rollback_dir)
           raise
         end
+        cleanup_workspace(rollback_dir)
       end
       cleanup_workspace(payload.fetch('work_dir'))
       restart_lich(payload.fetch('restart'))
@@ -492,45 +526,95 @@ module Lich
 
     # @param packages [Array<Hash>]
     # @param rollback_dir [String]
+    # @param moved [Array<Array<String>>] caller-owned journal updated per move
     # @return [Array<Array<String>>] original and temporary paths
-    def backup_existing_packages(packages, rollback_dir)
+    def backup_existing_packages(packages, rollback_dir, moved)
       names = packages.map { |package| package.fetch('name') }.uniq
       specs = names.flat_map { |name| Gem::Specification.find_all_by_name(name) }.uniq(&:loaded_from)
-      specs.flat_map do |spec|
-        [spec.full_gem_path, spec.loaded_from, spec.extension_dir].filter_map do |path|
+      specs.each do |spec|
+        [spec.full_gem_path, spec.loaded_from, spec.extension_dir].each do |path|
           next unless File.exist?(path)
           raise Error, "installed gem path is outside Ruby runtime: #{path}" unless path_within?(path, @gem_home)
 
-          destination = File.join(rollback_dir, path.delete_prefix(File.expand_path(@gem_home)).sub(%r{\A[\\/]}, ''))
-          FileUtils.mkdir_p(File.dirname(destination))
-          FileUtils.mv(path, destination)
-          [path, destination]
+          backup_path(path, rollback_dir, moved)
         end
       end
+      moved
     end
 
+    # @param path [String] existing registered or interrupted-install path
+    # @param rollback_dir [String]
+    # @param moved [Array<Array<String>>]
+    # @return [void]
+    def backup_path(path, rollback_dir, moved)
+      destination = File.join(rollback_dir, path.delete_prefix(File.expand_path(@gem_home)).sub(%r{\A[\\/]}, ''))
+      raise Error, "backup destination already exists: #{destination}" if File.exist?(destination) || File.symlink?(destination)
+
+      FileUtils.mkdir_p(File.dirname(destination))
+      FileUtils.mv(path, destination)
+      moved << [path, destination]
+    end
+
+    # Tracks gem directories, gemspecs and native extension directories before
+    # installation, which may fail before writing a spec. RubyGems cache files
+    # and executable/plugin artifacts are outside this rollback contract;
+    # a leftover cached .gem does not register an installed package.
+    # @param package [Hash] verified local artifact
+    # @return [Array<String>] replacement-owned runtime paths
+    def replacement_package_paths(package)
+      installer = Gem::Installer.at(package.fetch('path'), install_dir: @gem_home)
+      installer.spec.loaded_from = installer.spec_file
+      [installer.gem_dir, installer.spec_file, installer.spec.extension_dir].uniq
+    end
+
+    # Restores every available backup even if another path cannot be restored.
+    # Never move into an occupied destination or delete a recoverable backup.
     # @param moved [Array<Array<String>>]
     # @return [void]
     def restore_backup(moved)
+      failures = []
       moved.reverse_each do |original, temporary|
-        next unless File.exist?(temporary)
+        raise Error, "backup is missing: #{temporary}" unless File.exist?(temporary)
+        raise Error, "restore destination is occupied: #{original}" if File.exist?(original)
 
         FileUtils.mkdir_p(File.dirname(original))
         FileUtils.mv(temporary, original)
+      rescue StandardError => error
+        failures << error.message
       end
       refresh_rubygems!
+      raise Error, failures.join('; ') unless failures.empty?
     end
 
-    # @param packages [Array<Hash>]
+    # Remove empty rollback scaffolding without deleting retained content or
+    # following symlinks. Cleanup must not replace the original recovery error.
+    # @param path [String]
     # @return [void]
-    def remove_replacement_packages(packages)
-      names = packages.map { |package| package.fetch('name') }.uniq
-      names.flat_map { |name| Gem::Specification.find_all_by_name(name) }.uniq(&:loaded_from).each do |spec|
-        [spec.full_gem_path, spec.loaded_from, spec.extension_dir].each do |path|
-          FileUtils.remove_entry(path) if File.exist?(path) && path_within?(path, @gem_home)
-        end
+    def remove_empty_backup_directories(path)
+      return unless File.lstat(path).directory?
+
+      Dir.children(path).each do |entry|
+        remove_empty_backup_directories(File.join(path, entry))
+      end
+      Dir.rmdir(path)
+    rescue SystemCallError
+      nil
+    end
+
+    # Removes only paths claimed before attempted installs, not all registered
+    # versions of the requested gems. Continue so one locked path does not
+    # prevent other packages from being restored.
+    # @param paths [Array<String>] replacement-owned runtime paths
+    # @return [void]
+    def remove_replacement_packages(paths)
+      failures = []
+      paths.uniq.each do |path|
+        FileUtils.remove_entry(path) if File.exist?(path) && path_within?(path, @gem_home)
+      rescue StandardError => error
+        failures << error.message
       end
       refresh_rubygems!
+      raise Error, failures.join('; ') unless failures.empty?
     end
 
     # @param packages [Array<Hash>]
@@ -541,6 +625,53 @@ module Lich
         requirement = Gem::Requirement.new("= #{package.fetch('version')}")
         installed = Gem::Specification.find_all_by_name(package.fetch('name'), requirement)
         raise Error, "#{package.fetch('name')} was not installed during native runtime replacement" if installed.empty?
+      end
+      verify_gtk_load!(packages) if packages.any? { |package| package.fetch('name') == 'gtk3' }
+    end
+
+    # Check the GTK entry point used by init.rb in a fresh process, before
+    # discarding the prior suite. Loading it here would lock its native DLLs
+    # and prevent rollback on Windows. A failed check never relaunches Lich.
+    # @param packages [Array<Hash>]
+    # @return [void]
+    def verify_gtk_load!(packages)
+      script = <<~RUBY
+        require 'rubygems'
+        Gem.use_paths(ARGV.shift)
+        ARGV.each_slice(2) { |name, version| gem(name, "= \#{version}") }
+        require 'gtk3'
+      RUBY
+      versions = packages.flat_map { |package| [package.fetch('name'), package.fetch('version')] }
+      # RubyGems can activate a parent bundle before this script starts, even
+      # without RUBYOPT. Verify the manifest's gems in the replacement home.
+      environment = {
+        'GEM_HOME' => @gem_home, 'GEM_PATH' => @gem_home, 'RUBYOPT' => nil, 'RUBYLIB' => nil,
+        'BUNDLER_SETUP' => nil, 'RUBYGEMS_GEMDEPS' => nil
+      }
+      Tempfile.create(['lich-gtk-load-', '.log'], @temp_dir) do |log|
+        pid = Process.spawn(environment, rubyw_binary, '-e', script, @gem_home, *versions, out: log, err: log)
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + NATIVE_LOAD_TIMEOUT_SECONDS
+        loop do
+          if (finished = Process.waitpid2(pid, Process::WNOHANG))
+            pid = nil
+            break if finished.last.success?
+
+            log.rewind
+            raise Error, "GTK runtime could not load after replacement: #{log.read.strip}"
+          end
+          raise Error, 'timed out checking the replacement GTK runtime' if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+          sleep 0.05
+        end
+      ensure
+        if pid
+          begin
+            Process.kill('KILL', pid)
+          rescue Errno::ESRCH
+            nil
+          end
+          Process.waitpid(pid)
+        end
       end
     end
 

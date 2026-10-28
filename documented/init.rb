@@ -5,7 +5,7 @@
 #
 if File.exist?("#{DATA_DIR}/lich.sav")
   Lich.log "error: Archaic Lich 4.4 configuration found: Please remove #{DATA_DIR}/lich.sav"
-  Lich.msgbox "error: Archaic Lich 4.4 configuration found: Please remove #{DATA_DIR}/lich.sav"
+  Lich.msgbox(message: "error: Archaic Lich 4.4 configuration found: Please remove #{DATA_DIR}/lich.sav", icon: :error)
   exit
 end
 
@@ -32,94 +32,54 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
   #
   require 'fiddle'
   require 'fiddle/import'
-  # Namespace for Windows API bindings via Fiddle, providing access to kernel, user, shell, and registry operations.
-  # Available only on Windows platforms (mingw/win without darwin).
+  # Namespace for Windows API interop via Fiddle.
   #
-  # @api private
+  # Provides wrappers for kernel32, user32, advapi32, and shell32 DLL calls.
+  # Only available on Windows (mingw/win platform, non-Darwin).
   module Win32
-    # Size of a C char in bytes, delegated from Fiddle.
-    #
-    # @api private
+    # Size in bytes of a char type in native code (typically 1).
     SIZEOF_CHAR = Fiddle::SIZEOF_CHAR
-    # Size of a C long in bytes, delegated from Fiddle.
-    #
-    # @api private
+    # Size in bytes of a long type in native code (typically 4 or 8).
     SIZEOF_LONG = Fiddle::SIZEOF_LONG
-    # Windows API flag for ShellExecuteEx: do not close the process handle automatically.
-    #
-    # @api private
+    # ShellExecuteEx mask flag to prevent process handle closure on return.
     SEE_MASK_NOCLOSEPROCESS = 0x00000040
-    # Windows API message box button flag: OK button only.
-    #
-    # @api private
+    # MessageBox type flag: display OK button only.
     MB_OK = 0x00000000
-    # Windows API message box button flag: OK and Cancel buttons.
-    #
-    # @api private
+    # MessageBox type flag: display OK and Cancel buttons.
     MB_OKCANCEL = 0x00000001
-    # Windows API message box button flag: Yes and No buttons.
-    #
-    # @api private
+    # MessageBox type flag: display Yes and No buttons.
     MB_YESNO = 0x00000004
-    # Windows API message box icon flag: error icon.
-    #
-    # @api private
+    # MessageBox icon flag: display error icon (stop sign).
     MB_ICONERROR = 0x00000010
-    # Windows API message box icon flag: question mark icon.
-    #
-    # @api private
+    # MessageBox icon flag: display question mark icon.
     MB_ICONQUESTION = 0x00000020
-    # Windows API message box icon flag: warning/exclamation icon.
-    #
-    # @api private
+    # MessageBox icon flag: display warning (exclamation) icon.
     MB_ICONWARNING = 0x00000030
     IDIOK = 1
     IDICANCEL = 2
     IDIYES = 6
     IDINO = 7
-    # Windows registry access flag: all access permissions.
-    #
-    # @api private
+    # Registry key access mask: all standard access rights.
     KEY_ALL_ACCESS = 0xF003F
-    # Windows registry access flag: permission to create subkeys.
-    #
-    # @api private
+    # Registry key access mask: create subkey.
     KEY_CREATE_SUB_KEY = 0x0004
-    # Windows registry access flag: permission to enumerate subkeys.
-    #
-    # @api private
+    # Registry key access mask: enumerate subkeys.
     KEY_ENUMERATE_SUB_KEYS = 0x0008
-    # Windows registry access flag: permission to execute/read registry keys.
-    #
-    # @api private
+    # Registry key access mask: read-equivalent permissions.
     KEY_EXECUTE = 0x20019
-    # Windows registry access flag: permission to request change notifications.
-    #
-    # @api private
+    # Registry key access mask: request change notifications.
     KEY_NOTIFY = 0x0010
-    # Windows registry access flag: permission to query registry value data.
-    #
-    # @api private
+    # Registry key access mask: query value.
     KEY_QUERY_VALUE = 0x0001
-    # Windows registry access flag: read permissions for registry keys.
-    #
-    # @api private
+    # Registry key access mask: read key and values.
     KEY_READ = 0x20019
-    # Windows registry access flag: permission to set registry value data.
-    #
-    # @api private
+    # Registry key access mask: set value.
     KEY_SET_VALUE = 0x0002
-    # Windows registry access flag: access 32-bit registry view on 64-bit Windows.
-    #
-    # @api private
+    # Registry key access mask: operate on 32-bit registry view on 64-bit Windows.
     KEY_WOW64_32KEY = 0x0200
-    # Windows registry access flag: access 64-bit registry view on 64-bit Windows.
-    #
-    # @api private
+    # Registry key access mask: operate on 64-bit registry view on 64-bit Windows.
     KEY_WOW64_64KEY = 0x0100
-    # Windows registry access flag: write permissions for registry keys.
-    #
-    # @api private
+    # Registry key access mask: write key and values.
     KEY_WRITE = 0x20006
     TokenElevation = 20
     TOKEN_QUERY = 8
@@ -153,7 +113,7 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int CreateProcess(void*, void*, void*, void*, int, int, void*, void*, void*, void*)'
     end
 
-    # Retrieves the last error code from the Windows API.
+    # Returns the last Win32 error code from the calling thread.
     #
     # @return [Integer] the error code
     # @api private
@@ -161,22 +121,21 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return Kernel32.GetLastError()
     end
 
-    # Creates a new process on Windows.
+    # Spawns a new Windows process with optional inheritance, environment, and startup configuration.
     #
-    # @param args [Hash] process creation parameters
-    # @option args [String] :lpCommandLine command line string (will be duplicated internally)
-    # @option args [Boolean, Integer] :bInheritHandles whether to inherit handles; true/false or 0/1
-    # @option args [String, nil] :lpApplicationName application executable path
-    # @option args [String, nil] :lpProcessAttributes process security attributes
-    # @option args [String, nil] :lpThreadAttributes thread security attributes
-    # @option args [Integer] :dwCreationFlags process creation flags
-    # @option args [String, nil] :lpEnvironment environment block (Array not yet supported)
-    # @option args [String, nil] :lpCurrentDirectory working directory
+    # @param args [Hash] process creation arguments
+    # @option args [String] :lpApplicationName executable path (optional)
+    # @option args [String] :lpCommandLine command line (required)
+    # @option args [String] :lpCurrentDirectory working directory
+    # @option args [Integer] :dwCreationFlags creation flags (default: 0)
+    # @option args [Integer, true, false] :bInheritHandles whether handles are inherited (default: false)
+    # @option args [Array, nil] :lpEnvironment environment block
     # @option args [Integer] :dwX window X position
     # @option args [Integer] :dwY window Y position
     # @option args [Integer] :dwXSize window width
     # @option args [Integer] :dwYSize window height
-    # @return [Hash] result hash with keys: :return (Boolean), :hProcess, :hThread, :dwProcessId, :dwThreadId
+    # @option args [Integer] :wShowWindow show window flag (SW_SHOW, etc.)
+    # @return [Hash] return result with :return boolean, :hProcess, :hThread, :dwProcessId, :dwThreadId
     # @api private
     def Win32.CreateProcess(args)
       if args[:lpCommandLine]
@@ -224,9 +183,9 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
 
     # Retrieves the exit code of a process.
     #
-    # @param args [Hash] process handle parameters
-    # @option args [Integer] :hProcess handle to the process
-    # @return [Hash] result hash with keys: :return (Integer), :lpExitCode (Integer)
+    # @param args [Hash] process query arguments
+    # @option args [Integer] :hProcess process handle
+    # @return [Hash] :return status code, :lpExitCode exit code of the process (or STILL_ACTIVE if running)
     # @api private
     def Win32.GetExitCodeProcess(args)
       lpExitCode = [0].pack('L')
@@ -234,12 +193,12 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :lpExitCode => lpExitCode.unpack('L')[0]
     end
 
-    # Retrieves the filename of a loaded module.
+    # Retrieves the file path of the executable module for a process.
     #
-    # @param args [Hash] module parameters
-    # @option args [Integer] :hModule module handle (defaults to current process if omitted)
+    # @param args [Hash] module query arguments (default: {})
+    # @option args [Integer] :hModule module handle (default: 0 for main executable)
     # @option args [Integer] :nSize buffer size in bytes (default: 256)
-    # @return [Hash] result hash with keys: :return (Integer), :lpFilename (String without null terminators)
+    # @return [Hash] :return character count, :lpFilename path string (null terminators removed)
     # @api private
     def Win32.GetModuleFileName(args = {})
       args[:nSize] ||= 256
@@ -248,9 +207,9 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :lpFilename => buffer.gsub("\0", '')
     end
 
-    # Retrieves Windows OS version information.
+    # Retrieves Windows version and system information.
     #
-    # @return [Hash] result hash with keys: :return (Integer), :dwOSVersionInfoSize, :dwMajorVersion, :dwMinorVersion, :dwBuildNumber, :dwPlatformId, :szCSDVersion (String), :wServicePackMajor, :wServicePackMinor, :wSuiteMask, :wProductType
+    # @return [Hash] operating system info with :dwMajorVersion, :dwMinorVersion, :dwBuildNumber, :dwPlatformId, :szCSDVersion, service pack levels, suite mask, and product type
     # @api private
     def Win32.GetVersionEx
       a = [156, 0, 0, 0, 0, ("\0" * 128), 0, 0, 0, 0, 0].pack('LLLLLa128SSSCC')
@@ -259,32 +218,28 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :dwOSVersionInfoSize => a[0], :dwMajorVersion => a[1], :dwMinorVersion => a[2], :dwBuildNumber => a[3], :dwPlatformId => a[4], :szCSDVersion => a[5].strip, :wServicePackMajor => a[6], :wServicePackMinor => a[7], :wSuiteMask => a[8], :wProductType => a[9]
     end
 
-    # Fiddle binding to the Windows user32 library.
-    #
-    # @api private
+    # Fiddle importer for user32.dll; provides UI and message functions.
     module User32
       extend Fiddle::Importer
       dlload 'user32'
       extern 'int MessageBox(int, char*, char*, int)'
     end
 
-    # Displays a message box dialog on Windows.
+    # Displays a modal dialog box with a message, title, buttons, and icon.
     #
-    # @param args [Hash] message box parameters
+    # @param args [Hash] message box arguments
     # @option args [Integer] :hWnd parent window handle
     # @option args [String] :lpText message text
-    # @option args [String] :lpCaption window title (default: "Lich v#{LICH_VERSION}")
-    # @option args [Integer] :uType message box type flags (buttons and icons)
-    # @return [Integer] dialog result code
+    # @option args [String] :lpCaption title bar text (default: "Lich v{LICH_VERSION}")
+    # @option args [Integer] :uType button and icon flags (MB_OK, MB_YESNO, MB_ICONERROR, etc.)
+    # @return [Integer] button clicked (IDIOK, IDIYES, IDICANCEL, etc.)
     # @api private
     def Win32.MessageBox(args)
       args[:lpCaption] ||= "Lich v#{LICH_VERSION}"
       return User32.MessageBox(args[:hWnd].to_i, args[:lpText], args[:lpCaption], args[:uType].to_i)
     end
 
-    # Fiddle binding to the Windows advapi32 library (Advanced Windows API).
-    #
-    # @api private
+    # Fiddle importer for advapi32.dll; provides security, registry, and token functions.
     module Advapi32
       extend Fiddle::Importer
       dlload 'advapi32'
@@ -297,12 +252,12 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int RegCloseKey(int)'
     end
 
-    # Retrieves information about an access token.
+    # Retrieves security token information for the current process.
     #
-    # @param args [Hash] token parameters
-    # @option args [Integer] :TokenHandle handle to the access token
-    # @option args [Integer] :TokenInformationClass information class (e.g., TokenElevation)
-    # @return [Hash, nil] result hash with keys: :return (Integer), :TokenIsElevated (Integer); nil if TokenInformationClass is not TokenElevation
+    # @param args [Hash] token query arguments
+    # @option args [Integer] :TokenHandle process token handle
+    # @option args [Integer] :TokenInformationClass type of info to retrieve (TokenElevation=20)
+    # @return [Hash, nil] :return status code, :TokenIsElevated 1 if elevated/admin 0 otherwise; nil if class not recognized
     # @api private
     def Win32.GetTokenInformation(args)
       if args[:TokenInformationClass] == TokenElevation
@@ -318,12 +273,12 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
-    # Opens an access token associated with a process.
+    # Opens the security token for a process.
     #
-    # @param args [Hash] process token parameters
-    # @option args [Integer] :ProcessHandle process handle
-    # @option args [Integer] :DesiredAccess desired access level (e.g., TOKEN_QUERY)
-    # @return [Hash] result hash with keys: :return (Integer), :TokenHandle (Integer)
+    # @param args [Hash] process arguments
+    # @option args [Integer] :ProcessHandle process handle from GetCurrentProcess
+    # @option args [Integer] :DesiredAccess token access mask (TOKEN_QUERY, etc.)
+    # @return [Hash] :return status code, :TokenHandle the opened token handle
     # @api private
     def Win32.OpenProcessToken(args)
       token_handle = [0].pack('L')
@@ -331,13 +286,13 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :TokenHandle => token_handle.unpack('L')[0]
     end
 
-    # Opens a registry key with extended options.
+    # Opens a registry key.
     #
-    # @param args [Hash] registry key parameters
-    # @option args [Integer] :hKey parent registry key handle
+    # @param args [Hash] key open arguments
+    # @option args [Integer] :hKey parent key handle (e.g., HKEY_LOCAL_MACHINE)
     # @option args [String] :lpSubKey subkey path
-    # @option args [Integer] :samDesired desired access level
-    # @return [Hash] result hash with keys: :return (Integer), :phkResult (Integer, opened key handle)
+    # @option args [Integer] :samDesired access mask (KEY_READ, KEY_WRITE, etc.)
+    # @return [Hash] :return status code (0 = success), :phkResult opened key handle
     # @api private
     def Win32.RegOpenKeyEx(args)
       phkResult = [0].pack('L')
@@ -345,13 +300,12 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :phkResult => phkResult.unpack('L')[0]
     end
 
-    # Queries a registry value, automatically converting to the appropriate Ruby type.
+    # Retrieves the data and type of a registry value.
     #
-    # @param args [Hash] registry value parameters
+    # @param args [Hash] value query arguments
     # @option args [Integer] :hKey registry key handle
-    # @option args [String] :lpValueName value name (default: nil)
-    # @return [Hash] result hash with keys: :return (Integer), :lpType (Integer, registry type), :lpcbData (Integer, size), :lpData (String, Integer, Array, or nil depending on type)
-    # @note REG_SZ, REG_EXPAND_SZ, REG_LINK are returned as String; REG_MULTI_SZ as Array<String>; REG_DWORD as Integer; REG_QWORD as Integer; others are unparsed
+    # @option args [String] :lpValueName value name (default: nil for default value)
+    # @return [Hash] :return status code (0 = success), :lpType registry data type (REG_SZ, REG_DWORD, etc.), :lpcbData size in bytes, :lpData converted value (String, Integer, Array, or raw); omitted if status != 0
     # @api private
     def Win32.RegQueryValueEx(args)
       args[:lpValueName] ||= 0
@@ -386,14 +340,14 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
-    # Sets a registry value, converting from Ruby types to Windows registry format.
+    # Sets the data of a registry value, creating or overwriting it.
     #
-    # @param args [Hash] registry value parameters
+    # @param args [Hash] value set arguments
     # @option args [Integer] :hKey registry key handle
-    # @option args [String] :lpValueName value name (default: nil)
+    # @option args [String] :lpValueName value name (default: nil for default value)
     # @option args [Integer] :dwType registry data type (REG_SZ, REG_DWORD, REG_MULTI_SZ, REG_QWORD, etc.)
-    # @option args [String, Integer, Array] :lpData data to store (must match dwType)
-    # @return [Integer] Windows API result code; false if dwType is REG_BINARY or REG_DWORD_BIG_ENDIAN (not yet implemented)
+    # @option args [String, Integer, Array] :lpData value data; type determines encoding (String for SZ types, Integer for DWORD/QWORD, Array of Strings for MULTI_SZ)
+    # @return [Integer] error status (0 = success)
     # @api private
     def Win32.RegSetValueEx(args)
       if [REG_EXPAND_SZ, REG_SZ, REG_LINK].include?(args[:dwType]) and (args[:lpData].is_a?(String))
@@ -425,29 +379,27 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
 
     # Deletes a registry value.
     #
-    # @param args [Hash] registry value parameters
+    # @param args [Hash] value delete arguments
     # @option args [Integer] :hKey registry key handle
-    # @option args [String] :lpValueName value name (default: nil)
-    # @return [Integer] Windows API result code
+    # @option args [String] :lpValueName value name (default: nil for default value)
+    # @return [Integer] error status (0 = success)
     # @api private
     def Win32.RegDeleteValue(args)
       args[:lpValueName] ||= 0
       return Advapi32.RegDeleteValue(args[:hKey].to_i, args[:lpValueName])
     end
 
-    # Closes a registry key handle.
+    # Closes an open registry key handle.
     #
-    # @param args [Hash] registry key parameters
-    # @option args [Integer] :hKey registry key handle
-    # @return [Integer] Windows API result code
+    # @param args [Hash] key close arguments
+    # @option args [Integer] :hKey registry key handle to close
+    # @return [Integer] error status (0 = success)
     # @api private
     def Win32.RegCloseKey(args)
       return Advapi32.RegCloseKey(args[:hKey])
     end
 
-    # Fiddle binding to the Windows shell32 library.
-    #
-    # @api private
+    # Fiddle importer for shell32.dll; provides file execution functions.
     module Shell32
       extend Fiddle::Importer
       dlload 'shell32'
@@ -455,21 +407,21 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       extern 'int ShellExecute(int, char*, char*, char*, char*, int)'
     end
 
-    # Executes a file with extended shell options (includes UAC elevation support).
+    # Executes a file or URI with optional verb, parameters, and window display mode.
     #
-    # @param args [Hash] shell execution parameters
-    # @option args [String] :lpVerb verb to perform, e.g. 'open', 'edit', 'runas' (for elevation)
-    # @option args [String] :lpFile file or URL to execute
+    # @param args [Hash] execution arguments
+    # @option args [String] :lpVerb operation ("open", "edit", "print", etc.)
+    # @option args [String] :lpFile file path or URI
     # @option args [String] :lpParameters command-line arguments
     # @option args [String] :lpDirectory working directory
-    # @option args [Integer] :nShow window display flag (e.g., SW_SHOW, SW_SHOWNORMAL)
-    # @option args [Integer] :fMask operation flags
-    # @option args [Integer] :hwnd parent window handle
-    # @option args [Integer] :hkeyClass registry key for file class
-    # @option args [Integer] :dwHotKey hot key
+    # @option args [Integer] :nShow window display flag (SW_SHOW, etc.)
+    # @option args [Integer] :fMask SHELLEXECUTEINFO flags (SEE_MASK_NOCLOSEPROCESS, etc.)
+    # @option args [Integer] :hkeyClass registry key for file association
+    # @option args [Integer] :dwHotKey keyboard hotkey
     # @option args [Integer] :hIcon icon handle
     # @option args [Integer] :hMonitor monitor handle
-    # @return [Hash] result hash with keys: :return (Integer), :hProcess (Integer), :hInstApp (Integer)
+    # @option args [Integer] :hProcess process handle output
+    # @return [Hash] :return status code (32 = success), :hProcess new process handle, :hInstApp error code if return != 32
     # @api private
     def Win32.ShellExecuteEx(args)
       #         struct = [ (SIZEOF_LONG * 15), 0, 0, 0, 0, 0, 0, SW_SHOWNORMAL, 0, 0, 0, 0, 0, 0, 0 ]
@@ -492,16 +444,16 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       return :return => r, :hProcess => struct[struct_index[:hProcess]], :hInstApp => struct[struct_index[:hInstApp]]
     end
 
-    # Executes a file with basic shell options.
+    # Legacy execution wrapper; executes a file or URI with minimal configuration.
     #
-    # @param args [Hash] shell execution parameters
+    # @param args [Hash] execution arguments
     # @option args [Integer] :hwnd parent window handle
-    # @option args [String] :lpOperation verb ('open', 'edit', etc.; default: nil)
-    # @option args [String] :lpFile file or URL to execute
+    # @option args [String] :lpFile file path or URI
+    # @option args [String] :lpOperation operation verb (default: nil / "open")
     # @option args [String] :lpParameters command-line arguments (default: nil)
     # @option args [String] :lpDirectory working directory (default: nil)
-    # @option args [Integer] :nShowCmd window display flag (default: 1)
-    # @return [Integer] Windows API result code
+    # @option args [Integer] :nShowCmd window display flag (default: 1 / SW_HIDE)
+    # @return [Integer] execution result (32+ = success, <32 = error code)
     # @api private
     def Win32.ShellExecute(args)
       args[:lpOperation] ||= 0
@@ -512,9 +464,7 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
     end
 
     begin
-      # Extended Fiddle binding to kernel32 for process enumeration.
-      #
-      # @api private
+      # Fiddle importer extension for EnumProcesses (loaded from kernel32, fallback to psapi).
       module Kernel32
         extern 'int EnumProcesses(void*, int, void*)'
       end
@@ -528,20 +478,18 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
         return :return => r, :pProcessIds => pProcessIds.unpack(''.rjust((args[:cb] / SIZEOF_LONG), 'L'))[0...(pBytesReturned / SIZEOF_LONG)], :pBytesReturned => pBytesReturned
       end
     rescue
-      # Fiddle binding to the Windows psapi library (fallback for process enumeration).
-      #
-      # @api private
+      # Fiddle importer for psapi.dll; fallback EnumProcesses source when kernel32 lacks it.
       module Psapi
         extend Fiddle::Importer
         dlload 'psapi'
         extern 'int EnumProcesses(void*, int, void*)'
       end
 
-      # Enumerates all running process IDs on Windows via psapi (fallback implementation).
+      # Enumerates running process IDs on the system via psapi fallback.
       #
-      # @param args [Hash] enumeration parameters
+      # @param args [Hash] enumeration arguments (default: {})
       # @option args [Integer] :cb buffer size in bytes (default: 400)
-      # @return [Hash] result hash with keys: :return (Integer), :pProcessIds (Array<Integer>), :pBytesReturned (Integer, bytes actually populated)
+      # @return [Hash] :return status code, :pProcessIds array of process IDs, :pBytesReturned actual bytes returned
       # @api private
       def Win32.EnumProcesses(args = {})
         args[:cb] ||= 400
@@ -553,9 +501,9 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
       end
     end
 
-    # Checks whether the operating system is Windows XP or earlier.
+    # Returns true if the system is Windows XP or earlier.
     #
-    # @return [Boolean] true if OS major version is less than 6 (XP and below), false otherwise
+    # @return [Boolean] true if major version < 6 (XP/Server 2003 and earlier)
     # @api private
     def Win32.isXP?
       return (Win32.GetVersionEx[:dwMajorVersion] < 6)
@@ -575,31 +523,7 @@ if (RUBY_PLATFORM =~ /mingw|win/i) and (RUBY_PLATFORM !~ /darwin/i)
         return (r[:TokenIsElevated] != 0)
       end
     end
-
-    # Elevates the current Lich process via UAC and executes a shell command with admin privileges.
-    #
-    # @param args [Hash] shell execution parameters (see .Win32.ShellExecute)
-    # @note Only executes if not already running in an eval/run context (to prevent infinite recursion)
-    # @return [void]
-    # @api private
-    def Win32.AdminShellExecute(args)
-      # open ruby/lich as admin and tell it to open something else
-      if not caller.any? { |c| c =~ /eval|run/ }
-        r = Win32.GetModuleFileName
-        if r[:return] > 0
-          if File.exist?(r[:lpFilename])
-            Win32.ShellExecuteEx(:lpVerb => 'runas', :lpFile => r[:lpFilename], :lpParameters => "#{File.expand_path($PROGRAM_NAME)} shellexecute #{[Marshal.dump(args)].pack('m').gsub("\n", '')}")
-          end
-        end
-      end
-    end
   end
-end
-
-if ARGV[0] == 'shellexecute'
-  args = Marshal.load(Marshal.dump(ARGV[1].unpack('m')[0]))
-  Win32.ShellExecute(:lpOperation => args[:op], :lpFile => args[:file], :lpDirectory => args[:dir], :lpParameters => args[:params])
-  exit
 end
 
 ## End of TODO
@@ -681,10 +605,10 @@ unless File.exist?(LICH_DIR)
     message = "An error occured while attempting to create directory #{LICH_DIR}\n\n"
     if not File.exist?(LICH_DIR.sub(/[\\\/]$/, '').slice(/^.+[\\\/]/).chop)
       message.concat "This was likely because the parent directory (#{LICH_DIR.sub(/[\\\/]$/, '').slice(/^.+[\\\/]/).chop}) doesn't exist."
-    elsif defined?(Win32) and (Win32.GetVersionEx[:dwMajorVersion] >= 6) and (dir !~ /^[A-z]\:\\(Users|Documents and Settings)/)
+    elsif defined?(Win32) and (Win32.GetVersionEx[:dwMajorVersion] >= 6) and (LICH_DIR !~ /^[A-Za-z]:[\\\/](Users|Documents and Settings)(?:[\\\/]|$)/i)
       message.concat "This was likely because Lich doesn't have permission to create files and folders here.  It is recommended to put Lich in your Documents folder."
     else
-      message.concat $!
+      message.concat $!.to_s
     end
     Lich.msgbox(:message => message, :icon => :error)
     exit
@@ -700,10 +624,10 @@ unless File.exist?(TEMP_DIR)
     message = "An error occured while attempting to create directory #{TEMP_DIR}\n\n"
     if not File.exist?(TEMP_DIR.sub(/[\\\/]$/, '').slice(/^.+[\\\/]/).chop)
       message.concat "This was likely because the parent directory (#{TEMP_DIR.sub(/[\\\/]$/, '').slice(/^.+[\\\/]/).chop}) doesn't exist."
-    elsif defined?(Win32) and (Win32.GetVersionEx[:dwMajorVersion] >= 6) and (dir !~ /^[A-z]\:\\(Users|Documents and Settings)/)
+    elsif defined?(Win32) and (Win32.GetVersionEx[:dwMajorVersion] >= 6) and (TEMP_DIR !~ /^[A-Za-z]:[\\\/](Users|Documents and Settings)(?:[\\\/]|$)/i)
       message.concat "This was likely because Lich doesn't have permission to create files and folders here.  It is recommended to put Lich in your Documents folder."
     else
-      message.concat $!
+      message.concat $!.to_s
     end
     Lich.msgbox(:message => message, :icon => :error)
     exit
@@ -715,10 +639,10 @@ begin
   $stderr = File.open(debug_filename, 'w')
 rescue
   message = "An error occured while attempting to create file #{debug_filename}\n\n"
-  if defined?(Win32) and (TEMP_DIR !~ /^[A-z]\:\\(Users|Documents and Settings)/) and not Win32.isXP?
+  if defined?(Win32) and (TEMP_DIR !~ /^[A-Za-z]:[\\\/](Users|Documents and Settings)(?:[\\\/]|$)/i) and not Win32.isXP?
     message.concat "This was likely because Lich doesn't have permission to create files and folders here.  It is recommended to put Lich in your Documents folder."
   else
-    message.concat $!
+    message.concat $!.to_s
   end
   Lich.msgbox(:message => message, :icon => :error)
   exit

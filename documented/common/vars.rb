@@ -1,7 +1,33 @@
+# Namespace for the Lich scripting engine that provides programmatic access
+# to text-based game servers (GemStone IV and DragonRealms) and common utilities
+# for script authors.
 module Lich
+  # Namespace for common utilities shared across Lich scripts, including
+  # persistent variable storage, game data queries, and helper methods for
+  # item/spell/character interaction.
   module Common
+    # Provides persistent variable storage per game/character combination.
+    # Variables are automatically loaded from SQLite database on first access
+    # and periodically saved every 5 minutes via background thread.
+    #
+    # All keys are normalized to strings for consistent access regardless of
+    # whether they're accessed via bracket notation or method syntax.
+    #
+    # @example Basic usage
+    #   Vars['my_var'] = 'value'
+    #   Vars['my_var']  #=> 'value'
+    #   Vars[:my_var]   #=> 'value' (symbols are converted to strings)
+    #
+    # @example Using method syntax
+    #   Vars.my_var = 'value'
+    #   Vars.my_var  #=> 'value'
+    #
+    # @example Using ||= operator
+    #   Vars['config'] ||= { setting: 'default' }
+    #
     module Vars
       # @!visibility private
+      # Load states for the variables system
       module LoadState
         UNLOADED = :unloaded
         LOADING  = :loading
@@ -12,10 +38,11 @@ module Lich
       @@md5        = nil
       @@load_state = LoadState::UNLOADED
 
-      # Normalizes the given key to a string.
+      # Normalizes a key to a string for consistent storage and retrieval
       #
-      # @param key [Object] the key to normalize
-      # @return [String] the normalized key as a string
+      # @param key [String, Symbol, Object] the key to normalize
+      # @return [String] the normalized string key
+      # @api private
       def self.normalize_key(key)
         key.to_s
       end
@@ -40,7 +67,7 @@ module Lich
                 hash = Marshal.load(h)
                 # Normalize all keys to strings during load
                 hash.each { |k, v| @@vars[normalize_key(k)] = v }
-                @@md5 = Digest::MD5.hexdigest(hash.to_s)
+                @@md5 = Digest::MD5.hexdigest(Marshal.dump(hash))
               rescue StandardError => e
                 respond "--- Lich: error: #{e}"
                 respond e.backtrace[0..2]
@@ -56,15 +83,22 @@ module Lich
       @@save = proc {
         Lich.db_mutex.synchronize {
           if @@load_state == LoadState::LOADED
-            current_md5 = Digest::MD5.hexdigest(@@vars.to_s)
+            # Checksum the bytes we write, so a var changed by another thread between
+            # checksum and dump can't leave @@md5 describing a state that was never saved
+            dump = Marshal.dump(@@vars)
+            current_md5 = Digest::MD5.hexdigest(dump)
             if current_md5 != @@md5
-              @@md5 = current_md5
-              blob = SQLite3::Blob.new(Marshal.dump(@@vars))
+              blob = SQLite3::Blob.new(dump)
               begin
                 Lich.db.execute(
                   'INSERT OR REPLACE INTO uservars(scope,hash) VALUES(?,?);',
                   ["#{XMLData.game}:#{XMLData.name}".encode('UTF-8'), blob]
                 )
+                # Only mark clean once the write lands, so a failed save is retried next time
+                @@md5 = current_md5
+                # Any successful write (autosave or an explicit Vars.save) re-arms the
+                # autosave's one-time error message
+                @@autosave_error = nil
               rescue SQLite3::BusyException
                 sleep 0.1
                 retry
@@ -75,33 +109,58 @@ module Lich
         nil
       }
 
+      # One autosave pass. A failed save stays dirty and is retried every pass,
+      # but the same error is shown to the user once, not every 5 minutes.
+      @@autosave_error = nil
+      @@autosave = proc {
+        begin
+          @@save.call
+          @@autosave_error = nil
+        rescue StandardError => e
+          Lich.log "error: #{e}\n\t#{e.backtrace.join("\n\t")}"
+          error_key = "#{e.class}: #{e.message}"
+          respond "--- Lich: error: #{e}\n\t#{e.backtrace[0..1].join("\n\t")}" unless error_key == @@autosave_error
+          @@autosave_error = error_key
+        end
+      }
+
       # Background thread that auto-saves variables every 5 minutes
       Thread.new {
         loop {
           sleep 300
-          begin
-            @@save.call
-          rescue StandardError => e
-            Lich.log "error: #{e}\n\t#{e.backtrace.join("\n\t")}"
-            respond "--- Lich: error: #{e}\n\t#{e.backtrace[0..1].join("\n\t")}"
-          end
+          @@autosave.call
         }
       }
 
-      # Retrieves the value associated with the given name.
+      # Retrieves a variable value by name
       #
-      # @param name [Object] the name of the variable to retrieve
-      # @return [Object, nil] the value associated with the name, or nil if not found
+      # Keys are normalized to strings, so symbols and strings are equivalent.
+      #
+      # @param name [String, Symbol] the variable name
+      # @return [Object, nil] the variable value, or nil if not set
+      #
+      # @example
+      #   Vars['my_setting']  #=> "some value"
+      #   Vars[:my_setting]   #=> "some value" (same result)
+      #
       def Vars.[](name)
         @@load.call unless @@load_state == LoadState::LOADED
         @@vars[normalize_key(name)]
       end
 
-      # Sets the value for the given name.
+      # Sets a variable value by name
       #
-      # @param name [Object] the name of the variable to set
-      # @param val [Object, nil] the value to assign, or nil to delete the variable
-      # @return [void]
+      # Keys are normalized to strings, so symbols and strings are equivalent.
+      #
+      # @param name [String, Symbol] the variable name
+      # @param val [Object, nil] the value to set; nil deletes the variable
+      # @return [Object, nil] the value that was set
+      #
+      # @example
+      #   Vars['my_setting'] = 'new value'
+      #   Vars[:my_setting] = 'new value'  # equivalent
+      #   Vars['my_setting'] = nil  # deletes the variable
+      #
       def Vars.[]=(name, val)
         @@load.call unless @@load_state == LoadState::LOADED
         key = normalize_key(name)
@@ -112,26 +171,46 @@ module Lich
         end
       end
 
-      # Returns a duplicate of the current variables.
+      # Returns a duplicate of all variables as a Hash
       #
-      # @return [Hash] a duplicate of the current variables
+      # @return [Hash] a copy of all stored variables with string keys
+      #
+      # @example
+      #   all_vars = Vars.list
+      #   all_vars.keys  #=> ['var1', 'var2', ...]
+      #
       def Vars.list
         @@load.call unless @@load_state == LoadState::LOADED
         @@vars.dup
       end
 
-      # Saves the current variables to the database if modified.
+      # Immediately saves all variables to the database
       #
-      # @return [void]
+      # @return [nil]
+      #
+      # @example
+      #   Vars['important'] = 'data'
+      #   Vars.save  # Force immediate save instead of waiting for auto-save
+      #
       def Vars.save
         @@save.call
       end
 
-      # Handles method calls that do not have a direct implementation.
+      # Handles dynamic method calls for variable access
       #
-      # @param method_name [Symbol] the name of the method being called
-      # @param args [Array] the arguments passed to the method
-      # @return [Object, nil] the value associated with the method call, or nil if not found
+      # Supports both getter and setter syntax. All keys are normalized to strings.
+      # - `Vars.my_var` retrieves variable named "my_var"
+      # - `Vars.my_var = value` sets variable named "my_var"
+      # - `Vars['key']` and `Vars['key'] = value` also work through this
+      #
+      # @param method_name [Symbol] the method name being called
+      # @param args [Array] arguments passed to the method
+      # @return [Object, nil] the variable value or result of setter
+      #
+      # @example
+      #   Vars.my_setting = 'value'
+      #   Vars.my_setting  #=> 'value'
+      #
       def Vars.method_missing(method_name, *args)
         @@load.call unless @@load_state == LoadState::LOADED
 
@@ -160,11 +239,16 @@ module Lich
         end
       end
 
-      # Determines if the object responds to the given method name.
+      # Declares that method_missing can respond to valid Ruby method names
       #
-      # @param method_name [Symbol] the name of the method
-      # @param _include_private [Boolean] whether to include private methods in the check
-      # @return [Boolean] true if the method exists, false otherwise
+      # Only returns true for method names that could be valid Ruby identifiers
+      # or the bracket operators. This helps catch obvious typos while still
+      # allowing dynamic variable access.
+      #
+      # @param method_name [Symbol] the method name to check
+      # @param include_private [Boolean] whether to include private methods
+      # @return [Boolean] true if the method name is a valid variable name
+      #
       def Vars.respond_to_missing?(method_name, _include_private = false)
         method_str = method_name.to_s
 

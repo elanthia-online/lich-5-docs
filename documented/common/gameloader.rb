@@ -1,15 +1,15 @@
 # handles instances of modules that are game dependent
 
-# Namespace for the Lich scripting engine.
+# Namespace for Lich 5, a Ruby scripting engine for text-based games.
 module Lich
-  # Namespace for shared code across all supported games.
+  # Namespace for common, game-agnostic utilities shared across Lich 5.
   module Common
-    # Loads game-specific and common modules based on the running game.
+    # Loader for game-dependent modules and features.
     #
-    # Call .load! to initialize the Lich runtime with all required dependencies
-    # for GemStone IV or DragonRealms.
+    # Handles conditional loading of GemStone IV and DragonRealms-specific code,
+    # along with shared initialization that applies to both games.
     module GameLoader
-      # Loads shared modules required by all games.
+      # Loads common modules required before any game-specific initialization.
       #
       # @return [void]
       # @api private
@@ -22,10 +22,11 @@ module Lich
         require File.join(LIB_DIR, 'common', 'hmr.rb')
       end
 
-      # Loads all modules and dependencies for GemStone IV.
+      # Loads GemStone IV-specific modules and initializes watchers.
       #
-      # Initializes character attributes, game-specific features (bounties, society,
-      # combat tracking, etc.), and enables active spell and infomon watchers.
+      # Requires all GemStone-specific game mechanics including skills, spells, combat,
+      # infomon state tracking, and client detachability support. Registers `ActiveSpell`
+      # and `Infomon` watchers to track real-time state changes.
       #
       # @return [void]
       # @api private
@@ -33,6 +34,7 @@ module Lich
         self.common_before
         require File.join(LIB_DIR, 'gemstone', 'sk.rb')
         require File.join(LIB_DIR, 'common', 'map', 'map_gs.rb')
+        require File.join(LIB_DIR, 'gemstone', 'xml_delta.rb')
         require File.join(LIB_DIR, 'gemstone', 'effects.rb')
         require File.join(LIB_DIR, 'gemstone', 'bounty.rb')
         require File.join(LIB_DIR, 'gemstone', 'claim.rb')
@@ -44,13 +46,17 @@ module Lich
         require File.join(LIB_DIR, 'attributes', 'skills.rb')
         require File.join(LIB_DIR, 'attributes', 'enhancive.rb')
         require File.join(LIB_DIR, 'gemstone', 'society.rb')
+        require File.join(LIB_DIR, 'gemstone', 'fog.rb')
         require File.join(LIB_DIR, 'gemstone', 'infomon', 'status.rb')
+        require File.join(LIB_DIR, 'gemstone', 'stance.rb')
+        require File.join(LIB_DIR, 'gemstone', 'mana.rb')
         require File.join(LIB_DIR, 'gemstone', 'experience.rb')
         require File.join(LIB_DIR, 'attributes', 'spellsong.rb')
         require File.join(LIB_DIR, 'gemstone', 'infomon', 'activespell.rb')
         require File.join(LIB_DIR, 'gemstone', 'psms.rb')
         require File.join(LIB_DIR, 'attributes', 'char.rb')
         require File.join(LIB_DIR, 'gemstone', 'currency.rb')
+        require File.join(LIB_DIR, 'gemstone', 'bank.rb')
         # require File.join(LIB_DIR, 'gemstone', 'character', 'disk.rb') # dup
         require File.join(LIB_DIR, 'gemstone', 'group.rb')
         require File.join(LIB_DIR, 'gemstone', 'critranks')
@@ -63,35 +69,40 @@ module Lich
         require File.join(LIB_DIR, 'gemstone', 'readylist.rb')
         require File.join(LIB_DIR, 'gemstone', 'stowlist.rb')
         require File.join(LIB_DIR, 'gemstone', 'armaments.rb')
+        require File.join(LIB_DIR, 'gemstone', 'detachable_client_init.rb')
         ActiveSpell.watch!
         Infomon.watch!
         self.common_after
       end
 
-      # Loads all modules and dependencies for DragonRealms.
+      # Loads DragonRealms-specific modules and initializes watchers.
       #
-      # Initializes character attributes, game-specific features (infomon, creatures,
-      # settings), and enables the infomon watcher.
+      # Requires all DragonRealms-specific game mechanics including XML delta parsing,
+      # settings configuration, creature tracking, and client detachability support.
+      # Registers `DRInfomon` watcher to track real-time state changes.
       #
       # @return [void]
       # @api private
       def self.dragon_realms
         self.common_before
         require File.join(LIB_DIR, 'common', 'map', 'map_dr.rb')
+        require File.join(LIB_DIR, 'dragonrealms', 'xml_delta.rb')
         require File.join(LIB_DIR, 'attributes', 'char.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'dependency', 'settings_config.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'drinfomon.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'commons.rb')
         require File.join(LIB_DIR, 'dragonrealms', 'creature.rb')
+        require File.join(LIB_DIR, 'dragonrealms', 'detachable_client_init.rb')
         DRInfomon.watch!
         self.common_after
       end
 
-      # Registers post-load hooks to initialize game settings.
+      # Performs post-load initialization common to both games.
       #
-      # Seeds a valid client record on the game server when the character has never
-      # logged in with the Wrayth client, ensuring properly formatted settingsInfo
-      # on future connections.
+      # Registers a `PostLoad` hook to handle malformed settingsInfo XML from the game
+      # server. If the server sends invalid XML (indicating the character has never logged
+      # in with the Wrayth client), sends a dummy `<db>` command to seed a valid client
+      # record so future connections receive properly formatted settingsInfo.
       #
       # @return [void]
       # @api private
@@ -110,10 +121,11 @@ module Lich
         PostLoad.watch!
       end
 
-      # Loads game-specific modules and initializes the Lich runtime.
+      # Detects the current game and loads its game-specific modules.
       #
-      # Blocks until the game is identified from the XML data stream, then delegates
-      # to either .gemstone or .dragon_realms.
+      # Blocks until XMLData.game is populated by the game server, then loads either
+      # GemStone IV or DragonRealms code based on the game identifier. Echoes a warning
+      # to the console if the game identifier does not match either game.
       #
       # @return [void]
       # @api private

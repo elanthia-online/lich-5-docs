@@ -4,17 +4,31 @@ require 'ostruct'
 
 module Lich
   module Util
-    # Provides utility methods for parsing command line options.
+    # Generic CLI argument parser for any command-line parsing task
+    # Separates concerns: parsing, validation, execution
     #
-    # @see Lich::Util
+    # @example
+    #   opts = Lich::Util::Opts.parse(ARGV, {
+    #     gui: { type: :boolean, default: true },
+    #     account: { type: :string },
+    #     password: { type: :string }
+    #   })
+    #   # => OpenStruct with frozen attributes
+    #
+    # @example Nested values
+    #   opts = Lich::Util::Opts.parse(['--host=localhost:4000'], {
+    #     host: { type: :string, parser: ->(v) { h,p = v.split(':'); {host: h, port: p.to_i} } }
+    #   })
     class Opts
-      # Parses command line arguments according to the provided schema.
+      # Parse ARGV into an immutable OpenStruct
       #
-      # @param argv [Array<String>] the command line arguments to parse
-      # @param schema [Hash] a hash defining the expected options and their configurations
-      # @return [OpenStruct] an OpenStruct containing the parsed options
-      # @example Parse options
-      #   options = Opts.parse(ARGV, { verbose: { default: false, type: :boolean } })
+      # @param argv [Array<String>] Argument list (usually ARGV)
+      # @param schema [Hash] Option definitions with metadata
+      # @option schema [Symbol] :type Type coercion (:string, :boolean, :integer, :array)
+      # @option schema [Object] :default Default value if not provided
+      # @option schema [Proc] :parser Custom parser function
+      #
+      # @return [OpenStruct] Frozen options with all specified keys
       def self.parse(argv, schema = {})
         options = {}
 
@@ -29,19 +43,19 @@ module Lich
           arg = argv[i]
 
           # Try each schema key to find a match
-          matched = false
+          matched = false # rubocop:disable Lint/UselessAssignment
           schema.each do |key, config|
             option_name = "--#{key.to_s.gsub(/_/, '-')}"
             short_option = config[:short] ? "-#{config[:short]}" : nil
 
             if arg == option_name || (short_option && arg == short_option)
-              matched = true
+              matched = true # rubocop:disable Lint/UselessAssignment
               options[key] = parse_value(argv, i, config)
               # Skip next arg if this option consumed it (not boolean or custom parser with = form)
               i += 1 if config[:type] != :boolean && !config[:parser]
               break
             elsif arg =~ /^#{option_name}=(.+)$/
-              matched = true
+              matched = true # rubocop:disable Lint/UselessAssignment
               value = Regexp.last_match(1)
               options[key] = parse_value_with_content(value, config)
               break
@@ -55,13 +69,20 @@ module Lich
         OpenStruct.new(options).freeze
       end
 
+      # Parse individual option values with type coercion
 
-      # Parses the value of a command line option based on its configuration.
+      # Parses a single option value and applies type coercion based on config.
       #
-      # @param argv [Array<String>] the command line arguments
-      # @param index [Integer] the index of the current argument in argv
-      # @param config [Hash] the configuration for the option being parsed
-      # @return [String, Integer, Boolean, Array<String>] the parsed value based on the option type
+      # Handles standard types (:boolean, :string, :integer, :array) and custom parsers.
+      # For :array type, collects consecutive non-flag arguments. For :boolean with no
+      # custom parser, returns true (the flag itself is the assertion). Falls back to
+      # custom :parser if provided and no standard type matches.
+      #
+      # @param argv [Array<String>] the full argument list
+      # @param index [Integer] position of the current argument in argv
+      # @param config [Hash] option configuration with :type and optional :parser keys
+      # @return [Object] parsed value; type depends on config[:type] and presence of parser
+      # @api private
       def self.parse_value(argv, index, config)
         case config[:type]
         when :boolean
@@ -84,11 +105,17 @@ module Lich
         end
       end
 
-      # Parses a value with content based on the provided configuration.
+      # Parses an option value extracted from a --name=value argument.
       #
-      # @param value [String] the value to parse
-      # @param config [Hash] the configuration for the option being parsed
-      # @return [String, Integer, Boolean] the parsed value based on the option type
+      # If a custom :parser is provided in config, it is always invoked first and its
+      # result is returned. Otherwise applies standard type coercion: :boolean matches
+      # against case-insensitive patterns (true/on/yes/1), :string and :integer use
+      # their respective conversions, and unknown types return the raw string.
+      #
+      # @param value [String] the value portion from the --name=value argument
+      # @param config [Hash] option configuration with :type and optional :parser keys
+      # @return [Object] parsed value; type depends on config[:type] and presence of parser
+      # @api private
       def self.parse_value_with_content(value, config)
         # If custom parser provided, use it first
         return config[:parser].call(value) if config[:parser]

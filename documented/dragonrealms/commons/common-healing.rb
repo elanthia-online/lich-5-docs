@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-# Namespace for the Lich scripting engine and all related APIs.
+# Namespace for Lich 5, a Ruby scripting engine for GemStone IV and DragonRealms.
 module Lich
-  # Namespace for DragonRealms-specific functionality.
+  # Namespace for DragonRealms-specific scripting functionality.
   module DragonRealms
-    # DragonRealms Common Healing - utilities for querying and managing character health.
-    #
-    # Provides methods to check health status via HEALTH and PERCEIVE HEALTH commands,
-    # parse wound/bleeder/parasite diagnostics, and perform wound tending.
+    # DragonRealms Character Health module. Provides commands to check character
+    # health status, parse wounds, bleeders, diseases, poisons, parasites, and
+    # lodged items. Empaths can perceive detailed wound information via PERCEIVE HEALTH
+    # or TOUCH, non-empaths via HEALTH.
     module DRCH
       module_function
 
@@ -25,25 +25,33 @@ module Lich
 
       # Uses HEALTH command to check for poisons, diseases, bleeders, parasites, and lodged items.
       # Returns a HealthResult with diagnostic information for healing prioritization.
+      #
+      # When the reply is not captured in full (no start line, or no prompt before
+      # the timeout), a bold message is printed and the result has +captured+ false.
+      # A result with +captured+ false says nothing about the character's health:
+      # treat it as "check again", not as healthy.
+      #
+      # @return [HealthResult]
       def check_health
-        health_lines = Lich::Util.issue_command(
-          'health',
-          /^Your body feels\b/,
-          /<prompt/,
-          usexml: true,
-          quiet: true,
-          include_end: false
-        )
-        if health_lines.nil?
+        health_lines, complete = DRC.capture_to_prompt('health', /^Your body feels\b/)
+        if health_lines.empty?
           Lich::Messaging.msg("bold", "DRCH: Failed to capture HEALTH output (timeout).")
-          return HealthResult.new
+          return HealthResult.new(captured: false)
         end
 
-        parse_health_lines(strip_xml(health_lines))
+        unless complete
+          Lich::Messaging.msg("bold", "DRCH: HEALTH output was cut off (timeout); the result is incomplete.")
+        end
+
+        parse_health_lines(strip_xml(health_lines), captured: complete)
       end
 
       # Parses stripped HEALTH command output lines into a HealthResult.
-      def parse_health_lines(health_lines)
+      #
+      # @param health_lines [Array<String>] HEALTH reply lines with XML stripped
+      # @param captured [Boolean] false when the lines are a cut-off reply
+      # @return [HealthResult]
+      def parse_health_lines(health_lines, captured: true)
         parasites_regex = Regexp.union(PARASITES_REGEX)
         wounds_line = nil
         parasites_line = nil
@@ -81,37 +89,48 @@ module Lich
           lodged: lodged_items,
           poisoned: poisoned,
           diseased: diseased,
-          score: score
+          score: score,
+          captured: captured
         )
       end
 
       # Uses PERCEIVE HEALTH SELF command to check for wounds and scars.
       # Returns a HealthResult with perceived wound details merged with check_health diagnostics.
+      #
+      # Returns nil only for a non-empath. When either reply (PERCEIVE HEALTH or the
+      # HEALTH check merged into it) is not captured in full, a bold message is
+      # printed and the result has +captured+ false. HEALTH is sent even when
+      # PERCEIVE HEALTH times out, so its bleeders, parasites, lodged items,
+      # poison and disease are still returned (with no perceived wounds).
+      #
+      # @return [HealthResult, nil]
       def perceive_health
         unless DRStats.empath?
           Lich::Messaging.msg("bold", "DRCH: Only empaths can perceive health.")
           return nil
         end
 
-        lines = Lich::Util.issue_command(
+        lines, complete = DRC.capture_to_prompt(
           'perceive health self',
           /injuries include\.\.\.|feel only an aching emptiness/,
-          /<prompt/,
-          usexml: true,
-          quiet: true,
-          include_end: false,
           timeout: 15
         )
-        if lines.nil?
+        if lines.empty?
+          # Still send HEALTH: its bleeders, poison and disease are worth having
+          # even when the perceived wounds are unknown. The result is flagged
+          # captured: false because the perceived wounds are missing.
           Lich::Messaging.msg("bold", "DRCH: Failed to capture PERCEIVE HEALTH output (timeout).")
-          return nil
-        end
+        else
+          lines = strip_xml(lines)
 
-        lines = strip_xml(lines)
+          if lines.any? { |line| line =~ /feel only an aching emptiness/ }
+            waitrt?
+            return check_health
+          end
 
-        if lines.any? { |line| line =~ /feel only an aching emptiness/ }
-          waitrt?
-          return check_health
+          unless complete
+            Lich::Messaging.msg("bold", "DRCH: PERCEIVE HEALTH output was cut off (timeout); the result is incomplete.")
+          end
         end
 
         perceived = parse_perceived_health_lines(lines)
@@ -128,42 +147,30 @@ module Lich
           diseased: health_data.diseased,
           vitality: perceived.vitality,
           dead: perceived.dead,
-          score: perceived.score
+          score: perceived.score,
+          captured: complete && health_data.captured?
         )
       end
 
-      # Perceives the health of another character via empathic touch.
+      # Uses TOUCH to perceive another character's health.
       #
-      # Empaths only. Attempts to touch the target to establish an empathic link,
-      # then parses the perceived health lines to extract wound, disease, poison,
-      # and vitality information. Returns nil if the target cannot be touched or
-      # if the empath does not have the PERCEIVE HEALTH skill.
+      # Returns nil when the character is not an empath, when the touch fails, or
+      # when the TOUCH reply is not captured in full (each with a bold message).
       #
-      # @param target [String] the character name or abbreviation to touch
-      # @return [HealthResult, nil] a HealthResult with perceived wounds and status, or nil on failure
-      # @note The actual target name is extracted from the empathic link message
-      #   and may differ from the input (e.g., case or abbreviation).
-      # @example
-      #   result = DRCH.perceive_health_other("bob")
-      #   if result
-      #     puts "#{result.vitality}% vitality"
-      #   end
+      # @param target [String] the character to touch
+      # @return [HealthResult, nil]
       def perceive_health_other(target)
         unless DRStats.empath?
           Lich::Messaging.msg("bold", "DRCH: Only empaths can perceive health of others.")
           return nil
         end
 
-        touch_lines = Lich::Util.issue_command(
+        touch_lines, complete = DRC.capture_to_prompt(
           "touch #{target}",
           /You sense a successful empathic link|Touch what|feels cold|avoids your touch|You quickly recoil/,
-          /<prompt/,
-          usexml: true,
-          quiet: true,
-          include_end: false,
           timeout: 10
         )
-        if touch_lines.nil?
+        if touch_lines.empty?
           Lich::Messaging.msg("bold", "DRCH: Failed to capture TOUCH output for #{target} (timeout).")
           return nil
         end
@@ -172,6 +179,11 @@ module Lich
 
         if touch_lines.any? { |line| line =~ /Touch what|feels cold|avoids your touch|You quickly recoil/ }
           Lich::Messaging.msg("bold", "DRCH: Unable to perceive health of #{target}.")
+          return nil
+        end
+
+        unless complete
+          Lich::Messaging.msg("bold", "DRCH: TOUCH output for #{target} was cut off (timeout).")
           return nil
         end
 
@@ -375,19 +387,16 @@ module Lich
         lodged_items
       end
 
-      # Tends a wound on a body part, removing bandages and handling dislodged items.
+      # Tends a wound using the TEND command, with automatic retry for dislodged items.
       #
-      # Issues a TEND command for the specified body part. If the tend dislodges
-      # an item (e.g., a crossbow bolt), removes and disposes of it before retrying
-      # the tend. Waits for roundtime before returning.
+      # When a TEND dislodges a lodged item, disposes it from hand if present, then
+      # retries the tend. If the item has already left hand, skips disposal to avoid
+      # yanking the character's own equipment from a container.
       #
-      # @param body_part [String] the body part to tend (e.g., "right arm", "head")
-      # @param person [String] possessive pronoun prefix for the tend command, defaults to "my"
-      # @return [Boolean] true if the wound was successfully tended, false if the tend failed
-      # @note Side effect: disposes of dislodged items to the worn trashcan
-      # @example
-      #   DRCH.bind_wound("right arm")
-      #   DRCH.bind_wound("head", "his")
+      # @param body_part [String] the wound location, e.g. "head", "right hand"
+      # @param person [String] the target prefix: "my" (default) or "their"
+      # @return [Boolean] true on successful tend, false on failure
+      # @side_effect Calls waitrt? to sync with casting roundtime; may dislodge and dispose items
       def bind_wound(body_part, person = 'my')
         result = DRC.bput("tend #{person} #{body_part}", *TEND_SUCCESS_PATTERNS, *TEND_FAILURE_PATTERNS, *TEND_DISLODGE_PATTERNS)
         waitrt?
@@ -411,16 +420,12 @@ module Lich
         end
       end
 
-      # Removes bandages from a tended wound.
+      # Unwraps bandages from a tended wound using the UNWRAP command.
       #
-      # Issues an UNWRAP command to reverse the effects of a prior TEND.
-      # Waits for roundtime after the command completes.
-      #
-      # @param body_part [String] the body part to unwrap (e.g., "right arm", "head")
-      # @param person [String] possessive pronoun prefix for the unwrap command, defaults to "my"
+      # @param body_part [String] the wound location, e.g. "head", "right hand"
+      # @param person [String] the target prefix: "my" (default) or "their"
       # @return [void]
-      # @example
-      #   DRCH.unwrap_wound("right arm")
+      # @side_effect Calls waitrt? to sync with casting roundtime
       def unwrap_wound(body_part, person = 'my')
         DRC.bput("unwrap #{person} #{body_part}", 'You unwrap .* bandages', 'That area is not tended', 'You may undo the affects of TENDing')
         waitrt?
@@ -447,25 +452,32 @@ module Lich
 
       # Structured result from check_health or perceive_health.
       # Supports backward-compatible string-key access via [] for dr-scripts callers.
+      #
+      # +captured+ is false when the game reply was not captured in full (a
+      # timeout). The other fields then hold defaults or partial data and do not
+      # mean "healthy": callers should treat the result as unknown and check again.
+      # +captured+ true means a complete reply was read; it does not prove the
+      # reply was sent in answer to this call (a reply that arrives after an
+      # earlier call timed out can still be read by the next call).
       class HealthResult
         attr_reader :wounds, :bleeders, :parasites, :lodged,
-                    :poisoned, :diseased, :score, :dead, :vitality
+                    :poisoned, :diseased, :score, :dead, :vitality, :captured
 
-        # Initializes a HealthResult with health diagnostic data.
+        # Initializes a HealthResult with wound, bleeding, parasite, and disease data.
         #
-        # @param wounds [Hash] hash of severity => [Wound] for regular wounds
-        # @param bleeders [Hash] hash of severity => [Wound] for active bleeders
-        # @param parasites [Hash] hash of severity => [Wound] for parasites
-        # @param lodged [Hash] hash of severity => [Wound] for lodged items
-        # @param poisoned [Boolean] whether the character is poisoned
-        # @param diseased [Boolean] whether the character is diseased
-        # @param score [Integer] weighted health score (0 for healthy)
-        # @param dead [Boolean] whether the character is dead
-        # @param vitality [Integer] percentage vitality remaining (0-100)
-        # @return [void]
+        # @param wounds [Hash] wounds keyed by severity with arrays of Wound objects
+        # @param bleeders [Hash] bleeding wounds keyed by severity with arrays of Wound objects
+        # @param parasites [Hash] parasites keyed by severity (typically 1) with arrays of Wound objects
+        # @param lodged [Hash] lodged items keyed by severity with arrays of Wound objects
+        # @param poisoned [Boolean] true if the character is poisoned (default: false)
+        # @param diseased [Boolean] true if the character has an infection or disease (default: false)
+        # @param score [Integer] weighted health score, higher = worse (default: 0)
+        # @param dead [Boolean] true if the character is dead (default: false)
+        # @param vitality [Integer] perceived vitality percentage, 0-100 (default: 100)
+        # @param captured [Boolean] true if the game reply was captured in full (default: true)
         def initialize(wounds: {}, bleeders: {}, parasites: {}, lodged: {},
                        poisoned: false, diseased: false, score: 0, dead: false,
-                       vitality: 100)
+                       vitality: 100, captured: true)
           @wounds = wounds
           @bleeders = bleeders
           @parasites = parasites
@@ -475,6 +487,12 @@ module Lich
           @score = score
           @dead = dead
           @vitality = vitality
+          @captured = captured
+        end
+
+        # @return [Boolean] true when the game reply was captured in full
+        def captured?
+          @captured
         end
 
         # Backward compatibility for dr-scripts callers using health_data['wounds'] etc.
@@ -482,9 +500,9 @@ module Lich
           send(key.to_sym)
         end
 
-        # Checks whether the character has any injuries.
+        # Checks whether the character has any wounds.
         #
-        # @return [Boolean] true if the health score is greater than 0
+        # @return [Boolean] true if the score is greater than 0
         def injured?
           score > 0
         end
@@ -493,12 +511,11 @@ module Lich
           bleeders.values.flatten.any?(&:bleeding?)
         end
 
-        # Checks whether the character has bleeders that can be tended.
+        # Checks whether the character has any bleeders that can be tended by the healer.
         #
-        # A bleeder is tendable if the character has sufficient First Aid skill
-        # or if it is a parasite or lodged item.
+        # Considers skill, location, and bleeding rate to determine tendability.
         #
-        # @return [Boolean] true if at least one bleeder is tendable
+        # @return [Boolean] true if any bleeder passes the tendable? check
         def has_tendable_bleeders?
           bleeders.values.flatten.any?(&:tendable?)
         end
@@ -508,18 +525,15 @@ module Lich
       class Wound
         attr_reader :body_part, :severity, :bleeding_rate
 
-        # Initializes a Wound representing a single injury, bleeder, parasite, or lodged item.
+        # Initializes a Wound representing a wound, bleeder, parasite, or lodged item.
         #
-        # All boolean flags default to false. Body part and bleeding rate are downcased.
-        #
-        # @param body_part [String, nil] the affected body part (e.g., "right arm")
-        # @param severity [Integer, nil] wound severity (1-9 or higher)
-        # @param bleeding_rate [String, nil] bleeding rate description (e.g., "heavily", "tended")
-        # @param is_internal [Boolean] whether the wound is internal
-        # @param is_scar [Boolean] whether this is a scar rather than a fresh wound
-        # @param is_parasite [Boolean] whether this is a parasite infestation
-        # @param is_lodged_item [Boolean] whether this is a lodged item
-        # @return [void]
+        # @param body_part [String, nil] the wounded location, normalized to lowercase
+        # @param severity [Integer, nil] wound severity level (higher = worse)
+        # @param bleeding_rate [String, nil] rate of bleeding, e.g. "slowed", "heavy", "clotted", normalized to lowercase
+        # @param is_internal [Boolean] true if the wound is internal (default: false)
+        # @param is_scar [Boolean] true if this is a scar, not a fresh wound (default: false)
+        # @param is_parasite [Boolean] true if this wound represents a parasite (default: false)
+        # @param is_lodged_item [Boolean] true if this wound represents a lodged item (default: false)
         def initialize(body_part: nil, severity: nil, bleeding_rate: nil,
                        is_internal: false, is_scar: false,
                        is_parasite: false, is_lodged_item: false)
@@ -534,49 +548,48 @@ module Lich
 
         # Checks whether this wound is actively bleeding.
         #
-        # A wound is bleeding if it has a non-empty bleeding rate that is not the
-        # sentinel value "(tended)".
+        # A wound bleeds if it has a bleeding_rate and the rate is not "(tended)".
         #
-        # @return [Boolean] true if the wound is actively bleeding
+        # @return [Boolean] true if bleeding rate is set, non-empty, and not tended
         def bleeding?
           !@bleeding_rate.nil? && !@bleeding_rate.empty? && @bleeding_rate != '(tended)'
         end
 
         # Checks whether this wound is internal.
         #
-        # @return [Boolean] true if the wound is internal rather than external
+        # @return [Boolean]
         def internal?
           @internal
         end
 
         # Checks whether this wound is a scar.
         #
-        # @return [Boolean] true if this is a scar rather than a fresh wound
+        # @return [Boolean]
         def scar?
           @scar
         end
 
-        # Checks whether this wound represents a parasite infestation.
+        # Checks whether this wound represents a parasite.
         #
-        # @return [Boolean] true if this is a parasite
+        # @return [Boolean]
         def parasite?
           @parasite
         end
 
         # Checks whether this wound represents a lodged item.
         #
-        # @return [Boolean] true if this is a lodged item
+        # @return [Boolean]
         def lodged?
           @lodged_item
         end
 
-        # Checks whether this wound can be safely tended.
+        # Checks whether the healer has sufficient First Aid skill to safely tend this wound.
         #
-        # Parasites and lodged items are always tendable. Wounds on the skin are never
-        # tendable. Bleeder wounds must be actively bleeding and not yet tended or clotted,
-        # and the character must have sufficient First Aid skill for the bleeding rate.
+        # Parasites and lodged items are always tendable. Skin bleeds are never tendable.
+        # Other bleeds are tendable only if the bleeding rate is active (not tended/clotted)
+        # and the healer's First Aid rank meets the minimum for that rate and location.
         #
-        # @return [Boolean] true if the wound is safe to tend
+        # @return [Boolean] true if the wound can be safely tended by the current character
         def tendable?
           return true if parasite?
           return true if lodged?
@@ -587,23 +600,23 @@ module Lich
           DRCH.skilled_to_tend_wound?(@bleeding_rate, internal?)
         end
 
-        # Returns the wound location as "internal" or "external".
+        # Returns the wound location category.
         #
         # @return [String] "internal" or "external"
         def location
           internal? ? 'internal' : 'external'
         end
 
-        # Returns the wound type as "scar" or "wound".
+        # Returns the wound type.
         #
-        # @return [String] "scar" or "wound"
+        # @return [String] "scar" if is_scar, otherwise "wound"
         def type
           scar? ? 'scar' : 'wound'
         end
 
         # Converts the wound to a hash representation.
         #
-        # @return [Hash] hash with keys :body_part, :severity, :bleeding_rate, :internal, :scar, :parasite, :lodged_item
+        # @return [Hash] hash with keys: body_part, severity, bleeding_rate, internal, scar, parasite, lodged_item
         def to_h
           {
             body_part: @body_part,
@@ -618,7 +631,7 @@ module Lich
 
         # Returns a human-readable string representation of the wound.
         #
-        # @return [String] formatted string like "Wound(right arm, severity:5, bleeding:heavily, external, wound)"
+        # @return [String] formatted string, e.g. "Wound(head, severity:3, bleeding:heavy, external, wound)"
         def to_s
           parts = [@body_part || 'unknown']
           parts << "severity:#{@severity}" if @severity

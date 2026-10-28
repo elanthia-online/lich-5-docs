@@ -1,13 +1,24 @@
-# Provides functionality for the Lich game framework.
-#
-# @see Lich::Gemstone
+# The root module for Lich scripting.
 module Lich
+  # Namespace for GemStone IV-specific systems.
   module Gemstone
-    # Contains combat maneuvers for characters in the Lich game.
+    # Handles combat maneuver logic (CMAN) for player characters in GemStone IV.
     #
-    # This module provides various combat maneuvers that can be used by characters.
-    # Each maneuver has associated properties such as cost and type.
+    # This module provides access to all known combat maneuvers (CMANs), including their
+    # usage types, costs, regex patterns for result matching, and runtime availability.
+    #
+    # It allows querying known maneuvers, whether they are affordable and usable, and provides
+    # execution methods with built-in cooldown and FORCERT logic. Dynamic shortcut methods for
+    # each maneuver are created for both long and short names.
     module CMan
+      # Internal mapping of CMAN maneuvers with metadata:
+      # - short name
+      # - type (passive, attack, setup, etc.)
+      # - cost
+      # - regex for expected output
+      # - usage name
+      #
+      # @return [Hash<String, Hash>] The full maneuver definition table
       @@combat_mans = {
         "acrobats_leap"          => {
           :short_name => "acrobatsleap",
@@ -22,7 +33,8 @@ module Lich
           :cost       => { stamina: 10 },
           :regex      => Regexp.union(/You charge towards .+ and attempt to grasp .+ in a ferocious bearhug!/,
                                       /.+ manages to fend off your grasp!/),
-          :usage      => "bearhug"
+          :usage      => "bearhug",
+          :buff       => /^Enh\. Strength \(\+(?:10|20)\)$/
         },
         "berserk"                => {
           :short_name => "berserk",
@@ -42,17 +54,19 @@ module Lich
           :short_name => "bullrush",
           :type       => :area_of_effect,
           :cost       => { stamina: 14 },
-          :regex      => /You dip your shoulder and rush towards an .+!/,
+          :regex      => /You dip your shoulder and rush towards .+!/,
           :usage      => "bullrush"
         },
         "burst_of_swiftness"     => {
-          :short_name          => "burst",
-          :type                => :buff,
-          :cost                => { stamina: (Lich::Util.normalize_lookup('Cooldowns', 'burst_of_swiftness') ? 60 : 30) },
-          :regex               => Regexp.union(/You prepare yourself to move swiftly at a moment's notice\./,
-                                               /You prepare yourself to move swiftly at a moment's notice, overcoming the fatigue from your previous exertion\./),
-          :usage               => "burst",
-          "ignorable_cooldown" => true
+          :short_name         => "burst",
+          :type               => :buff,
+          :cost               => { stamina: 30 },
+          :cooldown_cost      => { stamina: 60 },
+          :buff               => /^Enh\. Dexterity/,
+          :regex              => Regexp.union(/You prepare yourself to move swiftly at a moment's notice\./,
+                                              /You prepare yourself to move swiftly at a moment's notice, overcoming the fatigue from your previous exertion\./),
+          :usage              => "burst",
+          :ignorable_cooldown => true
         },
         "cheapshots"             => {
           :short_name => "cheapshots",
@@ -99,7 +113,8 @@ module Lich
                                       /As .+ shows signs of weakness, you seize the opportunity to launch a mortal blow!/,
                                       /Seeing your chance, you lunge toward .+ with its death your only goal!/,
                                       /As .+ falters, you surge forward with murderous intent!/),
-          :usage      => "coupdegrace"
+          :usage      => "coupdegrace",
+          :buff       => /^Empowered \(\+\d+\)$/
         },
         "crowd_press"            => {
           :short_name => "cpress",
@@ -120,6 +135,8 @@ module Lich
           :type       => :setup,
           :cost       => { stamina: 14 },
           :regex      => Regexp.union(/You spring from hiding and attempt to slit .+ throat with your .+!/,
+                                      /You spring from hiding and attempt to cut .+'s throat!/,
+                                      /You spring from hiding and attempt to grasp .+ by the chin while slitting .+ throat with your .+!/,
                                       /For this to work, you'll need to take your target by surprise. Try hiding first\./,
                                       /You need to be holding a weapon in your right hand in order to use cutthroat\./,
                                       /The .+ is too cumbersome to use with cutthroat\./),
@@ -137,7 +154,7 @@ module Lich
           :type       => :setup,
           :cost       => { stamina: 7 },
           :regex      => Regexp.union(/You swing your .+ at .+!/,
-                                      /Choosing your opening, you attempt to disarm .+ with your empty hand!/,
+                                      /Choosing your opening, you attempt to disarm .+ with your .+!/,
                                       /You haven\'t learned how to disarm without a weapon!/,),
           :usage      => "disarm"
         },
@@ -239,11 +256,12 @@ module Lich
           :short_name => "garrote",
           :type       => :concentration,
           :cost       => { stamina: 10 },
-          :regex      => Regexp.union(/You fling your garrote around .+? neck and snap it taut\.  Success!/,
+          :regex      => Regexp.union(/You fling your .+? around .+? neck and snap it taut\./,
                                       /You need to have your other hand clear to garrote something\./,
                                       /You need to be holding a garrote\./,
                                       /You attempt to slip the garrote around .+? neck, but it catches the movement and dodges away just in time\./,),
-          :usage      => "garrote"
+          :usage      => "garrote",
+          :buff       => "Enh. Agility (+10)"
         },
         "grapple_specialization" => {
           :short_name => "grapplespec",
@@ -560,12 +578,14 @@ module Lich
           :usage      => "sunder"
         },
         "surge_of_strength"      => {
-          :short_name          => "surge",
-          :type                => :buff,
-          :cost                => { stamina: Lich::Util.normalize_lookup('Cooldowns', 'surge_of_strength') ? 60 : 30 },
-          :regex               => /You focus deep within yourself, searching for untapped sources of strength\./,
-          :usage               => "surge",
-          "ignorable_cooldown" => true
+          :short_name         => "surge",
+          :type               => :buff,
+          :cost               => { stamina: 30 },
+          :cooldown_cost      => { stamina: 60 },
+          :buff               => /^Enh\. Strength/,
+          :regex              => /You focus deep within yourself, searching for untapped sources of strength\./,
+          :usage              => "surge",
+          :ignorable_cooldown => true
         },
         "sweep"                  => {
           :short_name => "sweep",
@@ -576,12 +596,12 @@ module Lich
           :usage      => "sweep"
         },
         "swiftkick"              => {
-          :short_name          => "swiftkick",
-          :type                => :setup,
-          :cost                => { stamina: 7 },
-          :regex               => /You spin around behind .+, attempting a swiftkick!/,
-          :usage               => "swiftkick",
-          "ignorable_cooldown" => true
+          :short_name         => "swiftkick",
+          :type               => :setup,
+          :cost               => { stamina: 7 },
+          :regex              => /You spin around behind .+, attempting a swiftkick!/,
+          :usage              => "swiftkick",
+          :ignorable_cooldown => true
         },
         "tackle"                 => {
           :short_name => "tackle",
@@ -663,138 +683,22 @@ module Lich
         }
       }
 
-      # Returns a list of combat maneuvers with their long and short names and costs.
-      # @return [Array<Hash>] an array of hashes containing maneuver details
+      extend PSMS::Technique
+      techniques @@combat_mans, type: "CMan", verb: "cman"
+
+      # Whether a target is low enough for Coup de Grace at the character's
+      # trained rank, from the creature's tracked HP and statuses.
+      #
+      # @param target [GameObj, CreatureInstance, Integer, String] the target, or its id ("12345" or "#12345")
+      # @return [Boolean, nil] nil when there is no tracked creature for the target
       # @example
-      #   CMan.cman_lookups.each do |maneuver|
-      #     puts maneuver[:long_name]
-      #   end
-      def self.cman_lookups
-        @@combat_mans.map do |long_name, psm|
-          {
-            long_name: long_name,
-            short_name: psm[:short_name],
-            cost: psm[:cost]
-          }
-        end
+      #   CMan.use("coupdegrace", npc) if CMan.coup_ready?(npc)
+      def CMan.coup_ready?(target)
+        creature = target.is_a?(CreatureInstance) ? target : Creature[target.respond_to?(:id) ? target.id : target.to_s.delete_prefix('#')]
+        return nil if creature.nil?
+
+        creature.coup_eligible?(CMan["coupdegrace"])
       end
-
-      # Retrieves a combat maneuver by its name.
-      # @param name [String] the name of the combat maneuver
-      # @return [Hash, nil] the maneuver details or nil if not found
-      def CMan.[](name)
-        return PSMS.assess(name, 'CMan')
-      end
-
-      # Checks if a combat maneuver is known by the character.
-      # @param name [String] the name of the combat maneuver
-      # @param min_rank [Integer] the minimum rank required to consider it known
-      # @return [Boolean] true if known, false otherwise
-      def CMan.known?(name, min_rank: 1)
-        min_rank = 1 unless min_rank >= 1 # in case a 0 or below is passed
-        CMan[name] >= min_rank
-      end
-
-      # Determines if a combat maneuver can be afforded based on stamina.
-      # @param name [String] the name of the combat maneuver
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if affordable, false otherwise
-      def CMan.affordable?(name, forcert_count: 0)
-        return PSMS.assess(name, 'CMan', true, forcert_count: forcert_count)
-      end
-
-      # Checks if a buff from a combat maneuver is currently active.
-      # @param name [String] the name of the combat maneuver
-      # @return [Boolean, nil] true if the buff is active, nil if not applicable
-      def CMan.buff_active?(name)
-        return unless @@combat_mans.fetch(PSMS.find_name(name, "CMan")[:long_name]).key?(:buff)
-        Effects::Buffs.active?(@@combat_mans.fetch(PSMS.find_name(name, "CMan")[:long_name])[:buff])
-      end
-
-      # Checks if a combat maneuver is available for use.
-      # @param name [String] the name of the combat maneuver
-      # @param ignore_cooldown [Boolean] whether to ignore cooldowns
-      # @param min_rank [Integer] the minimum rank required
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if available, false otherwise
-      def CMan.available?(name, ignore_cooldown: false, min_rank: 1, forcert_count: 0)
-        return false unless CMan.known?(name, min_rank: min_rank)
-        return false unless CMan.affordable?(name, forcert_count: forcert_count)
-        if @@combat_mans.fetch(PSMS.find_name(name, "CMan")[:long_name])[:ignorable_cooldown] && ignore_cooldown
-          return PSMS.available?(name, ignore_cooldown)
-        else
-          return PSMS.available?(name)
-        end
-      end
-
-      # Uses a combat maneuver on a target.
-      # @param name [String] the name of the combat maneuver
-      # @param target [String, Integer, GameObj] the target of the maneuver
-      # @param ignore_cooldown [Boolean] whether to ignore cooldowns
-      # @param results_of_interest [Regexp, nil] additional regex for expected results
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [String, nil] the result of the maneuver or nil if not used
-      def CMan.use(name, target = "", ignore_cooldown: false, results_of_interest: nil, forcert_count: 0)
-        return unless CMan.available?(name, ignore_cooldown: ignore_cooldown, forcert_count: forcert_count)
-
-        name_normalized = PSMS.name_normal(name)
-        technique = @@combat_mans.fetch(PSMS.find_name(name_normalized, "CMan")[:long_name])
-        usage = technique[:usage]
-        return if usage.nil?
-
-        in_cooldown_regex = /^#{name} is still in cooldown\./i
-
-        results_regex = Regexp.union(
-          PSMS::FAILURES_REGEXES,
-          /^#{name} what\?$/i,
-          in_cooldown_regex,
-          technique[:regex],
-          /^Roundtime: [0-9]+ sec\.$/,
-        )
-
-        results_regex = Regexp.union(results_regex, results_of_interest) if results_of_interest.is_a?(Regexp)
-
-        usage_cmd = "cman #{usage}"
-        if target.is_a?(GameObj)
-          usage_cmd += " ##{target.id}"
-        elsif target.is_a?(Integer)
-          usage_cmd += " ##{target}"
-        elsif target != ""
-          usage_cmd += " #{target}"
-        end
-
-        if forcert_count > 0
-          usage_cmd += " forcert"
-        else # if we're using forcert, we don't want to wait for rt, but we need to otherwise
-          waitrt?
-          waitcastrt?
-        end
-
-        usage_result = dothistimeout usage_cmd, 5, results_regex
-        if usage_result == "You don't seem to be able to move to do that."
-          100.times { break if clear.any? { |line| line =~ /^You regain control of your senses!$/ }; sleep 0.1 }
-          usage_result = dothistimeout usage_cmd, 5, results_regex
-        end
-
-        usage_result
-      end
-
-      # Retrieves the regex pattern associated with a combat maneuver.
-      # @param name [String] the name of the combat maneuver
-      # @return [Regexp] the regex pattern for the maneuver
-      def CMan.regexp(name)
-        @@combat_mans.fetch(PSMS.find_name(name, "CMan")[:long_name])[:regex]
-      end
-
-      CMan.cman_lookups.each { |cman|
-        self.define_singleton_method(cman[:short_name]) do
-          CMan[cman[:short_name]]
-        end
-
-        self.define_singleton_method(cman[:long_name]) do
-          CMan[cman[:short_name]]
-        end
-      }
     end
   end
 end

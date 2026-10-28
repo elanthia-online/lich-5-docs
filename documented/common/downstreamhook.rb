@@ -4,18 +4,19 @@
 require_relative 'hook_registry'
 require_relative 'script_death'
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for common Lich engine utilities and hooks.
+  # Common utilities and hook infrastructure for Lich scripts.
   module Common
-    # Registry of hooks that process server strings as they arrive from the game.
+    # Registry and execution engine for downstream hooks.
     #
-    # DownstreamHook instances intercept and transform strings received from the game server
-    # before they are delivered to scripts and the UI. Hooks are executed in registration order
-    # and may modify, filter, or pass through the server string unchanged. Script-scoped hooks
-    # are automatically removed when their owning script dies; persistent hooks remain.
+    # Downstream hooks intercept and transform text received from the game server
+    # before it reaches the game client display. Hooks are registered by script and
+    # executed in priority order; each hook receives the server string, may modify
+    # it, and passes the result to the next hook. If a hook raises an exception, it
+    # is logged and removed; execution continues with remaining hooks.
     #
-    # @api private
+    # @see HookRegistry for registration/removal API
     class DownstreamHook
       extend HookRegistry
 
@@ -23,53 +24,72 @@ module Lich
       @@downstream_hook_sources ||= Hash.new
       @@downstream_hook_owners ||= Hash.new
       @@downstream_hook_persist ||= Hash.new
+      @@downstream_hook_priorities ||= Hash.new
 
       # Per-class storage for the shared HookRegistry methods.
       def self._hooks
         @@downstream_hooks
       end
 
-      # Returns the per-class storage mapping hook IDs to their source files.
+      # Returns the storage hash mapping downstream hook identifiers to their
+      # source file and line number.
       #
-      # @return [Hash] a hash keyed by hook ID
+      # @return [Hash] hook ID to source location metadata
       # @api private
       def self._hook_sources
         @@downstream_hook_sources
       end
 
-      # Returns the per-class storage mapping hook IDs to their owning script object IDs.
+      # Returns the storage hash mapping downstream hook identifiers to the
+      # script object IDs that registered them.
       #
-      # @return [Hash] a hash keyed by hook ID
+      # @return [Hash] hook ID to script object ID
       # @api private
       def self._hook_owners
         @@downstream_hook_owners
       end
 
-      # Returns the per-class storage mapping hook IDs to their persistence flags.
+      # Returns the storage hash tracking which downstream hooks should survive
+      # script death (persist across unload).
       #
-      # @return [Hash] a hash keyed by hook ID, with boolean values indicating whether each hook persists across script death
+      # @return [Hash] hook ID to persistence flag
       # @api private
       def self._hook_persist
         @@downstream_hook_persist
       end
 
-      # Processes a server string through all registered downstream hooks in order.
+      # Returns the storage hash mapping downstream hook identifiers to their
+      # numeric execution priority (lower number = earlier execution).
       #
-      # Each hook is called with a duplicate of the string and may return a modified string,
-      # nil, or raise an exception. If a hook raises an exception, it is removed from the registry,
-      # the error is logged to the console, and execution continues with the next hook.
-      # If any hook returns nil, processing stops immediately and nil is returned.
-      #
-      # @param server_string [String, nil] the string received from the game server
-      # @return [String, nil] the processed string after all hooks have run, or nil if any hook returned nil
+      # @return [Hash] hook ID to priority value
       # @api private
+      def self._hook_priorities
+        @@downstream_hook_priorities
+      end
+
+      # Executes all registered downstream hooks in priority order against the
+      # given server string.
+      #
+      # Each hook is invoked with a duplicate of the string to prevent unwanted
+      # side effects. The transformed result flows to the next hook. If a hook raises
+      # an exception, it is logged and removed from the registry; remaining hooks
+      # continue executing.
+      #
+      # @param server_string [String, nil] the server output to process
+      # @return [String, nil] the transformed server string, or nil if a hook returns nil
+      # @example
+      #   result = DownstreamHook.run("[Notice: Your spell is ready.]")  #=> processed string
+      # @note Hooks that return nil halt the chain; downstream hooks do not execute.
       def DownstreamHook.run(server_string)
-        for key in @@downstream_hooks.keys
+        for key in ordered_hook_names
           return nil if server_string.nil?
           begin
-            server_string = @@downstream_hooks[key].call(server_string.dup) if server_string.is_a?(String)
+            action = hook_action(key)
+            next unless action
+
+            server_string = action.call(server_string.dup) if server_string.is_a?(String)
           rescue
-            @@downstream_hooks.delete(key)
+            remove(key)
             respond "--- Lich: DownstreamHook: #{$!}"
             respond $!.backtrace.first
           end

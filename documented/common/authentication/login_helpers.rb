@@ -5,16 +5,18 @@ require_relative '../front-end'
 # login_helpers.rb: Core lich file for collection of utilities to extend Lich capabilities.
 # Entries added here should always be accessible from Lich::Common::Authentication::LoginHelpers.method namespace.
 
-# Namespace for the Lich 5 scripting engine.
+# Namespace for the Lich scripting engine and its supporting infrastructure.
 module Lich
   # Namespace for common utilities shared across Lich components.
   module Common
     # Namespace for authentication and login-related utilities.
     module Authentication
-      # Collection of utilities for login argument parsing, character data lookup, and game instance resolution.
+      # Collection of utilities for game login, character selection, and CLI argument resolution.
       #
-      # Provides methods for CLI argument parsing, saved character discovery across YAML and legacy formats,
-      # and frontend/instance resolution for login workflows.
+      # Provides methods to parse login credentials, resolve game instances and frontends
+      # from command-line arguments, search and select characters across accounts, and
+      # manage game/realm mappings. All methods are accessible via
+      # `Lich::Common::Authentication::LoginHelpers.method_name`.
       module LoginHelpers
         # Load up / require gem 'os' for operating system detection work
         Lich::Util.install_gem_requirements({ 'os' => true })
@@ -53,28 +55,31 @@ module Lich
 
         # Frontend pattern for regex matching
         FRONTEND_PATTERN = /^--(?:frontend=)?(?<fe>avalon|stormfront|wizard|genie|frostbite|wrayth|saga)$/i.freeze
-        # Matches long-form frontend identifier arguments with registry-backed custom names.
+        # Matches a long-form custom frontend identifier flag.
         #
-        # Captures the frontend identifier portion in the `fe` named group.
-        # The identifier must begin with an alphanumeric character and may contain
-        # alphanumerics, underscores, and hyphens (up to 64 characters total).
+        # Captures the frontend name (1-64 characters: alphanumeric, hyphen, underscore)
+        # from `--frontend=NAME` syntax. Used to validate registry-backed custom frontend
+        # launch configurations.
         #
-        # @example
-        #   "--frontend=my-custom-client" =~ REGISTERED_FRONTEND_PATTERN  #=> 0 (match)
-        #   "--frontend=_invalid" =~ REGISTERED_FRONTEND_PATTERN          #=> nil (no match)
+        # @example Match a custom frontend
+        #   "--frontend=my-custom-frontend"[REGISTERED_FRONTEND_PATTERN, :fe] #=> "my-custom-frontend"
+        # @example No match for invalid name length
+        #   "--frontend=a" =~ REGISTERED_FRONTEND_PATTERN #=> 0 (matches header only, not full)
         # @see FRONTEND_PATTERN
         # @see .resolve_frontend_arg
         REGISTERED_FRONTEND_PATTERN = /^--frontend=(?<fe>[a-z0-9][a-z0-9_-]{0,63})$/i.freeze
-        # Matches game instance code arguments with optional single-character suffix.
+        # Matches a CLI flag for a game instance code (GS3, GST, GSF, GSX, DR, DRT, DRX, DRF).
         #
-        # Captures the full instance code (e.g., "GS3", "GST", "DR", "DRX") in the `inst` named group.
-        # Matches Gemstone codes (GS followed by 0–1 characters) and DragonRealms codes (DR followed by 0–1 characters).
+        # Captures the instance identifier from `--GSXX` or `--DRXX` syntax, case-insensitive.
+        # Accepts any two-letter game prefix followed by zero or one character, allowing
+        # both short forms (--gs, --dr) and full codes (--GS3, --DRT).
         #
-        # @example
-        #   "--GS3" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "GS3")
-        #   "--gst" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "gst", case-insensitive)
-        #   "--DRX" =~ INSTANCE_PATTERN    #=> 0 (match, inst: "DRX")
-        #   "--GST2" =~ INSTANCE_PATTERN   #=> nil (no match; max 1 suffix char)
+        # @example Match GemStone instance
+        #   "--GS3"[INSTANCE_PATTERN, :inst] #=> "GS3"
+        # @example Match DragonRealms instance
+        #   "--DRX"[INSTANCE_PATTERN, :inst] #=> "DRX"
+        # @example Case-insensitive
+        #   "--gs3"[INSTANCE_PATTERN, :inst] #=> "gs3"
         # @see VALID_GAME_CODES
         # @see .resolve_instance
         INSTANCE_PATTERN = /^--(?<inst>GS.?$|DR.?$)/i.freeze
@@ -84,17 +89,19 @@ module Lich
 
         # CLI flags that should never be interpreted as game-instance selectors.
         NON_INSTANCE_FLAGS = %w[
+          keep-fe-string
           login gui no-gui without-frontend headless reconnect reconnected save
-          genie frostbite wrayth saga suks
+          genie frostbite wrayth saga suks sentinel pipe no-wine no-gtk debug
         ].freeze
 
         # CLI options (key portion before '=') that are non-instance modifiers.
         NON_INSTANCE_OPTION_KEYS = %w[
           start-scripts custom-launch dark-mode headless
+          auth-provider bind-address game-transport host
           home data scripts temp maps logs backup lib
-          script-dir data-dir temp-dir
+          script-dir data-dir temp-dir map-dir log-dir backup-dir lib-dir active-session-dir
           hosts-dir hosts-file account password character frontend frontend-command
-          detachable-client reconnect-delay game wine wine-prefix
+          detachable-client reconnect-delay game wine wine-prefix fe-version frontend-caps
         ].freeze
 
         # Legacy realm and name mappings intentionally retain retired codes for
@@ -126,85 +133,68 @@ module Lich
           'DRT' => 'DragonRealms Test'
         }.freeze
 
-        # Returns the realm name associated with a game code, with fallback to the default.
+        # Converts a game code to its realm name, falling back to default if not mapped.
         #
-        # Maps legacy Gemstone game codes (GSX, GSF, GST) to their corresponding realm names.
-        # Game codes not in the legacy mapping (e.g., GS3, DR) fall back to GameConfig::DEFAULT_REALM.
+        # Maps legacy game codes to realm identifiers. Codes not found in the mapping
+        # (such as 'GS3' and 'DR' which default to 'prime' and 'prime' respectively via
+        # `GameConfig::DEFAULT_REALM`) return the default realm.
         #
-        # @param code [String, Symbol] the game code (e.g., "GS3", "GST", "GSX", "DR")
-        # @return [String] the realm name (e.g., "platinum", "shattered", "test"), or the configured default
+        # @param code [String, Symbol] the game code (e.g., 'GST', 'GSF', 'GSX')
+        # @return [String] the realm name ('prime', 'platinum', 'shattered', 'test'), or default realm
         # @example
-        #   LoginHelpers.realm_from_game_code("GSX")   #=> "platinum"
-        #   LoginHelpers.realm_from_game_code("GST")   #=> "test"
-        #   LoginHelpers.realm_from_game_code("GS3")   #=> (GameConfig::DEFAULT_REALM)
+        #   realm_from_game_code('GST') #=> 'test'
+        # @example
+        #   realm_from_game_code('GSX') #=> 'platinum'
         # @see GAME_CODE_TO_REALM
         # @see .realm_to_game_code
         def self.realm_from_game_code(code)
           GAME_CODE_TO_REALM.fetch(code.to_s.upcase, GameConfig::DEFAULT_REALM)
         end
 
-        # Returns the game code associated with a realm name, or nil if not found.
+        # Converts a realm name to its corresponding game code, or nil if not found.
         #
-        # Performs a direct lookup in the realm-to-code mapping; no fallback is applied.
+        # Maps realm identifiers to game codes for Lich login. Returns nil when the
+        # realm is not recognized in the mapping.
         #
-        # @param realm [String] the realm name (e.g., "prime", "platinum", "shattered", "test")
-        # @return [String, nil] the game code (e.g., "GS3", "GSX", "GSF", "GST"), or nil if the realm is not mapped
+        # @param realm [String] the realm name ('prime', 'platinum', 'shattered', 'test')
+        # @return [String, nil] the game code ('GS3', 'GSX', 'GSF', 'GST'), or nil if realm is unknown
         # @example
-        #   LoginHelpers.realm_to_game_code("prime")     #=> "GS3"
-        #   LoginHelpers.realm_to_game_code("platinum")  #=> "GSX"
-        #   LoginHelpers.realm_to_game_code("unknown")   #=> nil
+        #   realm_to_game_code('prime') #=> 'GS3'
+        # @example
+        #   realm_to_game_code('test') #=> 'GST'
         # @see REALM_TO_GAME_CODE
         # @see .realm_from_game_code
         def self.realm_to_game_code(realm)
           REALM_TO_GAME_CODE[realm]
         end
 
-        # Returns the human-readable game name for a game code, with fallback to the default.
+        # Converts a game code to its human-readable game name, falling back to default if not found.
         #
-        # Maps game codes to their display names (e.g., "GS3" → "GemStone IV").
-        # Codes not in the mapping fall back to GameConfig::DEFAULT_GAME_NAME.
+        # Maps game codes to their display names used in UI and logging. Unmapped codes
+        # return the default game name via `GameConfig::DEFAULT_GAME_NAME`.
         #
-        # @param game_code [String] the game code (e.g., "GS3", "GST", "DR", "DRX")
-        # @return [String] the human-readable game name (e.g., "GemStone IV", "DragonRealms"), or the configured default
+        # @param game_code [String] the game code (e.g., 'GS3', 'DR', 'DRX')
+        # @return [String] the game name ('GemStone IV', 'DragonRealms', etc.), or default game name
         # @example
-        #   LoginHelpers.game_name_from_game_code("GS3")  #=> "GemStone IV"
-        #   LoginHelpers.game_name_from_game_code("DRX")  #=> "DragonRealms Platinum"
-        #   LoginHelpers.game_name_from_game_code("FAKE") #=> (GameConfig::DEFAULT_GAME_NAME)
+        #   game_name_from_game_code('GS3') #=> 'GemStone IV'
+        # @example
+        #   game_name_from_game_code('DRX') #=> 'DragonRealms Platinum'
         # @see GAME_CODE_TO_NAME
         def self.game_name_from_game_code(game_code)
           GAME_CODE_TO_NAME.fetch(game_code, GameConfig::DEFAULT_GAME_NAME)
         end
 
-        # Returns whether a realm name is valid for elogin.
+        # Checks whether a realm name is valid for elogin support.
         #
         # @param realm [String] the realm name to validate
-        # @return [Boolean] true if the realm is in VALID_REALMS; false otherwise
+        # @return [Boolean] true if realm is in the accepted set ('prime', 'platinum', 'shattered', 'test')
         # @example
-        #   LoginHelpers.valid_realm?("prime")     #=> true
-        #   LoginHelpers.valid_realm?("test")      #=> true
-        #   LoginHelpers.valid_realm?("unknown")   #=> false
+        #   valid_realm?('prime') #=> true
+        # @example
+        #   valid_realm?('invalid') #=> false
         # @see VALID_REALMS
         def self.valid_realm?(realm)
           VALID_REALMS.include?(realm)
-        end
-
-        # Checks whether the running Lich version is at least the specified semantic version.
-        #
-        # Returns false immediately if LICH_VERSION is not defined (e.g., in test contexts where
-        # the constant is unavailable). Uses Gem::Version comparison for robust semantic versioning.
-        #
-        # @param major [Integer] major version number
-        # @param minor [Integer] minor version number (default: 0)
-        # @param patch [Integer] patch version number (default: 0)
-        # @return [Boolean] true if LICH_VERSION is defined and >= the specified version; false otherwise
-        # @example
-        #   LoginHelpers.lich_version_at_least?(5, 12, 0)  #=> true  (if running Lich 5.12.0+)
-        #   LoginHelpers.lich_version_at_least?(6)          #=> false (if running Lich 5.x)
-        # @note Always returns false when LICH_VERSION is not defined
-        def self.lich_version_at_least?(major, minor = 0, patch = 0)
-          return false unless defined?(LICH_VERSION)
-
-          Gem::Version.new(LICH_VERSION) >= Gem::Version.new([major, minor, patch].join('.'))
         end
 
         # Emits a Lich::Messaging message only when the messaging surface is
@@ -689,27 +679,37 @@ module Lich
           'profanity'
         end
 
-        # Formats the game instance launch flag for Lich based on version.
+        # Resolves the frontend identity for a `--pipe -g HOST:PORT` launch.
         #
-        # Older versions of Lich (pre-5.12) only recognize specific lowercase flags
-        # (e.g., `--gst`, `--drt`). Newer versions (5.12+) accept generalized `--GAMECODE` format.
+        # Whatever reads stdout is the client, so an explicit frontend flag
+        # names it and `respond` escapes and wraps script output the way that
+        # frontend expects. With no flag the identity stays 'unknown', which
+        # keeps the stream untouched for consumers that are not frontends
+        # (the benchmark harness).
         #
-        # @param game_code [String, Symbol] the game instance code (e.g., 'GS3', 'GST', 'GSX')
-        # @return [String, nil] the correctly formatted launch flag (e.g., '--gst', '--GSX'), or nil if not needed
+        # @param argv [Array<String>] command line arguments
+        # @return [String] frontend identity for Frontend.client
+        def self.resolve_pipe_frontend(argv)
+          requested_frontend = resolve_frontend_arg(argv)
+          return 'unknown' if requested_frontend == :__unset
+
+          requested_frontend
+        end
+
+        # Formats the game instance launch flag for a spawned Lich session.
+        #
+        # Always emits the generalized `--GAMECODE` form that
+        # {resolve_instance} parses. Every Lich that ships this method
+        # (5.13.0-beta.3 and later) accepts that form. A non-blank code is
+        # upcased and passed through unvalidated; the child Lich reports an
+        # invalid instance itself.
+        #
+        # @param game_code [String, Symbol, nil] the game instance code (e.g., 'GS3', 'GST', 'DRX')
+        # @return [String, nil] the upcased launch flag (e.g., '--GS3', '--GST'), or nil when game_code is blank
         def self.format_launch_flag(game_code)
           return nil if game_code.to_s.strip.empty?
 
-          normalized_code = game_code.to_s.upcase
-
-          if LoginHelpers.lich_version_at_least?(5, 12, 0)
-            "--#{normalized_code}"
-          else
-            case normalized_code
-            when 'GST' then '--gst'
-            when 'DRT' then '--drt'
-            else nil
-            end
-          end
+          "--#{game_code.to_s.upcase}"
         end
       end
     end

@@ -1,14 +1,15 @@
 require_relative '../../common/watchable'
 
-# Provides functionality related to the Lich game framework.
-#
-# @see Lich::Gemstone
 module Lich
   module Gemstone
-    # Module for managing active spells in the Lich game.
+    # Tracks active spell durations and notifies when spells change state.
     #
-    # This module handles spell duration updates and displays.
-    # @see Lich::Gemstone
+    # This module watches the game's active spell list and normalizes spell names
+    # (e.g., "Mage Armor 520 - ..." becomes "Mage Armor"). It calculates duration
+    # changes and reports when spells are cast, renewed, or end. Spell timing is
+    # kept synchronized with the game server to within ~1 second.
+    #
+    # @note This is internal machinery; most scripts use {Spell} directly.
     module ActiveSpell
       extend Lich::Common::Watchable
       #
@@ -21,15 +22,32 @@ module Lich
       @current_durations ||= Hash.new
       @durations_first_pass_complete ||= false
 
-      # Checks if spell durations should be displayed.
-      # @return [Boolean] true if durations should be shown, false otherwise
+      # Checks whether spell duration change notifications are enabled.
+      #
+      # @return [Boolean] true if the player has enabled infomon duration display
+      # @see #update_spell_durations
       def self.show_durations?
         Infomon.get_bool("infomon.show_durations")
       end
 
-      # Retrieves information about active spells and their durations.
-      # @param spell_check [Hash] a hash of active spells to check
-      # @return [Array<String>, Hash] an array containing spell names and a hash of their durations
+      # Normalizes spell names and returns active spell data in a standardized form.
+      #
+      # Applies name transformations to spells where the game's XML feed uses verbose
+      # or abbreviated identifiers: "Mage Armor 520 - ..." → "Mage Armor",
+      # "CoS 712 - ..." → "Cloak of Shadows", etc. These aliases ensure spell names
+      # are consistent across lookups in {Spell.list}.
+      #
+      # @param spell_check [Hash{String => Time}] a Hash mapping spell display names
+      #   (from the game's XML) to their expiration times; defaults to the current
+      #   active spells from XMLData
+      # @return [Array(Array<String>, Hash{String => Time})] a two-element array:
+      #   the first is normalized spell names (in iteration order), the second is
+      #   a Hash with transformed keys and the same expiration times
+      # @example
+      #   names, durations = ActiveSpell.get_spell_info
+      #   # names might include "Mage Armor", "Cloak of Shadows", "Surge of Strength"
+      #   # durations["Mage Armor"] is a Time object
+      # @api private
       def self.get_spell_info(spell_check = XMLData.active_spells)
         respond "spell update requested\r\n" if $infomon_debug
         spell_update_durations = spell_check
@@ -100,12 +118,21 @@ module Lich
         [spell_update_names, spell_update_durations]
       end
 
-      # Displays changes in active spell durations.
+      # Compares active spell durations against the prior state and reports changes.
+      #
+      # Iterates all spell effects (spells, cooldowns, buffs, debuffs), calculates the
+      # time elapsed since each was last seen, and announces new spells, renewals, and
+      # endings in [bracket notation] to the player. Skips group effects (307, 310, 1605,
+      # 1609, 1618, 1608) that the character does not know. On the first call, does not
+      # announce anything (waits for a baseline).
+      #
       # @return [void]
+      # @note Mutates the @current_durations cache to track prior end times
+      # @api private
       def self.show_duration_change
         active_durations = Array.new
         group_effects = [307, 310, 1605, 1609, 1618, 1608]
-        [Effects::Spells.dup, Effects::Cooldowns.dup, Effects::Buffs.dup, Effects::Debuffs.dup].each do |effect_type|
+        [Effects::Spells, Effects::Cooldowns, Effects::Buffs, Effects::Debuffs].each do |effect_type|
           active_durations += effect_type.to_h.keys
           effect_type.to_h.each do |effect, end_time|
             next unless effect.is_a?(String)
@@ -133,8 +160,20 @@ module Lich
         @durations_first_pass_complete = true
       end
 
-      # Updates the durations of active spells based on the latest information.
+      # Synchronizes {Spell} objects with the game's active spell list.
+      #
+      # Calls .get_spell_info to fetch normalized spell names and durations, then:
+      # - marks spells in {Spell.active} as inactive if they no longer appear in the
+      #   game feed (excluding Berserk, Council/Bounty spells, Briar Betrayer, and
+      #   cooldown recovery patterns)
+      # - updates the corresponding {Spell} object's .active and .timeleft attributes
+      # - triggers a Spellsong renewal notification if a circle 10 spell is newly active
+      # - calls .show_duration_change if duration display is enabled
+      #
+      # Rescues and logs all errors to respond() if $infomon_debug is set.
+      #
       # @return [void]
+      # @api private
       def self.update_spell_durations
         begin
           respond "[infomon] updating spell durations..." if $infomon_debug
@@ -179,27 +218,46 @@ module Lich
         end
       end
 
-      # Requests an update for spell durations.
+      # Queues a request for spell durations to be refreshed.
+      #
+      # Posts the current time to the update queue, waking the background thread
+      # so that .update_spell_durations runs on its next iteration.
+      #
       # @return [void]
       def self.request_update
         queue << Time.now
       end
 
-      # Retrieves the queue for update requests.
-      # @return [Queue] the queue of update requests
+      # Returns the thread-safe queue for spell update requests.
+      #
+      # Lazily initializes and caches a single {Queue}.
+      #
+      # @return [Queue] the queue where .request_update posts timestamps
+      # @api private
       def self.queue
         @queue ||= Queue.new
       end
 
-      # Blocks until an update request is made and clears the queue.
-      # @return [Time] the time when the update was requested
+      # Blocks until an update is requested, then clears and returns the timestamp.
+      #
+      # Pops the first item from the queue (blocking if empty), then discards all
+      # remaining queued items so that rapid .request_update calls do not cause a
+      # backlog of updates.
+      #
+      # @return [Time] the timestamp of the update request
+      # @api private
       def self.block_until_update_requested
         event = queue.pop
         queue.clear
         event
       end
 
-      # Starts a thread that watches for update requests and processes them.
+      # Starts a background thread that listens for spell update requests.
+      #
+      # Lazily initializes and starts a thread that calls .block_until_update_requested
+      # in an infinite loop, then runs .update_spell_durations in response. Handles and
+      # logs all errors without halting the thread.
+      #
       # @return [void]
       def self.watch!
         @thread ||= Thread.new do

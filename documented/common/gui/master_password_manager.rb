@@ -5,28 +5,33 @@ require 'securerandom' # default gem
 require 'base64' # bundled gem Ruby >= 3.4, default gem Ruby < 3.4
 Lich::Util.install_gem_requirements({ 'os' => true })
 require 'shellwords' # default gem
+require 'open3' # default gem
 require_relative 'windows_credential_manager'
 
-# Provides common utilities for the Lich application.
-#
-# @see Lich::Common::GUI
+# Namespace for the Lich 5 scripting engine.
 module Lich
+  # Namespace for common utilities shared across Lich 5.
   module Common
+    # Namespace for GUI-related functionality in Lich 5.
     module GUI
-      # Manages the storage and retrieval of the master password.
-      #
-      # This module provides methods to store, retrieve, validate,
-      # and delete the master password using the system's keychain.
-      #
-      # @see Lich::Common::GUI
+      # Master password manager - Keychain integration for secure credential storage
+      # Provides one-time validation test creation and runtime password management
+      # CRITICAL: Validation test uses 100k iterations (one-time)
+      #           Runtime decryption uses 10k iterations (via PasswordCipher)
       module MasterPasswordManager
         KEYCHAIN_SERVICE = 'lich5.master_password'
         VALIDATION_ITERATIONS = 100_000
         VALIDATION_KEY_LENGTH = 32
         VALIDATION_SALT_PREFIX = 'lich5-master-password-validation-v1'
 
-        # Checks if the keychain is available on the current operating system.
-        # @return [Boolean] true if the keychain is available, false otherwise
+        # Checks whether the system keychain is available for credential storage.
+        #
+        # Detects platform-specific keychain backends: macOS Keychain CLI, Linux secret-tool,
+        # or Windows Credential Manager.
+        #
+        # @return [Boolean] true if a keychain backend is available and ready, false otherwise
+        # @example
+        #   MasterPasswordManager.keychain_available? #=> true
         def self.keychain_available?
           if OS.mac?
             macos_keychain_available?
@@ -39,10 +44,15 @@ module Lich
           end
         end
 
-        # Stores the master password in the keychain.
+        # Stores the master password in the system keychain.
+        #
+        # Delegates to the appropriate platform-specific backend (macOS, Linux, or Windows).
+        # Returns false if the keychain is unavailable or if the store operation fails.
+        #
         # @param master_password [String] the master password to store
-        # @return [Boolean] true if the password was stored successfully, false otherwise
-        # @raise [StandardError] if an error occurs during storage
+        # @return [Boolean] true if storage succeeded, false otherwise or if keychain unavailable
+        # @example
+        #   MasterPasswordManager.store_master_password("mypassword") #=> true
         def self.store_master_password(master_password)
           return false unless keychain_available?
 
@@ -60,10 +70,12 @@ module Lich
           false
         end
 
-        # Retrieves the master password from the keychain.
-        # @return [String, nil] the stored master password, or nil if not found
-        # @raise [StandardError] if an error occurs during retrieval
-        def self.retrieve_master_password
+        # Strict reads are required for transaction snapshots and rollback checks:
+        # nil means confirmed absence, while unavailable or failed reads raise.
+        # Legacy callers retain the nil-on-error contract.
+        def self.retrieve_master_password(strict: false)
+          return retrieve_master_password_strict if strict
+
           return nil unless keychain_available?
 
           if OS.mac?
@@ -76,15 +88,55 @@ module Lich
             nil
           end
         rescue StandardError => e
+          raise if strict
+
           Lich.log "error: Failed to retrieve master password: #{e.message}"
           nil
         end
 
-        # Creates a validation test for the given master password.
-        # @param master_password [String] the master password to validate
-        # @return [Hash] a hash containing the validation salt and hash
-        # @example Create a validation test
-        #   validation_test = MasterPasswordManager.create_validation_test("my_secret_password")
+        # @return [String, nil] password or confirmed absence
+        # @raise [IOError] if the previous keychain state cannot be established
+        private_class_method def self.retrieve_master_password_strict
+          raise IOError, "Keychain unavailable; previous master password state is unknown" unless keychain_available?
+
+          if OS.windows?
+            return WindowsCredentialManager.retrieve_credential(KEYCHAIN_SERVICE, strict: true)
+          elsif OS.mac?
+            output, _error, status = Open3.capture3('/usr/bin/security', 'find-generic-password', '-s', KEYCHAIN_SERVICE, '-w')
+            # errSecItemNotFound (-25300), represented as an 8-bit process status.
+            return nil if status.exitstatus == 44
+          elsif OS.linux?
+            attributes = ['service', KEYCHAIN_SERVICE, 'user', 'lich5']
+            output, error, status = Open3.capture3('secret-tool', 'lookup', *attributes)
+            if status.exitstatus == 1 && output.empty? && error.empty?
+              # Lookup can also return no value for a locked item. Only a successful
+              # empty search (including locked items) establishes actual absence.
+              items, error, search_status = Open3.capture3('secret-tool', 'search', '--all', *attributes)
+              return nil if search_status.success? && items.empty? && error.empty?
+            end
+          else
+            raise IOError, "Unsupported keychain; previous master password state is unknown"
+          end
+
+          raise IOError, "Keychain read failed; previous master password state is unknown" unless status.success? && !output.strip.empty?
+
+          output.strip
+        rescue StandardError
+          # Never propagate command output or credential values into diagnostics.
+          raise IOError, "Keychain read failed; previous master password state is unknown"
+        end
+
+        # Creates a validation test (salt and hash) for master password verification.
+        #
+        # Generates a random 16-byte salt and derives a validation key using PBKDF2-HMAC-SHA256
+        # with 100,000 iterations. Computes a SHA256 digest of the key as the validation hash.
+        # Both salt and hash are Base64-encoded for storage.
+        #
+        # @param master_password [String] the master password to validate against
+        # @return [Hash] a hash with keys 'validation_salt', 'validation_hash', and 'validation_version'
+        # @example
+        #   test = MasterPasswordManager.create_validation_test("mypassword")
+        #   test.keys #=> ["validation_salt", "validation_hash", "validation_version"]
         def self.create_validation_test(master_password)
           random_salt = SecureRandom.random_bytes(16)
           full_salt = VALIDATION_SALT_PREFIX + random_salt
@@ -103,11 +155,21 @@ module Lich
           }
         end
 
-        # Validates the entered master password against the stored validation test.
+        # Validates an entered password against a stored validation test.
+        #
+        # Decodes the stored Base64-encoded salt and hash, derives a validation key from the
+        # entered password using the same PBKDF2-HMAC-SHA256 parameters (100,000 iterations),
+        # and performs a constant-time comparison of the computed hash against the stored hash.
+        # Returns false if the validation_test is malformed, missing required fields, or if
+        # comparison fails.
+        #
         # @param entered_password [String] the password entered by the user
-        # @param validation_test [Hash] the validation test data
-        # @return [Boolean] true if the password is valid, false otherwise
-        # @raise [StandardError] if an error occurs during validation
+        # @param validation_test [Hash] the validation test hash from .create_validation_test
+        # @return [Boolean] true if the password matches, false otherwise or if validation_test is invalid
+        # @example
+        #   test = MasterPasswordManager.create_validation_test("mypassword")
+        #   MasterPasswordManager.validate_master_password("mypassword", test) #=> true
+        #   MasterPasswordManager.validate_master_password("wrong", test) #=> false
         def self.validate_master_password(entered_password, validation_test)
           return false unless validation_test.is_a?(Hash)
           return false unless validation_test['validation_salt'] && validation_test['validation_hash']
@@ -130,9 +192,14 @@ module Lich
           end
         end
 
-        # Deletes the master password from the keychain.
-        # @return [Boolean] true if the password was deleted successfully, false otherwise
-        # @raise [StandardError] if an error occurs during deletion
+        # Deletes the master password from the system keychain.
+        #
+        # Delegates to the appropriate platform-specific backend (macOS, Linux, or Windows).
+        # Returns false if the keychain is unavailable or if the delete operation fails.
+        #
+        # @return [Boolean] true if deletion succeeded, false otherwise or if keychain unavailable
+        # @example
+        #   MasterPasswordManager.delete_master_password #=> true
         def self.delete_master_password
           return false unless keychain_available?
 
@@ -155,9 +222,6 @@ module Lich
         # On some macOS + Ruby/GTK combinations, spawning a shell command here can
         # raise during GUI startup before the launcher is fully built. Prefer a
         # direct executable check for the system Keychain CLI.
-        # Checks if the macOS Keychain CLI is available.
-        # @return [Boolean] true if the macOS Keychain CLI is available, false otherwise
-        # @note This method may raise an error during GUI startup.
         private_class_method def self.macos_keychain_available?
           File.executable?('/usr/bin/security')
         rescue StandardError => e
@@ -184,8 +248,6 @@ module Lich
           system("security delete-generic-password -s #{KEYCHAIN_SERVICE.shellescape} 2>/dev/null")
         end
 
-        # Checks if the Linux keychain is available.
-        # @return [Boolean] true if the Linux keychain is available, false otherwise
         private_class_method def self.linux_keychain_available?
           response = system('command -v secret-tool >/dev/null 2>&1')
           Lich.log "debug: secret-tool command not found; Linux keychain unavailable" if response == false
@@ -215,8 +277,6 @@ module Lich
           system("secret-tool clear service #{KEYCHAIN_SERVICE.shellescape} user lich5 2>/dev/null")
         end
 
-        # Checks if the Windows Credential Manager is available.
-        # @return [Boolean] true if the Windows Credential Manager is available, false otherwise
         private_class_method def self.windows_keychain_available?
           return false unless OS.windows?
 
@@ -242,10 +302,6 @@ module Lich
           WindowsCredentialManager.delete_credential(KEYCHAIN_SERVICE)
         end
 
-        # Compares two strings in a time-constant manner to prevent timing attacks.
-        # @param a [String] the first string to compare
-        # @param b [String] the second string to compare
-        # @return [Boolean] true if the strings are equal, false otherwise
         private_class_method def self.secure_compare(a, b)
           return false if a.nil? || b.nil? || a.length != b.length
           result = 0

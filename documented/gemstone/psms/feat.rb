@@ -1,12 +1,26 @@
-# Provides functionality related to the Lich game framework.
-#
-# @see Lich::Gemstone for gemstone-related features.
+# The root module for Lich scripting.
 module Lich
+  # GemStone IV-specific extensions for Lich.
   module Gemstone
-    # Contains features (feats) that can be used in the game.
+    # Provides access to Feats learned by a character in GemStone IV.
     #
-    # This module manages the feats available to characters, including their properties and usage.
+    # This module supports checking feat knowledge, availability, and cost (including FORCERT use),
+    # as well as triggering their usage. Each feat is described in a metadata hash which includes:
+    # - long and short names
+    # - cost
+    # - expected in-game output (regex)
+    # - optional usage string for execution
+    #
+    # Dynamic accessor methods are created for each feat's long and short name.
     module Feat
+      # A registry of all known feats and their properties.
+      #
+      # @return [Hash<String, Hash>] A mapping of feat names to metadata including:
+      #   - `:short_name` [String]
+      #   - `:type` [String, nil]
+      #   - `:cost` [Integer]
+      #   - `:regex` [Regexp] for expected output
+      #   - `:usage` [String, nil] command usage
       @@feats = {
         "absorb_magic"              => {
           :short_name => "absorbmagic",
@@ -224,7 +238,7 @@ module Lich
           :type       => :attack,
           :cost       => { stamina: 20 },
           :regex      => Regexp.union(/Silent Strike can not be used with fire as the attack type\./,
-                                      /You quickly leap from hiding to attack\!/),
+                                      /You quickly leap from hiding to (?:deliver your )?attack\!/),
           :usage      => "silentstrike"
         },
         "vanish"                    => {
@@ -257,143 +271,17 @@ module Lich
         }
       }
 
-      # Returns a list of all feats with their long and short names and costs.
-      # @return [Array<Hash>] an array of hashes containing feat details
-      # @example Get all feats
-      #   feats = Feat.feat_lookups
-      def self.feat_lookups
-        @@feats.map do |long_name, psm|
-          {
-            long_name: long_name,
-            short_name: psm[:short_name],
-            cost: psm[:cost]
-          }
-        end
+      extend PSMS::Technique
+      techniques @@feats, type: "Feat", verb: "feat"
+
+      # Feats sent as their own verb rather than FEAT <usage>.
+      BARE_COMMANDS = ['guard', 'protect'].freeze
+
+      # @api private
+      # GUARD and PROTECT are sent bare; every other feat as FEAT <usage>.
+      def Feat.verb_for(usage)
+        BARE_COMMANDS.include?(usage) ? nil : "feat"
       end
-
-      # Retrieves a feat by its name.
-      # @param name [String] the name of the feat to retrieve
-      # @return [Hash, nil] the feat details or nil if not found
-      # @example Get a specific feat
-      #   feat = Feat["absorb_magic"]
-      def Feat.[](name)
-        return PSMS.assess(name, 'Feat')
-      end
-
-      # Checks if a feat is known by the character and meets the minimum rank requirement.
-      # @param name [String] the name of the feat to check
-      # @param min_rank [Integer] the minimum rank required to consider the feat known
-      # @return [Boolean] true if the feat is known and meets the rank requirement, false otherwise
-      # @example Check if a feat is known
-      #   known = Feat.known?("absorb_magic", 1)
-      def Feat.known?(name, min_rank: 1)
-        min_rank = 1 unless min_rank >= 1 # in case a 0 or below is passed
-        Feat[name] >= min_rank
-      end
-
-      # Determines if a feat can be afforded based on the current resources.
-      # @param name [String] the name of the feat to check
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if the feat is affordable, false otherwise
-      # @example Check if a feat is affordable
-      #   affordable = Feat.affordable?("chastise", 1)
-      def Feat.affordable?(name, forcert_count: 0)
-        return PSMS.assess(name, 'Feat', true, forcert_count: forcert_count)
-      end
-
-      # Checks if a feat is available for use based on known status, affordability, and availability.
-      # @param name [String] the name of the feat to check
-      # @param min_rank [Integer] the minimum rank required to consider the feat available
-      # @param forcert_count [Integer] the number of forcerts available
-      # @return [Boolean] true if the feat is available, false otherwise
-      # @example Check if a feat is available
-      #   available = Feat.available?("absorb_magic", 1, 0)
-      def Feat.available?(name, min_rank: 1, forcert_count: 0)
-        Feat.known?(name, min_rank: min_rank) &&
-          Feat.affordable?(name, forcert_count: forcert_count) &&
-          PSMS.available?(name)
-      end
-
-      # Checks if a buff feat is currently active.
-      # @param name [String] the name of the buff feat to check
-      # @return [Boolean, nil] true if the buff is active, false if not, or nil if the feat is not found
-      # @example Check if a buff is active
-      #   active = Feat.buff_active?("mysticstrike")
-      def Feat.buff_active?(name)
-        return unless @@feats.fetch(PSMS.find_name(name, "Feat")[:long_name]).key?(:buff)
-        Effects::Buffs.active?(@@feats.fetch(PSMS.find_name(name, "Feat")[:long_name])[:buff])
-      end
-
-      # Uses a feat on a target, processing the action and returning the result.
-      # @param name [String] the name of the feat to use
-      # @param target [String, Integer] the target of the feat
-      # @param results_of_interest [Regexp, nil] additional regex patterns to match results
-      # @param forcert_count [Integer] the number of forcerts to use
-      # @return [String, nil] the result of using the feat or nil if not available
-      # @example Use a feat on a target
-      #   result = Feat.use("chastise", "enemy")
-      def Feat.use(name, target = "", results_of_interest: nil, forcert_count: 0)
-        return unless Feat.available?(name, forcert_count: forcert_count)
-
-        name_normalized = PSMS.name_normal(name)
-        technique = @@feats.fetch(PSMS.find_name(name_normalized, "Feat")[:long_name])
-        usage = technique[:usage]
-        return if usage.nil?
-
-        in_cooldown_regex = /^#{name} is still in cooldown\./i
-
-        results_regex = Regexp.union(
-          PSMS::FAILURES_REGEXES,
-          /^#{name} what\?$/i,
-          in_cooldown_regex,
-          technique[:regex],
-          /^Roundtime: [0-9]+ sec\.$/,
-        )
-
-        results_regex = Regexp.union(results_regex, results_of_interest) if results_of_interest.is_a?(Regexp)
-
-        usage_cmd = (['guard', 'protect'].include?(usage) ? "#{usage}" : "feat #{usage}")
-        if target.is_a?(GameObj)
-          usage_cmd += " ##{target.id}"
-        elsif target.is_a?(Integer)
-          usage_cmd += " ##{target}"
-        elsif target != ""
-          usage_cmd += " #{target}"
-        end
-
-        if forcert_count > 0
-          usage_cmd += " forcert"
-        else # if we're using forcert, we don't want to wait for rt, but we need to otherwise
-          waitrt?
-          waitcastrt?
-        end
-
-        usage_result = dothistimeout usage_cmd, 5, results_regex
-        if usage_result == "You don't seem to be able to move to do that."
-          100.times { break if clear.any? { |line| line =~ /^You regain control of your senses!$/ }; sleep 0.1 }
-          usage_result = dothistimeout usage_cmd, 5, results_regex
-        end
-        usage_result
-      end
-
-      # Retrieves the regex pattern associated with a feat.
-      # @param name [String] the name of the feat to retrieve the regex for
-      # @return [Regexp] the regex pattern for the feat
-      # @example Get the regex for a feat
-      #   pattern = Feat.regexp("absorb_magic")
-      def Feat.regexp(name)
-        @@feats.fetch(PSMS.find_name(name, "Feat")[:long_name])[:regex]
-      end
-
-      Feat.feat_lookups.each { |feat|
-        self.define_singleton_method(feat[:short_name]) do
-          Feat[feat[:short_name]]
-        end
-
-        self.define_singleton_method(feat[:long_name]) do
-          Feat[feat[:short_name]]
-        end
-      }
     end
   end
 end

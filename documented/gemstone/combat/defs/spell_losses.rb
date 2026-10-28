@@ -25,38 +25,34 @@ require_relative 'pattern_gate'
 
 # Namespace for the Lich 5 scripting engine.
 module Lich
-  # Namespace for GemStone IV game logic.
+  # Namespace for GemStone IV and DragonRealms game integration.
   module Gemstone
-    # Namespace for combat-related definitions and parsers.
+    # Namespace for combat-related parsing and analysis.
     module Combat
-      # Namespace for spell and effect definitions.
+      # Namespace for pattern definitions used in combat parsing.
       module Definitions
-        # Namespace for spell wear-off pattern definitions and parsing.
+        # Parses third-person spell wear-off lines and extracts target names.
         #
-        # This module defines third-person wear-off lines for spell-circle spells,
-        # keyed by spell number. Patterns are pinned to spells via wiki documentation
-        # and cross-log timestamp pairing. The generic fallback pattern (spell: nil)
-        # covers unidentified spell expirations.
+        # Maintains a curated set of spell-loss patterns keyed by spell number,
+        # covering ordinary spell-circle spells. Patterns are deliberately pinned to
+        # specific spells via effect-list wording and cross-log timestamp pairing,
+        # and only added after identification is confirmed. Unpinned wear-off lines
+        # are intentionally excluded.
         #
-        # @see .parse
+        # The module provides a {.parse} method that matches incoming lines against
+        # all known patterns and returns the spell ID, spell name, and affected target.
         module SpellLosses
           SpellLossDef = Struct.new(:spell, :spell_name, :patterns)
 
-          # Array of spell loss definitions, mapping third-person wear-off patterns to
-          # spell identity (number and name).
+          # Curated collection of spell wear-off pattern definitions, keyed by spell number.
           #
-          # Each entry is a SpellLossDef capturing:
-          # - spell: Integer or nil (nil for the generic fallback pattern)
-          # - spell_name: String descriptive spell name
-          # - patterns: Array of Regexp matching third-person wear-off lines
+          # Each entry pairs a spell ID, common name, and an array of frozen Regexp patterns
+          # that match third-person wear-off lines. Patterns use named capture group `target`
+          # to extract the affected character's name. The final entry covers the game's
+          # generic wear-off wording ("appears somehow different") with spell: nil, serving
+          # as a fallback for any spell without bespoke end messaging.
           #
-          # Patterns use named capture group `:target` to extract the affected character.
-          # The final entry with spell: nil is the game's generic wear-off ("appears
-          # somehow different", "seems slightly different") for spells without bespoke
-          # end messaging.
-          #
-          # @return [Array<SpellLossDef>]
-          # @see .parse
+          # @return [Array<SpellLossDef>] frozen array of spell loss definitions
           SPELL_LOSSES = [
             # wiki-pinned 2026-09-04 (owner directive: wiki first, log
             # pairing for what the wiki can't settle). 107's page carries
@@ -89,6 +85,11 @@ module Lich
             # "You become solid again." - 911 only, no standalone Blur
             # entry exists; 1605's end names the same warmth+spiritual
             # force around the arms the third person describes)
+            # effect-list end message "A white glow rushes away from you."
+            # (owner report 2026-09-09: a skald's death dropped it and the
+            # report showed a "dispelled" status with no dispel flare)
+            SpellLossDef.new(303, 'Prayer of Protection',
+                             [/A white glow rushes away from (?<target>[^.]+)\./].freeze),
             SpellLossDef.new(513, 'Elemental Focus',
                              [/(?<target>.+?) no longer bristles with energy\./].freeze),
             SpellLossDef.new(911, 'Mass Blur',
@@ -133,12 +134,13 @@ module Lich
                              ].freeze)
           ].freeze
 
-          # Flat array of [pattern, SpellLossDef] pairs for efficient pattern matching.
+          # Flattened lookup table mapping each Regexp pattern to its SpellLossDef.
           #
-          # Enables sequential regex matching against game output lines via .parse.
+          # Constructed by mapping each pattern within every spell loss definition to a
+          # [pattern, loss_def] pair. Used by `.parse` to efficiently search all patterns
+          # in sequence.
           #
-          # @return [Array<[Regexp, SpellLossDef]>]
-          # @api private
+          # @return [Array<[Regexp, SpellLossDef]>] frozen array of pattern-definition pairs
           LOOKUP = SPELL_LOSSES.flat_map do |loss_def|
             loss_def.patterns.map { |pattern| [pattern, loss_def] }
           end.freeze

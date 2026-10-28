@@ -3,35 +3,55 @@
 require 'json'
 require 'socket'
 
+# Namespace for the Lich scripting engine for GemStone IV and DragonRealms.
+#
+# @api private
 module Lich
+  # Namespace for Lich internal APIs not intended for script consumption.
+  #
+  # @api private
   module InternalAPI
+    # Namespace for the active sessions service client and related utilities.
+    #
+    # @api private
     module ActiveSessions
-      # Client for managing active sessions with the Lich internal API.
+      # Thin JSON client for the local active sessions service.
       #
-      # This class handles communication with the server, including sending requests and receiving responses.
-      #
-      # @see Lich::InternalAPI::ActiveSessions
+      # The client intentionally knows nothing about lifecycle semantics. It is
+      # only responsible for packaging JSON commands, reading JSON responses,
+      # and normalizing failures into a predictable `{ ok: false, error: ... }`
+      # shape for higher-level callers.
       class Client
+        # Maximum number of seconds to wait while opening the loopback socket.
+        #
+        # @return [Numeric]
+        CONNECT_TIMEOUT = 1
+
+        # Maximum number of seconds to wait for a server response before
+        # treating the request as failed.
+        #
+        # @return [Numeric]
         READ_TIMEOUT = 1
 
-        # Initializes a new Client instance.
-        # @param host [String] the hostname of the server
-        # @param port [Integer] the port number of the server
-        # @param auth_token [String] the authentication token for the session
-        # @param socket_factory [Proc, nil] a factory for creating sockets (defaults to TCPSocket)
+        # @param host [String]
+        # @param port [Integer]
+        # @param auth_token [String]
+        # @param socket_factory [#call] builds a connected client socket
         # @return [void]
         def initialize(host:, port:, auth_token:, socket_factory: nil)
           @host = host
           @port = port
           @auth_token = auth_token
-          @socket_factory = socket_factory || ->(connect_host, connect_port) { TCPSocket.new(connect_host, connect_port) }
+          @socket_factory = socket_factory || lambda do |connect_host, connect_port|
+            Socket.tcp(connect_host, connect_port, connect_timeout: CONNECT_TIMEOUT)
+          end
         end
 
-        # Sends a request to the server with the specified command and payload.
-        # @param command [String] the command to send to the server
-        # @param payload [Hash] the data to include with the command
-        # @return [Hash] the server's response, including success status and any data or error messages
-        # @raise [StandardError] if an error occurs during the request
+        # Sends a raw command payload to the active sessions service.
+        #
+        # @param command [String] protocol command name
+        # @param payload [Hash] request-specific payload
+        # @return [Hash] parsed response payload or a normalized error hash
         def request(command, payload = {})
           socket = @socket_factory.call(@host, @port)
           socket.write(JSON.dump(command: command, auth: @auth_token, payload: payload) + "\n")
@@ -48,41 +68,43 @@ module Lich
           socket&.close rescue nil
         end
 
-        # Sends a ping request to the server to check connectivity.
-        # @return [Boolean] true if the server responds positively, false otherwise
-        # @example Check server connectivity
-        #   client = Lich::InternalAPI::ActiveSessions::Client.new(host: "localhost", port: 1234, auth_token: "token")
-        #   client.ping
+        # Sends a lightweight health probe to the service.
+        #
+        # @return [Boolean] true when the service responds with `ok: true`
         def ping
           request('ping').fetch(:ok, false)
         end
 
-        # Sends an upsert request to the server with the provided payload.
-        # @param payload [Hash] the data to upsert
-        # @return [Hash] the server's response to the upsert request
+        # Registers or updates a session over the transport.
+        #
+        # @param payload [Hash]
+        # @return [Hash]
         def upsert(payload)
           request('upsert', payload)
         end
 
-        # Sends a remove request to the server for the specified process ID.
-        # @param pid [String] the process ID to remove
-        # @return [Hash] the server's response to the remove request
+        # Removes a session by pid over the transport.
+        #
+        # @param pid [Integer]
+        # @return [Hash]
         def remove(pid)
           request('remove', pid: pid)
         end
 
-        # Sends a snapshot request to the server.
-        # @return [Hash] the server's response containing the snapshot data
+        # Requests the current active sessions snapshot.
+        #
+        # @return [Hash]
         def snapshot
           request('snapshot')
         end
 
         private
 
-        # Reads the response from the server socket with a timeout.
-        # @param socket [TCPSocket] the socket to read from
-        # @return [String, nil] the response data or nil if a timeout occurs
-        # @raise [IO::WaitReadable] if the socket is not ready for reading
+        # Reads a single newline-terminated JSON response without allowing
+        # partial frames to block indefinitely.
+        #
+        # @param socket [IO]
+        # @return [String, nil]
         def read_response(socket)
           deadline = Time.now + READ_TIMEOUT
           buffer = +''

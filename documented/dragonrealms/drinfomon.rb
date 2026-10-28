@@ -1,19 +1,28 @@
+# Root namespace for the Lich 5 scripting engine.
+#
+# @api private
 module Lich
+  # Namespace for DragonRealms game integration.
+  #
+  # @api private
   module DragonRealms
+    # Provides character statistics, status, and game state information for DragonRealms scripts.
+    #
+    # Loads and coordinates multiple sub-modules that track vitals, skills, spells, banking, room state, and experience gains.
+    #
+    # @api private
     module DRInfomon
-      # The version of the DRInfomon module.
-      #
-      # @return [String] the version number
       $DRINFOMON_VERSION = '3.0'
 
-      # An array of core Lich defines used in DRInfomon.
+      # List of core Lich library definitions required by DRInfomon.
       #
-      # @return [Array<String>] the list of core defines
+      # Includes definitions for common gameplay utilities (items, money, travel, validation),
+      # profession-specific modules (arcana, crafting, healing, moonmage, summoning, theurgy),
+      # game event handling, slackbot integration, equipment management, and spell monitoring.
+      #
+      # @return [Array<String>] the names of core library files to load
       DRINFOMON_CORE_LICH_DEFINES = %W(drinfomon common common-arcana common-crafting common-healing common-healing-data common-items common-money common-moonmage common-summoning common-theurgy common-travel common-validation events slackbot equipmanager spellmonitor)
 
-      # Indicates whether DRInfomon is included in the core Lich.
-      #
-      # @return [Boolean] true if included, false otherwise
       DRINFOMON_IN_CORE_LICH = true
       require_relative 'drinfomon/drdefs'
       require_relative 'drinfomon/drvariables'
@@ -32,10 +41,16 @@ module Lich
       # - Persisted: if user toggles it off, stays off across sessions
       # Use ";display expgains" command to toggle on/off manually
       # Use ";display inlineexp" to toggle inline gains in EXP window (off by default)
-      # Starts the DRExpMonitor based on the Lich.display_expgains setting.
-      #
-      # @return [void]
-      DRExpMonitor.start if Lich.display_expgains
+      # - `;hmr drinfomon` re-runs this file; a reporter that is already running
+      #   keeps running rather than printing "already active"
+      begin
+        enabled = Lich.with_strict_display_reads { Lich.display_expgains }
+        DRExpMonitor.start if enabled && !DRExpMonitor.active?
+      rescue SQLite3::BusyException => e
+        # A fallback ON value must not override a persisted OFF preference.
+        # Manual ";display expgains on" can recover after contention clears.
+        Lich.log "warning: could not read display_expgains; skipping automatic exp monitor start: #{e.message}"
+      end
     end
   end
 end

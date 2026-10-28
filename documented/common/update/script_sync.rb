@@ -8,17 +8,14 @@
   Supports both :all (auto-sync all .lic) and :explicit (tracked list) modes.
 =end
 
-# Namespace for the Lich scripting engine.
 module Lich
-  # Namespace for utility modules.
   module Util
-    # Namespace for update and sync functionality.
     module Update
-      # Bulk SHA-based synchronizer for script repositories.
+      # Bulk SHA-based repository sync manager for script repositories.
       #
-      # Downloads scripts and data files from configured SCRIPT_REPOS and custom repos,
-      # skipping files where local SHA1 matches the remote SHA1. Supports :all (auto-sync
-      # all .lic files except -setup variants) and :explicit (sync only tracked scripts) modes.
+      # Downloads scripts and data files from configured SCRIPT_REPOS and user-registered
+      # custom repos, skipping files whose local SHA1 matches the remote. Supports both
+      # :all (auto-sync all .lic) and :explicit (tracked list) tracking modes.
       #
       # @api private
       class ScriptSync
@@ -28,19 +25,29 @@ module Lich
         end
 
         # Syncs all registered repositories (built-in + custom) for current game.
+        # Stops at the first GitHub-wide failure: the remaining repos would
+        # fail the same way, and one message is enough.
         #
         # @return [void]
         def sync_all_repos
-          SCRIPT_REPOS.each_key { |repo_key| sync_repo(repo_key) }
-          CustomRepos.all.each_key { |repo_key| sync_repo(repo_key) }
+          synced = false
+          (SCRIPT_REPOS.keys + CustomRepos.all.keys).each do |repo_key|
+            result = sync_repo(repo_key, after_synced_repo: synced)
+            break if result == :github_unavailable
+
+            synced ||= result == :synced
+          end
         end
 
         # Syncs a single repository by key (built-in or custom).
         #
         # @param repo_key [String] repository key from SCRIPT_REPOS or custom repo
         # @param force [Boolean] skip SHA check and download all (default: false)
-        # @return [void]
-        def sync_repo(repo_key, force: false)
+        # @param after_synced_repo [Boolean] an earlier repo already synced this run,
+        #   so a GitHub failure must not claim nothing was updated (default: false)
+        # @return [Symbol, nil] :synced, :github_unavailable when GitHub itself
+        #   failed, or nil when the repo was skipped
+        def sync_repo(repo_key, force: false, after_synced_repo: false)
           config = SCRIPT_REPOS[repo_key]
           unless config
             # Check custom repos
@@ -58,14 +65,20 @@ module Lich
             return
           end
 
+          name = config[:display_name] || repo_key
           tree_data = @client.fetch_github_json(config[:api_url])
           unless tree_data && tree_data['tree']
-            respond "[lich5-update: Failed to fetch tree for #{repo_key}.]"
-            return
+            error = @client.last_error
+            if error && !error.global?
+              StatusReporter.respond_github_failure(error, "No scripts were updated from #{name}.", subject: name)
+              return nil
+            end
+            consequence = after_synced_repo ? 'No further scripts have been updated this run.' : 'No scripts have been updated this run.'
+            StatusReporter.respond_github_failure(error, consequence)
+            return :github_unavailable
           end
           tree = tree_data['tree']
 
-          name = config[:display_name] || repo_key
           syncable = filter_syncable_scripts(tree, config, repo_key)
           StatusReporter.respond_mono("[lich5-update: Syncing #{name} (#{syncable.length} scripts)...]")
 
@@ -76,6 +89,7 @@ module Lich
           local_shas = FileWriter.build_local_sha_map(dest)
           downloaded_scripts = []
           failed_scripts = []
+          held_scripts = []
           syncable.each do |entry|
             filename = File.basename(entry['path'])
             next if !force && local_shas[filename] == entry['sha']
@@ -84,6 +98,14 @@ module Lich
             unless content
               failed_scripts << filename
               next
+            end
+
+            if config[:check_lich_requirement]
+              required = Lich::Common::Script.required_lich_version_in(content)
+              unless Lich::Common::Script.lich_version_satisfied?(required)
+                held_scripts << [filename, required]
+                next
+              end
             end
 
             begin
@@ -103,7 +125,8 @@ module Lich
             failed_other[subdir_name] = failures unless failures.empty?
           end
 
-          StatusReporter.render_sync_summary(name, syncable.length, downloaded_scripts, downloaded_other, config[:subdirs]&.keys || [], failed_scripts, failed_other)
+          StatusReporter.render_sync_summary(name, syncable.length, downloaded_scripts, downloaded_other, config[:subdirs]&.keys || [], failed_scripts, failed_other, held_scripts)
+          :synced
         end
 
         # Syncs a subdirectory (profiles, data) from repository.

@@ -1,15 +1,23 @@
-# Provides functionality related to the Lich game framework.
-#
-# @see Lich::Gemstone
+# The root namespace for all Lich scripting components.
 module Lich
-  # Contains gemstone-related functionality within the Lich framework.
-  #
-  # @see Lich::Gemstone::Shield
+  # Namespace for GemStone IV-specific modules.
   module Gemstone
-    # Manages shield techniques and their interactions in the game.
+    # Provides logic for shield-based PSM techniques in GemStone IV.
     #
-    # This module provides methods to access and utilize various shield techniques.
+    # This module defines metadata for each known shield technique, including passive and active skills,
+    # usage commands, costs, and expected success message regexes. It offers methods for checking whether
+    # a technique is known, affordable, or currently available, and for attempting to use a technique.
+    #
+    # Dynamic shortcut methods are also defined for each shield technique using both long and short names.
     module Shield
+      # Internal registry of all shield techniques and their metadata.
+      #
+      # @return [Hash<String, Hash>] Each key is a long name and maps to:
+      #   - `:short_name` [String] shorthand reference
+      #   - `:type` [String, nil] type of skill (e.g., passive, stance)
+      #   - `:cost` [Integer] stamina cost
+      #   - `:regex` [Regexp] expected in-game output
+      #   - `:usage` [String, nil] usage string if applicable
       @@shield_techniques = {
         "adamantine_bulwark"    => {
           :short_name => "bulwark",
@@ -248,129 +256,9 @@ module Lich
         }
       }
 
-      # Returns a list of available shield techniques with their long and short names and costs.
-      # @return [Array<Hash>] an array of hashes containing long_name, short_name, and cost for each shield technique.
-      def self.shield_lookups
-        @@shield_techniques.map do |long_name, psm|
-          {
-            long_name: long_name,
-            short_name: psm[:short_name],
-            cost: psm[:cost]
-          }
-        end
-      end
-
-      # Retrieves a shield technique by its name.
-      # @param name [String] the name of the shield technique to retrieve.
-      # @return [Hash, nil] the shield technique details or nil if not found.
-      def Shield.[](name)
-        return PSMS.assess(name, 'Shield')
-      end
-
-      # Checks if a shield technique is known at or above a specified rank.
-      # @param name [String] the name of the shield technique.
-      # @param min_rank [Integer] the minimum rank to check against (default is 1).
-      # @return [Boolean] true if the technique is known at the specified rank, false otherwise.
-      def Shield.known?(name, min_rank: 1)
-        min_rank = 1 unless min_rank >= 1 # in case a 0 or below is passed
-        Shield[name] >= min_rank
-      end
-
-      # Determines if a shield technique can be afforded based on the current conditions.
-      # @param name [String] the name of the shield technique to check.
-      # @param forcert_count [Integer] the number of forcerts available (default is 0).
-      # @return [Boolean] true if the technique is affordable, false otherwise.
-      def Shield.affordable?(name, forcert_count: 0)
-        return true if @@shield_techniques.fetch(PSMS.find_name(name, "Shield")[:long_name])[:type] == :area_of_effect && Effects::Buffs.active?("Glorious Momentum")
-        return PSMS.assess(name, 'Shield', true, forcert_count: forcert_count)
-      end
-
-      # Checks if a shield technique is available for use based on known status, affordability, and availability.
-      # @param name [String] the name of the shield technique.
-      # @param min_rank [Integer] the minimum rank required to use the technique (default is 1).
-      # @param forcert_count [Integer] the number of forcerts available (default is 0).
-      # @return [Boolean] true if the technique is available, false otherwise.
-      def Shield.available?(name, min_rank: 1, forcert_count: 0)
-        Shield.known?(name, min_rank: min_rank) &&
-          Shield.affordable?(name, forcert_count: forcert_count) &&
-          PSMS.available?(name)
-      end
-
-      # Checks if a buff associated with a shield technique is currently active.
-      # @param name [String] the name of the shield technique.
-      # @return [Boolean, nil] true if the buff is active, false if not, or nil if the technique does not have a buff.
-      def Shield.buff_active?(name)
-        return unless @@shield_techniques.fetch(PSMS.find_name(name, "Shield")[:long_name]).key?(:buff)
-        Effects::Buffs.active?(@@shield_techniques.fetch(PSMS.find_name(name, "Shield")[:long_name])[:buff])
-      end
-
-      # Uses a shield technique against a target, processing the results of the action.
-      # @param name [String] the name of the shield technique to use.
-      # @param target [String] the target of the technique (default is an empty string).
-      # @param results_of_interest [Regexp, nil] additional regex patterns to match results (default is nil).
-      # @param forcert_count [Integer] the number of forcerts available (default is 0).
-      # @return [String, nil] the result of the technique use or nil if it cannot be used.
-      def Shield.use(name, target = "", results_of_interest: nil, forcert_count: 0)
-        return unless Shield.available?(name, forcert_count: forcert_count)
-
-        name_normalized = PSMS.name_normal(name)
-        technique = @@shield_techniques.fetch(PSMS.find_name(name_normalized, "Shield")[:long_name])
-        usage = technique[:usage]
-        return if usage.nil?
-
-        in_cooldown_regex = /^#{name} is still in cooldown\./i
-
-        results_regex = Regexp.union(
-          PSMS::FAILURES_REGEXES,
-          /^#{name} what\?$/i,
-          in_cooldown_regex,
-          technique[:regex],
-          /^Roundtime: [0-9]+ sec\.$/,
-        )
-
-        results_regex = Regexp.union(results_regex, results_of_interest) if results_of_interest.is_a?(Regexp)
-
-        usage_cmd = "shield #{usage}"
-        if target.is_a?(GameObj)
-          usage_cmd += " ##{target.id}"
-        elsif target.is_a?(Integer)
-          usage_cmd += " ##{target}"
-        elsif target != ""
-          usage_cmd += " #{target}"
-        end
-
-        if forcert_count > 0
-          usage_cmd += " forcert"
-        else # if we're using forcert, we don't want to wait for rt, but we need to otherwise
-          waitrt?
-          waitcastrt?
-        end
-
-        usage_result = dothistimeout usage_cmd, 5, results_regex
-        if usage_result == "You don't seem to be able to move to do that."
-          100.times { break if clear.any? { |line| line =~ /^You regain control of your senses!$/ }; sleep 0.1 }
-          usage_result = dothistimeout usage_cmd, 5, results_regex
-        end
-
-        usage_result
-      end
-
-      # Retrieves the regular expression associated with a shield technique.
-      # @param name [String] the name of the shield technique.
-      # @return [Regexp] the regex pattern for the technique.
-      def Shield.regexp(name)
-        @@shield_techniques.fetch(PSMS.find_name(name, "Shield")[:long_name])[:regex]
-      end
-
-      Shield.shield_lookups.each { |shield|
-        self.define_singleton_method(shield[:short_name]) do
-          Shield[shield[:short_name]]
-        end
-
-        self.define_singleton_method(shield[:long_name]) do
-          Shield[shield[:short_name]]
-        end
-      }
+      extend PSMS::Technique
+      techniques @@shield_techniques, type: "Shield", verb: "shield"
+      free_under "Glorious Momentum", type: :area_of_effect, affects: :cost
     end
   end
 end
